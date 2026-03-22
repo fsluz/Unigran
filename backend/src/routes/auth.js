@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt    from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { readTx, writeTx, collect } from '../db/typedb.js';
+import { readQuery, writeQuery, val } from '../db/typedb.js';
 
 const router = Router();
 
@@ -21,9 +21,7 @@ const LoginSchema = z.object({
 });
 
 function sign(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 }
 
 /* POST /api/auth/register */
@@ -33,32 +31,26 @@ router.post('/register', async (req, res) => {
 
   const { name, username, email, phone, password } = parsed.data;
   const hash = await bcrypt.hash(password, 12);
-  const id   = uuid();
   const now  = new Date().toISOString();
 
   try {
-    await writeTx(async tx => {
-      await tx.query.insert(`
-        insert $u isa user,
-          has id "${id}",
-          has username "${username}",
-          has display-name "${name}",
-          has email "${email}",
-          has password-hash "${hash}",
-          ${phone ? `has phone "${phone}",` : ''}
-          has role "user",
-          has is-active true,
-          has is-banned false,
-          has created-at ${now};
-      `);
-    });
-
-    const token = sign({ id, username, email, role: 'user', displayName: name });
-    res.status(201).json({ token, user: { id, username, displayName: name, email, role: 'user' } });
+    await writeQuery(`
+      insert $u isa person,
+        has username "${username}",
+        has name "${name}",
+        has email "${email}",
+        ${phone ? `has phone "${phone}",` : ''}
+        has password-hash "${hash}",
+        has is-active true,
+        has is-banned false,
+        has can-publish true,
+        has page-visibility "public",
+        has post-visibility "public";
+    `);
+    const token = sign({ id: username, username, email, role: 'user', displayName: name });
+    res.status(201).json({ token, user: { id: username, username, displayName: name, email, role: 'user' } });
   } catch (err) {
-    if (err.message?.includes('unique')) {
-      return res.status(409).json({ error: 'Email ou username já em uso' });
-    }
+    if (err.message?.includes('unique')) return res.status(409).json({ error: 'Email ou username já em uso' });
     console.error('[register]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
@@ -72,34 +64,27 @@ router.post('/login', async (req, res) => {
   const { email, password } = parsed.data;
 
   try {
-    const row = await readTx(async tx => {
-      const rows = await collect(tx.query.get(`
-        match $u isa user,
-          has email "${email}",
-          has id $id,
-          has username $un,
-          has display-name $dn,
-          has password-hash $ph,
-          has role $r,
-          has is-banned $ib;
-        get $id, $un, $dn, $ph, $r, $ib;
-      `));
-      return rows[0] ?? null;
-    });
+    const rows = await readQuery(`
+      match $u isa person,
+        has email "${email}",
+        has username $uname,
+        has name $dname,
+        has password-hash $phash,
+        has is-banned $banned;
+      select $uname, $dname, $phash, $banned;
+    `);
 
-    if (!row) return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
+    const row = rows[0];
 
-    const ok = await bcrypt.compare(password, row.get('ph').value);
-    if (!ok)  return res.status(401).json({ error: 'Credenciais inválidas' });
-    if (row.get('ib').value) return res.status(403).json({ error: 'Conta banida' });
+    const ok = await bcrypt.compare(password, val(row, 'phash'));
+    if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (val(row, 'banned')) return res.status(403).json({ error: 'Conta banida' });
 
-    const payload = {
-      id:          row.get('id').value,
-      username:    row.get('un').value,
-      displayName: row.get('dn').value,
-      email,
-      role:        row.get('r').value,
-    };
+    const username    = val(row, 'uname');
+    const displayName = val(row, 'dname');
+
+    const payload = { id: username, username, displayName, email, role: 'user' };
     res.json({ token: sign(payload), user: payload });
   } catch (err) {
     console.error('[login]', err);
@@ -115,6 +100,35 @@ router.get('/me', (req, res) => {
     res.json({ user: jwt.verify(header.slice(7), process.env.JWT_SECRET) });
   } catch {
     res.status(401).json({ error: 'Token inválido' });
+  }
+});
+
+/* PUT /api/auth/reset-password */
+router.put('/reset-password', async (req, res) => {
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword) return res.status(400).json({ error: 'Email e nova senha obrigatórios' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+
+  try {
+    const hash = await bcrypt.hash(newPassword, 12);
+    const rows = await readQuery(`
+      match $u isa person, has email "${email}", has password-hash $ph;
+      select $ph;
+    `);
+    if (rows.length) {
+      await writeQuery(`
+        match $u isa person, has email "${email}", has password-hash $ph;
+        delete $ph of $u;
+      `);
+    }
+    await writeQuery(`
+      match $u isa person, has email "${email}";
+      insert $u has password-hash "${hash}";
+    `);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[reset-password]', err);
+    res.status(500).json({ error: 'Erro interno' });
   }
 });
 

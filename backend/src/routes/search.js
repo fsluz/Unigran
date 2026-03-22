@@ -1,59 +1,39 @@
 import { Router } from 'express';
-import { readTx, collect } from '../db/typedb.js';
+import { readQuery, val } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
 
-/* GET /api/search?q=&type=users|communities|posts */
 router.get('/', auth, async (req, res) => {
   const { q = '', type = 'users' } = req.query;
   if (!q.trim()) return res.json({ results: [] });
-
   const safe = q.replace(/"/g, '\\"');
-
   try {
-    const results = await readTx(async tx => {
-      let query;
-
-      if (type === 'users') {
-        query = `
-          match $u isa user, has display-name $dn, has username $un, has id $id, has role $r;
-          $dn like "(?i).*${safe}.*";
-          get $id, $dn, $un, $r; limit 10;
-        `;
-      } else if (type === 'communities') {
-        query = `
-          match $c isa community, has title $t, has id $id, has visibility $v, has is-active true;
-          $t like "(?i).*${safe}.*";
-          get $id, $t, $v; limit 10;
-        `;
-      } else if (type === 'posts') {
-        const tag = safe.replace(/^#/, '');
-        query = `
-          match $p isa post, has content $ct, has id $id, has is-active true;
-          $ct like "(?i).*${tag}.*";
-          get $id, $ct; limit 10;
-        `;
-      } else {
-        return [];
-      }
-
-      const rows = await collect(tx.query.get(query));
-
-      if (type === 'users') {
-        return rows.map(r => ({ id: r.get('id').value, displayName: r.get('dn').value, username: r.get('un').value, role: r.get('r').value }));
-      } else if (type === 'communities') {
-        return rows.map(r => ({ id: r.get('id').value, name: r.get('t').value, type: r.get('v').value }));
-      } else {
-        return rows.map(r => ({ id: r.get('id').value, content: r.get('ct').value.slice(0, 120) }));
-      }
-    });
-
+    let rows = [], results = [];
+    if (type === 'users') {
+      rows = await readQuery(`
+        match $u isa person, has name $dn, has username $un;
+        $dn like "(?i).*${safe}.*";
+        select $dn, $un; limit 10;
+      `);
+      results = rows.map(r => ({ id: val(r,'un'), displayName: val(r,'dn'), username: val(r,'un'), role: 'user' }));
+    } else if (type === 'communities') {
+      rows = await readQuery(`
+        match $g isa group, has name $t, has group-id $gid, has page-visibility $v;
+        $t like "(?i).*${safe}.*";
+        select $gid, $t, $v; limit 10;
+      `);
+      results = rows.map(r => ({ id: val(r,'gid'), name: val(r,'t'), type: val(r,'v') }));
+    } else if (type === 'posts') {
+      rows = await readQuery(`
+        match $p isa post, has post-text $ct, has post-id $pid;
+        $ct like "(?i).*${safe.replace(/^#/,'')}.*";
+        select $pid, $ct; limit 10;
+      `);
+      results = rows.map(r => ({ id: val(r,'pid'), content: String(val(r,'ct')).slice(0,120) }));
+    }
     res.json({ results, type, q });
-  } catch (err) {
-    console.error('[search]', err);
-    res.status(500).json({ error: 'Erro na busca' });
-  }
+  } catch (err) { console.error('[search]', err); res.status(500).json({ error: 'Erro na busca' }); }
 });
 
 export default router;

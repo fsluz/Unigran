@@ -53,5 +53,5 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀  Unigran backend → http://localhost:${PORT}`);
   console.log(`📡  Socket.io pronto`);
-  console.log(`🗃️   TypeDB: ${process.env.TYPEDB_HOST || 'localhost'}:${process.env.TYPEDB_PORT || '1729'} / ${process.env.TYPEDB_DATABASE || 'unigran'}\n`);
+  console.log(`🗃️   TypeDB: ${process.env.TYPEDB_ADDRESS || 'localhost:1729'} / ${process.env.TYPEDB_DATABASE || 'unigran'}\n`);
 });

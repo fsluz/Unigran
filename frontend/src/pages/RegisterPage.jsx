@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterPage({ onGoLogin }) {
-  const [form, setForm] = useState({ name: '', username: '', phone: '', email: '', password: '', confirm: '' });
+  const { login } = useAuth();
+  const [form, setForm]     = useState({ name: '', username: '', phone: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
@@ -15,8 +17,25 @@ export default function RegisterPage({ onGoLogin }) {
     if (!username.match(/^[a-z0-9_]+$/i)) { setError('O nome de usuário deve conter apenas letras, números e _'); return; }
 
     setLoading(true); setError('');
-    await new Promise(r => setTimeout(r, 800));
-    onGoLogin();
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, email, phone: form.phone, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Erro ao criar conta.');
+      } else {
+        login(data.user, data.token);
+      }
+    } catch (err) {
+      setError('Erro ao conectar com o servidor.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,7 +66,6 @@ export default function RegisterPage({ onGoLogin }) {
               <span className="form-input-prefix">@</span>
               <input className="form-input has-prefix" placeholder="seu_usuario" value={form.username} onChange={set('username')} />
             </div>
-            <div className="form-hint">Seu identificador público na plataforma (ex: @lucaseduardo)</div>
           </div>
 
           <div className="form-group">
@@ -61,7 +79,7 @@ export default function RegisterPage({ onGoLogin }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Senha * <span className="form-hint" style={{ display: 'inline' }}>(mín. 6 caracteres)</span></label>
+            <label className="form-label">Senha *</label>
             <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} />
           </div>
 

@@ -1,31 +1,142 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { MOCK_USER } from '../data/mock';
 
 export default function LoginPage({ onGoRegister }) {
-  const { login }   = useAuth();
+  const { login } = useAuth();
+  const [view, setView]         = useState('login');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
+
+  const [resetEmail, setResetEmail]           = useState('');
+  const [newPassword, setNewPassword]         = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) { setError('Preencha todos os campos.'); return; }
     setLoading(true); setError('');
-    await new Promise(r => setTimeout(r, 700));
-
-    if (email === 'admin@unigran.com.br' && password === 'admin123') {
-      login({ ...MOCK_USER, role: 'admin' });
-    } else if (email === 'mod@unigran.com.br' && password === 'mod123') {
-      login({ ...MOCK_USER, id: 'u2', username: 'ana_cs', displayName: 'Ana Carolina', avatar: 'AC', role: 'moderator', email });
-    } else if (email.includes('@') && password.length >= 6) {
-      login({ ...MOCK_USER, role: 'user', email });
-    } else {
-      setError('Email ou senha incorretos.');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || 'Email ou senha incorretos.');
+      else login(data.user, data.token);
+    } catch {
+      setError('Erro ao conectar com o servidor.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  const handleReset = async () => {
+    if (!resetEmail.trim()) { setError('Informe o email.'); return; }
+    if (!newPassword.trim()) { setError('Informe a nova senha.'); return; }
+    if (newPassword.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
+    if (newPassword !== confirmPassword) { setError('As senhas não coincidem.'); return; }
+
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) setError(data.error || 'Erro ao redefinir senha.');
+      else {
+        setSuccess('Senha redefinida com sucesso! Faça login.');
+        setTimeout(() => {
+          setView('login');
+          setEmail(resetEmail);
+          setSuccess('');
+          setResetEmail('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }, 2000);
+      }
+    } catch {
+      setError('Erro ao conectar com o servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (view === 'reset') {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="card" style={{ padding: 36 }}>
+            <div className="auth-logo-wrap">
+              <div className="auth-logo-mark">UG</div>
+              <div>
+                <div className="auth-logo-name">Unigran</div>
+                <div className="auth-logo-sub">Rede Social Acadêmica</div>
+              </div>
+            </div>
+
+            <h1 className="auth-heading">Redefinir senha</h1>
+            <p className="auth-sub-text">Informe seu email e a nova senha</p>
+
+            {error   && <div className="auth-alert">{error}</div>}
+            {success && <div className="auth-alert" style={{ background: '#d1fae5', color: '#065f46', borderColor: '#6ee7b7' }}>{success}</div>}
+
+            <div className="form-group">
+              <label className="form-label">Email institucional</label>
+              <input
+                className="form-input"
+                type="email"
+                placeholder="seu@unigran.com.br"
+                value={resetEmail}
+                onChange={e => setResetEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Nova senha</label>
+              <input
+                className="form-input"
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Confirmar nova senha</label>
+              <input
+                className="form-input"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleReset()}
+              />
+            </div>
+
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
+              onClick={handleReset}
+              disabled={loading}
+            >
+              {loading ? 'Redefinindo…' : 'Redefinir senha'}
+            </button>
+
+            <div className="auth-footer">
+              <a onClick={() => { setView('login'); setError(''); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -59,7 +170,13 @@ export default function LoginPage({ onGoRegister }) {
           <div className="form-group">
             <div className="auth-row">
               <label className="form-label" style={{ margin: 0 }}>Senha</label>
-              <span className="auth-forgot">Esqueci a senha</span>
+              <span
+                className="auth-forgot"
+                style={{ cursor: 'pointer' }}
+                onClick={() => { setView('reset'); setError(''); setResetEmail(email); }}
+              >
+                Esqueci a senha
+              </span>
             </div>
             <input
               className="form-input"
@@ -87,13 +204,6 @@ export default function LoginPage({ onGoRegister }) {
 
           <div className="auth-footer">
             Não tem conta? <a onClick={onGoRegister}>Cadastre-se gratuitamente</a>
-          </div>
-
-          <div className="auth-demo-box">
-            <strong>Contas de demonstração</strong>
-            Admin: admin@unigran.com.br / admin123<br />
-            Mod:   mod@unigran.com.br / mod123<br />
-            User:  qualquer@email.com / 123456
           </div>
         </div>
       </div>

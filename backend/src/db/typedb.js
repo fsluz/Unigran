@@ -1,47 +1,50 @@
-import { TypeDB, SessionType, TransactionType } from 'typedb-driver';
+import { TypeDBHttpDriver } from '@typedb/driver-http';
 
-const DB   = process.env.TYPEDB_DATABASE || 'unigran';
-const HOST = process.env.TYPEDB_HOST     || 'localhost';
-const PORT = process.env.TYPEDB_PORT     || '1729';
+const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
+const ADDRESS = process.env.TYPEDB_ADDRESS  || 'http://rp78xj-0.cluster.typedb.com:80';
+const USER    = process.env.TYPEDB_USERNAME || 'admin';
+const PASS    = process.env.TYPEDB_PASSWORD || 'password';
 
-let _client = null;
+console.log('🔍 TypeDB config:', { DB, ADDRESS, USER });
 
-async function client() {
-  if (!_client) _client = await TypeDB.coreDriver(`${HOST}:${PORT}`);
-  return _client;
-}
+let _driver = null;
 
-export async function readTx(fn) {
-  const c   = await client();
-  const ses = await c.session(DB, SessionType.DATA);
-  const tx  = await ses.transaction(TransactionType.READ);
-  try {
-    return await fn(tx);
-  } finally {
-    await tx.close();
-    await ses.close();
+function getDriver() {
+  if (!_driver) {
+    _driver = new TypeDBHttpDriver({ addresses: [ADDRESS], username: USER, password: PASS });
+    console.log(`☁️  TypeDB HTTP → ${ADDRESS}`);
   }
+  return _driver;
 }
 
-export async function writeTx(fn) {
-  const c   = await client();
-  const ses = await c.session(DB, SessionType.DATA);
-  const tx  = await ses.transaction(TransactionType.WRITE);
-  try {
-    const result = await fn(tx);
-    await tx.commit();
-    return result;
-  } catch (err) {
-    await tx.rollback().catch(() => {});
-    throw err;
-  } finally {
-    await ses.close();
-  }
+/**
+ * Executa uma query de LEITURA usando oneShotQuery.
+ * Retorna array de rows (cada row é um objeto JSON).
+ */
+export async function readQuery(query) {
+  const driver = getDriver();
+  const res = await driver.oneShotQuery(query, false, DB, 'read');
+  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
+  return res.ok?.answers ?? [];
 }
 
-/** Collect all rows from a TypeDB stream into an array */
-export async function collect(stream) {
-  const rows = [];
-  for await (const row of stream) rows.push(row);
-  return rows;
+/**
+ * Executa uma query de ESCRITA usando oneShotQuery com commit automático.
+ */
+export async function writeQuery(query) {
+  const driver = getDriver();
+  const res = await driver.oneShotQuery(query, true, DB, 'write');
+  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
+  return res.ok?.answers ?? [];
+}
+
+/**
+ * Extrai o valor de uma variável numa row TypeDB HTTP v3.
+ * Row é JSON: { "varName": { "value": ..., "valueType": ... } }
+ */
+export function val(row, varName) {
+  const concept = row?.data?.[varName];
+  if (!concept) return null;
+  if (typeof concept.value !== 'undefined') return concept.value;
+  return concept.iid ?? null;
 }
