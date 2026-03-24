@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiFetch } from '../utils/api';
+import { apiFetch, formatApiError } from '../utils/api';
 
 export default function LoginPage({ onGoRegister }) {
   const { login } = useAuth();
@@ -26,7 +26,7 @@ export default function LoginPage({ onGoRegister }) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) setError(data.error || 'Email ou senha incorretos.');
+      if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
       else login(data.user, data.token);
     } catch {
       setError('Erro ao conectar com o servidor.');
@@ -49,7 +49,7 @@ export default function LoginPage({ onGoRegister }) {
         body: JSON.stringify({ email: resetEmail, newPassword }),
       });
       const data = await res.json();
-      if (!res.ok) setError(data.error || 'Erro ao redefinir senha.');
+      if (!res.ok) setError(formatApiError(data.error, 'Erro ao redefinir senha.'));
       else {
         setSuccess('Senha redefinida com sucesso! Faça login.');
         setTimeout(() => {

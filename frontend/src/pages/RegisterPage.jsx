@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { apiFetch } from '../utils/api';
+import { apiFetch, formatApiError } from '../utils/api';
 
 export default function RegisterPage({ onGoLogin }) {
   const { login } = useAuth();
@@ -28,7 +28,7 @@ export default function RegisterPage({ onGoLogin }) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Erro ao criar conta.');
+        setError(formatApiError(data.error, 'Erro ao criar conta.'));
       } else {
         login(data.user, data.token);
       }
