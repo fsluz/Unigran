@@ -1,5 +1,10 @@
 import { TypeDBHttpDriver } from '@typedb/driver-http';
 
+/** Escape user-controlled text for TypeQL double-quoted string literals (email, names, etc.). */
+export function typeqlLiteral(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
 const ADDRESS = process.env.TYPEDB_ADDRESS  || 'http://rp78xj-0.cluster.typedb.com:80';
 const USER    = process.env.TYPEDB_USERNAME || 'admin';
@@ -43,8 +48,13 @@ export async function writeQuery(query) {
  * Row é JSON: { "varName": { "value": ..., "valueType": ... } }
  */
 export function val(row, varName) {
-  const concept = row?.data?.[varName];
+  if (!row) return null;
+  let concept = row.data?.[varName];
+  if (!concept && row[varName]) concept = row[varName];
   if (!concept) return null;
-  if (typeof concept.value !== 'undefined') return concept.value;
+  const vt = concept.valueType ?? concept.type;
+  if (vt === 'none' || vt === 'None') return null;
+  if (typeof concept.value !== 'undefined' && concept.value !== null) return concept.value;
+  if (typeof concept === 'string' || typeof concept === 'number' || typeof concept === 'boolean') return concept;
   return concept.iid ?? null;
 }

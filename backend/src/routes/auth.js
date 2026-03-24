@@ -4,7 +4,7 @@ import jwt    from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
-import { readQuery, writeQuery, val } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral, val } from '../db/typedb.js';
 
 const router = Router();
 
@@ -19,10 +19,15 @@ const RegisterSchema = z.object({
   password: z.string().min(6),
 });
 
+// Login accepts a wider range of institutional emails than z.string().email() alone (reduces spurious 400).
 const LoginSchema = z.object({
   email: z.preprocess(
     (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
-    z.string().min(1).email()
+    z
+      .string()
+      .min(3)
+      .max(320)
+      .refine((s) => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email inválido')
   ),
   password: z.string().min(1),
 });
@@ -46,15 +51,22 @@ router.post('/register', async (req, res) => {
   const { name, username, email, phone, password } = parsed.data;
   const hash = await bcrypt.hash(password, 12);
   const now  = new Date().toISOString();
+  const esc = {
+    username: typeqlLiteral(username),
+    name:     typeqlLiteral(name),
+    email:    typeqlLiteral(email),
+    hash:     typeqlLiteral(hash),
+    phone:    phone ? typeqlLiteral(phone) : '',
+  };
 
   try {
     await writeQuery(`
       insert $u isa person,
-        has username "${username}",
-        has name "${name}",
-        has email "${email}",
-        ${phone ? `has phone "${phone}",` : ''}
-        has password-hash "${hash}",
+        has username "${esc.username}",
+        has name "${esc.name}",
+        has email "${esc.email}",
+        ${esc.phone ? `has phone "${esc.phone}",` : ''}
+        has password-hash "${esc.hash}",
         has is-active true,
         has is-banned false,
         has can-publish true,
@@ -72,20 +84,28 @@ router.post('/register', async (req, res) => {
 
 /* POST /api/auth/login */
 router.post('/login', async (req, res) => {
-  const parsed = LoginSchema.safeParse(req.body);
+  const body = req.body;
+  if (body == null || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ error: 'Corpo da requisição deve ser um objeto JSON com email e password' });
+  }
+
+  const parsed = LoginSchema.safeParse(body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { email, password } = parsed.data;
 
   try {
+    const safeEmail = typeqlLiteral(email);
+    // Mandatory: email + password-hash. Username, display name, banned flag are optional (legacy rows).
     const rows = await readQuery(`
-      match $u isa person,
-        has email "${email}",
-        has username $uname,
-        has name $dname,
-        has password-hash $phash,
-        has is-banned $banned;
-      select $uname, $dname, $phash, $banned;
+match
+  $u isa person,
+    has email "${safeEmail}",
+    has password-hash $phash;
+try { $u has username $uname; };
+try { $u has name $dname; };
+try { $u has is-banned $banned; };
+select $uname, $dname, $phash, $banned;
     `);
 
     if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -101,8 +121,10 @@ router.post('/login', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
     if (attrBoolTrue(val(row, 'banned'))) return res.status(403).json({ error: 'Conta banida' });
 
-    const username    = val(row, 'uname');
-    const displayName = val(row, 'dname');
+    let username = val(row, 'uname');
+    let displayName = val(row, 'dname');
+    if (typeof username !== 'string' || !username.length) username = email.split('@')[0] || 'user';
+    if (typeof displayName !== 'string' || !displayName.length) displayName = username;
 
     const payload = { id: username, username, displayName, email, role: 'user' };
     res.json({ token: sign(payload), user: payload });
@@ -130,20 +152,23 @@ router.put('/reset-password', async (req, res) => {
   if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
 
   try {
+    const emailNorm = String(email).trim().toLowerCase();
+    const safeEmail = typeqlLiteral(emailNorm);
     const hash = await bcrypt.hash(newPassword, 12);
+    const safeHash = typeqlLiteral(hash);
     const rows = await readQuery(`
-      match $u isa person, has email "${email}", has password-hash $ph;
+      match $u isa person, has email "${safeEmail}", has password-hash $ph;
       select $ph;
     `);
     if (rows.length) {
       await writeQuery(`
-        match $u isa person, has email "${email}", has password-hash $ph;
+        match $u isa person, has email "${safeEmail}", has password-hash $ph;
         delete $ph of $u;
       `);
     }
     await writeQuery(`
-      match $u isa person, has email "${email}";
-      insert $u has password-hash "${hash}";
+      match $u isa person, has email "${safeEmail}";
+      insert $u has password-hash "${safeHash}";
     `);
     res.json({ ok: true });
   } catch (err) {
