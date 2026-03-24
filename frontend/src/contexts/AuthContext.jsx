@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { apiFetch } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -9,7 +10,7 @@ export function AuthProvider({ children }) {
   // Ao carregar, valida o token salvo
   useEffect(() => {
     if (!token) return;
-    fetch('/api/auth/me', {
+    apiFetch('/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())

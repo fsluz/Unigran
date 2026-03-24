@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../utils/api';
 
 export default function LoginPage({ onGoRegister }) {
   const { login } = useAuth();
@@ -19,7 +20,7 @@ export default function LoginPage({ onGoRegister }) {
     if (!email.trim() || !password.trim()) { setError('Preencha todos os campos.'); return; }
     setLoading(true); setError('');
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -42,7 +43,7 @@ export default function LoginPage({ onGoRegister }) {
 
     setLoading(true); setError(''); setSuccess('');
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await apiFetch('/auth/reset-password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetEmail, newPassword }),
