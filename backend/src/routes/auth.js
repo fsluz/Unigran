@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt    from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
+import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, val } from '../db/typedb.js';
 
 const router = Router();
@@ -10,18 +11,31 @@ const router = Router();
 const RegisterSchema = z.object({
   name:     z.string().min(2),
   username: z.string().min(3).regex(/^[a-zA-Z0-9_]+$/),
-  email:    z.string().email(),
+  email: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
+    z.string().email()
+  ),
   phone:    z.string().optional(),
   password: z.string().min(6),
 });
 
 const LoginSchema = z.object({
-  email:    z.string().email(),
+  email: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
+    z.string().min(1).email()
+  ),
   password: z.string().min(1),
 });
 
 function sign(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+  return jwt.sign(payload, jwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+}
+
+/** TypeDB may return booleans as strings depending on driver/encoding. */
+function attrBoolTrue(v) {
+  if (v === true) return true;
+  if (typeof v === 'string') return v.toLowerCase() === 'true';
+  return false;
 }
 
 /* POST /api/auth/register */
@@ -77,9 +91,15 @@ router.post('/login', async (req, res) => {
     if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
     const row = rows[0];
 
-    const ok = await bcrypt.compare(password, val(row, 'phash'));
+    const phash = val(row, 'phash');
+    if (typeof phash !== 'string' || !phash.length) {
+      console.error('[login] person row missing password-hash for email', email);
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const ok = await bcrypt.compare(password, phash);
     if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
-    if (val(row, 'banned')) return res.status(403).json({ error: 'Conta banida' });
+    if (attrBoolTrue(val(row, 'banned'))) return res.status(403).json({ error: 'Conta banida' });
 
     const username    = val(row, 'uname');
     const displayName = val(row, 'dname');
@@ -97,7 +117,7 @@ router.get('/me', (req, res) => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Não autenticado' });
   try {
-    res.json({ user: jwt.verify(header.slice(7), process.env.JWT_SECRET) });
+    res.json({ user: jwt.verify(header.slice(7), jwtSecret()) });
   } catch {
     res.status(401).json({ error: 'Token inválido' });
   }

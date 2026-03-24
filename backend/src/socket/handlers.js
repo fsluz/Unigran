@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../config/jwt.js';
 
 const onlineUsers = new Map(); // userId -> socketId
 
@@ -8,7 +9,7 @@ export function setupSocket(io) {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Não autenticado'));
     try {
-      socket.user = jwt.verify(token, process.env.JWT_SECRET);
+      socket.user = jwt.verify(token, jwtSecret());
       next();
     } catch {
       next(new Error('Token inválido'));

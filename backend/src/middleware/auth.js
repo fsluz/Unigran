@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../config/jwt.js';
 
 export function auth(req, res, next) {
   const header = req.headers.authorization;
@@ -6,7 +7,7 @@ export function auth(req, res, next) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
   try {
-    req.user = jwt.verify(header.slice(7), process.env.JWT_SECRET);
+    req.user = jwt.verify(header.slice(7), jwtSecret());
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido ou expirado' });
