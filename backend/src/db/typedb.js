@@ -1,8 +1,18 @@
 import { TypeDBHttpDriver } from '@typedb/driver-http';
 
-/** Escape user-controlled text for TypeQL double-quoted string literals (email, names, etc.). */
 export function typeqlLiteral(value) {
-  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+}
+
+export function encodeHash(hash) {
+  return Buffer.from(hash).toString('base64');
+}
+
+export function decodeHash(encoded) {
+  if (String(encoded).startsWith('$2')) return encoded;
+  return Buffer.from(encoded, 'base64').toString('utf8');
 }
 
 const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
@@ -22,10 +32,6 @@ function getDriver() {
   return _driver;
 }
 
-/**
- * Executa uma query de LEITURA usando oneShotQuery.
- * Retorna array de rows (cada row é um objeto JSON).
- */
 export async function readQuery(query) {
   const driver = getDriver();
   const res = await driver.oneShotQuery(query, false, DB, 'read');
@@ -33,9 +39,6 @@ export async function readQuery(query) {
   return res.ok?.answers ?? [];
 }
 
-/**
- * Executa uma query de ESCRITA usando oneShotQuery com commit automático.
- */
 export async function writeQuery(query) {
   const driver = getDriver();
   const res = await driver.oneShotQuery(query, true, DB, 'write');
@@ -43,10 +46,6 @@ export async function writeQuery(query) {
   return res.ok?.answers ?? [];
 }
 
-/**
- * Extrai o valor de uma variável numa row TypeDB HTTP v3.
- * Row é JSON: { "varName": { "value": ..., "valueType": ... } }
- */
 export function val(row, varName) {
   if (!row) return null;
   let concept = row.data?.[varName];

@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt    from 'jsonwebtoken';
-import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
-import { readQuery, writeQuery, typeqlLiteral, val } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash, val } from '../db/typedb.js';
 
 const router = Router();
 
@@ -19,15 +18,11 @@ const RegisterSchema = z.object({
   password: z.string().min(6),
 });
 
-// Login accepts a wider range of institutional emails than z.string().email() alone (reduces spurious 400).
 const LoginSchema = z.object({
   email: z.preprocess(
     (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
-    z
-      .string()
-      .min(3)
-      .max(320)
-      .refine((s) => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email inválido')
+    z.string().min(3).max(320)
+     .refine((s) => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email inválido')
   ),
   password: z.string().min(1),
 });
@@ -36,7 +31,6 @@ function sign(payload) {
   return jwt.sign(payload, jwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 }
 
-/** TypeDB may return booleans as strings depending on driver/encoding. */
 function attrBoolTrue(v) {
   if (v === true) return true;
   if (typeof v === 'string') return v.toLowerCase() === 'true';
@@ -49,13 +43,13 @@ router.post('/register', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { name, username, email, phone, password } = parsed.data;
-  const hash = await bcrypt.hash(password, 12);
-  const now  = new Date().toISOString();
+  const hash = encodeHash(await bcrypt.hash(password, 12));
+
   const esc = {
     username: typeqlLiteral(username),
     name:     typeqlLiteral(name),
     email:    typeqlLiteral(email),
-    hash:     typeqlLiteral(hash),
+    hash,
     phone:    phone ? typeqlLiteral(phone) : '',
   };
 
@@ -96,7 +90,6 @@ router.post('/login', async (req, res) => {
 
   try {
     const safeEmail = typeqlLiteral(email);
-    // Mandatory: email + password-hash. Username, display name, banned flag are optional (legacy rows).
     const rows = await readQuery(`
 match
   $u isa person,
@@ -111,13 +104,15 @@ select $uname, $dname, $phash, $banned;
     if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
     const row = rows[0];
 
-    const phash = val(row, 'phash');
-    if (typeof phash !== 'string' || !phash.length) {
-      console.error('[login] person row missing password-hash for email', email);
+    const phashRaw = val(row, 'phash');
+    console.log('[login] phashRaw:', phashRaw);
+    if (typeof phashRaw !== 'string' || !phashRaw.length) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    const ok = await bcrypt.compare(password, phash);
+    console.log('[login] decoded:', decodeHash(phashRaw));
+    const ok = await bcrypt.compare(password, decodeHash(phashRaw));
+    console.log('[login] ok:', ok);
     if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
     if (attrBoolTrue(val(row, 'banned'))) return res.status(403).json({ error: 'Conta banida' });
 
@@ -152,24 +147,25 @@ router.put('/reset-password', async (req, res) => {
   if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
 
   try {
-    const emailNorm = String(email).trim().toLowerCase();
-    const safeEmail = typeqlLiteral(emailNorm);
-    const hash = await bcrypt.hash(newPassword, 12);
-    const safeHash = typeqlLiteral(hash);
+    const safeEmail = typeqlLiteral(String(email).trim().toLowerCase());
+
     const rows = await readQuery(`
       match $u isa person, has email "${safeEmail}", has password-hash $ph;
-      select $ph;
+      select $u, $ph;
     `);
-    if (rows.length) {
-      await writeQuery(`
-        match $u isa person, has email "${safeEmail}", has password-hash $ph;
-        delete $ph of $u;
-      `);
-    }
+    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    const newHash = encodeHash(await bcrypt.hash(newPassword, 12));
+
+    await writeQuery(`
+      match $u isa person, has email "${safeEmail}", has password-hash $ph;
+      delete $ph of $u;
+    `);
     await writeQuery(`
       match $u isa person, has email "${safeEmail}";
-      insert $u has password-hash "${safeHash}";
+      insert $u has password-hash "${newHash}";
     `);
+
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password]', err);
