@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import FriendsPage from './pages/FriendsPage';
 
 import Sidebar       from './components/layout/Sidebar';
 import SearchPanel   from './components/layout/SearchPanel';
@@ -43,6 +44,7 @@ function AppShell() {
   const pages = {
     home:          <HomePage />,
     profile:       <ProfilePage />,
+    friends:       <FriendsPage />,
     communities:   <CommunitiesPage />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,

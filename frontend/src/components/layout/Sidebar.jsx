@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const NAV = [
   { id: 'home',          icon: '🏠', label: 'Feed' },
   { id: 'search',        icon: '🔍', label: 'Pesquisar' },
+  { id: 'friends',       icon: '🤝', label: 'Amigos' },
   { id: 'communities',   icon: '👥', label: 'Comunidades' },
   { id: 'messages',      icon: '💬', label: 'Mensagens',    badge: true },
   { id: 'notifications', icon: '🔔', label: 'Notificações', badge: true },
@@ -19,7 +20,7 @@ export default function Sidebar({ page, onNavigate, searchOpen }) {
       </div>
 
       {NAV.map(item => {
-        const active = item.id === 'search' ? searchOpen : page === item.id;
+        const active = item.id === 'search' ? searchOpen : !searchOpen && page ===item.id;
         return (
           <div
             key={item.id}

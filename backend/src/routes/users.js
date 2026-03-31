@@ -76,4 +76,28 @@ router.post('/:id/ban', auth, requireRole('admin'), async (req, res) => {
   } catch (err) { console.error('[ban]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+/* GET /api/users/:id/friends */
+router.get('/:id/friends', auth, async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${req.params.id}";
+        $f isa person, has username $fname;
+        friendship (friend: $u, friend: $f);
+        not { $f has username "${req.params.id}"; };
+        try { $f has name $dname; };
+        select $fname, $dname;
+    `);
+
+    const friends = rows.map(r => ({ 
+      username: val(r, 'fname'),
+      displayName: val(r, 'dname') || val(r, 'fname'),
+    })).filter(f => f.username);
+
+    res.json({ friends });
+  } catch (err) {
+    console.error('[friends GET]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
 export default router;
