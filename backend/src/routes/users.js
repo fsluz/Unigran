@@ -99,5 +99,26 @@ router.get('/:id/friends', auth, async (req, res) => {
     console.error('[friends GET]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
+
+  /*DELETE / api/users/:id/friends/:friendId */
+  router.delete('/:id/friends/:friendId', auth, async (req, res) => {
+    if (req.user.username !== req.params.id)
+      return res.status(403).json({ error: 'Sem permissão' });
+    try {
+      await writeQuery(`
+        match 
+        $u isa person, has username "${req.params.id}";
+        $f isa person, has username "${req.params.friendId}";
+        $rel isa friendship;
+        $rel isa friendship, links ($u, $f);
+        $rel isa friendship, links ($u, $f);
+        delete $rel;
+      `);
+      res.json({ removed: true });
+    } catch (err) {
+      console.error(' [friends DELETE]', err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  });
 });
 export default router;

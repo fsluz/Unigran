@@ -29,7 +29,9 @@ export default function FriendsPage() {
   const { user, token } = useAuth();
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
+  const [removing, setRemoving] = useState(null);
+  const [confirmId, setConfirmId] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -51,11 +53,28 @@ export default function FriendsPage() {
     load();
   }, [user.username]);
 
+  async function removeFriend(friendUsername) {
+    setRemoving(friendUsername);
+    setConfirmId(null);
+    try {
+      const res = await apiFetch(`/users/${user.username}/friends/${friendUsername}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Erro ao remover');
+      setFriends(prev => prev.filter(f => f.username !== friendUsername));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRemoving(null);
+    }
+  }
+
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-        🤝 Amigos
+        Amigos
       </h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
         {friends.length} amigo{friends.length !== 1 ? 's' : ''}
@@ -76,7 +95,7 @@ export default function FriendsPage() {
         </div>
       )}
 
-      <div style={{ 
+      <div style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         maxHeight: 'calc(100vh - 180px)',
         overflowY: 'auto',
@@ -84,14 +103,54 @@ export default function FriendsPage() {
       }}>
         {friends.map(f => (
           <div key={f.username} style={{
-            display: 'flex', alignItems: 'center', gap: 14,
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: '14px 16px'
+            borderRadius: 12, padding: '14px 16px',
           }}>
-            <Avatar user={f} />
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>{f.displayName}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>@{f.username}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <Avatar user={f} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.displayName}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>@{f.username}</div>
+              </div>
+
+              {confirmId === f.username ? (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => removeFriend(f.username)}
+                    disabled={removing === f.username}
+                    style={{
+                      padding: '5px 10px', borderRadius: 8, border: 'none',
+                      background: '#e53935', color: '#fff',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                    }}
+                  >
+                    {removing === f.username ? 'Removendo...' : 'Confirmar'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmId(null)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer', fontSize: 13,
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmId(f.username)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8,
+                    border: '1px solid var(--border)', background: 'transparent',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                  }}
+                >
+                  Remover
+                </button>
+              )}
             </div>
           </div>
         ))}
