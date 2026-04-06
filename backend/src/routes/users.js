@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readQuery, writeQuery, val } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral, val } from '../db/typedb.js';
 import { auth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -22,17 +22,48 @@ router.get('/:id', auth, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   if (req.user.username !== req.params.id && req.user.role !== 'admin')
     return res.status(403).json({ error: 'Sem permissão' });
-  const { displayName, bio } = req.body;
+
+  const { displayName, bio, phone } = req.body;
+  const uid = typeqlLiteral(req.params.id);
+
   try {
-    if (displayName) await writeQuery(`
-      match $u isa person, has username "${req.params.id}", has name $dn;
-      delete $u has name $dn;
-      insert $u has name "${displayName.replace(/"/g,'\\"')}";
-    `);
-    if (bio !== undefined) await writeQuery(`
-      match $u isa person, has username "${req.params.id}";
-      insert $u has bio "${bio.replace(/"/g,'\\"')}";
-    `);
+    // Atualiza nome: delete atributo antigo, insere novo (dois queries separados)
+    if (displayName) {
+      await writeQuery(`
+        match $u isa person, has username "${uid}", has name $dn;
+        delete $dn of $u;
+      `);
+      await writeQuery(`
+        match $u isa person, has username "${uid}";
+        insert $u has name "${typeqlLiteral(displayName)}";
+      `);
+    }
+
+    // Atualiza bio
+    if (bio !== undefined) {
+      await writeQuery(`
+        match $u isa person, has username "${uid}";
+        insert $u has bio "${typeqlLiteral(bio)}";
+      `);
+    }
+
+    // Atualiza telefone: tenta deletar o antigo primeiro (ignora se não existir)
+    if (phone !== undefined) {
+      try {
+        await writeQuery(`
+          match $u isa person, has username "${uid}", has phone $ph;
+          delete $ph of $u;
+        `);
+      } catch (_) { /* usuário não tinha telefone — normal */ }
+
+      if (phone) {
+        await writeQuery(`
+          match $u isa person, has username "${uid}";
+          insert $u has phone "${typeqlLiteral(phone)}";
+        `);
+      }
+    }
+
     res.json({ updated: true });
   } catch (err) { console.error('[users PUT]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
@@ -121,4 +152,5 @@ router.get('/:id/friends', auth, async (req, res) => {
     }
   });
 });
+
 export default router;

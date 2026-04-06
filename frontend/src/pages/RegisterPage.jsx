@@ -8,7 +8,24 @@ export default function RegisterPage({ onGoLogin }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
+  const [showPass,    setShowPass]    = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const set = key => e => setForm(p => ({ ...p, [key]: e.target.value }));
+
+  const eyeBtn = (visible, toggle) => (
+    <button
+      type="button"
+      onClick={toggle}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'none', border: 'none', cursor: 'pointer', fontSize: 18,
+        color: 'var(--text-2)',
+      }}
+    >
+      {visible ? '🙈' : '👁️'}
+    </button>
+  );
 
   const handleSubmit = async () => {
     const { name, username, email, password, confirm } = form;
@@ -81,12 +98,33 @@ export default function RegisterPage({ onGoLogin }) {
 
           <div className="form-group">
             <label className="form-label">Senha *</label>
-            <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={set('password')} />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.password}
+                onChange={set('password')}
+                style={{ paddingRight: 40 }}
+              />
+              {eyeBtn(showPass, () => setShowPass(v => !v))}
+            </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirmar senha *</label>
-            <input className="form-input" type="password" placeholder="••••••••" value={form.confirm} onChange={set('confirm')} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={form.confirm}
+                onChange={set('confirm')}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                style={{ paddingRight: 40 }}
+              />
+              {eyeBtn(showConfirm, () => setShowConfirm(v => !v))}
+            </div>
           </div>
 
           <button

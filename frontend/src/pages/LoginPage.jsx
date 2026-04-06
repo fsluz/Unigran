@@ -16,6 +16,25 @@ export default function LoginPage({ onGoRegister }) {
   const [newPassword, setNewPassword]         = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  /* visibilidade dos campos de senha */
+  const [showPass,    setShowPass]    = useState(false);
+  const [showNew,     setShowNew]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const eyeBtn = (visible, toggle) => (
+    <button
+      type="button"
+      onClick={toggle}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'none', border: 'none', cursor: 'pointer', fontSize: 18,
+        color: 'var(--text-2)',
+      }}
+    >
+      {visible ? '🙈' : '👁️'}
+    </button>
+  );
+
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) { setError('Preencha todos os campos.'); return; }
     setLoading(true); setError('');
@@ -100,25 +119,33 @@ export default function LoginPage({ onGoRegister }) {
 
             <div className="form-group">
               <label className="form-label">Nova senha</label>
-              <input
-                className="form-input"
-                type="password"
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="form-input"
+                  type={showNew ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  style={{ paddingRight: 40 }}
+                />
+                {eyeBtn(showNew, () => setShowNew(v => !v))}
+              </div>
             </div>
 
             <div className="form-group">
               <label className="form-label">Confirmar nova senha</label>
-              <input
-                className="form-input"
-                type="password"
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleReset()}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="form-input"
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleReset()}
+                  style={{ paddingRight: 40 }}
+                />
+                {eyeBtn(showConfirm, () => setShowConfirm(v => !v))}
+              </div>
             </div>
 
             <button
@@ -179,14 +206,18 @@ export default function LoginPage({ onGoRegister }) {
                 Esqueci a senha
               </span>
             </div>
-            <input
-              className="form-input"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                style={{ paddingRight: 40 }}
+              />
+              {eyeBtn(showPass, () => setShowPass(v => !v))}
+            </div>
           </div>
 
           <label className="auth-remember">
