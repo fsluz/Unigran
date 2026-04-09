@@ -1,0 +1,352 @@
+.auth-logo-name {
+    text-align: center;
+    font-family: 'Syne', 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 38px;
+    color: #222;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+#auth-logo-image {
+    width: 50%;
+    height: 50%;
+    margin: auto;
+    margin-top: -10%;
+}
+/* Layout dividido para Login/Cadastro */
+.auth-split-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #f0f4f9;
+}
+
+.auth-visual-side {
+    flex: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f4f9;
+    min-width: 320px;
+    min-height: 100vh;
+    margin-right: 32px;
+}
+
+.auth-gradient-bg {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6A00F4 0%, #3366FF 60%, #00A8FF 100%);
+    border-bottom-right-radius: 160px;
+    border-top-right-radius: 160px;
+    position: relative;
+}
+
+.auth-illustration {
+    max-width: 65%;
+    width: 90%;
+    height: auto;
+    margin: 0 auto;
+    display: block;
+    z-index: 2;
+}
+
+.auth-form-side {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f4f9;
+    min-width: 340px;
+    min-height: 100vh;
+    padding: 24px;
+    padding-left: 4vw;
+    padding-right: 4vw;
+}
+
+.card {
+  margin-left: -113px;
+  margin-top: -28px;
+  padding: 64px;
+}
+
+/* Card do formulário
+.auth-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 0.5px solid #e0e4ea;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+} */
+#auth-card-id #auth-logo-image {
+    width: 30%;
+    height: 50%;
+    margin-top: -9%;
+}
+
+/* Logo */
+.auth-logo-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #3366FF, #00A8FF);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.auth-logo-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a2e;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+}
+
+/* Títulos */
+.auth-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a2e;
+    text-align: center;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.auth-subtitle {
+    font-size: 13px;
+    color: #888888;
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+/* Campos */
+.auth-field-group {
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.auth-field-label {
+    font-size: 13px;
+    color: #555555;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.auth-field-row {
+    position: relative;
+}
+
+.auth-input {
+    width: 100%;
+    height: 44px;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    padding: 0 40px 0 14px;
+    font-size: 14px;
+    color: #1a1a2e;
+    background: #f7f8fa;
+    outline: none;
+    transition: border 0.15s, background 0.15s;
+}
+
+.auth-input:focus {
+    border-color: #3366FF;
+    background: #ffffff;
+}
+
+.auth-input::placeholder {
+    color: #bbbbbb;
+}
+
+/* Ícone olho (senha) */
+.auth-eye-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #aaaaaa;
+    display: flex;
+    align-items: center;
+    padding: 0;
+}
+
+/* Linha esqueci a senha */
+.auth-forgot-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.auth-forgot-link {
+    font-size: 12px;
+    color: #3366FF;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Lembrar conta */
+.auth-remember-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 24px;
+}
+
+.auth-remember-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #3366FF;
+}
+
+.auth-remember-row label {
+    font-size: 13px;
+    color: #555555;
+}
+
+/* Botão entrar */
+.auth-btn-submit {
+    width: 100%;
+    height: 46px;
+    background: #3366FF;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    margin-bottom: 20px;
+    transition: background 0.15s;
+}
+
+.auth-btn-submit:hover {
+    background: #2255ee;
+}
+
+/* Link cadastro */
+.auth-register-row {
+    font-size: 13px;
+    color: #888888;
+    text-align: center;
+}
+
+.auth-register-row a {
+    color: #3366FF;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+    .auth-split-layout {
+        flex-direction: column;
+        min-height: unset;
+    }
+
+    .auth-visual-side,
+    .auth-form-side {
+        min-width: 0;
+        min-height: 320px;
+        width: 100%;
+        height: auto;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .auth-gradient-bg {
+        height: 280px;
+        border-radius: 0 0 120px 120px;
+        max-width: 100vw;
+    }
+
+    .auth-form-side {
+        min-height: unset;
+        padding: 16px 0 32px 0;
+        max-width: 100vw;
+    }
+}
+
+@media (max-width: 700px) {
+  .auth-visual-side {
+    display: none !important;
+  }
+  .auth-form-side {
+    min-width: 0;
+    width: 100vw;
+    padding: 0 4vw 24px 4vw;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .auth-card, .card {
+    margin: 32px auto 0 auto;
+    padding: 18px 2vw;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 1355px) {
+  .auth-visual-side {
+    display: none !important;
+  }
+  .auth-form-side {
+    min-width: 0;
+    width: 100vw;
+    padding: 0 4vw 24px 4vw;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .auth-card, .card {
+    margin: 32px auto 0 auto;
+    padding: 18px 2vw;
+    max-width: 100vw;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 1600px) {
+  .auth-form-side {
+    padding-left: 4vw;
+    padding-right: 4vw;
+  }
+}
+
+@media (max-width: 1400px) {
+  .auth-form-side {
+    padding-left: 4vw;
+    padding-right: 4vw;
+  }
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #222;
+  margin-left: 2px;
+  animation: blink 0.7s steps(1) infinite;
+  vertical-align: middle;
+}
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}

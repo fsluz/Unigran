@@ -106,9 +106,9 @@
   display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
   border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.18s; border: none; white-space: nowrap;
-}
-.btn-primary   { background: var(--accent); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--accent-2); box-shadow: 0 4px 12px var(--accent-glow); transform: translateY(-1px); }
+} 
+.btn-primary   { background: linear-gradient(135deg, #6A00F4 0%, #36F 60%, #00A8FF 100%); color: #fff; transition: 20s; }
+.btn-primary:hover:not(:disabled) {  background: linear-gradient(135deg, #00A8FF 0%, #36F 60%, #6A00F4 100%); transition: 10s; box-shadow: 0 4px 12px var(--accent-glow); transform: translateY(-1px); }
 .btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--text-2); }
 .btn-secondary:hover:not(:disabled) { background: var(--page-bg); border-color: #cbd5e1; }
 .btn-danger    { background: var(--red-light); border: 1px solid rgba(239,68,68,0.25); color: var(--red); }

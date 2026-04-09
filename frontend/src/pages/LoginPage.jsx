@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
+import AuthLayout from '../components/layout/AuthLayout';
+import AuthLogo from '../components/layout/AuthLogo';
+import TypewriterHeading from '../components/ui/TypewriterHeading';
 
 export default function LoginPage({ onGoRegister }) {
   const { login } = useAuth();
@@ -89,23 +92,14 @@ export default function LoginPage({ onGoRegister }) {
 
   if (view === 'reset') {
     return (
-      <div className="auth-page">
+      <AuthLayout>
         <div className="auth-card">
-          <div className="card" style={{ padding: 36 }}>
-            <div className="auth-logo-wrap">
-              <div className="auth-logo-mark">UG</div>
-              <div>
-                <div className="auth-logo-name">Unigran</div>
-                <div className="auth-logo-sub">Rede Social Acadêmica</div>
-              </div>
-            </div>
-
+          <div className="card" style={{ padding: 64 }}>
+        <AuthLogo />
             <h1 className="auth-heading">Redefinir senha</h1>
             <p className="auth-sub-text">Informe seu email e a nova senha</p>
-
             {error   && <div className="auth-alert">{error}</div>}
             {success && <div className="auth-alert" style={{ background: '#d1fae5', color: '#065f46', borderColor: '#6ee7b7' }}>{success}</div>}
-
             <div className="form-group">
               <label className="form-label">Email institucional</label>
               <input
@@ -116,7 +110,6 @@ export default function LoginPage({ onGoRegister }) {
                 onChange={e => setResetEmail(e.target.value)}
               />
             </div>
-
             <div className="form-group">
               <label className="form-label">Nova senha</label>
               <div style={{ position: 'relative' }}>
@@ -131,7 +124,6 @@ export default function LoginPage({ onGoRegister }) {
                 {eyeBtn(showNew, () => setShowNew(v => !v))}
               </div>
             </div>
-
             <div className="form-group">
               <label className="form-label">Confirmar nova senha</label>
               <div style={{ position: 'relative' }}>
@@ -147,7 +139,6 @@ export default function LoginPage({ onGoRegister }) {
                 {eyeBtn(showConfirm, () => setShowConfirm(v => !v))}
               </div>
             </div>
-
             <button
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
@@ -156,33 +147,22 @@ export default function LoginPage({ onGoRegister }) {
             >
               {loading ? 'Redefinindo…' : 'Redefinir senha'}
             </button>
-
             <div className="auth-footer">
               <a onClick={() => { setView('login'); setError(''); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
             </div>
           </div>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="card" style={{ padding: 36 }}>
-          <div className="auth-logo-wrap">
-            <div className="auth-logo-mark">UG</div>
-            <div>
-              <div className="auth-logo-name">Unigran</div>
-              <div className="auth-logo-sub">Rede Social Acadêmica</div>
-            </div>
-          </div>
-
-          <h1 className="auth-heading">Bem-vindo de volta</h1>
-          <p className="auth-sub-text">Entre com sua conta para continuar</p>
-
+    <AuthLayout>
+      <div className="auth-card" style={{width: '100%', maxWidth: 480, margin: '0 auto'}}>
+        <div className="card" style={{ padding: 65 }}>
+        <AuthLogo />
+        <TypewriterHeading />
           {error && <div className="auth-alert">{error}</div>}
-
           <div className="form-group">
             <label className="form-label">Email institucional</label>
             <input
@@ -194,13 +174,12 @@ export default function LoginPage({ onGoRegister }) {
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
           </div>
-
           <div className="form-group">
-            <div className="auth-row">
+            <div className="auth-row" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <label className="form-label" style={{ margin: 0 }}>Senha</label>
               <span
                 className="auth-forgot"
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', fontSize: 13, color: '#2563eb', fontWeight: 500 }}
                 onClick={() => { setView('reset'); setError(''); setResetEmail(email); }}
               >
                 Esqueci a senha
@@ -219,26 +198,23 @@ export default function LoginPage({ onGoRegister }) {
               {eyeBtn(showPass, () => setShowPass(v => !v))}
             </div>
           </div>
-
-          <label className="auth-remember">
-            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+          <label className="auth-remember" style={{margin: '12px 0 0 0', display: 'flex', alignItems: 'center', fontSize: 14}}>
+            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{marginRight: 8}} />
             <span className="auth-remember-label">Lembrar desta conta</span>
           </label>
-
           <button
             className="btn btn-primary"
-            style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
+            style={{ width: '100%', justifyContent: 'center', marginTop: 24, padding: '11px 0', fontSize: 16, fontWeight: 600 }}
             onClick={handleSubmit}
             disabled={loading}
           >
             {loading ? 'Entrando…' : 'Entrar'}
           </button>
-
-          <div className="auth-footer">
-            Não tem conta? <a onClick={onGoRegister}>Cadastre-se gratuitamente</a>
+          <div className="auth-footer" style={{marginTop: 18, textAlign: 'center', fontSize: 14}}>
+            Não tem conta? <a style={{color: '#2563eb', fontWeight: 500, cursor: 'pointer'}} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
