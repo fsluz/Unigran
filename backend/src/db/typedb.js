@@ -16,11 +16,20 @@ export function decodeHash(encoded) {
 }
 
 function normalizeAddress(raw) {
-  return String(raw || '')
+  const cleaned = String(raw || '')
     .trim()
     .replace(/^\[+/, '')
     .replace(/\]+$/, '')
     .replace(/\/+$/, '');
+
+  try {
+    const u = new URL(cleaned);
+    // TypeDB Cloud over HTTPS should use 443; ":80" commonly returns non-JSON proxy responses.
+    if (u.protocol === 'https:' && u.port === '80') u.port = '443';
+    return u.toString().replace(/\/+$/, '');
+  } catch {
+    return cleaned;
+  }
 }
 
 const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
