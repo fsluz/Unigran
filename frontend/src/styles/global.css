@@ -46,6 +46,37 @@
   --font-head:     'Syne', sans-serif;
   --font-body:     'Inter', sans-serif;
   --sidebar-w:     68px;
+  --text-secondary:#64748b;
+  --surface:       #ffffff;
+}
+
+:root[data-theme='dark'] {
+  --sidebar-bg:    #0b1026;
+  --sidebar-icon:  #7785b2;
+  --sidebar-active:#7a5cff;
+  --sidebar-hover: rgba(122,92,255,0.14);
+
+  --page-bg:       #070b1e;
+  --card:          #121633;
+  --card-hover:    #171d3f;
+  --border:        #2a325f;
+  --border-soft:   #212a52;
+  --surface:       #121633;
+
+  --text:          #f5f7ff;
+  --text-2:        #c7cdef;
+  --text-muted:    #8e97c5;
+  --text-light:    #727bad;
+  --text-secondary:#8e97c5;
+
+  --accent:        #6b39ff;
+  --accent-2:      #2fa8ff;
+  --accent-light:  rgba(107,57,255,0.20);
+  --accent-glow:   rgba(107,57,255,0.35);
+
+  --shadow-sm:     0 1px 2px rgba(0,0,0,0.35);
+  --shadow:        0 8px 24px rgba(0,0,0,0.35);
+  --shadow-lg:     0 18px 44px rgba(0,0,0,0.55);
 }
 
 html, body, #root { height: 100%; }

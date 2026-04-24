@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import FriendsPage from './pages/FriendsPage';
 
 import Sidebar       from './components/layout/Sidebar';
@@ -43,7 +44,7 @@ function AppShell() {
 
   const pages = {
     home:          <HomePage />,
-    profile:       <ProfilePage />,
+    profile:       <ProfilePage onOpenFollowers={() => setPage('friends')} />,
     friends:       <FriendsPage />,
     communities:   <CommunitiesPage />,
     messages:      <MessagesPage />,
@@ -67,10 +68,12 @@ function AppShell() {
 /* ── Root ── */
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AppShell />
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <AppShell />
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

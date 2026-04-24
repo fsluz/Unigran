@@ -6,13 +6,13 @@ import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
 import { MOCK_POSTS } from '../data/mock';
 
-const TABS = ['Portfólio', 'Atividades', 'Sobre'];
+const TABS = ['Publicações', 'Atividades', 'Sobre'];
 
-export default function ProfilePage() {
+export default function ProfilePage({ onOpenFollowers }) {
   const { user, updateUser } = useAuth();
   const { showToast }        = useToast();
 
-  const [tab, setTab]               = useState('Portfólio');
+  const [tab, setTab]               = useState('Publicações');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
   const [posts, setPosts]           = useState(MOCK_POSTS.filter(p => p.author.id === user.id));
@@ -63,7 +63,7 @@ export default function ProfilePage() {
               <div className="profile-stat-num">{user.projects}</div>
               <div className="profile-stat-label">Projetos</div>
             </div>
-            <div className="profile-stat">
+            <div className="profile-stat" onClick={onOpenFollowers} title="Ver amigos/seguidores">
               <div className="profile-stat-num">{user.followers}</div>
               <div className="profile-stat-label">Seguidores</div>
             </div>
@@ -93,7 +93,7 @@ export default function ProfilePage() {
 
       {/* Tab content */}
       <div className="profile-tab-content">
-        {tab === 'Portfólio' && (
+        {tab === 'Publicações' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {posts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
