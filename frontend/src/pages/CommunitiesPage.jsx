@@ -1,154 +1,319 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import CommunityCard from '../components/community/CommunityCard';
-import CommunityDetail from '../components/community/CommunityDetail';
 import Topbar from '../components/layout/Topbar';
-import { Modal, Button, FormField, EmptyState } from '../components/ui';
-import { MOCK_COMMUNITIES } from '../data/mock';
+import PostCard from '../components/post/PostCard';
+import { MOCK_COMMUNITIES, MOCK_POSTS } from '../data/mock';
 
-const VIEWS = [
-  { id: 'todas',     label: 'Todas' },
-  { id: 'minhas',    label: 'Minhas' },
-  { id: 'favoritas', label: 'Favoritas' },
-  { id: 'modero',    label: 'Que modero' },
+const COMMUNITY_COLORS = {
+  c1: '#00A8FF',
+  c2: '#7C3AED',
+  c3: '#16A34A',
+  c4: '#F59E0B',
+  c5: '#8B5CF6',
+  c6: '#F97316',
+};
+
+const TRENDING = [
+  { label: 'Inteligência Artificial', count: '12.543' },
+  { label: 'Web3 e Blockchain', count: '8.765' },
+  { label: 'Sustentabilidade', count: '6.234' },
+  { label: 'Startups', count: '5.432' },
+  { label: 'Produtividade', count: '4.321' },
 ];
 
+const SUGGESTED_PEOPLE = [
+  { name: 'Luísa Ferreira', sub: 'Amiga de Ana Rodrigues', avatar: 'LF', color: '#EC4899' },
+  { name: 'Rafael Mendes', sub: 'Amigo de Carlos Dev', avatar: 'RM', color: '#00A8FF' },
+  { name: 'Priscila Duarte', sub: 'Amiga de Maria Souza', avatar: 'PD', color: '#F59E0B' },
+];
+
+const COMMUNITY_POSTS = {
+  c1: [MOCK_POSTS[0], MOCK_POSTS[1]],
+  c2: [MOCK_POSTS[1], MOCK_POSTS[3]],
+  c3: [MOCK_POSTS[2]],
+  c4: [MOCK_POSTS[3], MOCK_POSTS[0]],
+  c5: [MOCK_POSTS[1]],
+  c6: [MOCK_POSTS[2], MOCK_POSTS[3]],
+};
+
+function CommunityCard({ community, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer',
+      }}
+    >
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 12, padding: '20px', borderRadius: 20,
+        background: active ? 'rgba(124,58,237,0.18)' : 'var(--card)', border: `1px solid ${active ? 'rgba(124,58,237,0.35)' : 'var(--border)'}`,
+        boxShadow: '0 14px 40px rgba(0,0,0,0.08)', transition: 'transform 0.2s, border-color 0.2s',
+      }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 16, background: `${community.color}22`, color: community.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, border: `1px solid ${community.color}33` }}>
+              {community.icon}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{community.name}</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{community.description}</div>
+            </div>
+          </div>
+          <div style={{ minWidth: 72, textAlign: 'right', color: community.joined ? 'var(--accent)' : 'var(--text-muted)', fontWeight: 700 }}>
+            {community.joined ? 'Membro' : 'Entrar'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>👥 {community.members.toLocaleString()} membros</span>
+          <span style={{ padding: '5px 10px', borderRadius: 999, background: community.joined ? 'rgba(124,58,237,0.15)' : 'rgba(148,163,184,0.12)', color: community.joined ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700 }}>
+            {community.type === 'private' ? '🔒 Privada' : '🌐 Pública'}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function CommunityView({ community, onBack, onJoin, onFavorite }) {
+  const [tab, setTab] = useState('posts');
+  const [posts, setPosts] = useState(COMMUNITY_POSTS[community.id] || []);
+
+  const toggleLike = id => setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+  const handleEdit = (id, text) => setPosts(prev => prev.map(p => p.id === id ? { ...p, content: text, edited: true } : p));
+  const handleDelete = id => setPosts(prev => prev.filter(p => p.id !== id));
+
+  return (
+    <div style={{ padding: '24px 18px', maxWidth: 1120, margin: '0 auto' }}>
+      <button type="button" onClick={onBack} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24, cursor: 'pointer' }}>
+        ← Voltar
+      </button>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr', gap: 24, marginBottom: 24 }}>
+        <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, overflow: 'hidden' }}>
+          <div style={{ height: 180, background: `linear-gradient(135deg, ${community.banner} 0%, ${community.color}55 100%)`, position: 'relative' }}>
+            <div style={{ position: 'absolute', bottom: 16, left: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg, ${community.color}, ${community.color}88)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 24, boxShadow: '0 0 0 1px var(--card)' }}>
+                {community.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{community.name}</div>
+                <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>{community.members.toLocaleString()} membros · {community.posts || 0} publicações</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: '22px' }}>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.75, margin: 0 }}>{community.description}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+              {(community.tags || ['Comunidade', 'Tecnologia', 'Design']).map(tag => (
+                <span key={tag} style={{ padding: '7px 12px', borderRadius: 999, background: 'rgba(79,126,244,0.12)', color: 'var(--accent)', fontSize: 12, fontWeight: 700 }}>{tag}</span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => onJoin(community.id)} style={{ border: community.joined ? '1px solid var(--border)' : 'none', background: community.joined ? 'transparent' : 'var(--accent)', color: community.joined ? 'var(--text)' : '#fff', borderRadius: 14, padding: '10px 18px', fontWeight: 700, cursor: 'pointer' }}>
+                {community.joined ? '✓ Membro' : 'Entrar'}
+              </button>
+              <button type="button" onClick={() => onFavorite(community.id)} style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', borderRadius: 14, padding: '10px 18px', fontWeight: 700, cursor: 'pointer' }}>
+                {community.favorite ? '⭐ Favorita' : '☆ Favoritar'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 14 }}>Estatísticas</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ padding: 14, borderRadius: 16, background: 'var(--page-bg)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{community.members.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Membros</div>
+              </div>
+              <div style={{ padding: 14, borderRadius: 16, background: 'var(--page-bg)', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{community.posts || 0}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Publicações</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 14 }}>Ação</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button type="button" style={{ flex: 1, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', padding: '10px 14px', cursor: 'pointer' }}>Convidar</button>
+              <button type="button" style={{ flex: 1, borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', padding: '10px 14px', cursor: 'pointer' }}>Compartilhar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 18, overflowX: 'auto' }}>
+        {['Publicações', 'Membros', 'Sobre'].map(tabName => (
+          <button
+            key={tabName}
+            type="button"
+            onClick={() => setTab(tabName.toLowerCase())}
+            style={{
+              flex: 1, minWidth: 120, padding: '10px 16px', borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: tab === tabName.toLowerCase() ? 'var(--accent)' : 'var(--card)',
+              color: tab === tabName.toLowerCase() ? '#fff' : 'var(--text-muted)',
+              fontWeight: 700,
+            }}
+          >
+            {tabName}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'posts' ? (
+        <div style={{ display: 'grid', gap: 16 }}>
+          {posts.length === 0 ? (
+            <div style={{ padding: 24, borderRadius: 20, background: 'var(--card)', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Ainda não há posts nesta comunidade.
+            </div>
+          ) : posts.map(post => (
+            <PostCard key={post.id} post={post} onToggleLike={toggleLike} onEdit={handleEdit} onDelete={handleDelete} onOpenDetail={() => {}} />
+          ))}
+        </div>
+      ) : tab === 'members' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+          {['Ana R.', 'Carlos D.', 'Maria S.', 'Pedro L.', 'Juliana L.', 'Roberto S.'].map((name, idx) => (
+            <div key={name} style={{ padding: 18, borderRadius: 18, background: 'var(--card)', border: '1px solid var(--border)', textAlign: 'center' }}>
+              <div style={{ width: 62, height: 62, borderRadius: '50%', background: 'var(--page-bg)', margin: '0 auto 12px', display: 'grid', placeItems: 'center', fontSize: 22, color: 'var(--accent)' }}>
+                {name.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div style={{ fontWeight: 700, color: 'var(--text)' }}>{name}</div>
+              <button type="button" style={{ marginTop: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', padding: '8px 12px', cursor: 'pointer' }}>Seguir</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ padding: 24, borderRadius: 20, background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', marginBottom: 10 }}>Sobre a comunidade</div>
+          <p style={{ margin: 0, lineHeight: 1.75 }}>{community.description}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CommunitiesPage() {
-  const { user }      = useAuth();
+  const { user } = useAuth();
   const { showToast } = useToast();
+  const [selected, setSelected] = useState(null);
+  const [communities, setCommunities] = useState(() => MOCK_COMMUNITIES.map(c => ({
+    ...c,
+    color: COMMUNITY_COLORS[c.id] || '#8B5CF6',
+    posts: c.id === 'c1' ? 1203 : c.id === 'c2' ? 856 : c.id === 'c3' ? 620 : c.id === 'c4' ? 980 : c.id === 'c5' ? 430 : c.id === 'c6' ? 710 : 0,
+    tags: c.id === 'c1' ? ['React', 'Node.js', 'TypeScript', 'Dev'] : c.id === 'c2' ? ['UI/UX', 'Figma', 'Design System', 'CSS'] : c.id === 'c3' ? ['Produção', 'Indie', 'Covers', 'Spotify'] : c.id === 'c4' ? ['RPG', 'FPS', 'Indie', 'Esports'] : c.id === 'c5' ? ['Mochilão', 'Dicas', 'Fotos', 'Cultura'] : ['Receitas', 'Gastronomia', 'Vegan', 'Grill'],
+  })));
 
-  const [communities, setCommunities] = useState(MOCK_COMMUNITIES);
-  const [view, setView]               = useState('todas');
-  const [selected, setSelected]       = useState(null);
-  const [createOpen, setCreateOpen]   = useState(false);
-  const [newForm, setNewForm]         = useState({ name: '', description: '', type: 'public', icon: '💻' });
+  const [filter, setFilter] = useState('all');
 
-  const filtered = communities.filter(c => {
-    if (view === 'minhas')    return c.joined;
-    if (view === 'favoritas') return c.favorite;
-    if (view === 'modero')    return c.role === 'moderator' || c.role === 'admin';
-    return true;
-  });
+  const filtered = useMemo(() => {
+    if (filter === 'joined') return communities.filter(c => c.joined);
+    if (filter === 'favorites') return communities.filter(c => c.favorite);
+    if (filter === 'private') return communities.filter(c => c.type === 'private');
+    return communities;
+  }, [communities, filter]);
 
-  const updateCommunity = (id, data) =>
-    setCommunities(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
-
-  const createCommunity = () => {
-    if (!newForm.name.trim()) return;
-    setCommunities(prev => [...prev, {
-      id: `c${Date.now()}`, members: 1, joined: true, favorite: false, muted: false,
-      role: 'admin', banner: '#1e3a5f', ...newForm,
-    }]);
-    setCreateOpen(false);
-    setNewForm({ name: '', description: '', type: 'public', icon: '💻' });
-    showToast('Comunidade criada!', '🎉');
+  const handleToggleJoin = id => {
+    setCommunities(prev => prev.map(c => c.id === id ? { ...c, joined: !c.joined, members: c.joined ? c.members - 1 : c.members + 1 } : c));
   };
 
-  const selectedCom = communities.find(c => c.id === selected);
+  const handleToggleFavorite = id => {
+    setCommunities(prev => prev.map(c => c.id === id ? { ...c, favorite: !c.favorite } : c));
+  };
 
-  if (selected && selectedCom) {
+  if (selected) {
+    const community = communities.find(c => c.id === selected);
     return (
-      <CommunityDetail
-        community={selectedCom}
+      <CommunityView
+        community={community}
         onBack={() => setSelected(null)}
-        onUpdate={data => updateCommunity(selected, data)}
+        onJoin={handleToggleJoin}
+        onFavorite={handleToggleFavorite}
       />
     );
   }
 
   return (
     <div className="page-scroll">
-      <Topbar
-        title="Comunidades"
-        right={<Button size="sm" onClick={() => setCreateOpen(true)}>➕ Nova comunidade</Button>}
-      />
-
-      <div className="page-center">
-        {/* Filter buttons */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {VIEWS.map(v => (
-            <Button
-              key={v.id}
-              variant={view === v.id ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setView(v.id)}
-            >
-              {v.label}
-            </Button>
-          ))}
-        </div>
-
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon="🏘️"
-            title="Nenhuma comunidade aqui"
-            subtitle="Explore ou crie uma nova comunidade."
-            action={<Button onClick={() => setCreateOpen(true)}>Criar comunidade</Button>}
-          />
-        ) : (
-          <div className="comm-grid">
-            {filtered.map(c => (
-              <CommunityCard key={c.id} community={c} onClick={() => setSelected(c.id)} />
+      <Topbar title="Comunidades" right={<button type="button" style={{ border: 'none', background: 'var(--accent)', color: '#fff', borderRadius: 16, padding: '10px 18px', cursor: 'pointer', fontWeight: 700 }}>➕ Nova comunidade</button>} />
+      <div style={{ display: 'flex', gap: 24, maxWidth: 1180, margin: '0 auto', padding: '20px 18px', minHeight: 'calc(100vh - 100px)', boxSizing: 'border-box' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            {['all', 'joined', 'favorites', 'private'].map(item => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setFilter(item)}
+                style={{
+                  padding: '9px 16px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  background: filter === item ? 'var(--accent)' : 'var(--card)',
+                  color: filter === item ? '#fff' : 'var(--text)',
+                  fontWeight: 700,
+                }}
+              >
+                {item === 'all' ? 'Todas' : item === 'joined' ? 'Minhas' : item === 'favorites' ? 'Favoritas' : 'Privadas'}
+              </button>
             ))}
           </div>
-        )}
-      </div>
 
-      {/* Create modal */}
-      {createOpen && (
-        <Modal
-          title="Nova Comunidade"
-          onClose={() => setCreateOpen(false)}
-          footer={
-            <>
-              <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-              <Button onClick={createCommunity} disabled={!newForm.name.trim()}>Criar</Button>
-            </>
-          }
-        >
-          <FormField label="Nome da comunidade *">
-            <input
-              className="form-input"
-              placeholder="Ex: Dev UNIGRAN"
-              value={newForm.name}
-              onChange={e => setNewForm(p => ({ ...p, name: e.target.value }))}
-              autoFocus
-            />
-          </FormField>
-          <FormField label="Descrição">
-            <textarea
-              className="form-input"
-              rows={2}
-              placeholder="Sobre o que é essa comunidade?"
-              value={newForm.description}
-              onChange={e => setNewForm(p => ({ ...p, description: e.target.value }))}
-            />
-          </FormField>
-          <FormField label="Ícone (emoji)">
-            <input
-              className="form-input"
-              placeholder="💻"
-              value={newForm.icon}
-              onChange={e => setNewForm(p => ({ ...p, icon: e.target.value }))}
-              style={{ fontSize: 20 }}
-            />
-          </FormField>
-          <FormField label="Visibilidade">
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[['public', '🌐 Pública'], ['private', '🔒 Privada']].map(([val, label]) => (
-                <Button
-                  key={val}
-                  variant={newForm.type === val ? 'primary' : 'secondary'}
-                  onClick={() => setNewForm(p => ({ ...p, type: val }))}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </FormField>
-        </Modal>
-      )}
+          <div style={{ display: 'grid', gap: 16 }}>
+            {filtered.map(com => (
+              <CommunityCard
+                key={com.id}
+                community={com}
+                active={selected === com.id}
+                onClick={() => setSelected(com.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <aside className="right-panel">
+          <div className="right-section">
+            <div className="right-section-title">Tendências</div>
+            {TRENDING.map((item, index) => (
+              <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: index < TRENDING.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{item.count} menções</div>
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--accent)', background: 'rgba(124,58,237,0.12)', borderRadius: 999, padding: '4px 10px' }}>#{index + 1}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="right-section">
+            <div className="right-section-title">Sugeridas para você</div>
+            {communities.filter(c => !c.joined).slice(0, 3).map(com => (
+              <button key={com.id} type="button" onClick={() => setSelected(com.id)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px', marginBottom: 10, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--card)', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 12, background: `${com.color}22`, color: com.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, border: `1px solid ${com.color}33` }}>{com.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{com.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{com.members.toLocaleString()} membros</div>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--accent)', borderRadius: 999, padding: '6px 10px' }}>Entrar</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="right-section">
+            <div className="right-section-title">Pessoas sugeridas</div>
+            {SUGGESTED_PEOPLE.map(person => (
+              <div key={person.name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '12px', borderRadius: 16, background: 'var(--card)', border: '1px solid var(--border)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${person.color}22`, color: person.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>{person.avatar}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{person.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{person.sub}</div>
+                </div>
+                <button type="button" style={{ border: 'none', borderRadius: 14, background: 'var(--accent)', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Seguir</button>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
