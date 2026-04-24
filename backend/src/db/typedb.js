@@ -16,7 +16,7 @@ export function decodeHash(encoded) {
 }
 
 const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
-const ADDRESS = normalizeAddress(process.env.TYPEDB_ADDRESS || 'http://rp78xj-0.cluster.typedb.com:80');
+const ADDRESS = process.env.TYPEDB_ADDRESS || 'http://rp78xj-0.cluster.typedb.com:80'
 const USER    = process.env.TYPEDB_USERNAME || 'admin';
 const PASS    = process.env.TYPEDB_PASSWORD || 'password';
 
