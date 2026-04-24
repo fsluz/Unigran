@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
@@ -78,7 +77,6 @@ function Row({ title, sub, children }) {
 export default function SettingsPage({ onLogout }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
-  const { theme, setTheme }         = useTheme();
 
   const [section, setSection] = useState('pessoal');
   const [cfg, setCfg]         = useState({
@@ -270,24 +268,6 @@ export default function SettingsPage({ onLogout }) {
                 <Button variant="secondary" size="sm" onClick={() => openEdit('phone')}>
                   Editar
                 </Button>
-              </Row>
-              <Row title="Tema da plataforma" sub="Escolha entre claro e escuro">
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Button
-                    variant={theme === 'light' ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setTheme('light')}
-                  >
-                    Claro
-                  </Button>
-                  <Button
-                    variant={theme === 'dark' ? 'primary' : 'secondary'}
-                    size="sm"
-                    onClick={() => setTheme('dark')}
-                  >
-                    Escuro
-                  </Button>
-                </div>
               </Row>
             </Section>
           )}

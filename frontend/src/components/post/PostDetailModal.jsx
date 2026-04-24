@@ -18,6 +18,7 @@ export default function PostDetailModal({ post, onClose }) {
   const [comments, setComments]     = useState(MOCK_COMMENTS);
   const [newText, setNewText]       = useState('');
   const [emojiFor, setEmojiFor]     = useState(null);
+  const [expandedComment, setExpandedComment] = useState(null);
 
   const addComment = () => {
     if (!newText.trim()) return;
@@ -74,44 +75,76 @@ export default function PostDetailModal({ post, onClose }) {
 
       {/* Comments */}
       <div className="comment-list">
-        {comments.map(c => (
-          <div key={c.id} className="comment-row">
-            <Avatar initials={c.author.avatar} size={32} />
-            <div style={{ flex: 1 }}>
-              <div className="comment-bubble">
-                <div className="comment-bubble-author">{c.author.displayName}</div>
-                <div className="comment-bubble-text">{c.text}</div>
-                {c.reactions.length > 0 && (
-                  <div className="comment-reactions">
-                    {c.reactions.map(e => (
-                      <span key={e} className="reaction-pill active">{e}</span>
-                    ))}
+        {comments.map(c => {
+          const expanded = expandedComment === c.id;
+          return (
+            <div key={c.id} className={`comment-row ${expanded ? 'expanded' : 'collapsed'}`}>
+              <Avatar initials={c.author.avatar} size={32} />
+              <div className="comment-body">
+                <button
+                  type="button"
+                  className="comment-summary-btn"
+                  onClick={() => setExpandedComment(expanded ? null : c.id)}
+                >
+                  <div className="comment-summary-top">
+                    <span className="comment-bubble-author">{c.author.displayName}</span>
+                    <span className="comment-summary-hint">{expanded ? 'Ocultar comentário' : 'Clique para abrir'}</span>
+                  </div>
+                  <div className="comment-summary-text">{c.text}</div>
+                </button>
+
+                {expanded && (
+                  <div className="comment-detail-panel">
+                    <div className="comment-bubble">
+                      <div className="comment-bubble-author">{c.author.displayName}</div>
+                      <div className="comment-bubble-text">{c.text}</div>
+                      {c.reactions.length > 0 && (
+                        <div className="comment-reactions">
+                          {c.reactions.map(e => (
+                            <span key={e} className="reaction-pill active">{e}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="comment-actions-row">
+                      <button
+                        type="button"
+                        className={`comment-action ${c.liked ? 'liked' : ''}`}
+                        onClick={e => { e.stopPropagation(); toggleCommentLike(c.id); }}
+                      >
+                        {c.liked ? '❤️' : '♡'} {c.likes > 0 ? c.likes : ''}
+                      </button>
+                      <button
+                        type="button"
+                        className="comment-action"
+                        onClick={e => { e.stopPropagation(); setEmojiFor(emojiFor === c.id ? null : c.id); }}
+                      >
+                        😊 Reagir
+                      </button>
+                      {canDeleteComment(c) && (
+                        <button
+                          type="button"
+                          className="comment-action"
+                          style={{ color: 'var(--red)' }}
+                          onClick={e => { e.stopPropagation(); deleteComment(c.id); }}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                    {emojiFor === c.id && (
+                      <div className="emoji-picker-row">
+                        {EMOJI_OPTIONS.map(e => (
+                          <span key={e} className="emoji-pick" onClick={e2 => { e2.stopPropagation(); addReaction(c.id, e); }}>{e}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              <div className="comment-actions-row">
-                <button className={`comment-action ${c.liked ? 'liked' : ''}`} onClick={() => toggleCommentLike(c.id)}>
-                  {c.liked ? '❤️' : '♡'} {c.likes > 0 ? c.likes : ''}
-                </button>
-                <button className="comment-action" onClick={() => setEmojiFor(emojiFor === c.id ? null : c.id)}>
-                  😊 Reagir
-                </button>
-                {canDeleteComment(c) && (
-                  <button className="comment-action" style={{ color: 'var(--red)' }} onClick={() => deleteComment(c.id)}>
-                    🗑️
-                  </button>
-                )}
-              </div>
-              {emojiFor === c.id && (
-                <div className="emoji-picker-row">
-                  {EMOJI_OPTIONS.map(e => (
-                    <span key={e} className="emoji-pick" onClick={() => addReaction(c.id, e)}>{e}</span>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* New comment */}
