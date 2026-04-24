@@ -22,11 +22,27 @@ function normalizeAddress(raw) {
     .replace(/\]+$/, '')
     .replace(/\/+$/, '');
 
+  if (!cleaned) return cleaned;
+
   try {
-    const u = new URL(cleaned);
-    // TypeDB Cloud over HTTPS should use 443; ":80" commonly returns non-JSON proxy responses.
-    if (u.protocol === 'https:' && u.port === '80') u.port = '443';
-    return u.toString().replace(/\/+$/, '');
+    const parsed = cleaned.includes('://') ? new URL(cleaned) : new URL(`http://${cleaned}`);
+    const host = parsed.hostname.toLowerCase();
+
+    // TypeDB Cloud HTTP endpoint commonly exposes replica addresses as host:80 (no scheme).
+    // For these hosts, prefer plain HTTP on :80 to avoid HTML/proxy responses on HTTPS.
+    if (host.endsWith('.cluster.typedb.com')) {
+      parsed.protocol = 'http:';
+      if (!parsed.port || parsed.port === '443') parsed.port = '80';
+    } else if (parsed.protocol === 'https:' && parsed.port === '80') {
+      // Generic safety for non-cloud hosts.
+      parsed.port = '443';
+    }
+
+    const normalized = parsed.toString().replace(/\/+$/, '');
+    if (normalized !== cleaned) {
+      console.warn(`[typedb] normalized address "${cleaned}" -> "${normalized}"`);
+    }
+    return normalized;
   } catch {
     return cleaned;
   }
