@@ -15,8 +15,16 @@ export function decodeHash(encoded) {
   return Buffer.from(encoded, 'base64').toString('utf8');
 }
 
+function normalizeAddress(raw) {
+  return String(raw || '')
+    .trim()
+    .replace(/^\[+/, '')
+    .replace(/\]+$/, '')
+    .replace(/\/+$/, '');
+}
+
 const DB      = process.env.TYPEDB_DATABASE || 'unigran_db';
-const ADDRESS = process.env.TYPEDB_ADDRESS  || 'http://rp78xj-0.cluster.typedb.com:80';
+const ADDRESS = normalizeAddress(process.env.TYPEDB_ADDRESS || 'http://rp78xj-0.cluster.typedb.com:80');
 const USER    = process.env.TYPEDB_USERNAME || 'admin';
 const PASS    = process.env.TYPEDB_PASSWORD || 'password';
 
@@ -34,16 +42,26 @@ function getDriver() {
 
 export async function readQuery(query) {
   const driver = getDriver();
-  const res = await driver.oneShotQuery(query, false, DB, 'read');
-  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
-  return res.ok?.answers ?? [];
+  try {
+    const res = await driver.oneShotQuery(query, false, DB, 'read');
+    if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
+    return res.ok?.answers ?? [];
+  } catch (err) {
+    const msg = err?.message || String(err);
+    throw new Error(`TypeDB read query failed (${ADDRESS}/${DB}): ${msg}`);
+  }
 }
 
 export async function writeQuery(query) {
   const driver = getDriver();
-  const res = await driver.oneShotQuery(query, true, DB, 'write');
-  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
-  return res.ok?.answers ?? [];
+  try {
+    const res = await driver.oneShotQuery(query, true, DB, 'write');
+    if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
+    return res.ok?.answers ?? [];
+  } catch (err) {
+    const msg = err?.message || String(err);
+    throw new Error(`TypeDB write query failed (${ADDRESS}/${DB}): ${msg}`);
+  }
 }
 
 export function val(row, varName) {
