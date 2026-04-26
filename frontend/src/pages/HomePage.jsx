@@ -8,11 +8,11 @@ import Topbar from '../components/layout/Topbar';
 import { MOCK_POSTS } from '../data/mock';
 
 const TRENDING = [
-  { tag: '#java',    count: '1.2k' },
-  { tag: '#react',   count: '890'  },
-  { tag: '#typedb',  count: '234'  },
-  { tag: '#estagio', count: '3.4k' },
-  { tag: '#ia',      count: '2.1k' },
+  { tag: 'Inteligência Artificial', count: '12.543' },
+  { tag: 'Web3 e Blockchain',       count: '8.765'  },
+  { tag: 'Sustentabilidade',        count: '6.234'  },
+  { tag: 'Startups',                count: '5.432'  },
+  { tag: 'Produtividade',           count: '4.321'  },
 ];
 
 const SUGGESTED_COMMUNITIES = [
@@ -87,18 +87,21 @@ export default function HomePage() {
         <aside className="right-panel">
           {/* Trends */}
           <div className="panel-card" style={{ marginBottom: 18 }}>
-            <div className="topbar-title" style={{ marginBottom: 16, fontSize: 15 }}>📈 Tendências</div>
+            <div style={{ fontFamily:"var(--font-head)", fontWeight:800, fontSize:15, color:"var(--text)", marginBottom:14, display:"flex", alignItems:"center", gap:6 }}>📈 Tendências</div>
             {TRENDING.map((item, i) => (
-              <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < TRENDING.length - 1 ? '1px solid var(--border)' : 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
-                <span style={{ fontWeight: 600 }}>{item.tag}</span>
-                <strong style={{ color: 'var(--accent)', fontSize: 12, background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10 }}>{item.count}</strong>
+              <div key={item.tag} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i < TRENDING.length-1 ? '1px solid var(--border)' : 'none', cursor:'pointer' }}>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'var(--text)' }}>{item.tag}</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>{item.count} menções</div>
+                </div>
+                <span style={{ fontSize:11, fontWeight:800, color:'var(--accent)', background:'var(--accent-light)', padding:'2px 8px', borderRadius:10, flexShrink:0 }}>#{i+1}</span>
               </div>
             ))}
           </div>
 
           {/* Suggested communities */}
           <div className="panel-card" style={{ marginBottom: 18 }}>
-            <div className="topbar-title" style={{ marginBottom: 16, fontSize: 15 }}>Sugeridas para você</div>
+            <div style={{ fontFamily:"var(--font-head)", fontWeight:800, fontSize:15, color:"var(--text)", marginBottom:14 }}>Sugeridas para você</div>
             {SUGGESTED_COMMUNITIES.map(com => (
               <div key={com.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: `${com.color}22`, color: com.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, border: `1px solid ${com.color}33` }}>{com.icon}</div>
@@ -113,7 +116,7 @@ export default function HomePage() {
 
           {/* Suggested people */}
           <div className="panel-card">
-            <div className="topbar-title" style={{ marginBottom: 16, fontSize: 15 }}>Pessoas sugeridas</div>
+            <div style={{ fontFamily:"var(--font-head)", fontWeight:800, fontSize:15, color:"var(--text)", marginBottom:14 }}>Pessoas sugeridas</div>
             {SUGGESTED_PEOPLE.map((person, i) => (
               <div key={person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < SUGGESTED_PEOPLE.length - 1 ? 14 : 0 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${person.color}22`, color: person.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, border: `1px solid ${person.color}33` }}>{person.avatar}</div>

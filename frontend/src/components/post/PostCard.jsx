@@ -121,6 +121,11 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
             {post.author.displayName}
             <RoleBadge role={post.author.role} />
           </div>
+          {post.community && (
+            <span style={{ display:'inline-block', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background:'var(--accent-light)', color:'var(--accent)', marginBottom:2 }}>
+              {post.community}
+            </span>
+          )}
           <div className="post-author-sub">
             @{post.author.username} · {post.time}
             {isEdited && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>(editado)</span>}
@@ -151,17 +156,20 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
       {/* Actions */}
       <div className="post-footer">
         <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike}>
-          {liked ? '❤️' : '♡'} {likes > 0 ? likes : ''}
+          <span>{liked ? '❤️' : '🤍'}</span>
+          <span>{likes > 0 ? likes : ''}</span>
         </button>
         <button
           className="post-action-btn"
           onClick={() => setShowComments(s => !s)}
-          style={{ color: showComments ? 'var(--accent)' : undefined, background: showComments ? 'var(--accent-light)' : undefined, borderRadius: 20 }}
+          style={{ color: showComments ? 'var(--accent)' : undefined }}
         >
-          💬 {comments.length > 0 ? comments.length : post.comments > 0 ? post.comments : ''}
+          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>{comments.length > 0 ? `${comments.length} Comentários` : post.comments > 0 ? `${post.comments} Comentários` : '0 Comentários'}</span>
         </button>
-        <button className="post-action-btn" onClick={() => showToast('Link copiado!', '↗️')}>
-          ↗️ {post.shares > 0 ? post.shares : ''}
+        <button className="post-action-btn" onClick={() => showToast('Link copiado!', '✓')}>
+          <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          <span>Compartilhar</span>
         </button>
       </div>
 

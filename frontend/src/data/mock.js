@@ -17,27 +17,31 @@ export const MOCK_USER = {
 export const MOCK_POSTS = [
   {
     id: 'p1',
-    author: { id: 'u1', username: 'fabiohenrique', displayName: 'Fábio Henrique', avatar: 'FH', role: 'admin' },
-    content: 'Acabei de terminar meu projeto de TCC usando Spring Boot + React! Que jornada incrível 🚀 #java #react #tcc',
-    likes: 42, comments: 8, shares: 5, time: '2h', liked: false,
+    author: { id: 'u2', username: 'ana.r', displayName: 'Ana Rodrigues', avatar: 'AR', role: 'moderator' },
+    community: 'Design',
+    content: 'Acabei de lançar meu novo design system! 🎨 Foram 3 meses de trabalho mas valeu cada segundo. Muito obrigada a todos!',
+    likes: 142, comments: 0, shares: 0, time: '2h', liked: false,
   },
   {
     id: 'p2',
-    author: { id: 'u2', username: 'ana_cs', displayName: 'Ana Carolina', avatar: 'AC', role: 'moderator' },
-    content: 'Alguém mais achando TypeDB fascinante para modelar relações complexas? Fiz um benchmark comparando com Neo4j 📊 #typedb #graphdb #academic',
-    likes: 87, comments: 23, shares: 14, time: '4h', liked: false,
+    author: { id: 'u3', username: 'carlosdev', displayName: 'Carlos Dev', avatar: 'CD', role: 'moderator' },
+    community: 'Tecnologia',
+    content: 'Alguém mais viu o novo framework que saiu ontem? Está revolucionando o desenvolvimento web moderno. Thread 👇\n\n1/ A principal feature é o server-side rendering híbrido que combina static e dynamic rendering automaticamente.',
+    likes: 89, comments: 0, shares: 0, time: '4h', liked: false,
   },
   {
     id: 'p3',
-    author: { id: 'u3', username: 'prof_santos', displayName: 'Prof. Santos', avatar: 'PS', role: 'professor' },
-    content: 'Abertura das inscrições para o workshop de Machine Learning aplicado à educação! Vagas limitadas. 🎓 #ml #educacao #workshop',
-    likes: 134, comments: 41, shares: 67, time: '6h', liked: false,
+    author: { id: 'u4', username: 'mariamsc', displayName: 'Maria Souza', avatar: 'MS', role: 'professor' },
+    community: 'Música',
+    content: 'Novo EP disponível em todas as plataformas! 🎵 Muito amor pra vocês que sempre acompanham meu trabalho ❤️',
+    likes: 256, comments: 0, shares: 0, time: '5h', liked: false,
   },
   {
     id: 'p4',
-    author: { id: 'u4', username: 'techcorp', displayName: 'TechCorp BR', avatar: 'TC', role: 'company' },
-    content: 'Estamos contratando! 5 vagas de estágio em desenvolvimento full-stack para estudantes universitários. R$1.800 + benefícios 💼 #vagas #estagio #dev',
-    likes: 312, comments: 89, shares: 203, time: '1d', liked: false,
+    author: { id: 'u5', username: 'pedrolima', displayName: 'Pedro Lima', avatar: 'PL', role: 'company' },
+    community: 'Tecnologia',
+    content: 'Hot take: Clean Architecture é fundamental mas muitas equipes exageram na complexidade. Às vezes um MVC simples resolve 80% dos problemas com 20% do esforço. #dev #arquitetura',
+    likes: 134, comments: 0, shares: 0, time: '8h', liked: false,
   },
 ];
 
@@ -51,21 +55,33 @@ export const MOCK_COMMUNITIES = [
 ];
 
 export const MOCK_CONVERSATIONS = [
-  { id: 'm1', type: 'dm',        name: 'Ana Carolina',        avatar: 'AC', lastMsg: 'Oi! Você viu o novo post sobre TypeDB?', time: '10:32', unread: 2, online: true },
-  { id: 'm2', type: 'dm',        name: 'Prof. Santos',        avatar: 'PS', lastMsg: 'Parabéns pelo projeto de TCC!',          time: 'Ontem', unread: 0, online: false },
-  { id: 'm3', type: 'group',     name: 'Projeto Final – G3',  avatar: 'PF', lastMsg: 'Lucas: Vou enviar os arquivos amanhã',   time: 'Ontem', unread: 5, online: false },
-  { id: 'm4', type: 'community', name: 'Dev UNIGRAN',         avatar: '💻', lastMsg: 'Rafael: Alguém tem o link do repo?',     time: 'Seg',   unread: 0, online: false },
+  { id: 'm1', type: 'dm', name: 'Ana Rodrigues', avatar: 'AR', color: '#EC4899', lastMsg: 'Boa ideia! Vamos marca...', time: 'agora', unread: 2, online: true },
+  { id: 'm2', type: 'dm', name: 'Carlos Dev',    avatar: 'CD', color: '#00A8FF', lastMsg: 'Mandei o link do reposit...', time: '5min', unread: 0, online: true },
+  { id: 'm3', type: 'dm', name: 'Pedro Santos',  avatar: 'PS', color: '#10B981', lastMsg: 'Obrigado pela ajuda!',        time: '1h',   unread: 0, online: false },
+  { id: 'm4', type: 'dm', name: 'Juliana Lima',  avatar: 'JL', color: '#F59E0B', lastMsg: 'Você vai no evento ama...',   time: '3h',   unread: 1, online: false },
 ];
 
 export const MOCK_CHAT_MESSAGES = {
   m1: [
-    { id: 1, from: 'other', text: 'Oi! Você viu o novo post sobre TypeDB?',                           time: '10:30' },
-    { id: 2, from: 'me',    text: 'Vi sim! Muito interessante 🚀',                                    time: '10:31' },
-    { id: 3, from: 'other', text: 'Vai revolucionar como modelamos dados acadêmicos, com certeza!',   time: '10:32' },
+    { id: 1, from: 'other', text: 'Oi! Vi seu post sobre design system, ficou incrível mesmo!',        time: '14:20' },
+    { id: 2, from: 'me',    text: 'Oi Ana! Obrigado! Trabalhei muito nele 😄',                          time: '14:21' },
+    { id: 3, from: 'other', text: 'Você usa Figma? Os componentes ficaram muito bem organizados.',       time: '14:22' },
+    { id: 4, from: 'me',    text: 'Sim, Figma! Uso há 4 anos 😊',                                      time: '14:23' },
+    { id: 5, from: 'other', text: 'Boa ideia! Vamos marcar uma call?',                                  time: '14:24' },
   ],
-  m2: [{ id: 1, from: 'other', text: 'Parabéns pelo projeto de TCC!', time: 'Ontem' }],
-  m3: [{ id: 1, from: 'other', text: 'Lucas: Vou enviar os arquivos amanhã', time: 'Ontem' }],
-  m4: [{ id: 1, from: 'other', text: 'Rafael: Alguém tem o link do repositório?', time: 'Seg' }],
+  m2: [
+    { id: 1, from: 'other', text: 'Mandei o link do repositório no canal do Discord',                   time: '09:15' },
+    { id: 2, from: 'me',    text: 'Perfeito, obrigado! Vou revisar hoje à tarde',                       time: '09:18' },
+  ],
+  m3: [
+    { id: 1, from: 'me',    text: 'Oi Pedro! Precisava de uma ajuda com aquela query SQL',              time: '11:00' },
+    { id: 2, from: 'other', text: 'Claro! Me manda o código',                                           time: '11:05' },
+    { id: 3, from: 'other', text: 'Obrigado pela ajuda!',                                               time: '11:30' },
+  ],
+  m4: [
+    { id: 1, from: 'other', text: 'Você vai no evento amanhã de UX?',                                   time: 'Ontem' },
+    { id: 2, from: 'me',    text: 'Sim! Já confirmei presença. Vai também?',                             time: 'Ontem' },
+  ],
 };
 
 export const MOCK_COMMENTS = [

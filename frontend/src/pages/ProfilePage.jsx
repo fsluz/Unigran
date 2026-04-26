@@ -1,3 +1,4 @@
+import Topbar from '../components/layout/Topbar';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -6,13 +7,13 @@ import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
 import { MOCK_POSTS } from '../data/mock';
 
-const TABS = ['Portfólio', 'Atividades', 'Sobre'];
+const TABS = ['Publicações', 'Reposts', 'Curtidas 🔒', 'Links'];
 
 const POST_FILTERS = [
-  { id: 'all',   label: 'Todos' },
-  { id: 'text',  label: '📝 Texto' },
-  { id: 'media', label: '🖼️ Foto/Vídeo' },
-  { id: 'date',  label: '📅 Por data' },
+  { id: 'all',   label: 'Tudo'       },
+  { id: 'text',  label: 'Texto'      },
+  { id: 'media', label: 'Foto/Vídeo' },
+  { id: 'date',  label: 'Por data'   },
 ];
 
 export default function ProfilePage() {
@@ -61,6 +62,7 @@ export default function ProfilePage() {
 
   return (
     <div className="page-scroll">
+      <Topbar />
       {/* Banner */}
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
         <div className="profile-banner">
@@ -74,7 +76,7 @@ export default function ProfilePage() {
             </div>
             <div style={{ display: 'flex', gap: 8, paddingTop: 12 }}>
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
-                ✏️ Editar Perfil
+                Editar Perfil
               </Button>
               {user.role === 'admin' && <span className="tag">👑 Admin</span>}
             </div>
@@ -86,15 +88,15 @@ export default function ProfilePage() {
 
           <div className="profile-stats">
             <div className="profile-stat">
-              <div className="profile-stat-num">{user.projects}</div>
-              <div className="profile-stat-label">Projetos</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>48</div>
+              <div className="profile-stat-label">Publicações</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-num">{user.followers}</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>1.234</div>
               <div className="profile-stat-label">Seguidores</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-num">{user.following}</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>567</div>
               <div className="profile-stat-label">Seguindo</div>
             </div>
           </div>
@@ -119,7 +121,7 @@ export default function ProfilePage() {
 
       {/* Tab content */}
       <div className="profile-tab-content">
-        {tab === 'Portfólio' && (
+        {tab === 'Publicações' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {/* Post filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>

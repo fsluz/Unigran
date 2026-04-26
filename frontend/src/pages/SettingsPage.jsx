@@ -5,6 +5,22 @@ import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
 
+function SidebarToggle({ value, onChange }) {
+  return (
+    <div onClick={() => onChange(!value)} style={{
+      width: 46, height: 25, borderRadius: 13,
+      background: value ? 'linear-gradient(135deg,#6A00F4,#00A8FF)' : '#6B7280',
+      cursor: 'pointer', position: 'relative', transition: 'background 0.25s', flexShrink: 0
+    }}>
+      <div style={{
+        position: 'absolute', top: 3, left: value ? 24 : 3, width: 19, height: 19,
+        borderRadius: '50%', background: '#fff', transition: 'left 0.25s',
+        boxShadow: '0 1px 6px rgba(0,0,0,0.3)'
+      }}/>
+    </div>
+  );
+}
+
 function formatPasswordDate(iso) {
   if (!iso) return 'Nunca alterada';
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
@@ -20,25 +36,12 @@ function formatPasswordDate(iso) {
 
 const BASE_GROUPS = [
   {
-    title: 'Conta',
+    title: 'Configurações',
     items: [
-      { id: 'pessoal',   icon: '👤', label: 'Dados Pessoais' },
-      { id: 'seguranca', icon: '🔒', label: 'Segurança' },
-      { id: 'email',     icon: '📧', label: 'Email & Senha' },
-    ],
-  },
-  {
-    title: 'Privacidade',
-    items: [
-      { id: 'privacidade', icon: '🛡️', label: 'Privacidade' },
-      { id: 'dados',       icon: '📦', label: 'Seus Dados' },
-    ],
-  },
-  {
-    title: 'Notificações',
-    items: [
-      { id: 'notificacoes', icon: '🔔', label: 'Notificações' },
-      { id: 'mensagens',    icon: '💬', label: 'Mensagens' },
+      { id: 'pessoal',      icon: '👤', label: 'Dados Pessoais' },
+      { id: 'privacidade',  icon: '🔒', label: 'Privacidade'    },
+      { id: 'notificacoes', icon: '🔔', label: 'Notificações'   },
+      { id: 'seguranca',    icon: '🛡️', label: 'Segurança'      },
     ],
   },
 ];
@@ -192,7 +195,7 @@ function PasswordAccordion({ onSuccess }) {
 }
 
 /* ── Main ── */
-export default function SettingsPage({ onLogout }) {
+export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
 
@@ -280,9 +283,11 @@ export default function SettingsPage({ onLogout }) {
 
         {/* Left nav */}
         <nav className="settings-sidenav">
+          <div style={{ padding: '16px 16px 8px', fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
+            Configurações
+          </div>
           {groups.map(g => (
-            <div key={g.title} className="settings-nav-group">
-              <div className="settings-nav-group-title">{g.title}</div>
+            <div key={g.title} className="settings-nav-group" style={{ marginBottom: 8 }}>
               {g.items.map(item => (
                 <div
                   key={item.id}
@@ -295,6 +300,20 @@ export default function SettingsPage({ onLogout }) {
             </div>
           ))}
 
+          {/* Appearance block matching screenshots */}
+          <div style={{ padding: '16px 12px 0' }}>
+            <div style={{ padding: '12px', background: 'var(--page-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>Aparência</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{dark ? '🌙' : '☀️'}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{dark ? 'Escuro' : 'Claro'}</span>
+                </div>
+                <SidebarToggle value={dark} onChange={onToggleTheme} />
+              </div>
+            </div>
+          </div>
+
           <div className="settings-logout-area">
             <Button variant="danger" style={{ width: '100%', justifyContent: 'center' }} onClick={onLogout}>
               🚪 Sair da conta
@@ -305,61 +324,96 @@ export default function SettingsPage({ onLogout }) {
         {/* Content */}
         <div className="settings-content">
 
-          {section === 'pessoal' && (
-            <Section title="Dados Pessoais" desc="Gerencie suas informações de perfil">
-              <Row title="Nome completo" sub={user?.displayName}>
-                <Button variant="secondary" size="sm" onClick={() => openEdit('displayName')}>Editar</Button>
-              </Row>
-              <Row title="Usuário" sub={`@${user?.username}`}>
-                <Button variant="secondary" size="sm" disabled title="O nome de usuário não pode ser alterado">Editar</Button>
-              </Row>
-              <Row title="Telefone" sub={user?.phone || 'Não informado'}>
-                <Button variant="secondary" size="sm" onClick={() => openEdit('phone')}>Editar</Button>
-              </Row>
-            </Section>
-          )}
-
-          {section === 'seguranca' && (
-            <Section title="Segurança" desc="Proteja o acesso à sua conta">
-              <Row title="Autenticação em dois fatores (2FA)" sub="Camada extra de proteção com código SMS ou app authenticator">
-                <Toggle checked={cfg.twoFactor} onChange={() => { toggle('twoFactor'); showToast(cfg.twoFactor ? '2FA desativado' : '2FA ativado', '🔒'); }} />
-              </Row>
-              
-              {/* Sessões ativas */}
-              <div style={{ marginTop: 20, marginBottom: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>📱 Sessões Ativas</div>
-                <div className="session-item">
-                  <div className="session-info">
-                    <div className="session-device">
-                      <span className="session-device-icon">💻</span>
-                      Chrome • Windows 11
-                    </div>
-                    <div className="session-location">Curitiba, PR • Agora</div>
-                  </div>
-                  <div className="session-status">
-                    🟢 Ativo
-                  </div>
+          {section === 'pessoal' && (<>
+            {/* Photo card */}
+            <div className="settings-panel-card">
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Foto de Perfil</div>
+              <div style={{ display:'flex', alignItems:'center', gap:20 }}>
+                <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
+                  {user?.avatar}
+                  <div style={{ position:'absolute', bottom:0, right:0, width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#00A8FF)', border:'2px solid var(--card)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✏️</div>
                 </div>
-                <div className="session-item">
-                  <div className="session-info">
-                    <div className="session-device">
-                      <span className="session-device-icon">📱</span>
-                      Safari • iPhone 15
-                    </div>
-                    <div className="session-location">São Paulo, SP • 3h atrás</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inativo</span>
-                    <button className="session-action-btn">Desconectar</button>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4 }}>Alterar foto</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF · Máx 5MB</div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>Escolher</button>
+                    <button style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <Row title="Histórico de acesso" sub="Veja os últimos logins">
-                <Button variant="secondary" size="sm" onClick={() => showToast('Histórico carregado', '📋')}>Ver</Button>
+            {/* Personal info card */}
+            <div className="settings-panel-card">
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Informações Pessoais</div>
+              {[
+                { label:'Nome completo',    val: user?.displayName,     key:'displayName' },
+                { label:'Nome de usuário (@)', val: `@${user?.username}`, key:'username', disabled:true },
+                { label:'E-mail',           val: user?.email,           key:'email' },
+              ].map(f => (
+                <div key={f.key} style={{ marginBottom:16 }}>
+                  <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>{f.label}</label>
+                  <input
+                    className="form-input"
+                    defaultValue={f.val}
+                    disabled={f.disabled}
+                    style={{ width:'100%', opacity: f.disabled ? 0.7 : 1 }}
+                  />
+                </div>
+              ))}
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Sobre mim</label>
+                <textarea className="form-input" rows={4} style={{ width:'100%', resize:'vertical' }}
+                  defaultValue="🚀 Designer & Dev enthusiast. Curitiba, PR."
+                />
+              </div>
+              <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }}
+                onClick={() => showToast('Alterações salvas!', '✅')}>
+                Salvar alterações
+              </button>
+            </div>
+
+            {/* Password accordion */}
+            <div className="settings-panel-card" style={{ padding:0 }}>
+              <PasswordAccordion onSuccess={(date) => setPasswordChangedAt(date)} />
+            </div>
+          </>)}
+
+          {section === 'seguranca' && (<>
+            <Section title="Autenticação em Dois Fatores (2FA)" desc="">
+              <Row title="Ativar 2FA" sub="Camada extra de segurança">
+                <Toggle checked={cfg.twoFactor} onChange={() => toggle('twoFactor')} />
               </Row>
             </Section>
-          )}
+            <Section title="Sessões Ativas" desc="">
+              {[
+                { device:'Chrome · Windows 11', loc:'Curitiba, PR', time:'Agora',        current:true  },
+                { device:'Safari · iPhone 15',  loc:'São Paulo, SP', time:'Ontem 18:42', current:false },
+                { device:'Firefox · macOS',      loc:'Rio de Janeiro, RJ', time:'3 dias atrás', current:false },
+              ].map((s,i) => (
+                <Row key={i} title={s.device} sub={`${s.loc} · ${s.time}`}>
+                  {s.current
+                    ? <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
+                    : <button style={{ fontSize:12, color:'var(--danger)', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Encerrar</button>
+                  }
+                </Row>
+              ))}
+              <button style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.08)', color:'var(--danger)', fontFamily:'var(--font-body)', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                🚪 Encerrar todas as outras sessões
+              </button>
+            </Section>
+            <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>⚠️ Zona de Perigo</div>
+              {[{icon:'📥',label:'Baixar meus dados',desc:'Cópia completa de todos os seus dados'},{icon:'🗑️',label:'Deletar conta e todos os dados',desc:'Ação permanente e irreversível'}].map(item=>(
+                <div key={item.label} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:10, border:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.06)', marginBottom:10, cursor:'pointer' }}>
+                  <span style={{ fontSize:20 }}>{item.icon}</span>
+                  <div><div style={{ fontWeight:700, fontSize:14, color:'var(--danger)' }}>{item.label}</div><div style={{ fontSize:12, color:'rgba(239,68,68,0.7)' }}>{item.desc}</div></div>
+                  <span style={{ marginLeft:'auto', color:'var(--danger)' }}>›</span>
+                </div>
+              ))}
+            </div>
+          </>)}
 
           {section === 'email' && (
             <Section title="Email & Senha" desc="Altere suas credenciais de acesso">
@@ -375,27 +429,53 @@ export default function SettingsPage({ onLogout }) {
             </Section>
           )}
 
-          {section === 'privacidade' && (
-            <Section title="Privacidade" desc="Controle quem pode ver e interagir com você">
-              <Row title="Visibilidade do perfil">
-                <select className="form-input" style={{ width: 'auto', padding: '6px 12px' }} value={cfg.profileVisibility} onChange={e => setCfg(p => ({ ...p, profileVisibility: e.target.value }))}>
-                  <option value="public">Público</option>
-                  <option value="followers">Apenas seguidores</option>
-                  <option value="private">Privado</option>
-                </select>
-              </Row>
+          {section === 'privacidade' && (<>
+            <Section title="Visibilidade do Perfil" desc="">
+              {[
+                { val:'public',  label:'🌐 Público',  desc:'Qualquer pessoa pode ver e acompanhar' },
+                { val:'private', label:'🔒 Privado', desc:'Apenas seguidores aprovados por você' },
+              ].map(opt => (
+                <div key={opt.val} onClick={() => setCfg(p=>({...p, profileVisibility: opt.val}))}
+                  style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12,
+                    border:`2px solid ${cfg.profileVisibility===opt.val ? 'var(--accent)' : 'var(--border)'}`,
+                    marginBottom:8, cursor:'pointer', background: cfg.profileVisibility===opt.val ? 'var(--accent-light)' : 'transparent' }}>
+                  <div style={{ width:18, height:18, borderRadius:'50%', border:`2px solid ${cfg.profileVisibility===opt.val?'var(--accent)':'var(--text-muted)'}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    {cfg.profileVisibility===opt.val && <div style={{ width:9, height:9, borderRadius:'50%', background:'var(--accent)' }}/>}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:600, fontSize:14, color:'var(--text)' }}>{opt.label}</div>
+                    <div style={{ fontSize:12, color:'var(--text-muted)' }}>{opt.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </Section>
+            <Section title="Mensagens Diretas" desc="">
               <Row title="Quem pode me enviar mensagem">
-                <select className="form-input" style={{ width: 'auto', padding: '6px 12px' }} value={cfg.whoCanMsg} onChange={e => setCfg(p => ({ ...p, whoCanMsg: e.target.value }))}>
+                <select className="form-input" style={{ width:'auto', padding:'6px 12px' }} value={cfg.whoCanMsg} onChange={e => setCfg(p=>({...p, whoCanMsg: e.target.value}))}>
                   <option value="everyone">Todos</option>
-                  <option value="followers">Seguidores</option>
+                  <option value="followers">Apenas quem sigo</option>
                   <option value="none">Ninguém</option>
                 </select>
               </Row>
-              <Row title="Mostrar email no perfil público">
-                <Toggle checked={cfg.showEmail} onChange={() => toggle('showEmail')} />
-              </Row>
+              {[
+                ['Silenciar mensagens','Não receber notificações','muteAllMsgs'],
+                ['Confirmar leitura','Mostrar quando você leu','readReceipts'],
+                ['Mostrar quando online','Visível para outros usuários','showOnline'],
+              ].map(([label,sub,key]) => (
+                <Row key={key} title={label} sub={sub}>
+                  <Toggle checked={cfg[key] ?? (key!=='muteAllMsgs')} onChange={() => setCfg(p=>({...p,[key]:!(p[key]??(key!=='muteAllMsgs'))}))} />
+                </Row>
+              ))}
             </Section>
-          )}
+            {['Usuários Bloqueados','Usuários Silenciados'].map((title,ti) => (
+              <Section key={title} title={title} desc="">
+                <div style={{ textAlign:'center', padding:'20px 0', color:'var(--text-muted)' }}>
+                  <div style={{ fontSize:32, marginBottom:8 }}>{ti===0?'🚫':'🔇'}</div>
+                  <div style={{ fontSize:14 }}>Nenhum usuário {ti===0?'bloqueado':'silenciado'}</div>
+                </div>
+              </Section>
+            ))}
+          </>)}
 
           {section === 'dados' && (
             <Section title="Seus Dados" desc="Gerencie e exporte todas suas informações">
@@ -410,19 +490,36 @@ export default function SettingsPage({ onLogout }) {
             </Section>
           )}
 
-          {section === 'notificacoes' && (
-            <Section title="Notificações" desc="Escolha como quer ser notificado">
+          {section === 'notificacoes' && (<>
+            <Section title="Notificações Push" desc="">
+              <Row title="Ativar notificações push" sub="Receba notificações em tempo real">
+                <Toggle checked={cfg.pushNotif} onChange={() => toggle('pushNotif')} />
+              </Row>
               {[
-                ['Notificações push',    'Receber notificações no navegador',   'pushNotif'],
-                ['Email de notificações','Receber resumo de atividades por email','emailNotif'],
-                ['Emails de marketing',  'Novidades, dicas e promoções',         'marketing'],
-              ].map(([title, sub, key]) => (
-                <Row key={key} title={title} sub={sub}>
-                  <Toggle checked={cfg[key]} onChange={() => toggle(key)} />
+                ['Curtidas',          'pushLikes'],
+                ['Comentários',       'pushComments'],
+                ['Novos seguidores',  'pushFollows'],
+                ['Menções',           'pushMentions'],
+                ['Mensagens',         'pushMsgs'],
+              ].map(([label, key]) => (
+                <Row key={key} title={label}>
+                  <Toggle checked={cfg[key] ?? true} onChange={() => setCfg(p => ({...p, [key]: !(p[key] ?? true)}))} />
                 </Row>
               ))}
             </Section>
-          )}
+            <Section title="Notificações por E-mail" desc="">
+              {[
+                ['E-mails de notificação', 'Resumos de atividade',       'emailNotif'],
+                ['Resumo semanal',         'Destaques toda segunda',       'emailWeekly'],
+                ['Alertas de segurança',   'Login em novo dispositivo',    'emailSecurity'],
+                ['Marketing',              'Novidades e atualizações',     'marketing'],
+              ].map(([label, sub, key]) => (
+                <Row key={key} title={label} sub={sub}>
+                  <Toggle checked={cfg[key] ?? (key !== 'marketing')} onChange={() => setCfg(p => ({...p, [key]: !(p[key] ?? (key !== 'marketing'))}))} />
+                </Row>
+              ))}
+            </Section>
+          </>)}
 
           {section === 'mensagens' && (
             <Section title="Mensagens" desc="Preferências de mensagens diretas">

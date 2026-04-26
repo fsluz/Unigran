@@ -1,20 +1,15 @@
+import Topbar from '../components/layout/Topbar';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { MOCK_CONVERSATIONS, MOCK_CHAT_MESSAGES } from '../data/mock';
 
 const TYPE_ICONS = { dm: '👤', group: '👥', community: '🏘️' };
-const CONV_TABS = [
-  { id: 'todos', label: 'Todos', icon: '💬' },
-  { id: 'nao-lidos', label: 'Não lidos', icon: '🔔' },
-];
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const [active, setActive] = useState(MOCK_CONVERSATIONS[0]);
-  const [chats, setChats] = useState(MOCK_CHAT_MESSAGES);
-  const [text, setText] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('todos');
+  const [active, setActive]   = useState(MOCK_CONVERSATIONS[0]);
+  const [chats, setChats]     = useState(MOCK_CHAT_MESSAGES);
+  const [text, setText]       = useState('');
 
   const send = () => {
     if (!text.trim() || !active) return;
@@ -25,86 +20,75 @@ export default function MessagesPage() {
     setText('');
   };
 
-  const filteredConversations = MOCK_CONVERSATIONS.filter(conv => {
-    const matchesSearch = conv.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTab = activeTab === 'todos' || (activeTab === 'nao-lidos' && conv.unread > 0);
-    return matchesSearch && matchesTab;
-  });
-
   return (
-    <div className="messages-shell">
+    <div className="page-scroll">
+      <Topbar />
+      <div className="messages-shell">
       {/* Conversation list */}
       <div className="conv-list">
         <div className="conv-list-head">
-          <h3>Mensagens</h3>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            {CONV_TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  flex: 1,
-                  padding: '7px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: activeTab === tab.id ? 'var(--accent-light)' : 'transparent',
-                  color: activeTab === tab.id ? 'var(--accent)' : 'var(--text-muted)',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {tab.icon} {tab.label}
-              </button>
+          <h3 style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:20, color:'var(--text)', marginBottom:14 }}>Mensagens</h3>
+          {/* Filter tabs */}
+          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+            {['Todas','Não lidas'].map((label,i) => (
+              <button key={label} style={{
+                padding:'7px 18px', borderRadius:20, border:'none', cursor:'pointer', fontSize:13, fontWeight:700,
+                background: i===0 ? 'linear-gradient(135deg,#6A00F4,#00A8FF)' : 'var(--page-bg)',
+                color: i===0 ? '#fff' : 'var(--text-muted)',
+              }}>{label}</button>
             ))}
           </div>
+          {/* Search */}
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 13 }}>🔍</span>
+            <svg style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>
             <input
-              style={{ width: '100%', background: 'var(--page-bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px 8px 30px', fontSize: 13, outline: 'none', color: 'var(--text)', fontFamily: 'var(--font-body)', transition: 'border-color 0.18s' }}
-              placeholder="Buscar conversa…"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              style={{ width: '100%', background: 'var(--page-bg)', border: '1px solid var(--border)', borderRadius: 20, padding: '8px 12px 8px 30px', fontSize: 13, outline: 'none', color: 'var(--text)', fontFamily: 'var(--font-body)' }}
+              placeholder="Buscar..."
             />
           </div>
         </div>
 
-        {filteredConversations.length === 0 ? (
-          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-            Nenhuma conversa encontrada
-          </div>
-        ) : (
-          filteredConversations.map(conv => (
-            <div
-              key={conv.id}
-              className={`conv-item ${active?.id === conv.id ? 'active' : ''}`}
-              onClick={() => setActive(conv)}
-            >
-              <div className="conv-avatar">
-                {conv.avatar}
-                {conv.online && <span className="conv-online-dot" />}
-              </div>
-              <div className="conv-info">
-                <div className="conv-name">
-                  {conv.name}
-                  {conv.type !== 'dm' && (
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 5 }}>
-                      {TYPE_ICONS[conv.type]}
-                    </span>
-                  )}
-                </div>
-                <div className="conv-preview">{conv.lastMsg}</div>
-              </div>
-              <div className="conv-aside">
-                <span className="conv-time">{conv.time}</span>
-                {conv.unread > 0 && <span className="conv-unread-badge">{conv.unread}</span>}
-              </div>
+        <div style={{ flex:1, overflowY:'auto' }}>
+        {MOCK_CONVERSATIONS.map(conv => (
+          <div
+            key={conv.id}
+            className={`conv-item ${active?.id === conv.id ? 'active' : ''}`}
+            onClick={() => setActive(conv)}
+          >
+            <div className="conv-avatar">
+              {conv.avatar}
+              {conv.online && <span className="conv-online-dot" />}
             </div>
-          ))
-        )}
+            <div className="conv-info">
+              <div className="conv-name">
+                {conv.name}
+                {conv.type !== 'dm' && (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 5 }}>
+                    {TYPE_ICONS[conv.type]}
+                  </span>
+                )}
+              </div>
+              <div className="conv-preview">{conv.lastMsg}</div>
+            </div>
+            <div className="conv-aside">
+              <span className="conv-time">{conv.time}</span>
+              {conv.unread > 0 && <span className="conv-unread-badge">{conv.unread}</span>}
+            </div>
+          </div>
+        ))}
+        </div>
+
+        {/* Nova Mensagem button */}
+        <div style={{ padding:'16px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
+          <button style={{
+            width:'100%', padding:'12px', borderRadius:14,
+            background:'linear-gradient(135deg,#6A00F4,#00A8FF)',
+            color:'#fff', border:'none', fontWeight:800, fontSize:14, cursor:'pointer',
+            display:'flex', alignItems:'center', justifyContent:'center', gap:8
+          }}>
+            ✏️ Nova Mensagem
+          </button>
+        </div>
       </div>
 
       {/* Chat area */}
@@ -112,26 +96,37 @@ export default function MessagesPage() {
         <div className="chat-area">
           {/* Header */}
           <div className="chat-head">
-            <div className="conv-avatar" style={{ width: 40, height: 40, fontSize: 13, flexShrink: 0 }}>
+            <div className="conv-avatar" style={{ width: 40, height: 40, fontSize: 13, flexShrink: 0, background: active.color ? `${active.color}22` : undefined, color: active.color, fontWeight:800, border: active.color ? `1px solid ${active.color}33` : undefined }}>
               {active.avatar}
               {active.online && <span className="conv-online-dot" />}
             </div>
-            <div style={{ flex: 1 }}>
+            <div>
               <div className="chat-head-name">{active.name}</div>
-              <div className="chat-head-sub">
-                {active.online ? '🟢 Online agora' : '⚫ Offline'} • {' '}
-                {active.type === 'group' ? 'Grupo' : active.type === 'community' ? 'Comunidade' : 'Mensagem direta'}
+              <div className="chat-head-sub" style={{ color: active.online ? '#22C55E' : 'var(--text-muted)', fontWeight: 500 }}>
+                active.online ? '● Online agora' : '● Offline'
               </div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              <button className="btn-icon" title="Chamar">📞</button>
-              <button className="btn-icon" title="Câmera">📹</button>
-              <button className="btn-icon" title="Mais opções">⋯</button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              {[
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.7 3.41 2 2 0 0 1 3.68 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.64a16 16 0 0 0 6.29 6.29l1.1-1.1a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>,
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx={11} cy={11} r={8}/><path d="m21 21-4.35-4.35"/></svg>,
+              ].map((icon, i) => (
+                <button key={i} style={{ width:36, height:36, borderRadius:'50%', background:'var(--page-bg)', border:'1px solid var(--border)', color:'var(--text-muted)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
+                  {icon}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Messages */}
           <div className="chat-messages">
+            {/* Date divider */}
+            <div style={{ textAlign:'center', margin:'8px 0 16px' }}>
+              <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--card)', border:'1px solid var(--border)', borderRadius:12, padding:'4px 14px' }}>
+                Hoje às {(chats[active.id] || [])[0]?.time || '14:20'}
+              </span>
+            </div>
             {(chats[active.id] || []).map(msg => (
               <div key={msg.id} className={`msg-row ${msg.from === 'me' ? 'me' : ''}`}>
                 {msg.from !== 'me' && (
@@ -149,17 +144,18 @@ export default function MessagesPage() {
 
           {/* Input */}
           <div className="chat-input-bar">
-            {[['😊', 'Emoji'], ['🖼️', 'Foto/Vídeo'], ['🎞️', 'GIF'], ['✨', 'Figurinha'], ['🎤', 'Áudio']].map(([ic, title]) => (
-              <button key={title} className="chat-input-icon" title={title} style={{ fontSize: '16px' }}>{ic}</button>
-            ))}
+            <button className="chat-input-icon" title="Anexo" style={{ fontSize:20 }}>📎</button>
+            <button className="chat-input-icon" title="Emoji" style={{ fontSize:20 }}>😊</button>
             <input
               className="chat-input"
-              placeholder="Digite uma mensagem…"
+              placeholder="Digite uma mensagem..."
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && send()}
             />
-            <button className="chat-send-btn" onClick={send} title="Enviar">➤</button>
+            <button className="chat-send-btn" onClick={send} style={{ background:'linear-gradient(135deg,#6A00F4,#00A8FF)', border:'none' }}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
           </div>
         </div>
       ) : (
@@ -168,6 +164,6 @@ export default function MessagesPage() {
         </div>
       )}
     </div>
+    </div>
   );
 }
-      

@@ -1,3 +1,4 @@
+import Topbar from '../components/layout/Topbar';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../utils/api';
@@ -71,7 +72,9 @@ export default function FriendsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
+    <div className="page-scroll">
+      <Topbar />
+      <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px' }}>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
         Amigos
@@ -156,6 +159,7 @@ export default function FriendsPage() {
         ))}
       </div>
 
+    </div>
     </div>
   );
 }
