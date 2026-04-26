@@ -10,9 +10,9 @@ const CONV_TABS = [
 
 export default function MessagesPage() {
   const { user } = useAuth();
-  const [active, setActive]       = useState(MOCK_CONVERSATIONS[0]);
-  const [chats, setChats]         = useState(MOCK_CHAT_MESSAGES);
-  const [text, setText]           = useState('');
+  const [active, setActive] = useState(MOCK_CONVERSATIONS[0]);
+  const [chats, setChats] = useState(MOCK_CHAT_MESSAGES);
+  const [text, setText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
 
@@ -149,7 +149,7 @@ export default function MessagesPage() {
 
           {/* Input */}
           <div className="chat-input-bar">
-            {[['😊','Emoji'], ['🖼️','Foto/Vídeo'], ['🎞️','GIF'], ['✨','Figurinha'], ['🎤','Áudio']].map(([ic, title]) => (
+            {[['😊', 'Emoji'], ['🖼️', 'Foto/Vídeo'], ['🎞️', 'GIF'], ['✨', 'Figurinha'], ['🎤', 'Áudio']].map(([ic, title]) => (
               <button key={title} className="chat-input-icon" title={title} style={{ fontSize: '16px' }}>{ic}</button>
             ))}
             <input
@@ -170,31 +170,4 @@ export default function MessagesPage() {
     </div>
   );
 }
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Input */}
-          <div className="chat-input-bar">
-            {[['😊','Emoji'], ['🖼️','Foto/Vídeo'], ['🎞️','GIF'], ['✨','Figurinha'], ['🎤','Áudio']].map(([ic, title]) => (
-              <button key={title} className="chat-input-icon" title={title}>{ic}</button>
-            ))}
-            <input
-              className="chat-input"
-              placeholder="Mensagem…"
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send()}
-            />
-            <button className="chat-send-btn" onClick={send}>➤</button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', background: 'var(--page-bg)' }}>
-          Selecione uma conversa para começar
-        </div>
-      )}
-    </div>
-  );
-}
+      
