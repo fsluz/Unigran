@@ -321,12 +321,40 @@ export default function SettingsPage({ onLogout }) {
 
           {section === 'seguranca' && (
             <Section title="Segurança" desc="Proteja o acesso à sua conta">
-              <Row title="Autenticação em dois fatores" sub="Camada extra de proteção com código SMS ou app">
+              <Row title="Autenticação em dois fatores (2FA)" sub="Camada extra de proteção com código SMS ou app authenticator">
                 <Toggle checked={cfg.twoFactor} onChange={() => { toggle('twoFactor'); showToast(cfg.twoFactor ? '2FA desativado' : '2FA ativado', '🔒'); }} />
               </Row>
-              <Row title="Sessões ativas" sub="2 dispositivos conectados">
-                <Button variant="secondary" size="sm" onClick={() => showToast('Gerenciar sessões', '📱')}>Gerenciar</Button>
-              </Row>
+              
+              {/* Sessões ativas */}
+              <div style={{ marginTop: 20, marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>📱 Sessões Ativas</div>
+                <div className="session-item">
+                  <div className="session-info">
+                    <div className="session-device">
+                      <span className="session-device-icon">💻</span>
+                      Chrome • Windows 11
+                    </div>
+                    <div className="session-location">Curitiba, PR • Agora</div>
+                  </div>
+                  <div className="session-status">
+                    🟢 Ativo
+                  </div>
+                </div>
+                <div className="session-item">
+                  <div className="session-info">
+                    <div className="session-device">
+                      <span className="session-device-icon">📱</span>
+                      Safari • iPhone 15
+                    </div>
+                    <div className="session-location">São Paulo, SP • 3h atrás</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inativo</span>
+                    <button className="session-action-btn">Desconectar</button>
+                  </div>
+                </div>
+              </div>
+
               <Row title="Histórico de acesso" sub="Veja os últimos logins">
                 <Button variant="secondary" size="sm" onClick={() => showToast('Histórico carregado', '📋')}>Ver</Button>
               </Row>
