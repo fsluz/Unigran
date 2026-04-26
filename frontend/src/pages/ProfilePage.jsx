@@ -103,7 +103,7 @@ export default function ProfilePage() {
 
           <div className="profile-achievements">
             <span className="profile-achievements-label">Conquistas:</span>
-            {user.achievements.map((a, i) => (
+            {(user.achievements || []).map((a, i) => (
               <div key={i} className="achievement-circle" title={`Conquista ${i + 1}`}>{a}</div>
             ))}
             <span className="achievement-more">+3</span>
