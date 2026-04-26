@@ -58,9 +58,7 @@ export default function HomePage() {
 
       <div className="page-layout">
         <main className="section-grid">
-          <div className="panel-card">
-            <PostComposer onSubmit={handleNewPost} placeholder="No que você está pensando?" />
-          </div>
+          <PostComposer onSubmit={handleNewPost} placeholder="No que você está pensando?" />
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {['Para você', 'Seguindo', 'Tendências'].map((t, i) => (

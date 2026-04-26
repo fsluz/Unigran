@@ -191,7 +191,7 @@
 }
 
 /* ── RIGHT PANEL ── */
-.right-panel { width: 280px; flex-shrink: 0; overflow-y: auto; padding: 22px 18px; border-left: 1px solid rgba(148,163,184,0.10); background: rgba(15,23,42,0.95); }
+.right-panel { width: 280px; flex-shrink: 0; overflow-y: auto; padding: 22px 18px; border-left: 1px solid var(--border); background: var(--right-panel-bg); }
 .right-section { margin-bottom: 26px; }
 .right-section-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
 

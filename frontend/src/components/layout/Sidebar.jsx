@@ -57,7 +57,7 @@ function UnigranLogo() {
   );
 }
 
-export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTheme }) {
+export default function Sidebar({ page, onNavigate, searchOpen }) {
   const { user } = useAuth();
 
   return (
@@ -88,16 +88,6 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
       })}
 
       <div className="sidebar-spacer" />
-
-      {/* Theme toggle */}
-      <div
-        className="sidebar-nav-item"
-        title={dark ? 'Modo Claro' : 'Modo Escuro'}
-        onClick={onToggleTheme}
-        style={{ fontSize: 18 }}
-      >
-        {dark ? '☀️' : '🌙'}
-      </div>
 
       {/* User avatar */}
       <div
