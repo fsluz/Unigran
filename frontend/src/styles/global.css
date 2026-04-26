@@ -2,40 +2,40 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  /* Sidebar */
+/* ── DARK THEME (default) ── */
+:root, [data-theme="dark"] {
   --sidebar-bg:    #05091e;
   --sidebar-icon:  #9ca3af;
   --sidebar-active:#7c3aed;
   --sidebar-hover: rgba(124,58,237,0.14);
 
-  /* Page */
   --page-bg:       #070b1b;
   --card:          #0f172a;
   --card-hover:    #15243e;
   --border:        rgba(148,163,184,0.18);
   --border-soft:   rgba(148,163,184,0.12);
 
-  /* Typography */
   --text:          #e2e8f0;
   --text-2:        #cbd5e1;
   --text-muted:    #94a3b8;
   --text-light:    #64748b;
 
-  /* Accent */
   --accent:        #8b5cf6;
   --accent-2:      #6366f1;
   --accent-light:  rgba(139,92,246,0.16);
   --accent-glow:   rgba(139,92,246,0.22);
 
-  /* Semantic */
   --green:         #22c55e;
   --red:           #f97316;
   --orange:        #f59e0b;
   --purple:        #a855f7;
   --red-light:     rgba(249,115,22,0.12);
+  --danger:        #ef4444;
 
-  /* Misc */
+  --input-bg:      rgba(255,255,255,0.04);
+  --topbar-bg:     rgba(15,23,42,0.92);
+  --right-panel-bg:rgba(15,23,42,0.95);
+
   --radius:        14px;
   --radius-sm:     10px;
   --radius-xs:     6px;
@@ -46,6 +46,45 @@
   --font-head:     'Syne', sans-serif;
   --font-body:     'Inter', sans-serif;
   --sidebar-w:     74px;
+}
+
+/* ── LIGHT THEME ── */
+[data-theme="light"] {
+  --sidebar-bg:    #ffffff;
+  --sidebar-icon:  #6b7280;
+  --sidebar-active:#7c3aed;
+  --sidebar-hover: rgba(124,58,237,0.09);
+
+  --page-bg:       #f4f2ff;
+  --card:          #ffffff;
+  --card-hover:    #faf9ff;
+  --border:        rgba(109,40,217,0.12);
+  --border-soft:   rgba(109,40,217,0.07);
+
+  --text:          #1a0050;
+  --text-2:        #3b2a7a;
+  --text-muted:    #6b5b9a;
+  --text-light:    #9b8ec4;
+
+  --accent:        #7c3aed;
+  --accent-2:      #6366f1;
+  --accent-light:  rgba(124,58,237,0.10);
+  --accent-glow:   rgba(124,58,237,0.18);
+
+  --green:         #16a34a;
+  --red:           #dc2626;
+  --orange:        #d97706;
+  --purple:        #9333ea;
+  --red-light:     rgba(220,38,38,0.10);
+  --danger:        #dc2626;
+
+  --input-bg:      #faf9ff;
+  --topbar-bg:     rgba(255,255,255,0.95);
+  --right-panel-bg:rgba(248,246,255,0.98);
+
+  --shadow-sm:     0 4px 12px rgba(109,40,217,0.07);
+  --shadow:        0 10px 36px rgba(109,40,217,0.10);
+  --shadow-lg:     0 18px 54px rgba(109,40,217,0.13);
 }
 
 html, body, #root { height: 100%; }
@@ -60,6 +99,13 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s, color 0.3s;
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(circle at top left, rgba(124,58,237,0.08), transparent 28%),
+              radial-gradient(circle at bottom right, rgba(99,102,241,0.06), transparent 30%),
+              var(--page-bg);
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }

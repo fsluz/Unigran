@@ -5,28 +5,26 @@ import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
 
-/* Formata data da última alteração de senha */
 function formatPasswordDate(iso) {
   if (!iso) return 'Nunca alterada';
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (diff < 60)   return 'Alterada agora mesmo';
-  if (diff < 3600) return `Há ${Math.floor(diff / 60)} minuto(s)`;
+  if (diff < 60)    return 'Alterada agora mesmo';
+  if (diff < 3600)  return `Há ${Math.floor(diff / 60)} minuto(s)`;
   if (diff < 86400) return `Há ${Math.floor(diff / 3600)} hora(s)`;
   const days = Math.floor(diff / 86400);
   if (days === 1)  return 'Há 1 dia';
-  if (days < 30)  return `Há ${days} dias`;
-  if (days < 365) return `Há ${Math.floor(days / 30)} mês(es)`;
+  if (days < 30)   return `Há ${days} dias`;
+  if (days < 365)  return `Há ${Math.floor(days / 30)} mês(es)`;
   return `Há ${Math.floor(days / 365)} ano(s)`;
 }
 
-/* ── Nav groups ── */
 const BASE_GROUPS = [
   {
     title: 'Conta',
     items: [
-      { id: 'pessoal',  icon: '👤', label: 'Dados Pessoais' },
-      { id: 'seguranca',icon: '🔒', label: 'Segurança' },
-      { id: 'email',    icon: '📧', label: 'Email & Senha' },
+      { id: 'pessoal',   icon: '👤', label: 'Dados Pessoais' },
+      { id: 'seguranca', icon: '🔒', label: 'Segurança' },
+      { id: 'email',     icon: '📧', label: 'Email & Senha' },
     ],
   },
   {
@@ -50,7 +48,6 @@ const ADMIN_GROUP = {
   items: [{ id: 'admin', icon: '👑', label: 'Painel Admin' }],
 };
 
-/* ── Helpers ── */
 function Section({ title, desc, children }) {
   return (
     <div className="settings-section">
@@ -73,13 +70,134 @@ function Row({ title, sub, children }) {
   );
 }
 
+/* ── Accordion / Dropdown para Trocar Senha ── */
+function PasswordAccordion({ onSuccess }) {
+  const { token } = useAuth();
+  const { showToast } = useToast();
+
+  const [open, setOpen]       = useState(false);
+  const [form, setForm]       = useState({ current: '', next: '', confirm: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+  const [visible, setVisible] = useState({ current: false, next: false, confirm: false });
+
+  const toggle = () => { setOpen(p => !p); setError(''); };
+
+  async function handleSave() {
+    setError('');
+    if (!form.current)             { setError('Informe a senha atual.');                        return; }
+    if (form.next.length < 6)      { setError('A nova senha deve ter pelo menos 6 caracteres.'); return; }
+    if (form.next !== form.confirm) { setError('As senhas não coincidem.');                      return; }
+
+    setLoading(true);
+    try {
+      const res = await apiFetch('/auth/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: form.current, newPassword: form.next, confirmPassword: form.confirm }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao alterar senha');
+      onSuccess?.(data.passwordChangedAt);
+      setForm({ current: '', next: '', confirm: '' });
+      setOpen(false);
+      showToast('Senha alterada com sucesso!', '✅');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const eyeBtn = (key) => (
+    <button
+      type="button"
+      onClick={() => setVisible(p => ({ ...p, [key]: !p[key] }))}
+      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, color: 'var(--text-muted)', padding: 0 }}
+    >
+      {visible[key] ? '🙈' : '👁️'}
+    </button>
+  );
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 0 }}>
+      {/* Header / trigger */}
+      <button
+        type="button"
+        onClick={toggle}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔑</div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>Trocar senha</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Clique para alterar sua senha</div>
+          </div>
+        </div>
+        <svg
+          width={16} height={16} viewBox="0 0 24 24" fill="none"
+          stroke="var(--text-muted)" strokeWidth={2} strokeLinecap="round"
+          style={{ transform: `rotate(${open ? 180 : 0}deg)`, transition: 'transform 0.3s ease', flexShrink: 0 }}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {/* Animated body */}
+      <div style={{
+        maxHeight: open ? 420 : 0,
+        overflow: 'hidden',
+        transition: 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        <div style={{ padding: '0 20px 20px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ height: 16 }} />
+
+          {[
+            { key: 'current', label: 'Senha atual',         placeholder: '••••••••' },
+            { key: 'next',    label: 'Nova senha',           placeholder: 'Mínimo 6 caracteres' },
+            { key: 'confirm', label: 'Confirmar nova senha', placeholder: '••••••••' },
+          ].map(f => (
+            <div key={f.key} style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={visible[f.key] ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder={f.placeholder}
+                  value={form[f.key]}
+                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ paddingRight: 40 }}
+                />
+                {eyeBtn(f.key)}
+              </div>
+            </div>
+          ))}
+
+          {error && (
+            <p style={{ color: 'var(--danger, #ef4444)', marginBottom: 12, fontSize: 13 }}>{error}</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={handleSave} disabled={loading}>
+              {loading ? 'Salvando…' : 'Salvar senha'}
+            </Button>
+            <Button variant="secondary" onClick={() => { setOpen(false); setForm({ current: '', next: '', confirm: '' }); setError(''); }}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main ── */
 export default function SettingsPage({ onLogout }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
 
   const [section, setSection] = useState('pessoal');
-  const [cfg, setCfg]         = useState({
+  const [cfg, setCfg] = useState({
     profileVisibility: 'public',
     whoCanMsg:         'everyone',
     showEmail:         false,
@@ -91,72 +209,29 @@ export default function SettingsPage({ onLogout }) {
   });
 
   const [emailModal,  setEmailModal]  = useState(false);
-  const [passModal,   setPassModal]   = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 
-  /* ── Estado do modal de senha ── */
-  const [passForm, setPassForm] = useState({ current: '', next: '', confirm: '' });
-  const [passLoading, setPassLoading] = useState(false);
-  const [passError,   setPassError]   = useState('');
-  const [passVisible, setPassVisible] = useState({ current: false, next: false, confirm: false });
-
-  /* ── Estado do modal de deletar conta ── */
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading,  setDeleteLoading]  = useState(false);
   const [deleteError,    setDeleteError]    = useState('');
   const [showDeletePass, setShowDeletePass] = useState(false);
   const [passwordChangedAt, setPasswordChangedAt] = useState(() => user?.passwordChangedAt || null);
 
-  /* ── Modais de edição de dados pessoais ── */
-  const [editField,   setEditField]   = useState(null); // 'displayName' | 'phone'
+  const [editField,   setEditField]   = useState(null);
   const [editValue,   setEditValue]   = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [editError,   setEditError]   = useState('');
 
   const toggle = key => setCfg(p => ({ ...p, [key]: !p[key] }));
 
-  /* Alterar senha */
-  async function handleChangePassword() {
-    setPassError('');
-    if (!passForm.current) { setPassError('Informe a senha atual.'); return; }
-    if (passForm.next.length < 6) { setPassError('A nova senha deve ter pelo menos 6 caracteres.'); return; }
-    if (passForm.next !== passForm.confirm) { setPassError('As senhas não coincidem.'); return; }
-
-    setPassLoading(true);
-    try {
-      const res = await apiFetch('/auth/change-password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ currentPassword: passForm.current, newPassword: passForm.next, confirmPassword: passForm.confirm }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao alterar senha');
-      if (data.passwordChangedAt) setPasswordChangedAt(data.passwordChangedAt);
-      setPassModal(false);
-      setPassForm({ current: '', next: '', confirm: '' });
-      showToast('Senha alterada com sucesso!', '✅');
-    } catch (err) {
-      setPassError(err.message);
-    } finally {
-      setPassLoading(false);
-    }
-  }
-
-  /* Deletar conta */
   async function handleDeleteAccount() {
     setDeleteError('');
     if (!deletePassword) { setDeleteError('Informe sua senha para confirmar.'); return; }
-
     setDeleteLoading(true);
     try {
-      const res = await apiFetch('/auth/account', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ password: deletePassword }),
-      });
+      const res  = await apiFetch('/auth/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ password: deletePassword }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao deletar conta');
-      // Desloga e redireciona
       onLogout();
     } catch (err) {
       setDeleteError(err.message);
@@ -167,51 +242,29 @@ export default function SettingsPage({ onLogout }) {
 
   const groups = [...BASE_GROUPS, ...(user?.role === 'admin' ? [ADMIN_GROUP] : [])];
 
-  /* Abre o modal de edição com o valor atual */
   function openEdit(field) {
     setEditField(field);
     setEditValue(field === 'displayName' ? (user?.displayName || '') : (user?.phone || ''));
     setEditError('');
   }
 
-  /* Valida e envia para o backend */
   async function handleSaveEdit() {
     setEditError('');
-
     if (editField === 'displayName') {
-      if (!editValue.trim()) { setEditError('O nome não pode ser vazio.'); return; }
-      if (editValue.trim().length < 2) { setEditError('O nome deve ter pelo menos 2 caracteres.'); return; }
+      if (!editValue.trim())         { setEditError('O nome não pode ser vazio.');                           return; }
+      if (editValue.trim().length < 2){ setEditError('O nome deve ter pelo menos 2 caracteres.');            return; }
     }
     if (editField === 'phone') {
       const digits = editValue.replace(/\D/g, '');
       if (editValue && digits.length < 10) { setEditError('Telefone inválido. Use ao menos 10 dígitos.'); return; }
     }
-
     setEditLoading(true);
     try {
-      const body = editField === 'displayName'
-        ? { displayName: editValue.trim() }
-        : { phone: editValue.trim() };
-
-      const res = await apiFetch(`/users/${user.username}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Erro ao salvar');
-      }
-
+      const body = editField === 'displayName' ? { displayName: editValue.trim() } : { phone: editValue.trim() };
+      const res  = await apiFetch(`/users/${user.username}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Erro ao salvar'); }
       updateUser(body);
-      showToast(
-        editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!',
-        '✅'
-      );
+      showToast(editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!', '✅');
       setEditField(null);
     } catch (err) {
       setEditError(err.message || 'Erro ao salvar. Tente novamente.');
@@ -255,19 +308,13 @@ export default function SettingsPage({ onLogout }) {
           {section === 'pessoal' && (
             <Section title="Dados Pessoais" desc="Gerencie suas informações de perfil">
               <Row title="Nome completo" sub={user?.displayName}>
-                <Button variant="secondary" size="sm" onClick={() => openEdit('displayName')}>
-                  Editar
-                </Button>
+                <Button variant="secondary" size="sm" onClick={() => openEdit('displayName')}>Editar</Button>
               </Row>
               <Row title="Usuário" sub={`@${user?.username}`}>
-                <Button variant="secondary" size="sm" disabled title="O nome de usuário não pode ser alterado">
-                  Editar
-                </Button>
+                <Button variant="secondary" size="sm" disabled title="O nome de usuário não pode ser alterado">Editar</Button>
               </Row>
               <Row title="Telefone" sub={user?.phone || 'Não informado'}>
-                <Button variant="secondary" size="sm" onClick={() => openEdit('phone')}>
-                  Editar
-                </Button>
+                <Button variant="secondary" size="sm" onClick={() => openEdit('phone')}>Editar</Button>
               </Row>
             </Section>
           )}
@@ -291,9 +338,12 @@ export default function SettingsPage({ onLogout }) {
               <Row title="Email atual" sub={user?.email}>
                 <Button variant="secondary" size="sm" onClick={() => setEmailModal(true)}>Alterar</Button>
               </Row>
-              <Row title="Senha" sub={`Última alteração: ${formatPasswordDate(passwordChangedAt)}`}>
-                <Button variant="secondary" size="sm" onClick={() => setPassModal(true)}>Alterar</Button>
-              </Row>
+              <Row title="Senha" sub={`Última alteração: ${formatPasswordDate(passwordChangedAt)}`} />
+
+              {/* ── Accordion de senha ── */}
+              <div style={{ marginTop: 12 }}>
+                <PasswordAccordion onSuccess={(date) => setPasswordChangedAt(date)} />
+              </div>
             </Section>
           )}
 
@@ -335,9 +385,9 @@ export default function SettingsPage({ onLogout }) {
           {section === 'notificacoes' && (
             <Section title="Notificações" desc="Escolha como quer ser notificado">
               {[
-                ['Notificações push', 'Receber notificações no navegador', 'pushNotif'],
-                ['Email de notificações', 'Receber resumo de atividades por email', 'emailNotif'],
-                ['Emails de marketing', 'Novidades, dicas e promoções', 'marketing'],
+                ['Notificações push',    'Receber notificações no navegador',   'pushNotif'],
+                ['Email de notificações','Receber resumo de atividades por email','emailNotif'],
+                ['Emails de marketing',  'Novidades, dicas e promoções',         'marketing'],
               ].map(([title, sub, key]) => (
                 <Row key={key} title={title} sub={sub}>
                   <Toggle checked={cfg[key]} onChange={() => toggle(key)} />
@@ -360,12 +410,12 @@ export default function SettingsPage({ onLogout }) {
           {section === 'admin' && user?.role === 'admin' && (
             <Section title="Painel Administrativo" desc="Controles avançados da plataforma Unigran">
               {[
-                ['👥', 'Gerenciar usuários', '345 usuários ativos'],
-                ['🗑️', 'Posts reportados', '12 pendentes de revisão'],
-                ['🏘️', 'Comunidades', '28 comunidades na plataforma'],
-                ['🚫', 'Usuários banidos', '5 banimentos ativos'],
-                ['📊', 'Analytics', 'Estatísticas gerais da plataforma'],
-                ['📣', 'Enviar comunicado', 'Notificar todos os usuários'],
+                ['👥', 'Gerenciar usuários',   '345 usuários ativos'],
+                ['🗑️', 'Posts reportados',     '12 pendentes de revisão'],
+                ['🏘️', 'Comunidades',          '28 comunidades na plataforma'],
+                ['🚫', 'Usuários banidos',     '5 banimentos ativos'],
+                ['📊', 'Analytics',             'Estatísticas gerais da plataforma'],
+                ['📣', 'Enviar comunicado',     'Notificar todos os usuários'],
               ].map(([icon, label, sub]) => (
                 <Row key={label} title={`${icon} ${label}`} sub={sub}>
                   <Button variant="secondary" size="sm" onClick={() => showToast(`Abrindo: ${label}`, '🔧')}>Acessar</Button>
@@ -377,7 +427,7 @@ export default function SettingsPage({ onLogout }) {
         </div>
       </div>
 
-      {/* ── Modal editar nome / telefone ── */}
+      {/* Edit name/phone modal */}
       {editField && (
         <Modal
           title={editField === 'displayName' ? 'Alterar Nome' : 'Alterar Telefone'}
@@ -385,120 +435,34 @@ export default function SettingsPage({ onLogout }) {
           footer={
             <>
               <Button variant="secondary" onClick={() => setEditField(null)} disabled={editLoading}>Cancelar</Button>
-              <Button onClick={handleSaveEdit} disabled={editLoading}>
-                {editLoading ? 'Salvando…' : 'Salvar'}
-              </Button>
+              <Button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Salvando…' : 'Salvar'}</Button>
             </>
           }
         >
           {editField === 'displayName' && (
             <FormField label="Novo nome completo">
-              <input
-                className="form-input"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                placeholder="Seu nome completo"
-                autoFocus
-                maxLength={80}
-              />
+              <input className="form-input" value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="Seu nome completo" autoFocus maxLength={80} />
             </FormField>
           )}
-
           {editField === 'phone' && (
             <FormField label="Número de telefone">
-              <input
-                className="form-input"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                placeholder="(44) 99999-9999"
-                autoFocus
-                maxLength={20}
-                type="tel"
-              />
+              <input className="form-input" value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="(44) 99999-9999" autoFocus maxLength={20} type="tel" />
             </FormField>
           )}
-
-          {editError && (
-            <p style={{ color: 'var(--danger, #e55)', marginTop: 8, fontSize: 14 }}>
-              {editError}
-            </p>
-          )}
+          {editError && <p style={{ color: 'var(--danger, #ef4444)', marginTop: 8, fontSize: 14 }}>{editError}</p>}
         </Modal>
       )}
 
       {/* Email modal */}
       {emailModal && (
-        <Modal title="Alterar Email" onClose={() => setEmailModal(false)}
+        <Modal
+          title="Alterar Email"
+          onClose={() => setEmailModal(false)}
           footer={<><Button variant="secondary" onClick={() => setEmailModal(false)}>Cancelar</Button><Button onClick={() => { setEmailModal(false); showToast('Email atualizado!', '✅'); }}>Salvar</Button></>}
         >
           <FormField label="Email atual"><input className="form-input" defaultValue={user?.email} disabled /></FormField>
           <FormField label="Novo email"><input type="email" className="form-input" placeholder="novo@email.com" /></FormField>
           <FormField label="Confirmar novo email"><input type="email" className="form-input" placeholder="novo@email.com" /></FormField>
-        </Modal>
-      )}
-
-      {/* Password modal */}
-      {passModal && (
-        <Modal
-          title="Alterar Senha"
-          onClose={() => { if (!passLoading) { setPassModal(false); setPassForm({ current: '', next: '', confirm: '' }); setPassError(''); setPassVisible({ current: false, next: false, confirm: false }); } }}
-          footer={
-            <>
-              <Button variant="secondary" onClick={() => { setPassModal(false); setPassForm({ current: '', next: '', confirm: '' }); setPassError(''); setPassVisible({ current: false, next: false, confirm: false }); }} disabled={passLoading}>
-                Cancelar
-              </Button>
-              <Button onClick={handleChangePassword} disabled={passLoading}>
-                {passLoading ? 'Salvando…' : 'Salvar'}
-              </Button>
-            </>
-          }
-        >
-          <FormField label="Senha atual">
-            <div style={{ position: 'relative' }}>
-              <input
-                type={passVisible.current ? 'text' : 'password'}
-                className="form-input" placeholder="••••••••" autoFocus
-                value={passForm.current}
-                onChange={e => setPassForm(p => ({ ...p, current: e.target.value }))}
-                style={{ paddingRight: 40 }}
-              />
-              <button type="button" onClick={() => setPassVisible(p => ({ ...p, current: !p.current }))}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
-                {passVisible.current ? '🙈' : '👁️'}
-              </button>
-            </div>
-          </FormField>
-          <FormField label="Nova senha">
-            <div style={{ position: 'relative' }}>
-              <input
-                type={passVisible.next ? 'text' : 'password'}
-                className="form-input" placeholder="Mínimo 6 caracteres"
-                value={passForm.next}
-                onChange={e => setPassForm(p => ({ ...p, next: e.target.value }))}
-                style={{ paddingRight: 40 }}
-              />
-              <button type="button" onClick={() => setPassVisible(p => ({ ...p, next: !p.next }))}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
-                {passVisible.next ? '🙈' : '👁️'}
-              </button>
-            </div>
-          </FormField>
-          <FormField label="Confirmar nova senha">
-            <div style={{ position: 'relative' }}>
-              <input
-                type={passVisible.confirm ? 'text' : 'password'}
-                className="form-input" placeholder="••••••••"
-                value={passForm.confirm}
-                onChange={e => setPassForm(p => ({ ...p, confirm: e.target.value }))}
-                style={{ paddingRight: 40 }}
-              />
-              <button type="button" onClick={() => setPassVisible(p => ({ ...p, confirm: !p.confirm }))}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
-                {passVisible.confirm ? '🙈' : '👁️'}
-              </button>
-            </div>
-          </FormField>
-          {passError && <p style={{ color: 'var(--danger, #e55)', marginTop: 8, fontSize: 14 }}>{passError}</p>}
         </Modal>
       )}
 
@@ -509,12 +473,8 @@ export default function SettingsPage({ onLogout }) {
           onClose={() => { if (!deleteLoading) { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); } }}
           footer={
             <>
-              <Button variant="secondary" onClick={() => { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); }} disabled={deleteLoading}>
-                Cancelar
-              </Button>
-              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>
-                {deleteLoading ? 'Deletando…' : 'Confirmar exclusão'}
-              </Button>
+              <Button variant="secondary" onClick={() => { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); }} disabled={deleteLoading}>Cancelar</Button>
+              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>{deleteLoading ? 'Deletando…' : 'Confirmar exclusão'}</Button>
             </>
           }
         >
@@ -523,22 +483,13 @@ export default function SettingsPage({ onLogout }) {
           </p>
           <FormField label="Digite sua senha para confirmar">
             <div style={{ position: 'relative' }}>
-              <input
-                className="form-input"
-                type={showDeletePass ? 'text' : 'password'}
-                placeholder="••••••••"
-                autoFocus
-                value={deletePassword}
-                onChange={e => setDeletePassword(e.target.value)}
-                style={{ paddingRight: 40 }}
-              />
-              <button type="button" onClick={() => setShowDeletePass(v => !v)}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
+              <input className="form-input" type={showDeletePass ? 'text' : 'password'} placeholder="••••••••" autoFocus value={deletePassword} onChange={e => setDeletePassword(e.target.value)} style={{ paddingRight: 40 }} />
+              <button type="button" onClick={() => setShowDeletePass(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
                 {showDeletePass ? '🙈' : '👁️'}
               </button>
             </div>
           </FormField>
-          {deleteError && <p style={{ color: 'var(--danger, #e55)', marginTop: 8, fontSize: 14 }}>{deleteError}</p>}
+          {deleteError && <p style={{ color: 'var(--danger, #ef4444)', marginTop: 8, fontSize: 14 }}>{deleteError}</p>}
         </Modal>
       )}
     </div>

@@ -8,15 +8,25 @@ import { MOCK_POSTS } from '../data/mock';
 
 const TABS = ['Portfólio', 'Atividades', 'Sobre'];
 
+const POST_FILTERS = [
+  { id: 'all',   label: 'Todos' },
+  { id: 'text',  label: '📝 Texto' },
+  { id: 'media', label: '🖼️ Foto/Vídeo' },
+  { id: 'date',  label: '📅 Por data' },
+];
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const { showToast }        = useToast();
 
   const [tab, setTab]               = useState('Portfólio');
+  const [postFilter, setPostFilter] = useState('all');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
-  const [posts, setPosts]           = useState(MOCK_POSTS.filter(p => p.author.id === user.id));
-  const [editForm, setEditForm]     = useState({
+  const [posts, setPosts]           = useState(
+    MOCK_POSTS.filter(p => p.author.id === user.id)
+  );
+  const [editForm, setEditForm] = useState({
     displayName: user.displayName,
     bio:         user.bio,
     institution: user.institution,
@@ -32,6 +42,22 @@ export default function ProfilePage() {
     setPosts(prev => prev.filter(p => p.id !== id));
     showToast('Post excluído', '🗑️');
   };
+
+  const editPost = (id, newText) => {
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, content: newText, edited: true } : p));
+    showToast('Post editado!', '✏️');
+  };
+
+  const filteredPosts = posts.filter(p => {
+    if (postFilter === 'all' || postFilter === 'date') return true;
+    if (postFilter === 'text') return p.type !== 'media';
+    if (postFilter === 'media') return p.type === 'media';
+    return true;
+  });
+
+  const sortedPosts = postFilter === 'date'
+    ? [...filteredPosts].sort((a, b) => (b.id > a.id ? 1 : -1))
+    : filteredPosts;
 
   return (
     <div className="page-scroll">
@@ -95,14 +121,35 @@ export default function ProfilePage() {
       <div className="profile-tab-content">
         {tab === 'Portfólio' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
-            {posts.length === 0 ? (
+            {/* Post filters */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+              {POST_FILTERS.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setPostFilter(f.id)}
+                  style={{
+                    padding: '7px 16px', borderRadius: 20, border: `1px solid ${postFilter === f.id ? 'var(--accent)' : 'var(--border)'}`,
+                    background: postFilter === f.id ? 'var(--accent-light)' : 'transparent',
+                    color: postFilter === f.id ? 'var(--accent)' : 'var(--text-muted)',
+                    fontWeight: postFilter === f.id ? 700 : 400, fontSize: 13, cursor: 'pointer', transition: 'all .15s',
+                  }}
+                >{f.label}</button>
+              ))}
+            </div>
+
+            {sortedPosts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
                 Nenhuma publicação ainda.
               </div>
             ) : (
-              posts.map(post => (
+              sortedPosts.map(post => (
                 <div key={post.id} style={{ marginBottom: 10 }}>
-                  <PostCard post={post} onDelete={deletePost} onOpenDetail={setOpenPost} />
+                  <PostCard
+                    post={post}
+                    onDelete={deletePost}
+                    onEdit={editPost}
+                    onOpenDetail={setOpenPost}
+                  />
                 </div>
               ))
             )}
@@ -119,10 +166,10 @@ export default function ProfilePage() {
         {tab === 'Sobre' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {[
-              ['📧', 'Email',        user.email],
-              ['📞', 'Telefone',     user.phone],
-              ['🎓', 'Instituição',  user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
-              ['🛡️', 'Função',      user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
+              ['📧', 'Email',       user.email],
+              ['📞', 'Telefone',    user.phone],
+              ['🎓', 'Instituição', user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
+              ['🛡️', 'Função',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>

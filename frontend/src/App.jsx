@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import FriendsPage from './pages/FriendsPage';
@@ -18,11 +18,19 @@ import SettingsPage       from './pages/SettingsPage';
 /* ── Shell (requires auth context) ── */
 function AppShell() {
   const { user, logout } = useAuth();
-  const [page, setPage]           = useState('home');
-  const [authView, setAuthView]   = useState('login');
-  const [searchOpen, setSearch]   = useState(false);
+  const [page, setPage]         = useState('home');
+  const [authView, setAuthView] = useState('login');
+  const [searchOpen, setSearch] = useState(false);
+  const [dark, setDark]         = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true;
+  });
 
-  /* Not logged in */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }, [dark]);
+
   if (!user) {
     return authView === 'login'
       ? <LoginPage    onGoRegister={() => setAuthView('register')} />
@@ -53,7 +61,13 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      <Sidebar page={page} onNavigate={navigate} searchOpen={searchOpen} />
+      <Sidebar
+        page={page}
+        onNavigate={navigate}
+        searchOpen={searchOpen}
+        dark={dark}
+        onToggleTheme={() => setDark(d => !d)}
+      />
       {searchOpen && (
         <SearchPanel
           onNavigate={(p) => { setPage(p); setSearch(false); }}
@@ -64,7 +78,6 @@ function AppShell() {
   );
 }
 
-/* ── Root ── */
 export default function App() {
   return (
     <AuthProvider>
