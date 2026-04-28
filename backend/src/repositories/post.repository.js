@@ -18,6 +18,33 @@ function setCached(key, value) {
   cache.set(key, { at: Date.now(), value });
 }
 
+async function loadAllProfilesMap() {
+  const rows = await readQuery(`
+    match
+      $p isa person, has username $username, has name $name;
+      try { $p has profile-picture $profile_pic; };
+      try { $p has cover-picture $cover_pic; };
+    fetch {
+      "username": $username,
+      "name": $name,
+      "profile_picture": $profile_pic,
+      "cover_picture": $cover_pic
+    };
+  `);
+
+  const map = new Map();
+  for (const row of rows) {
+    if (!row?.username) continue;
+    map.set(row.username, {
+      username: row.username,
+      name: row.name || row.username,
+      profile_picture: row.profile_picture || null,
+      cover_picture: row.cover_picture || null,
+    });
+  }
+  return map;
+}
+
 export async function listFeed(limit, offset) {
   const key = `feed:${limit}:${offset}`;
   const cached = getCached(key);
@@ -57,7 +84,7 @@ export async function listFeed(limit, offset) {
             has comment-text $comment_text,
             has creation-timestamp $comment_ts;
 
-          $comment_author isa person, has name $comment_author_name;
+          $comment_author isa person, has username $comment_author_username, has name $comment_author_name;
           try { $comment_author has profile-picture $comment_author_profile_pic; };
           try { $comment_author has cover-picture $comment_author_cover_pic; };
 
@@ -66,6 +93,7 @@ export async function listFeed(limit, offset) {
           "text": $comment_text,
           "created_at": $comment_ts,
           "author": {
+            "username": $comment_author_username,
             "name": $comment_author_name,
             "profile_picture": $comment_author_profile_pic,
             "cover_picture": $comment_author_cover_pic
@@ -74,11 +102,13 @@ export async function listFeed(limit, offset) {
       ]
     };
   `);
+  const profilesMap = await loadAllProfilesMap();
 
   const normalized = rows.map((entry) => {
     const attrs = entry?.post_all_attributes || {};
     const comments = Array.isArray(entry?.comments) ? entry.comments : [];
     const mediaUrl = attrs['media-url'] || null;
+    const authorProfile = profilesMap.get(entry?.author?.username || '');
     return {
       id: entry?.post_id || attrs['post-id'] || uuid(),
       content: attrs['post-text'] || '',
@@ -89,23 +119,27 @@ export async function listFeed(limit, offset) {
         resource_type: attrs['media-type'] || 'image',
       } : null,
       author: {
-        id: entry?.author?.username || 'unknown',
-        username: entry?.author?.username || 'unknown',
-        displayName: entry?.author?.name || 'Usuário',
-        profilePicture: entry?.author?.profile_picture || null,
-        coverPicture: entry?.author?.cover_picture || null,
+        id: authorProfile?.username || entry?.author?.username || 'unknown',
+        username: authorProfile?.username || entry?.author?.username || 'unknown',
+        displayName: authorProfile?.name || entry?.author?.name || 'Usuário',
+        profilePicture: authorProfile?.profile_picture || entry?.author?.profile_picture || null,
+        coverPicture: authorProfile?.cover_picture || entry?.author?.cover_picture || null,
         role: 'user',
       },
-      comments: comments.map((comment) => ({
-        id: comment?.comment_id,
-        content: comment?.text || '',
-        time: comment?.created_at || null,
-        author: {
-          displayName: comment?.author?.name || 'Usuário',
-          profilePicture: comment?.author?.profile_picture || null,
-          coverPicture: comment?.author?.cover_picture || null,
-        },
-      })),
+      comments: comments.map((comment) => {
+        const commentAuthorProfile = profilesMap.get(comment?.author?.username || '');
+        return {
+          id: comment?.comment_id,
+          content: comment?.text || '',
+          time: comment?.created_at || null,
+          author: {
+            username: commentAuthorProfile?.username || comment?.author?.username || null,
+            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuário',
+            profilePicture: commentAuthorProfile?.profile_picture || comment?.author?.profile_picture || null,
+            coverPicture: commentAuthorProfile?.cover_picture || comment?.author?.cover_picture || null,
+          },
+        };
+      }),
     };
   });
 
