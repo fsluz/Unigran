@@ -25,38 +25,89 @@ export async function listFeed(limit, offset) {
 
   const rows = await readQuery(`
     match
-      $post isa post;
+      $post isa post,
+        has post-id $post_id,
+        has creation-timestamp $post_ts;
+
+      posting (post: $post, page: $user);
+      $user isa person, has username $username, has name $user_name;
+
+      try { $user has profile-picture $user_profile_pic; };
+      try { $user has cover-picture $user_cover_pic; };
+
     fetch {
-      "post": { $post.* }
+      "post_id": $post_id,
+      "created_at": $post_ts,
+
+      "author": {
+        "username": $username,
+        "name": $user_name,
+        "profile_picture": $user_profile_pic,
+        "cover_picture": $user_cover_pic
+      },
+
+      "post_all_attributes": { $post.* },
+
+      "comments": [
+        match
+          commenting (parent: $post, comment: $comment, author: $comment_author);
+
+          $comment isa comment,
+            has comment-id $comment_id,
+            has comment-text $comment_text,
+            has creation-timestamp $comment_ts;
+
+          $comment_author isa person, has name $comment_author_name;
+          try { $comment_author has profile-picture $comment_author_profile_pic; };
+          try { $comment_author has cover-picture $comment_author_cover_pic; };
+
+        fetch {
+          "comment_id": $comment_id,
+          "text": $comment_text,
+          "created_at": $comment_ts,
+          "author": {
+            "name": $comment_author_name,
+            "profile_picture": $comment_author_profile_pic,
+            "cover_picture": $comment_author_cover_pic
+          }
+        };
+      ]
     };
   `);
 
-  const normalized = rows
-    .map((row) => row?.post || row?.data?.post || row)
-    .filter(Boolean)
-    .map((post) => {
-      const attrs = Array.isArray(post) ? post : [];
-      const byLabel = (label) => attrs.find((attr) => attr?.type?.label === label)?.value ?? null;
-      return {
-        id: byLabel('post-id') || post?.iid || crypto.randomUUID?.() || uuid(),
-        content: byLabel('post-text') || '',
-        time: byLabel('creation-timestamp'),
-        media: byLabel('media-url') ? {
-          url: byLabel('media-url'),
-          public_id: byLabel('media-public-id'),
-          resource_type: byLabel('media-type'),
-        } : null,
-        // query solicitada retorna apenas dados do post
+  const normalized = rows.map((entry) => {
+    const attrs = entry?.post_all_attributes || {};
+    const comments = Array.isArray(entry?.comments) ? entry.comments : [];
+    const mediaUrl = attrs['media-url'] || null;
+    return {
+      id: entry?.post_id || attrs['post-id'] || uuid(),
+      content: attrs['post-text'] || '',
+      time: entry?.created_at || attrs['creation-timestamp'] || null,
+      media: mediaUrl ? {
+        url: mediaUrl,
+        public_id: attrs['media-public-id'] || null,
+        resource_type: attrs['media-type'] || 'image',
+      } : null,
+      author: {
+        id: entry?.author?.username || 'unknown',
+        username: entry?.author?.username || 'unknown',
+        displayName: entry?.author?.name || 'Usuário',
+        profilePicture: entry?.author?.profile_picture || null,
+        coverPicture: entry?.author?.cover_picture || null,
+        role: 'user',
+      },
+      comments: comments.map((comment) => ({
+        id: comment?.comment_id,
+        content: comment?.text || '',
+        time: comment?.created_at || null,
         author: {
-          id: 'unknown',
-          username: 'unknown',
-          displayName: 'Usuário',
-          profilePicture: null,
-          role: 'user',
+          displayName: comment?.author?.name || 'Usuário',
+          profilePicture: comment?.author?.profile_picture || null,
+          coverPicture: comment?.author?.cover_picture || null,
         },
-      };
-    })
-    .filter((post) => post.id);
+      })),
+    };
+  });
 
   const posts = normalized
     .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))

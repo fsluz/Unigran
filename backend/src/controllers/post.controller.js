@@ -7,6 +7,9 @@ import {
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
+  if (err?.statusCode && Number.isInteger(err.statusCode)) {
+    return res.status(err.statusCode).json({ error: message || fallback });
+  }
   if (message.toLowerCase().includes('unauthorized')) {
     return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
   }
