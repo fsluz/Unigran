@@ -3,6 +3,21 @@ import { jwtSecret } from '../config/jwt.js';
 
 export function auth(req, res, next) {
   const header = req.headers.authorization;
+  const isDev = process.env.NODE_ENV !== 'production';
+  const mockUser = {
+    id: 'fabiohenrique',
+    username: 'fabiohenrique',
+    displayName: 'Fábio Henrique',
+    email: 'fabio@unigran.com.br',
+    role: 'admin',
+  };
+
+  // Suporte ao modo mock do frontend durante desenvolvimento local.
+  if (isDev && header === 'Bearer mock-token-dev') {
+    req.user = mockUser;
+    return next();
+  }
+
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
