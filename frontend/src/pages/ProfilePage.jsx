@@ -43,6 +43,30 @@ export default function ProfilePage({ onNavigate }) {
       .catch(() => setPosts([]));
   }, [token]);
 
+  useEffect(() => {
+    if (!user?.username || !token) return;
+    apiFetch(`/users/${user.username}`, {
+      headers: authHeaders(token),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data?.user) return;
+        const serverUser = data.user;
+        setProfilePreview(serverUser.profilePicture || null);
+        setCoverPreview(serverUser.coverPicture || null);
+        setEditForm((prev) => ({
+          ...prev,
+          displayName: serverUser.displayName || prev.displayName,
+        }));
+        updateUser({
+          displayName: serverUser.displayName || user.displayName,
+          profilePicture: serverUser.profilePicture || null,
+          coverPicture: serverUser.coverPicture || null,
+        });
+      })
+      .catch(() => {});
+  }, [token, user?.username]);
+
   const saveProfile = async () => {
     try {
       let profilePicture = null;
