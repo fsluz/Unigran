@@ -5,7 +5,6 @@ import PostComposer from '../components/post/PostComposer';
 import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import Topbar from '../components/layout/Topbar';
-import { MOCK_POSTS } from '../data/mock';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 
 const TRENDING = [
@@ -31,12 +30,12 @@ const SUGGESTED_PEOPLE = [
 export default function HomePage() {
   const { user, token }      = useAuth();
   const { showToast } = useToast();
-  const [posts, setPosts]       = useState(MOCK_POSTS);
+  const [posts, setPosts]       = useState([]);
   const [openPost, setOpenPost] = useState(null);
 
   useEffect(() => {
     fetchPosts(token)
-      .then((loaded) => loaded.length && setPosts(loaded))
+      .then((loaded) => setPosts(loaded))
       .catch(() => {});
   }, [token]);
 

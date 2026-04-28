@@ -5,9 +5,9 @@ import { useToast } from '../contexts/ToastContext';
 import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
-import { MOCK_POSTS } from '../data/mock';
 import { apiFetch, authHeaders } from '../utils/api';
-import { uploadMedia } from '../services/posts';
+import { fetchPosts, uploadMedia } from '../services/posts';
+import { useEffect } from 'react';
 
 const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Links'];
 
@@ -22,13 +22,11 @@ export default function ProfilePage({ onNavigate }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
-  const [tab, setTab]               = useState('Portfólio');
+  const [tab, setTab]               = useState('Publicações');
   const [postFilter, setPostFilter] = useState('all');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
-  const [posts, setPosts]           = useState(
-    MOCK_POSTS.filter(p => p.author.id === user.id)
-  );
+  const [posts, setPosts] = useState([]);
   const [editForm, setEditForm] = useState({
     displayName: user.displayName,
     bio:         user.bio,
@@ -38,6 +36,12 @@ export default function ProfilePage({ onNavigate }) {
   const [coverFile, setCoverFile] = useState(null);
   const [profilePreview, setProfilePreview] = useState(user.profilePicture || null);
   const [coverPreview, setCoverPreview] = useState(user.coverPicture || null);
+
+  useEffect(() => {
+    fetchPosts(token)
+      .then((loaded) => setPosts(loaded))
+      .catch(() => setPosts([]));
+  }, [token]);
 
   const saveProfile = async () => {
     try {

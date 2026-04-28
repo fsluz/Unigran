@@ -1,26 +1,32 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
-import { MOCK_USER } from '../data/mock';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]   = useState(MOCK_USER);
-  const [token, setToken] = useState(() => localStorage.getItem('token') || 'mock-token-dev');
+  const [user, setUser]   = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
 
-  // Ao carregar, valida o token salvo (desabilitado para modo dev)
-  // useEffect(() => {
-  //   if (!token) return;
-  //   apiFetch('/auth/me', {
-  //     headers: { Authorization: `Bearer ${token}` },
-  //   })
-  //     .then(r => r.json())
-  //     .then(data => {
-  //       if (data.user) setUser(data.user);
-  //       else { localStorage.removeItem('token'); setToken(null); }
-  //     })
-  //     .catch(() => { localStorage.removeItem('token'); setToken(null); });
-  // }, []);
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.user) setUser(data.user);
+        else {
+          localStorage.removeItem('token');
+          setToken(null);
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+      });
+  }, [token]);
 
   function login(userData, jwt) {
     setUser(userData);

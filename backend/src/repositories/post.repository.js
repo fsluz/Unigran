@@ -25,35 +25,42 @@ export async function listFeed(limit, offset) {
 
   const rows = await readQuery(`
     match
-      $p isa post, has post-id $pid, has creation-timestamp $ts;
-      posting (post: $p, page: $author);
-      $author isa person, has username $aun, has name $adn;
-      try { $author has profile-picture $pp; };
-      try { $p has post-text $pt; };
-      try { $p has media-url $media_url; };
-      try { $p has media-public-id $media_pid; };
-      try { $p has media-type $media_type; };
-    sort $ts desc; limit ${limit}; offset ${offset};
-    select $pid, $ts, $aun, $adn, $pp, $pt, $media_url, $media_pid, $media_type;
+      $post isa post;
+    fetch {
+      "post": { $post.* }
+    };
   `);
 
-  const posts = rows.map((row) => ({
-    id: val(row, 'pid'),
-    content: val(row, 'pt') || '',
-    time: val(row, 'ts'),
-    media: val(row, 'media_url') ? {
-      url: val(row, 'media_url'),
-      public_id: val(row, 'media_pid'),
-      resource_type: val(row, 'media_type'),
-    } : null,
-    author: {
-      id: val(row, 'aun'),
-      username: val(row, 'aun'),
-      displayName: val(row, 'adn'),
-      profilePicture: val(row, 'pp') || null,
-      role: 'user',
-    },
-  }));
+  const normalized = rows
+    .map((row) => row?.post || row?.data?.post || row)
+    .filter(Boolean)
+    .map((post) => {
+      const attrs = Array.isArray(post) ? post : [];
+      const byLabel = (label) => attrs.find((attr) => attr?.type?.label === label)?.value ?? null;
+      return {
+        id: byLabel('post-id') || post?.iid || crypto.randomUUID?.() || uuid(),
+        content: byLabel('post-text') || '',
+        time: byLabel('creation-timestamp'),
+        media: byLabel('media-url') ? {
+          url: byLabel('media-url'),
+          public_id: byLabel('media-public-id'),
+          resource_type: byLabel('media-type'),
+        } : null,
+        // query solicitada retorna apenas dados do post
+        author: {
+          id: 'unknown',
+          username: 'unknown',
+          displayName: 'Usuário',
+          profilePicture: null,
+          role: 'user',
+        },
+      };
+    })
+    .filter((post) => post.id);
+
+  const posts = normalized
+    .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+    .slice(offset, offset + limit);
 
   setCached(key, posts);
   return posts;
