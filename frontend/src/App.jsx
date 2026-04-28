@@ -46,7 +46,7 @@ function AppShell() {
 
   const pages = {
     home:          <HomePage />,
-    profile:       <ProfilePage />,
+    profile:       <ProfilePage onNavigate={setPage} />,
     friends:       <FriendsPage />,
     communities:   <CommunitiesPage />,
     messages:      <MessagesPage />,

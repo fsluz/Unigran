@@ -6,12 +6,12 @@ export const MOCK_USER = {
   role: 'admin',
   email: 'fabio@unigran.com.br',
   phone: '+55 44 99999-0001',
-  bio: 'Desenvolvedor Full-stack em formação. Apaixonado por Java, React e Inteligência Artificial. Buscando oportunidades de estágio. 🚀',
+  bio: 'Desenvolvedor Full-stack em formação. Apaixonado por Java, React e Inteligência Artificial. Buscando oportunidades de estágio.',
   institution: 'Análise e Desenvolvimento de Sistemas • UNIGRAN',
   followers: 145,
   following: 89,
   projects: 12,
-  achievements: ['👑', '🚀', '🌿', '⭐', '🏆'],
+  achievements: [],
 };
 
 export const MOCK_POSTS = [

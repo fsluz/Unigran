@@ -16,7 +16,7 @@ const TRENDING = [
 ];
 
 const SUGGESTED_COMMUNITIES = [
-  { icon: '🤖', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
+  { icon: '', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
   { icon: '⚛️', name: 'Grupo React Avançado',  members: 892,  color: '#8B5CF6' },
   { icon: '🗃️', name: 'TypeDB Researchers',    members: 234,  color: '#0891B2' },
 ];

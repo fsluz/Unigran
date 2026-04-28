@@ -34,7 +34,7 @@ export default function LoginPage({ onGoRegister }) {
         color: 'var(--text-2)',
       }}
     >
-      {visible ? '🙈' : '👁️'}
+      {visible ? '' : ''}
     </button>
   );
 

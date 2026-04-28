@@ -264,7 +264,7 @@
   padding: 10px 14px; color: var(--text); font-size: 14px; outline: none;
   transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
 }
-.form-input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px var(--accent-glow); }
+.form-input:focus { border-color: var(--accent); background: var(--card); box-shadow: 0 0 0 3px var(--accent-glow); }
 .form-input::placeholder { color: var(--text-light); }
 .form-input:disabled { opacity: 0.55; cursor: not-allowed; }
 .form-input-prefix-wrap { position: relative; }
@@ -327,8 +327,8 @@
 /* ═══════════════════════════════════════════════════════════════
    POSTS
 ═══════════════════════════════════════════════════════════════ */
-.post-composer { margin-bottom: 12px; }
-.composer-row  { display: flex; gap: 12px; padding: 16px; }
+.post-composer { margin-bottom: 12px; border-radius: 24px; }
+.composer-row  { display: flex; gap: 12px; padding: 16px; border-radius: 24px 24px 0 0; }
 .composer-textarea {
   flex: 1; background: none; border: none; color: var(--text); font-size: 15px;
   outline: none; resize: none; min-height: 52px; line-height: 1.55;
@@ -344,7 +344,7 @@
 .composer-btn:hover { background: var(--accent-light); color: var(--accent); }
 .composer-submit-wrap { margin-left: auto; }
 
-.post-card { margin-bottom: 10px; }
+.post-card { margin-bottom: 10px; border-radius: 24px; }
 .post-card:hover { box-shadow: var(--shadow); }
 .post-head { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px 8px; }
 .post-meta { flex: 1; }

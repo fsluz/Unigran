@@ -7,7 +7,7 @@ import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
 import { MOCK_POSTS } from '../data/mock';
 
-const TABS = ['Publicações', 'Reposts', 'Curtidas 🔒', 'Links'];
+const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
@@ -16,7 +16,7 @@ const POST_FILTERS = [
   { id: 'date',  label: 'Por data'   },
 ];
 
-export default function ProfilePage() {
+export default function ProfilePage({ onNavigate }) {
   const { user, updateUser } = useAuth();
   const { showToast }        = useToast();
 
@@ -41,7 +41,7 @@ export default function ProfilePage() {
 
   const deletePost = id => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excluído', '🗑️');
+    showToast('Post excluído', 'Excluído');
   };
 
   const editPost = (id, newText) => {
@@ -66,7 +66,7 @@ export default function ProfilePage() {
       {/* Banner */}
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
         <div className="profile-banner">
-          <button className="profile-banner-btn">📷 Editar Capa</button>
+          <button className="profile-banner-btn">Editar Capa</button>
         </div>
 
         <div className="profile-info-wrap">
@@ -78,7 +78,7 @@ export default function ProfilePage() {
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                 Editar Perfil
               </Button>
-              {user.role === 'admin' && <span className="tag">👑 Admin</span>}
+              {user.role === 'admin' && <span className="tag">Admin</span>}
             </div>
           </div>
 
@@ -96,15 +96,15 @@ export default function ProfilePage() {
               <div className="profile-stat-label">Seguidores</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>567</div>
-              <div className="profile-stat-label">Seguindo</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{user.following}</div>
+              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => onNavigate('friends')}>Seguindo</div>
             </div>
           </div>
 
           <div className="profile-achievements">
             <span className="profile-achievements-label">Conquistas:</span>
             {(user.achievements || []).map((a, i) => (
-              <div key={i} className="achievement-circle" title={`Conquista ${i + 1}`}>{a}</div>
+              <div key={i} className="achievement-circle" title={`Conquista ${i + 1}`}>{i + 1}</div>
             ))}
             <span className="achievement-more">+3</span>
           </div>
@@ -160,7 +160,7 @@ export default function ProfilePage() {
 
         {tab === 'Atividades' && (
           <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
+            <div style={{ fontSize: 36, marginBottom: 12 }}></div>
             <div style={{ fontSize: 15 }}>Histórico de atividades em breve.</div>
           </div>
         )}
@@ -168,10 +168,10 @@ export default function ProfilePage() {
         {tab === 'Sobre' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {[
-              ['📧', 'Email',       user.email],
-              ['📞', 'Telefone',    user.phone],
-              ['🎓', 'Instituição', user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
-              ['🛡️', 'Função',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
+              ['', 'Email',       user.email],
+              ['', 'Telefone',    user.phone],
+              ['', 'Instituição', user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
+              ['', 'Função',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>

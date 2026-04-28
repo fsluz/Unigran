@@ -69,7 +69,7 @@
 }
 
 .card {
-  padding: 64px;
+  padding: 47px;
 }
 
 /* Card do formulário
@@ -224,7 +224,7 @@
 .auth-btn-submit {
     width: 100%;
     height: 46px;
-    background: #3366FF;
+    background: linear-gradient(135deg, #6A00F4 0%, #3366FF 60%, #00A8FF 100%);
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -233,11 +233,11 @@
     cursor: pointer;
     letter-spacing: 0.3px;
     margin-bottom: 20px;
-    transition: background 0.15s;
+    transition: opacity 0.15s;
 }
 
 .auth-btn-submit:hover {
-    background: #2255ee;
+    opacity: 0.9;
 }
 
 /* Link cadastro */

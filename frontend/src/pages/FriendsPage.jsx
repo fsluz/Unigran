@@ -93,7 +93,7 @@ export default function FriendsPage() {
 
       {!loading && !error && friends.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>👤</div>
+          <div style={{ fontSize: 48, marginBottom: 12 }}></div>
           <div style={{ fontWeight: 600 }}>Nenhum amigo ainda</div>
         </div>
       )}

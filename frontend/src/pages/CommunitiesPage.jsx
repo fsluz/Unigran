@@ -67,9 +67,9 @@ function CommunityCard({ community, active, onClick }) {
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>👥 {community.members.toLocaleString()} membros</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{community.members.toLocaleString()} membros</span>
           <span style={{ padding: '5px 10px', borderRadius: 999, background: community.joined ? 'rgba(124,58,237,0.15)' : 'rgba(148,163,184,0.12)', color: community.joined ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700 }}>
-            {community.type === 'private' ? '🔒 Privada' : '🌐 Pública'}
+            {community.type === 'private' ? 'Privada' : 'Pública'}
           </span>
         </div>
       </div>

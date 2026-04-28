@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, RoleBadge, Modal, Button } from '../ui';
 import { MOCK_COMMENTS } from '../../data/mock';
 
-const EMOJI_OPTIONS = ['❤️', '😂', '😮', '😢', '😡', '👏', '🔥', '💯'];
+const EMOJI_OPTIONS = [];
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -70,7 +70,7 @@ export default function PostDetailModal({ post, onClose }) {
       {/* Stats */}
       <div style={{ display: 'flex', gap: 18, fontSize: 13, color: 'var(--text-muted)', paddingBottom: 14, marginBottom: 14, borderBottom: '1px solid var(--border)' }}>
         <span>❤️ {post.likes} curtidas</span>
-        <span>💬 {post.comments} comentários</span>
+        <span>{post.comments} comentários</span>
       </div>
 
       {/* Comments */}
@@ -119,7 +119,7 @@ export default function PostDetailModal({ post, onClose }) {
                         className="comment-action"
                         onClick={e => { e.stopPropagation(); setEmojiFor(emojiFor === c.id ? null : c.id); }}
                       >
-                        😊 Reagir
+                        Reagir
                       </button>
                       {canDeleteComment(c) && (
                         <button
@@ -128,7 +128,7 @@ export default function PostDetailModal({ post, onClose }) {
                           style={{ color: 'var(--red)' }}
                           onClick={e => { e.stopPropagation(); deleteComment(c.id); }}
                         >
-                          🗑️
+                          
                         </button>
                       )}
                     </div>

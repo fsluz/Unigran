@@ -31,7 +31,7 @@ export default function Topbar({ title, left, right }) {
   }, []);
 
   return (
-    <div className="topbar">
+    <div className="topbar" style={{ justifyContent: 'center' }}>
       <div style={{ flex: 1, maxWidth: 440, position: 'relative' }}>
         <svg style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}
           width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -91,14 +91,6 @@ export default function Topbar({ title, left, right }) {
           )}
         </div>
 
-        {/* User avatar */}
-        <div
-          className="topbar-avatar"
-          style={{ background: 'linear-gradient(135deg,#6A00F4,#7c3aed)', position:'relative' }}
-        >
-          {user?.avatar}
-          <span className="topbar-online-dot"/>
-        </div>
       </div>
     </div>
   );

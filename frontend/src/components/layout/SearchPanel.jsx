@@ -42,7 +42,7 @@ export default function SearchPanel({ onNavigate }) {
       <div className="search-panel-head">
         <h3>Pesquisar</h3>
         <div className="search-wrap">
-          <span className="search-wrap-icon">🔍</span>
+          <span className="search-wrap-icon"></span>
           <input
             className="search-input"
             placeholder="Buscar pessoas, posts, #tags…"

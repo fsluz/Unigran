@@ -122,13 +122,6 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
             </div>
           </button>
         ))}
-
-        {/* Theme toggle */}
-        <div className="sidebar-wide-theme">
-          <span style={{ fontSize: 16 }}>{dark ? '🌙' : '☀️'}</span>
-          <span className="sidebar-wide-theme-label">{dark ? 'Modo Escuro' : 'Modo Claro'}</span>
-          <Toggle value={dark} onChange={onToggleTheme} />
-        </div>
       </div>
 
       {/* Bottom: settings + user */}
@@ -148,8 +141,9 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
 
         <button className="sidebar-wide-user" onClick={() => onNavigate('profile')}>
           <div className="sidebar-wide-avatar"
-            style={{ background: 'linear-gradient(135deg,#6A00F4,#7c3aed)' }}>
+            style={{ background: 'linear-gradient(135deg,#6A00F4,#7c3aed)', position: 'relative' }}>
             {user?.avatar}
+            <span className="topbar-online-dot" style={{ width: 12, height: 12, bottom: 0, right: 0 }}/>
           </div>
           <div className="sidebar-wide-user-info">
             <div className="sidebar-wide-user-name">{user?.displayName}</div>
