@@ -8,22 +8,30 @@ const router = Router();
 router.get('/:id', auth, async (req, res) => {
   try {
     const rows = await readQuery(`
-      match $u isa person,
-        has username "${req.params.id}",
-        has name $dname;
-      try { $u has profile-picture $pp; };
-      try { $u has cover-picture $cp; };
-      select $dname, $pp, $cp;
+      match
+        $p isa person, has username $username, has name $name;
+        $username == "${typeqlLiteral(req.params.id)}";
+        try { $p has profile-picture $profile_pic; };
+        try { $p has cover-picture $cover_pic; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "profile_picture": $profile_pic,
+        "cover_picture": $cover_pic
+      };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
-    res.json({ user: {
-      id: req.params.id,
-      username: req.params.id,
-      displayName: val(rows[0], 'dname'),
-      profilePicture: val(rows[0], 'pp') || null,
-      coverPicture: val(rows[0], 'cp') || null,
-      role: 'user',
-    }});
+    const row = rows[0];
+    res.json({
+      user: {
+        id: row.username,
+        username: row.username,
+        displayName: row.name,
+        profilePicture: row.profile_picture || null,
+        coverPicture: row.cover_picture || null,
+        role: 'user',
+      },
+    });
   } catch (err) { console.error('[users GET]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
@@ -86,6 +94,23 @@ router.put('/:id', auth, async (req, res) => {
         insert
           $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
       `);
+
+      if (profilePicture?.public_id) {
+        try {
+          await writeQuery(`
+            match $u isa person, has username "${uid}";
+            insert $u has profile-picture-public-id "${typeqlLiteral(profilePicture.public_id)}";
+          `);
+        } catch (_) {}
+      }
+      if (profilePicture?.resource_type) {
+        try {
+          await writeQuery(`
+            match $u isa person, has username "${uid}";
+            insert $u has profile-picture-type "${typeqlLiteral(profilePicture.resource_type)}";
+          `);
+        } catch (_) {}
+      }
     }
 
     if (coverPicture?.url) {
@@ -101,6 +126,23 @@ router.put('/:id', auth, async (req, res) => {
         insert
           $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
       `);
+
+      if (coverPicture?.public_id) {
+        try {
+          await writeQuery(`
+            match $u isa person, has username "${uid}";
+            insert $u has cover-picture-public-id "${typeqlLiteral(coverPicture.public_id)}";
+          `);
+        } catch (_) {}
+      }
+      if (coverPicture?.resource_type) {
+        try {
+          await writeQuery(`
+            match $u isa person, has username "${uid}";
+            insert $u has cover-picture-type "${typeqlLiteral(coverPicture.resource_type)}";
+          `);
+        } catch (_) {}
+      }
     }
 
     res.json({ updated: true });

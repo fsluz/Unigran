@@ -123,21 +123,23 @@ export async function createPost({ authorUsername, postType, content, media }) {
   const safeUser = typeqlLiteral(authorUsername);
   const safeContent = typeqlLiteral(content || '');
 
-  const mediaAttrs = media
-    ? `has media-url "${typeqlLiteral(media.url)}",
-       has media-public-id "${typeqlLiteral(media.public_id)}",
-       has media-type "${typeqlLiteral(media.resource_type)}",`
-    : '';
+  const attributes = [
+    `has post-id "${postId}"`,
+    `has creation-timestamp ${now}`,
+    `has post-visibility "public"`,
+  ];
+  if (content) attributes.push(`has post-text "${safeContent}"`);
+  if (media) {
+    attributes.push(`has media-url "${typeqlLiteral(media.url)}"`);
+    attributes.push(`has media-public-id "${typeqlLiteral(media.public_id)}"`);
+    attributes.push(`has media-type "${typeqlLiteral(media.resource_type)}"`);
+  }
 
   await writeQuery(`
     match $author isa person, has username "${safeUser}";
     insert
       $post isa ${postType},
-        has post-id "${postId}",
-        has creation-timestamp ${now},
-        has post-visibility "public",
-        ${content ? `has post-text "${safeContent}",` : ''}
-        ${mediaAttrs}
+        ${attributes.join(',\n        ')};
       posting (page: $author, post: $post);
   `);
 
@@ -183,11 +185,16 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
   const now = new Date().toISOString();
   const safeUser = typeqlLiteral(authorUsername);
   const safeContent = typeqlLiteral(content);
-  const mediaAttrs = media
-    ? `has media-url "${typeqlLiteral(media.url)}",
-       has media-public-id "${typeqlLiteral(media.public_id)}",
-       has media-type "${typeqlLiteral(media.resource_type)}",`
-    : '';
+  const commentAttributes = [
+    `has comment-id "${commentId}"`,
+    `has comment-text "${safeContent}"`,
+    `has creation-timestamp ${now}`,
+  ];
+  if (media) {
+    commentAttributes.push(`has media-url "${typeqlLiteral(media.url)}"`);
+    commentAttributes.push(`has media-public-id "${typeqlLiteral(media.public_id)}"`);
+    commentAttributes.push(`has media-type "${typeqlLiteral(media.resource_type)}"`);
+  }
 
   if (parentCommentId) {
     await writeQuery(`
@@ -196,10 +203,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
         $parent isa comment, has comment-id "${typeqlLiteral(parentCommentId)}";
       insert
         $c isa comment,
-          has comment-id "${commentId}",
-          has comment-text "${safeContent}",
-          has creation-timestamp ${now},
-          ${mediaAttrs}
+          ${commentAttributes.join(',\n          ')};
         commenting (parent: $parent, comment: $c, author: $author);
     `);
   } else {
@@ -209,10 +213,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
         $parent isa post, has post-id "${typeqlLiteral(parentPostId)}";
       insert
         $c isa comment,
-          has comment-id "${commentId}",
-          has comment-text "${safeContent}",
-          has creation-timestamp ${now},
-          ${mediaAttrs}
+          ${commentAttributes.join(',\n          ')};
         commenting (parent: $parent, comment: $c, author: $author);
     `);
   }
