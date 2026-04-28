@@ -12,6 +12,13 @@ export function apiFetch(path, options = {}) {
   return fetch(url, options);
 }
 
+export function authHeaders(token, extra = {}) {
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...extra,
+  };
+}
+
 /** Zod .flatten() and similar API errors are objects; React cannot render them as children. */
 export function formatApiError(error, fallback = 'Ocorreu um erro.') {
   if (error == null || error === '') return fallback;

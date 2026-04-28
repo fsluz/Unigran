@@ -46,18 +46,18 @@ function CommentItem({ comment }) {
   return (
     <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
       <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-        {comment.author.avatar}
+        {comment.author.avatar || 'U'}
       </div>
       <div style={{ flex: 1, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
         <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{comment.author.displayName}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text || comment.content}</div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>agora</div>
       </div>
     </div>
   );
 }
 
-export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
+export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadComments, onAddComment }) {
   const { user }      = useAuth();
   const { showToast } = useToast();
 
@@ -91,16 +91,21 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
     setEditing(false);
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim()) return;
-    const c = {
-      id: Date.now(),
-      author: { displayName: user.displayName, avatar: user.avatar },
-      text: newComment.trim(),
-    };
-    setComments(prev => [...prev, c]);
-    setNewComment('');
-    showToast('Comentário adicionado!', '💬');
+    try {
+      const created = await onAddComment?.(post.id, { content: newComment.trim() });
+      const c = created || {
+        id: Date.now(),
+        content: newComment.trim(),
+        author: { displayName: user.displayName, avatar: user.avatar },
+      };
+      setComments(prev => [...prev, c]);
+      setNewComment('');
+      showToast('Comentário adicionado!', '💬');
+    } catch (err) {
+      showToast(err.message || 'Erro ao comentar', '⚠️');
+    }
   };
 
   const menuItems = [
@@ -150,7 +155,16 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
           </div>
         </div>
       ) : (
-        <div className="post-body">{formatContent(post.content)}</div>
+        <>
+          <div className="post-body">{formatContent(post.content || '')}</div>
+          {post.media?.url && (
+            <div style={{ marginBottom: 14 }}>
+              {post.media.resource_type === 'video'
+                ? <video src={post.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 12, maxHeight: 420 }} />
+                : <img src={post.media.url} alt="post media" loading="lazy" style={{ width: '100%', borderRadius: 12, maxHeight: 420, objectFit: 'cover' }} />}
+            </div>
+          )}
+        </>
       )}
 
       {/* Actions */}
@@ -161,7 +175,14 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail }) {
         </button>
         <button
           className="post-action-btn"
-          onClick={() => setShowComments(s => !s)}
+          onClick={async () => {
+            const next = !showComments;
+            setShowComments(next);
+            if (next && onLoadComments) {
+              const loaded = await onLoadComments(post.id);
+              setComments(loaded || []);
+            }
+          }}
           style={{ color: showComments ? 'var(--accent)' : undefined }}
         >
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>

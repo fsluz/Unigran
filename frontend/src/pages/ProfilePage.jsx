@@ -6,6 +6,8 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
 import { MOCK_POSTS } from '../data/mock';
+import { apiFetch, authHeaders } from '../utils/api';
+import { uploadMedia } from '../services/posts';
 
 const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Links'];
 
@@ -17,7 +19,7 @@ const POST_FILTERS = [
 ];
 
 export default function ProfilePage({ onNavigate }) {
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
   const [tab, setTab]               = useState('Portfólio');
@@ -32,11 +34,34 @@ export default function ProfilePage({ onNavigate }) {
     bio:         user.bio,
     institution: user.institution,
   });
+  const [profileFile, setProfileFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+  const [profilePreview, setProfilePreview] = useState(user.profilePicture || null);
+  const [coverPreview, setCoverPreview] = useState(user.coverPicture || null);
 
-  const saveProfile = () => {
-    updateUser(editForm);
-    setEditOpen(false);
-    showToast('Perfil atualizado!', '✅');
+  const saveProfile = async () => {
+    try {
+      let profilePicture = null;
+      let coverPicture = null;
+      if (profileFile) profilePicture = await uploadMedia({ token, file: profileFile });
+      if (coverFile) coverPicture = await uploadMedia({ token, file: coverFile });
+
+      await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ...editForm, profilePicture, coverPicture }),
+      });
+
+      updateUser({
+        ...editForm,
+        profilePicture: profilePicture?.url || profilePreview,
+        coverPicture: coverPicture?.url || coverPreview,
+      });
+      setEditOpen(false);
+      showToast('Perfil atualizado!', '✅');
+    } catch {
+      showToast('Falha ao atualizar perfil', '⚠️');
+    }
   };
 
   const deletePost = id => {
@@ -65,14 +90,16 @@ export default function ProfilePage({ onNavigate }) {
       <Topbar />
       {/* Banner */}
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
-        <div className="profile-banner">
+        <div className="profile-banner" style={coverPreview ? { backgroundImage: `url(${coverPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
           <button className="profile-banner-btn">Editar Capa</button>
         </div>
 
         <div className="profile-info-wrap">
           <div className="profile-top-row">
             <div className="profile-avatar-pull">
-              <div className="profile-big-avatar">{user.avatar}</div>
+              <div className="profile-big-avatar" style={profilePreview ? { backgroundImage: `url(${profilePreview})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : {}}>
+                {user.avatar}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, paddingTop: 12 }}>
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
@@ -205,6 +232,32 @@ export default function ProfilePage({ onNavigate }) {
           </FormField>
           <FormField label="Bio">
             <textarea className="form-input" rows={3} value={editForm.bio} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} />
+          </FormField>
+          <FormField label="Foto de perfil">
+            <input
+              className="form-input"
+              type="file"
+              accept="image/*,.gif"
+              onChange={(e) => {
+                const next = e.target.files?.[0];
+                if (!next) return;
+                setProfileFile(next);
+                setProfilePreview(URL.createObjectURL(next));
+              }}
+            />
+          </FormField>
+          <FormField label="Capa/Banner">
+            <input
+              className="form-input"
+              type="file"
+              accept="image/*,.gif"
+              onChange={(e) => {
+                const next = e.target.files?.[0];
+                if (!next) return;
+                setCoverFile(next);
+                setCoverPreview(URL.createObjectURL(next));
+              }}
+            />
           </FormField>
         </Modal>
       )}

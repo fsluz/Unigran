@@ -11,10 +11,19 @@ router.get('/:id', auth, async (req, res) => {
       match $u isa person,
         has username "${req.params.id}",
         has name $dname;
-      select $dname;
+      try { $u has profile-picture $pp; };
+      try { $u has cover-picture $cp; };
+      select $dname, $pp, $cp;
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
-    res.json({ user: { id: req.params.id, username: req.params.id, displayName: val(rows[0],'dname'), role: 'user' }});
+    res.json({ user: {
+      id: req.params.id,
+      username: req.params.id,
+      displayName: val(rows[0], 'dname'),
+      profilePicture: val(rows[0], 'pp') || null,
+      coverPicture: val(rows[0], 'cp') || null,
+      role: 'user',
+    }});
   } catch (err) { console.error('[users GET]', err); res.status(500).json({ error: 'Erro interno' }); }
 });
 
@@ -23,7 +32,7 @@ router.put('/:id', auth, async (req, res) => {
   if (req.user.username !== req.params.id && req.user.role !== 'admin')
     return res.status(403).json({ error: 'Sem permissão' });
 
-  const { displayName, bio, phone } = req.body;
+  const { displayName, bio, phone, profilePicture, coverPicture } = req.body;
   const uid = typeqlLiteral(req.params.id);
 
   try {
@@ -62,6 +71,36 @@ router.put('/:id', auth, async (req, res) => {
           insert $u has phone "${typeqlLiteral(phone)}";
         `);
       }
+    }
+
+    if (profilePicture?.url) {
+      try {
+        await writeQuery(`
+          match $u isa person, has username "${uid}", has profile-picture $old;
+          delete $old of $u;
+        `);
+      } catch (_) {}
+
+      await writeQuery(`
+        match $u isa person, has username "${uid}";
+        insert
+          $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
+      `);
+    }
+
+    if (coverPicture?.url) {
+      try {
+        await writeQuery(`
+          match $u isa person, has username "${uid}", has cover-picture $old;
+          delete $old of $u;
+        `);
+      } catch (_) {}
+
+      await writeQuery(`
+        match $u isa person, has username "${uid}";
+        insert
+          $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
+      `);
     }
 
     res.json({ updated: true });

@@ -6,7 +6,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser]   = useState(MOCK_USER);
-  const [token, setToken] = useState('mock-token-dev');
+  const [token, setToken] = useState(() => localStorage.getItem('token') || 'mock-token-dev');
 
   // Ao carregar, valida o token salvo (desabilitado para modo dev)
   // useEffect(() => {

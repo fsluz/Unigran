@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PostComposer from '../components/post/PostComposer';
@@ -6,6 +6,7 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import Topbar from '../components/layout/Topbar';
 import { MOCK_POSTS } from '../data/mock';
+import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 
 const TRENDING = [
   { tag: 'Inteligência Artificial', count: '12.543' },
@@ -28,17 +29,20 @@ const SUGGESTED_PEOPLE = [
 ];
 
 export default function HomePage() {
-  const { user }      = useAuth();
+  const { user, token }      = useAuth();
   const { showToast } = useToast();
   const [posts, setPosts]       = useState(MOCK_POSTS);
   const [openPost, setOpenPost] = useState(null);
 
-  const handleNewPost = text => {
-    setPosts(prev => [{
-      id: `p${Date.now()}`,
-      author: { id: user.id, username: user.username, displayName: user.displayName, avatar: user.avatar, role: user.role },
-      content: text, likes: 0, comments: 0, shares: 0, time: 'agora', liked: false, edited: false,
-    }, ...prev]);
+  useEffect(() => {
+    fetchPosts(token)
+      .then((loaded) => loaded.length && setPosts(loaded))
+      .catch(() => {});
+  }, [token]);
+
+  const handleNewPost = async ({ content, file }) => {
+    const created = await createPost({ token, content, file });
+    setPosts(prev => [created, ...prev]);
     showToast('Post publicado!', '✅');
   };
 
@@ -50,6 +54,18 @@ export default function HomePage() {
   const handleEdit = (id, newText) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, content: newText, edited: true } : p));
     showToast('Post editado!', '✏️');
+  };
+
+  const handleLoadComments = async (postId) => {
+    try {
+      return await fetchComments({ token, postId });
+    } catch {
+      return [];
+    }
+  };
+
+  const handleAddComment = async (postId, { content }) => {
+    return createComment({ token, postId, content });
   };
 
   return (
@@ -79,6 +95,8 @@ export default function HomePage() {
                 onDelete={handleDelete}
                 onEdit={handleEdit}
                 onOpenDetail={setOpenPost}
+                onLoadComments={handleLoadComments}
+                onAddComment={handleAddComment}
               />
             ))}
           </div>

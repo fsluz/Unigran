@@ -10,6 +10,7 @@ import postsRouter         from './routes/posts.js';
 import communitiesRouter   from './routes/communities.js';
 import conversationsRouter from './routes/conversations.js';
 import searchRouter        from './routes/search.js';
+import uploadsRouter       from './routes/uploads.js';
 import { setupSocket }     from './socket/handlers.js';
 
 const app    = express();
@@ -36,6 +37,7 @@ app.use('/api/posts',         postsRouter);
 app.use('/api/communities',   communitiesRouter);
 app.use('/api/conversations', conversationsRouter);
 app.use('/api/search',        searchRouter);
+app.use('/api/uploads',       uploadsRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
 
