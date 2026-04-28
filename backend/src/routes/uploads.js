@@ -17,7 +17,10 @@ router.post('/media', auth, upload.single('file'), async (req, res) => {
     res.status(201).json(media);
   } catch (err) {
     console.error('[upload media]', err);
-    res.status(500).json({ error: 'Falha ao enviar mídia' });
+    if (String(err?.message || '').toLowerCase().includes('unauthorized')) {
+      return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
+    }
+    res.status(500).json({ error: err.message || 'Falha ao enviar mídia' });
   }
 });
 

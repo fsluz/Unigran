@@ -14,18 +14,31 @@ function resourceTypeFromMime(mimetype = '') {
 
 export async function uploadMediaBuffer(file, folder = 'unigran/posts') {
   if (!file?.buffer) throw new Error('Arquivo inválido para upload');
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+  }
 
   const resourceType = resourceTypeFromMime(file.mimetype);
-  const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
-
-  const result = await cloudinary.uploader.upload(dataUri, {
-    folder,
-    resource_type: resourceType,
-    quality: 'auto',
-    fetch_format: 'auto',
-    transformation: resourceType === 'image'
-      ? [{ width: 1600, crop: 'limit' }]
-      : [{ width: 1280, crop: 'limit' }],
+  const result = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+        quality: 'auto',
+        fetch_format: 'auto',
+        use_filename: true,
+        unique_filename: true,
+        overwrite: false,
+        transformation: resourceType === 'image'
+          ? [{ width: 1600, crop: 'limit' }]
+          : [{ width: 1280, crop: 'limit' }],
+      },
+      (err, uploadResult) => {
+        if (err) return reject(err);
+        resolve(uploadResult);
+      },
+    );
+    stream.end(file.buffer);
   });
 
   return {

@@ -5,6 +5,17 @@ import {
   getPostComments,
 } from '../services/post.service.js';
 
+function cloudinaryAwareError(res, err, fallback) {
+  const message = String(err?.message || '');
+  if (message.toLowerCase().includes('unauthorized')) {
+    return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
+  }
+  if (message.toLowerCase().includes('cloudinary não configurado')) {
+    return res.status(500).json({ error: message });
+  }
+  return res.status(500).json({ error: fallback });
+}
+
 export async function getFeedController(req, res) {
   try {
     const limit = Math.min(parseInt(req.query.limit || '20', 10), 50);
@@ -24,7 +35,7 @@ export async function createPostController(req, res) {
     res.status(result.status || 201).json(result.data);
   } catch (err) {
     console.error('[posts create]', err);
-    res.status(500).json({ error: 'Erro ao criar post' });
+    cloudinaryAwareError(res, err, 'Erro ao criar post');
   }
 }
 
@@ -50,6 +61,6 @@ export async function createCommentController(req, res) {
     res.status(result.status || 201).json(result.data);
   } catch (err) {
     console.error('[comments create]', err);
-    res.status(500).json({ error: 'Erro ao criar comentário' });
+    cloudinaryAwareError(res, err, 'Erro ao criar comentário');
   }
 }
