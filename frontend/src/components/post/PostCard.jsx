@@ -45,9 +45,13 @@ function DotMenu({ items }) {
 function CommentItem({ comment }) {
   return (
     <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-      <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-        {comment.author.avatar || 'U'}
-      </div>
+      <Avatar
+        size={30}
+        src={comment.author.profilePicture || null}
+        name={comment.author.displayName || ''}
+        initials={comment.author.avatar || comment.author.displayName?.slice(0, 2) || 'U'}
+        style={{ flexShrink: 0 }}
+      />
       <div style={{ flex: 1, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
         <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{comment.author.displayName}</div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text || comment.content}</div>
@@ -120,7 +124,12 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
     <div className="card post-card" style={{ overflow: 'visible' }}>
       {/* Header */}
       <div className="post-head">
-        <Avatar initials={post.author.avatar} size={42} />
+        <Avatar
+          size={42}
+          src={post.author.profilePicture || null}
+          name={post.author.displayName || post.author.username || ''}
+          initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
+        />
         <div className="post-meta">
           <div className="post-author-name">
             {post.author.displayName}
@@ -208,9 +217,13 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
 
           {/* New comment input */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-              {user?.avatar}
-            </div>
+            <Avatar
+              size={30}
+              src={user?.profilePicture || null}
+              name={user?.displayName || user?.username || ''}
+              initials={user?.avatar || user?.displayName?.slice(0, 2)}
+              style={{ flexShrink: 0 }}
+            />
             <input
               value={newComment}
               onChange={e => setNewComment(e.target.value)}

@@ -1,4 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext';
+import { Avatar } from '../ui';
 
 const NAV_TOP = [
   { id: 'home',          label: 'Início',        icon: () => (
@@ -140,9 +141,14 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
         </button>
 
         <button className="sidebar-wide-user" onClick={() => onNavigate('profile')}>
-          <div className="sidebar-wide-avatar"
-            style={{ background: 'linear-gradient(135deg,#6A00F4,#7c3aed)', position: 'relative' }}>
-            {user?.avatar}
+          <div style={{ position: 'relative' }}>
+            <Avatar
+              size={42}
+              src={user?.profilePicture || null}
+              name={user?.displayName || user?.username || ''}
+              initials={user?.avatar || user?.displayName?.slice(0, 2)}
+              style={{ background: 'linear-gradient(135deg,#6A00F4,#7c3aed)' }}
+            />
             <span className="topbar-online-dot" style={{ width: 12, height: 12, bottom: 0, right: 0 }}/>
           </div>
           <div className="sidebar-wide-user-info">

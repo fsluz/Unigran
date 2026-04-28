@@ -34,7 +34,12 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   return (
     <div className="card post-composer">
       <div className="composer-row">
-        <Avatar initials={user.avatar} size={40} />
+        <Avatar
+          size={40}
+          src={user?.profilePicture || null}
+          name={user?.displayName || user?.username || ''}
+          initials={user?.avatar || user?.displayName?.slice(0, 2)}
+        />
         <textarea
           className="composer-textarea"
           placeholder={placeholder}

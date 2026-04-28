@@ -25,17 +25,21 @@ function colorFor(str = '') {
   return AVATAR_COLORS[Math.abs(h)];
 }
 
-export function Avatar({ initials = '?', size = 40, color, style = {} }) {
-  const bg = color || colorFor(initials);
+export function Avatar({ initials = '?', name = '', src = null, size = 40, color, style = {} }) {
+  const fallbackInitials = initials || (name ? name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() : '?');
+  const bg = color || colorFor(fallbackInitials);
   return (
     <div
       className="avatar"
       style={{
         width: size, height: size, background: bg,
+        backgroundImage: src ? `url(${src})` : undefined,
+        backgroundSize: src ? 'cover' : undefined,
+        backgroundPosition: src ? 'center' : undefined,
         fontSize: size * 0.34, ...style,
       }}
     >
-      {initials}
+      {src ? '' : fallbackInitials}
     </div>
   );
 }
