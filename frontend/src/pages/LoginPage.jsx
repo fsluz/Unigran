@@ -3,44 +3,45 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
 import AuthLogo from '../components/layout/AuthLogo';
-import TypewriterHeading from '../components/ui/TypewriterHeading';
 
 export default function LoginPage({ onGoRegister }) {
   const { login } = useAuth();
-  const [view, setView]         = useState('login');
-  const [email, setEmail]       = useState('');
+  const [view, setView] = useState('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const [resetEmail, setResetEmail]           = useState('');
-  const [newPassword, setNewPassword]         = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  /* visibilidade dos campos de senha */
-  const [showPass,    setShowPass]    = useState(false);
-  const [showNew,     setShowNew]     = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const eyeBtn = (visible, toggle) => (
     <button
       type="button"
       onClick={toggle}
-      style={{
-        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        background: 'none', border: 'none', cursor: 'pointer', fontSize: 18,
-        color: 'var(--text-2)',
-      }}
+      className="auth-eye-toggle"
+      aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
     >
-      {visible ? '' : ''}
+      {visible ? 'Ocultar' : 'Ver'}
     </button>
   );
 
   const handleSubmit = async () => {
-    if (!email.trim() || !password.trim()) { setError('Preencha todos os campos.'); return; }
-    setLoading(true); setError('');
+    if (!email.trim() || !password.trim()) {
+      setError('Preencha todos os campos.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
     try {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
@@ -48,6 +49,7 @@ export default function LoginPage({ onGoRegister }) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
+
       if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
       else login(data.user, data.token);
     } catch {
@@ -58,12 +60,27 @@ export default function LoginPage({ onGoRegister }) {
   };
 
   const handleReset = async () => {
-    if (!resetEmail.trim()) { setError('Informe o email.'); return; }
-    if (!newPassword.trim()) { setError('Informe a nova senha.'); return; }
-    if (newPassword.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
-    if (newPassword !== confirmPassword) { setError('As senhas não coincidem.'); return; }
+    if (!resetEmail.trim()) {
+      setError('Informe o email.');
+      return;
+    }
+    if (!newPassword.trim()) {
+      setError('Informe a nova senha.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
 
-    setLoading(true); setError(''); setSuccess('');
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
       const res = await apiFetch('/auth/reset-password', {
         method: 'PUT',
@@ -71,8 +88,10 @@ export default function LoginPage({ onGoRegister }) {
         body: JSON.stringify({ email: resetEmail, newPassword }),
       });
       const data = await res.json();
-      if (!res.ok) setError(formatApiError(data.error, 'Erro ao redefinir senha.'));
-      else {
+
+      if (!res.ok) {
+        setError(formatApiError(data.error, 'Erro ao redefinir senha.'));
+      } else {
         setSuccess('Senha redefinida com sucesso! Faça login.');
         setTimeout(() => {
           setView('login');
@@ -93,13 +112,15 @@ export default function LoginPage({ onGoRegister }) {
   if (view === 'reset') {
     return (
       <AuthLayout>
-        <div className="auth-card">
-          <div className="card" style={{ padding: 64 }}>
-        <AuthLogo />
+        <div className="auth-card" style={{ margin: '0 auto' }}>
+          <div className="card">
+            <AuthLogo />
             <h1 className="auth-heading">Redefinir senha</h1>
             <p className="auth-sub-text">Informe seu email e a nova senha</p>
-            {error   && <div className="auth-alert">{error}</div>}
-            {success && <div className="auth-alert" style={{ background: '#d1fae5', color: '#065f46', borderColor: '#6ee7b7' }}>{success}</div>}
+
+            {error && <div className="auth-alert">{error}</div>}
+            {success && <div className="auth-alert auth-success">{success}</div>}
+
             <div className="form-group">
               <label className="form-label">Email institucional</label>
               <input
@@ -110,43 +131,47 @@ export default function LoginPage({ onGoRegister }) {
                 onChange={e => setResetEmail(e.target.value)}
               />
             </div>
+
             <div className="form-group">
               <label className="form-label">Nova senha</label>
               <div style={{ position: 'relative' }}>
                 <input
                   className="form-input"
                   type={showNew ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
-                  style={{ paddingRight: 40 }}
+                  style={{ paddingRight: 64 }}
                 />
                 {eyeBtn(showNew, () => setShowNew(v => !v))}
               </div>
             </div>
+
             <div className="form-group">
               <label className="form-label">Confirmar nova senha</label>
               <div style={{ position: 'relative' }}>
                 <input
                   className="form-input"
                   type={showConfirm ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleReset()}
-                  style={{ paddingRight: 40 }}
+                  style={{ paddingRight: 64 }}
                 />
                 {eyeBtn(showConfirm, () => setShowConfirm(v => !v))}
               </div>
             </div>
+
             <button
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
               onClick={handleReset}
               disabled={loading}
             >
-              {loading ? 'Redefinindo…' : 'Redefinir senha'}
+              {loading ? 'Redefinindo...' : 'Redefinir senha'}
             </button>
+
             <div className="auth-footer">
               <a onClick={() => { setView('login'); setError(''); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
             </div>
@@ -158,11 +183,19 @@ export default function LoginPage({ onGoRegister }) {
 
   return (
     <AuthLayout>
-      <div className="auth-card" style={{width: '100%', maxWidth: 480, margin: '0 auto'}}>
-        <div className="card" style={{ padding: 65 }}>
-        <AuthLogo />
-        <TypewriterHeading />
+      <div className="auth-card" style={{ margin: '0 auto' }}>
+        <div className="card">
+          <AuthLogo />
+          <h1 className="auth-heading">Entrar</h1>
+          <p className="auth-sub-text">Acesse sua conta institucional</p>
+
+          <div className="auth-tabs" role="tablist" aria-label="Autenticação">
+            <button type="button" className="auth-tab active">Entrar</button>
+            <button type="button" className="auth-tab" onClick={onGoRegister}>Cadastro</button>
+          </div>
+
           {error && <div className="auth-alert">{error}</div>}
+
           <div className="form-group">
             <label className="form-label">Email institucional</label>
             <input
@@ -174,44 +207,49 @@ export default function LoginPage({ onGoRegister }) {
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
           </div>
+
           <div className="form-group">
-            <div className="auth-row" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div className="auth-row">
               <label className="form-label" style={{ margin: 0 }}>Senha</label>
               <span
                 className="auth-forgot"
-                style={{ cursor: 'pointer', fontSize: 13, color: '#2563eb', fontWeight: 500 }}
+                style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 onClick={() => { setView('reset'); setError(''); setResetEmail(email); }}
               >
                 Esqueci a senha
               </span>
             </div>
+
             <div style={{ position: 'relative' }}>
               <input
                 className="form-input"
                 type={showPass ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                style={{ paddingRight: 40 }}
+                style={{ paddingRight: 64 }}
               />
               {eyeBtn(showPass, () => setShowPass(v => !v))}
             </div>
           </div>
-          <label className="auth-remember" style={{margin: '12px 0 0 0', display: 'flex', alignItems: 'center', fontSize: 14}}>
-            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{marginRight: 8}} />
+
+          <label className="auth-remember" style={{ margin: '12px 0 0 0', display: 'flex', alignItems: 'center', fontSize: 14 }}>
+            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ marginRight: 8 }} />
             <span className="auth-remember-label">Lembrar desta conta</span>
           </label>
+
           <button
             className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', marginTop: 24, padding: '11px 0', fontSize: 16, fontWeight: 600 }}
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? 'Entrando…' : 'Entrar'}
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
-          <div className="auth-footer" style={{marginTop: 18, textAlign: 'center', fontSize: 14}}>
-            Não tem conta? <a style={{color: '#2563eb', fontWeight: 500, cursor: 'pointer'}} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
+
+          <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
+            Não tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
           </div>
         </div>
       </div>

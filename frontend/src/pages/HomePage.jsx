@@ -5,6 +5,7 @@ import PostComposer from '../components/post/PostComposer';
 import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import Topbar from '../components/layout/Topbar';
+import unigranCharacters from '../assets/unigran_characters.png';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 
 const TRENDING = [
@@ -73,6 +74,15 @@ export default function HomePage() {
 
       <div className="page-layout">
         <main className="section-grid">
+          <section className="home-welcome-card">
+            <div className="home-welcome-copy">
+              <span className="home-welcome-kicker">UNIGRAN SOCIAL</span>
+              <h1>Bem-vindo à comunidade Unigran</h1>
+              <p>Conecte-se com colegas, professores e projetos que movimentam a vida acadêmica.</p>
+            </div>
+            <img src={unigranCharacters} alt="Personagens da comunidade Unigran" className="home-welcome-image" />
+          </section>
+
           <PostComposer onSubmit={handleNewPost} placeholder="No que você está pensando?" />
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -89,16 +89,14 @@
 
 html, body, #root { height: 100%; }
 
-/* Force light theme for auth pages */
 .auth-split-layout {
-  background: #f0f4f9 !important;
-  color: #1a1a2e !important;
+  color: #ffffff;
 }
 
 .auth-split-layout input,
 .auth-split-layout textarea,
 .auth-split-layout button {
-  color: #1a1a2e;
+  color: inherit;
 }
 
 body {
