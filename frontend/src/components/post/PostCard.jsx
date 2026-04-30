@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
-import { likePost, reportPost, savePost, sharePost, unlikePost, unsavePost } from '../../services/posts';
+import { likePost, reportPost, savePost, sharePost, unlikePost, unsavePost, updatePost } from '../../services/posts';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -63,7 +63,7 @@ function CommentItem({ comment }) {
   );
 }
 
-export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadComments, onAddComment }) {
+export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenProfile, onLoadComments, onAddComment }) {
   const { user, token }      = useAuth();
   const { showToast } = useToast();
 
@@ -78,7 +78,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
   const [newComment, setNewComment]   = useState('');
 
   const isOwner   = user?.id === post.author.id;
-  const canDelete = isOwner || user?.role === 'admin' || user?.role === 'moderator';
+  const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -87,12 +87,21 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
     fn({ token, postId: post.id }).catch(() => {});
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editText.trim()) return;
-    onEdit?.(post.id, editText.trim());
-    setIsEdited(true);
-    setEditing(false);
-    showToast('Post editado!', '✏️');
+    const previous = post.content;
+    const next = editText.trim();
+    onEdit?.(post.id, next);
+    try {
+      await updatePost({ token, postId: post.id, content: next });
+      setIsEdited(true);
+      setEditing(false);
+      showToast('Post editado!', '✓');
+    } catch (err) {
+      onEdit?.(post.id, previous);
+      setEditText(previous);
+      showToast(err.message || 'Erro ao editar post', '!');
+    }
   };
 
   const cancelEdit = () => {
@@ -118,7 +127,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
   };
 
   const menuItems = [
-    ...(isOwner ? [{ icon: '✏️', label: 'Editar post', onClick: () => setEditing(true) }] : []),
+    ...(isOwner && onEdit ? [{ icon: '✏️', label: 'Editar post', onClick: () => setEditing(true) }] : []),
     ...(canDelete ? [{ icon: '🗑️', label: 'Excluir post', danger: true, onClick: () => { onDelete(post.id); showToast('Post excluído', '🗑️'); } }] : []),
     ...(user?.role === 'admin' && !isOwner ? [{ icon: '🚫', label: 'Banir usuário', danger: true, onClick: () => showToast('Usuário banido', '🚫') }] : []),
     'sep',
@@ -129,17 +138,26 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
     <div className="card post-card" style={{ overflow: 'visible' }}>
       {/* Header */}
       <div className="post-head">
-        <Avatar
-          size={42}
-          src={post.author.profilePicture || null}
-          name={post.author.displayName || post.author.username || ''}
-          initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
-        />
+        <button
+          onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
+          style={{ border: 0, background: 'transparent', padding: 0, flexShrink: 0 }}
+        >
+          <Avatar
+            size={42}
+            src={post.author.profilePicture || null}
+            name={post.author.displayName || post.author.username || ''}
+            initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
+          />
+        </button>
         <div className="post-meta">
-          <div className="post-author-name">
+          <button
+            className="post-author-name"
+            onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
+            style={{ border: 0, background: 'transparent', padding: 0, textAlign: 'left' }}
+          >
             {post.author.displayName}
             <RoleBadge role={post.author.role} />
-          </div>
+          </button>
           {post.community && (
             <span style={{ display:'inline-block', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background:'var(--accent-light)', color:'var(--accent)', marginBottom:2 }}>
               {post.community}

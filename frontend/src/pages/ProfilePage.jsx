@@ -8,6 +8,9 @@ import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
+import { fetchLikedPosts, fetchReposts } from '../services/users';
+
+const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
 const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Links'];
 
@@ -27,6 +30,9 @@ export default function ProfilePage({ onNavigate }) {
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
   const [posts, setPosts] = useState([]);
+  const [likedPosts, setLikedPosts] = useState([]);
+  const [reposts, setReposts] = useState([]);
+  const [tabLoading, setTabLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     displayName: user.displayName,
     bio:         user.bio,
@@ -42,6 +48,24 @@ export default function ProfilePage({ onNavigate }) {
       .then((loaded) => setPosts(loaded))
       .catch(() => setPosts([]));
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !user?.username) return;
+    if (tab === 'Curtidas') {
+      setTabLoading(true);
+      fetchLikedPosts({ token, username: user.username })
+        .then(setLikedPosts)
+        .catch(() => setLikedPosts([]))
+        .finally(() => setTabLoading(false));
+    }
+    if (tab === 'Reposts') {
+      setTabLoading(true);
+      fetchReposts({ token, username: user.username })
+        .then(setReposts)
+        .catch(() => setReposts([]))
+        .finally(() => setTabLoading(false));
+    }
+  }, [tab, token, user?.username]);
 
   useEffect(() => {
     if (!user?.username || !token) return;
@@ -112,6 +136,10 @@ export default function ProfilePage({ onNavigate }) {
   const sortedPosts = postFilter === 'date'
     ? [...filteredPosts].sort((a, b) => (b.id > a.id ? 1 : -1))
     : filteredPosts;
+
+  const linkPosts = posts
+    .filter(p => URL_RE.test(p.content || ''))
+    .map(p => ({ ...p, url: (p.content || '').match(URL_RE)?.[0] }));
 
   return (
     <div className="page-scroll">
@@ -210,6 +238,47 @@ export default function ProfilePage({ onNavigate }) {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {tab === 'Reposts' && (
+          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+            {tabLoading ? (
+              <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
+            ) : reposts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Nenhum repost.</div>
+            ) : reposts.map(post => (
+              <div key={post.id} style={{ marginBottom: 10 }}>
+                <PostCard post={post} onDelete={deletePost} onEdit={editPost} onOpenDetail={setOpenPost} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'Curtidas' && (
+          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+            {tabLoading ? (
+              <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
+            ) : likedPosts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Nenhuma curtida.</div>
+            ) : likedPosts.map(post => (
+              <div key={post.id} style={{ marginBottom: 10 }}>
+                <PostCard post={post} onDelete={deletePost} onEdit={editPost} onOpenDetail={setOpenPost} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'Links' && (
+          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+            {linkPosts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Nenhum link publicado.</div>
+            ) : linkPosts.map(post => (
+              <a key={post.id} className="card" href={post.url?.startsWith('http') ? post.url : `https://${post.url}`} target="_blank" rel="noreferrer" style={{ display: 'block', padding: 16, marginBottom: 10 }}>
+                <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>{post.content?.slice(0, 90) || post.url}</div>
+                <div style={{ color: 'var(--accent)', fontSize: 13 }}>{post.url}</div>
+              </a>
+            ))}
           </div>
         )}
 

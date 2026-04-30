@@ -5,6 +5,7 @@ import {
   createCommentController,
   favoritesController,
   createPostController,
+  editPostController,
   getCommentsController,
   getFeedController,
   likePostController,
@@ -21,6 +22,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 router.get('/', auth, getFeedController);
 router.get('/favorites', auth, favoritesController);
 router.post('/', auth, upload.single('file'), createPostController);
+router.patch('/:id', auth, editPostController);
 router.post('/:id/like', auth, likePostController);
 router.delete('/:id/like', auth, unlikePostController);
 router.post('/:id/save', auth, savePostController);

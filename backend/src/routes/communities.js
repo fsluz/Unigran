@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, val, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireRole } from '../middleware/auth.js';
+import { listCommunityPosts } from '../repositories/post.repository.js';
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.get('/', auth, async (req, res) => {
     const rows = await readQuery(`
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
-        try { $g has description $desc; };
+        try { $g has bio $desc; };
         try { $m (group: $g, member: $member) isa group-membership; $member has username $member_username; };
       fetch {
         "id": $gid,
@@ -37,6 +38,19 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
 });
 
+router.get('/:id/posts', auth, async (req, res) => {
+  try {
+    const posts = await listCommunityPosts({
+      communityId: req.params.id,
+      viewerUsername: req.user.username,
+    });
+    res.json({ posts });
+  } catch (err) {
+    console.error('[community posts]', err);
+    res.status(500).json({ error: 'Erro ao carregar posts' });
+  }
+});
+
 /* POST /api/communities */
 router.post('/', auth, async (req, res) => {
   const { name, description = '', type = 'public' } = req.body;
@@ -50,14 +64,12 @@ router.post('/', auth, async (req, res) => {
         $g isa group,
           has group-id "${gid}",
           has name "${typeqlLiteral(name.trim())}",
-          ${description ? `has description "${typeqlLiteral(description)}",` : ''}
+          ${description ? `has bio "${typeqlLiteral(description)}",` : ''}
           has page-visibility "${type === 'public' ? 'public' : 'private'}",
-          has is-active true,
-          has can-publish true;
+          has is-active true;
         $membership (member: $u, group: $g) isa group-membership,
           has rank "admin",
-          has start-timestamp ${now},
-          has is-visible true;
+          has start-timestamp ${now};
     `);
     res.status(201).json({ id: gid, name, description, type });
   } catch (err) { console.error('[communities POST]', err); res.status(500).json({ error: 'Erro ao criar' }); }
@@ -73,8 +85,7 @@ router.post('/:id/join', auth, async (req, res) => {
         $g isa group, has group-id "${req.params.id}";
       insert $membership (member: $u, group: $g) isa group-membership,
         has rank "member",
-        has start-timestamp ${now},
-        has is-visible true;
+        has start-timestamp ${now};
     `);
     res.json({ joined: true });
   } catch (err) { console.error('[join]', err); res.status(500).json({ error: 'Erro ao entrar' }); }

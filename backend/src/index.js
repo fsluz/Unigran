@@ -9,6 +9,7 @@ import usersRouter         from './routes/users.js';
 import postsRouter         from './routes/posts.js';
 import communitiesRouter   from './routes/communities.js';
 import conversationsRouter from './routes/conversations.js';
+import notificationsRouter from './routes/notifications.js';
 import searchRouter        from './routes/search.js';
 import uploadsRouter       from './routes/uploads.js';
 import { setupSocket }     from './socket/handlers.js';
@@ -36,6 +37,7 @@ app.use('/api/users',         usersRouter);
 app.use('/api/posts',         postsRouter);
 app.use('/api/communities',   communitiesRouter);
 app.use('/api/conversations', conversationsRouter);
+app.use('/api/notifications', notificationsRouter);
 app.use('/api/search',        searchRouter);
 app.use('/api/uploads',       uploadsRouter);
 

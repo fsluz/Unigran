@@ -13,10 +13,12 @@ import CommunitiesPage    from './pages/CommunitiesPage';
 import MessagesPage       from './pages/MessagesPage';
 import NotificationsPage  from './pages/NotificationsPage';
 import SettingsPage       from './pages/SettingsPage';
+import PublicProfilePage  from './pages/PublicProfilePage';
 
 function AppShell() {
   const { user, logout } = useAuth();
   const [page, setPage]         = useState('home');
+  const [profileUsername, setProfileUsername] = useState(null);
   const [authView, setAuthView] = useState('login');
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -38,6 +40,22 @@ function AppShell() {
     setPage(id);
   };
 
+  const openProfile = (username) => {
+    setProfileUsername(username);
+    setPage('publicProfile');
+  };
+
+  useEffect(() => {
+    const open = (event) => openProfile(event.detail);
+    const nav = (event) => setPage(event.detail);
+    window.addEventListener('unigran:open-profile', open);
+    window.addEventListener('unigran:navigate', nav);
+    return () => {
+      window.removeEventListener('unigran:open-profile', open);
+      window.removeEventListener('unigran:navigate', nav);
+    };
+  }, []);
+
   const handleLogout = () => {
     logout();
     setAuthView('login');
@@ -45,10 +63,11 @@ function AppShell() {
   };
 
   const pages = {
-    home:          <HomePage />,
+    home:          <HomePage onOpenProfile={openProfile} />,
     profile:       <ProfilePage onNavigate={setPage} />,
-    friends:       <FriendsPage />,
-    communities:   <CommunitiesPage />,
+    publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
+    friends:       <FriendsPage onNavigate={setPage} />,
+    communities:   <CommunitiesPage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,

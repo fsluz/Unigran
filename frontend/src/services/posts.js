@@ -19,16 +19,21 @@ function normalizePost(post) {
   };
 }
 
-export async function fetchPosts(token) {
-  const res = await apiFetch('/posts', { headers: authHeaders(token) });
+export async function fetchPosts(token, { page = 1, limit = 10, feed = '' } = {}) {
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('limit', String(limit));
+  if (feed) params.set('feed', feed);
+  const res = await apiFetch(`/posts?${params.toString()}`, { headers: authHeaders(token) });
   const data = await parseResponse(res, 'Erro ao carregar posts');
   return (data.posts || []).map(normalizePost);
 }
 
-export async function createPost({ token, content, file }) {
+export async function createPost({ token, content, file, communityId }) {
   const fd = new FormData();
   if (content) fd.append('content', content);
   if (file) fd.append('file', file);
+  if (communityId) fd.append('communityId', communityId);
   const res = await apiFetch('/posts', {
     method: 'POST',
     headers: authHeaders(token),
@@ -102,4 +107,13 @@ export async function sharePost({ token, postId, content = '' }) {
 export async function reportPost({ token, postId }) {
   const res = await apiFetch(`/posts/${postId}/report`, { method: 'POST', headers: authHeaders(token) });
   return parseResponse(res, 'Erro ao denunciar');
+}
+
+export async function updatePost({ token, postId, content }) {
+  const res = await apiFetch(`/posts/${postId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, 'Erro ao editar post');
 }

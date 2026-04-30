@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { readQuery, writeQuery, typeqlLiteral, val } from '../db/typedb.js';
 import { auth, requireRole } from '../middleware/auth.js';
+import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
 
@@ -31,6 +32,41 @@ router.get('/suggestions/list', auth, async (req, res) => {
     })) });
   } catch (err) {
     console.error('[suggestions]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/:id/posts', auth, async (req, res) => {
+  try {
+    const posts = await listUserPosts({
+      username: req.params.id,
+      viewerUsername: req.user.username,
+      limit: 50,
+    });
+    res.json({ posts });
+  } catch (err) {
+    console.error('[user posts]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/:id/liked-posts', auth, async (req, res) => {
+  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissao' });
+  }
+  try {
+    res.json({ posts: await listLikedPosts(req.params.id) });
+  } catch (err) {
+    console.error('[liked posts]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/:id/reposts', auth, async (req, res) => {
+  try {
+    res.json({ posts: await listReposts(req.params.id) });
+  } catch (err) {
+    console.error('[reposts]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });
@@ -223,8 +259,8 @@ router.post('/:id/follow', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
-        $a isa person, has username "${req.user.username}";
-        $b isa page, has username "${req.params.id}";
+        $a isa person, has username "${typeqlLiteral(req.user.username)}";
+        $b isa page, has username "${typeqlLiteral(req.params.id)}";
       insert $follow (follower: $a, page: $b) isa following;
     `);
     res.json({ following: true });
@@ -236,8 +272,8 @@ router.delete('/:id/follow', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
-        $a isa person, has username "${req.user.username}";
-        $b isa page, has username "${req.params.id}";
+        $a isa person, has username "${typeqlLiteral(req.user.username)}";
+        $b isa page, has username "${typeqlLiteral(req.params.id)}";
         $f (follower: $a, page: $b) isa following;
       delete $f isa following;
     `);
@@ -343,6 +379,25 @@ router.get('/:id/friends', auth, async (req, res) => {
       res.status(500).json({ error: 'Erro interno' });
     }
   });
+});
+
+router.delete('/:id/friends/:friendId', auth, async (req, res) => {
+  if (req.user.username !== req.params.id) {
+    return res.status(403).json({ error: 'Sem permissao' });
+  }
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(req.params.id)}";
+        $f isa person, has username "${typeqlLiteral(req.params.friendId)}";
+        $rel (friend: $u, friend: $f) isa friendship;
+      delete $rel isa friendship;
+    `);
+    res.json({ removed: true });
+  } catch (err) {
+    console.error('[friends DELETE]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
 export default router;

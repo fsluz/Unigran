@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch, authHeaders } from '../../utils/api';
 
 const NOTIFS = [
   { id:1, type:'like',    user:'Ana Rodrigues', av:'AR', color:'#EC4899', text:'curtiu seu post',                time:'2min',  read:false },
@@ -20,8 +21,11 @@ function NotifDot({ color, children }) {
 }
 
 export default function Topbar({ title, left, right }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({ users: [], communities: [], posts: [] });
+  const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef();
 
   useEffect(() => {
@@ -30,8 +34,40 @@ export default function Topbar({ title, left, right }) {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setSearchResults({ users: [], communities: [], posts: [] });
+      return;
+    }
+    const timer = setTimeout(() => {
+      apiFetch(`/search?q=${encodeURIComponent(q)}`, { headers: authHeaders(token) })
+        .then(r => r.json())
+        .then(data => setSearchResults({
+          users: data.users || [],
+          communities: data.communities || [],
+          posts: data.posts || [],
+        }))
+        .catch(() => setSearchResults({ users: [], communities: [], posts: [] }));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, token]);
+
+  const openProfile = (username) => {
+    if (!username) return;
+    setSearchOpen(false);
+    window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: username }));
+  };
+
+  const goCommunities = () => {
+    setSearchOpen(false);
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'communities' }));
+  };
+
   return (
     <div className="topbar" style={{ justifyContent: 'center' }}>
+      {left && <div style={{ marginRight: 12 }}>{left}</div>}
+      {title && <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, color: 'var(--text)', marginRight: 12, whiteSpace: 'nowrap' }}>{title}</div>}
       <div style={{ flex: 1, maxWidth: 440, position: 'relative' }}>
         <svg style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }}
           width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -40,10 +76,53 @@ export default function Topbar({ title, left, right }) {
         <input
           placeholder="Buscar comunidades, pessoas..."
           className="topbar-search"
+          value={query}
+          onFocus={() => setSearchOpen(true)}
+          onChange={e => {
+            setQuery(e.target.value);
+            setSearchOpen(true);
+          }}
         />
+        {searchOpen && query.trim() && (
+          <div className="notif-popout" style={{ left: 0, right: 0, top: 46 }}>
+            {searchResults.users.length === 0 && searchResults.communities.length === 0 && searchResults.posts.length === 0 ? (
+              <div className="search-empty">Nenhum resultado.</div>
+            ) : (
+              <>
+                {searchResults.users.map(item => (
+                  <button key={item.username} className="search-result-row" onClick={() => openProfile(item.username)} style={{ width: '100%', border: 0, background: 'transparent' }}>
+                    <div className="search-result-ava">{(item.displayName || item.username || '?').slice(0, 2).toUpperCase()}</div>
+                    <div className="search-result-info">
+                      <div className="search-result-name">{item.displayName}</div>
+                      <div className="search-result-sub">@{item.username}</div>
+                    </div>
+                  </button>
+                ))}
+                {searchResults.communities.map(item => (
+                  <button key={item.id} className="search-result-row" onClick={goCommunities} style={{ width: '100%', border: 0, background: 'transparent' }}>
+                    <div className="search-result-ava">{(item.name || '?').slice(0, 2).toUpperCase()}</div>
+                    <div className="search-result-info">
+                      <div className="search-result-name">{item.name}</div>
+                      <div className="search-result-sub">{item.type}</div>
+                    </div>
+                  </button>
+                ))}
+                {searchResults.posts.map(item => (
+                  <div key={item.id} className="search-result-row">
+                    <div className="search-result-ava">#</div>
+                    <div className="search-result-info">
+                      <div className="search-result-name">{item.content}</div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="topbar-actions">
+        {right}
         {/* Notification bell */}
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button

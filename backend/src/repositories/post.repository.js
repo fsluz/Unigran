@@ -59,8 +59,21 @@ async function loadFriendSet(username) {
   return new Set(rows.map(row => val(row, 'friend_username')).filter(Boolean));
 }
 
-export async function listFeed({ viewerUsername, limit, offset }) {
-  const key = `feed:${viewerUsername || 'anon'}:${limit}:${offset}`;
+async function loadFollowingSet(username) {
+  if (!username) return new Set();
+  const safeUsername = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $me isa person, has username "${safeUsername}";
+      $page isa page, has username $followed_username;
+      $follow (follower: $me, page: $page) isa following;
+    select $followed_username;
+  `);
+  return new Set(rows.map(row => val(row, 'followed_username')).filter(Boolean));
+}
+
+export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
+  const key = `feed:${viewerUsername || 'anon'}:${feed}:${limit}:${offset}`;
   const cached = getCached(key);
   if (cached) return cached;
 
@@ -120,10 +133,12 @@ export async function listFeed({ viewerUsername, limit, offset }) {
   `);
   const profilesMap = await loadAllProfilesMap();
   const friendSet = await loadFriendSet(viewerUsername);
+  const followingSet = await loadFollowingSet(viewerUsername);
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
     const visibility = entry?.author?.visibility || 'public';
+    if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
     return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
@@ -173,7 +188,7 @@ export async function listFeed({ viewerUsername, limit, offset }) {
   return posts;
 }
 
-export async function createPost({ authorUsername, postType, content, media }) {
+export async function createPost({ authorUsername, postType, content, media, communityId }) {
   const postId = uuid();
   const now = typeqlDatetime();
   const safeUser = typeqlLiteral(authorUsername);
@@ -190,14 +205,120 @@ export async function createPost({ authorUsername, postType, content, media }) {
 
   await writeQuery(`
     match $author isa person, has username "${safeUser}";
+    ${communityId ? `$group isa group, has group-id "${typeqlLiteral(communityId)}";` : ''}
     insert
       $post isa ${postType},
         ${attributes.join(',\n        ')};
       $posting (page: $author, post: $post) isa posting;
+      ${communityId ? '$group_posting (page: $group, post: $post) isa posting;' : ''}
   `);
 
   cache.clear();
   return { id: postId, time: now };
+}
+
+export async function updatePostContent({ username, postId, content }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  const safeContent = typeqlLiteral(content);
+  try {
+    await writeQuery(`
+      match
+        $user isa person, has username "${safeUser}";
+        $post isa post, has post-id "${safePost}", has post-text $old;
+        $posting (page: $user, post: $post) isa posting;
+      delete $old of $post;
+    `);
+  } catch (_) {}
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id "${safePost}";
+      $posting (page: $user, post: $post) isa posting;
+    insert $post has post-text "${safeContent}";
+  `);
+  cache.clear();
+  return { id: postId, content };
+}
+
+export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
+  const posts = await listFeed({ viewerUsername, limit: 200, offset: 0 });
+  return posts.filter(post => post.author?.username === username).slice(0, limit);
+}
+
+export async function listLikedPosts(username) {
+  const safeUser = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id $pid;
+      $reaction (author: $user, parent: $post) isa reaction;
+    select $pid;
+  `);
+  const ids = new Set(rows.map(row => val(row, 'pid')).filter(Boolean));
+  const posts = await listFeed({ viewerUsername: username, limit: 200, offset: 0 });
+  return posts.filter(post => ids.has(post.id));
+}
+
+export async function listReposts(username) {
+  const safeUser = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $share isa share-post, has post-id $pid;
+      $posting (page: $user, post: $share) isa posting;
+    select $pid;
+  `);
+  const ids = new Set(rows.map(row => val(row, 'pid')).filter(Boolean));
+  const posts = await listFeed({ viewerUsername: username, limit: 200, offset: 0 });
+  return posts.filter(post => ids.has(post.id));
+}
+
+export async function listCommunityPosts({ communityId, viewerUsername }) {
+  const safeCommunity = typeqlLiteral(communityId);
+  const rows = await readQuery(`
+    match
+      $group isa group, has group-id "${safeCommunity}", has name $group_name;
+      $post isa post, has post-id $post_id, has creation-timestamp $post_ts;
+      $group_posting (page: $group, post: $post) isa posting;
+      $author isa person, has username $username, has name $user_name;
+      $author_posting (page: $author, post: $post) isa posting;
+      try { $author has profile-picture $user_profile_pic; };
+    fetch {
+      "post_id": $post_id,
+      "created_at": $post_ts,
+      "group_name": $group_name,
+      "author": {
+        "username": $username,
+        "name": $user_name,
+        "profile_picture": $user_profile_pic
+      },
+      "post_all_attributes": { $post.* }
+    };
+  `);
+  return rows.map(entry => {
+    const attrs = entry?.post_all_attributes || {};
+    const imageUrl = attrs['post-image'] || null;
+    const videoUrl = attrs['post-video'] || null;
+    const mediaUrl = imageUrl || videoUrl;
+    return {
+      id: entry?.post_id || attrs['post-id'] || uuid(),
+      content: attrs['post-text'] || '',
+      time: entry?.created_at || attrs['creation-timestamp'] || null,
+      community: entry?.group_name || '',
+      media: mediaUrl ? { url: mediaUrl, resource_type: videoUrl ? 'video' : 'image' } : null,
+      author: {
+        id: entry?.author?.username || viewerUsername,
+        username: entry?.author?.username || viewerUsername,
+        displayName: entry?.author?.name || 'Usuario',
+        profilePicture: entry?.author?.profile_picture || null,
+        role: 'user',
+      },
+      comments: 0,
+      likes: 0,
+      liked: false,
+    };
+  }).sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
 }
 
 export async function reactToPost({ username, postId, emoji = 'like' }) {

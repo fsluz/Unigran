@@ -1,39 +1,59 @@
 import { Router } from 'express';
-import { readQuery, val } from '../db/typedb.js';
+import { readQuery, typeqlLiteral, val } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/', auth, async (req, res) => {
-  const { q = '', type = 'users' } = req.query;
-  if (!q.trim()) return res.json({ results: [] });
-  const safe = q.replace(/"/g, '\\"');
+  const q = String(req.query.q || '').trim();
+  if (!q) return res.json({ users: [], posts: [], communities: [] });
+  const safe = typeqlLiteral(q.replace(/^#/, ''));
+
   try {
-    let rows = [], results = [];
-    if (type === 'users') {
-      rows = await readQuery(`
-        match $u isa person, has name $dn, has username $un;
-        $dn like "(?i).*${safe}.*";
-        select $dn, $un; limit 10;
-      `);
-      results = rows.map(r => ({ id: val(r,'un'), displayName: val(r,'dn'), username: val(r,'un'), role: 'user' }));
-    } else if (type === 'communities') {
-      rows = await readQuery(`
-        match $g isa group, has name $t, has group-id $gid, has page-visibility $v;
-        $t like "(?i).*${safe}.*";
-        select $gid, $t, $v; limit 10;
-      `);
-      results = rows.map(r => ({ id: val(r,'gid'), name: val(r,'t'), type: val(r,'v') }));
-    } else if (type === 'posts') {
-      rows = await readQuery(`
-        match $p isa post, has post-text $ct, has post-id $pid;
-        $ct like "(?i).*${safe.replace(/^#/,'')}.*";
+    const [userRows, communityRows, postRows] = await Promise.all([
+      readQuery(`
+        match
+          $u isa person, has name $dn, has username $un;
+          $dn like "(?i).*${safe}.*";
+          try { $u has profile-picture $pic; };
+        select $dn, $un, $pic; limit 10;
+      `),
+      readQuery(`
+        match
+          $g isa group, has name $name, has group-id $gid, has page-visibility $v;
+          $name like "(?i).*${safe}.*";
+        select $gid, $name, $v; limit 10;
+      `),
+      readQuery(`
+        match
+          $p isa post, has post-text $ct, has post-id $pid;
+          $ct like "(?i).*${safe}.*";
         select $pid, $ct; limit 10;
-      `);
-      results = rows.map(r => ({ id: val(r,'pid'), content: String(val(r,'ct')).slice(0,120) }));
-    }
-    res.json({ results, type, q });
-  } catch (err) { console.error('[search]', err); res.status(500).json({ error: 'Erro na busca' }); }
+      `),
+    ]);
+
+    res.json({
+      users: userRows.map(r => ({
+        id: val(r, 'un'),
+        username: val(r, 'un'),
+        displayName: val(r, 'dn'),
+        profilePicture: val(r, 'pic') || null,
+      })),
+      communities: communityRows.map(r => ({
+        id: val(r, 'gid'),
+        name: val(r, 'name'),
+        type: val(r, 'v'),
+      })),
+      posts: postRows.map(r => ({
+        id: val(r, 'pid'),
+        content: String(val(r, 'ct') || '').slice(0, 160),
+      })),
+      q,
+    });
+  } catch (err) {
+    console.error('[search]', err);
+    res.status(500).json({ error: 'Erro na busca' });
+  }
 });
 
 export default router;

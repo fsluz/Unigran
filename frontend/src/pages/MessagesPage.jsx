@@ -35,6 +35,26 @@ export default function MessagesPage() {
       .catch(err => showToast(err.message || 'Erro ao carregar mensagens', ''));
   }, [active?.id, token, showToast]);
 
+  useEffect(() => {
+    if (!active?.id) return;
+    const sameIds = (a = [], b = []) =>
+      a.length === b.length && a.every((item, index) => item.id === b[index]?.id);
+
+    const interval = setInterval(() => {
+      fetchMessages({ token, conversationId: active.id })
+        .then(loaded => {
+          setMessages(prev => {
+            const current = prev[active.id] || [];
+            if (sameIds(current, loaded)) return prev;
+            return { ...prev, [active.id]: loaded };
+          });
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [active?.id, token]);
+
   const beginConversation = async () => {
     if (!targetUsername.trim()) return;
     setLoading(true);

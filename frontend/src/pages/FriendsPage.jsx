@@ -1,7 +1,9 @@
 import Topbar from '../components/layout/Topbar';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { apiFetch } from '../utils/api';
+import { startDirectConversation } from '../services/conversations';
 
 function Avatar({ user }) {
   const initials = (user.displayName || user.username || '?')
@@ -26,8 +28,9 @@ function Avatar({ user }) {
   );
 }
 
-export default function FriendsPage() {
+export default function FriendsPage({ onNavigate }) {
   const { user, token } = useAuth();
+  const { showToast } = useToast();
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +71,15 @@ export default function FriendsPage() {
       setError(e.message);
     } finally {
       setRemoving(null);
+    }
+  }
+
+  async function messageFriend(friendUsername) {
+    try {
+      await startDirectConversation({ token, username: friendUsername });
+      onNavigate?.('messages');
+    } catch (e) {
+      showToast(e.message || 'Erro ao abrir conversa', '!');
     }
   }
 
@@ -142,17 +154,30 @@ export default function FriendsPage() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setConfirmId(f.username)}
-                  style={{
-                    padding: '6px 12px', borderRadius: 8,
-                    border: '1px solid var(--border)', background: 'transparent',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer', fontSize: 13, fontWeight: 500,
-                  }}
-                >
-                  Remover
-                </button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => messageFriend(f.username)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'var(--accent)',
+                      color: '#fff',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                    }}
+                  >
+                    Mensagem
+                  </button>
+                  <button
+                    onClick={() => setConfirmId(f.username)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 8,
+                      border: '1px solid var(--border)', background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                    }}
+                  >
+                    Remover
+                  </button>
+                </div>
               )}
             </div>
           </div>

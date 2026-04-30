@@ -5,6 +5,7 @@ import {
   listSavedPosts,
   listComments,
   listFeed,
+  updatePostContent,
   reactToPost,
   savePost,
   sharePost,
@@ -29,8 +30,8 @@ function inferPostType(media) {
   return 'image-post';
 }
 
-export async function getFeed({ user, limit = 20, offset = 0 }) {
-  return listFeed({ viewerUsername: user?.username, limit, offset });
+export async function getFeed({ user, limit = 20, offset = 0, feed = '' }) {
+  return listFeed({ viewerUsername: user?.username, limit, offset, feed });
 }
 
 export async function createPostWithRules({ user, body, file }) {
@@ -53,6 +54,7 @@ export async function createPostWithRules({ user, body, file }) {
     postType,
     content,
     media,
+    communityId: body?.communityId || null,
   });
 
   return {
@@ -109,6 +111,13 @@ export async function createCommentWithRules({ user, postId, body, file }) {
     },
     status: 201,
   };
+}
+
+export async function editPostWithRules({ user, postId, body }) {
+  const content = String(body?.content || '').trim();
+  if (!content) return { error: 'Conteudo obrigatorio', status: 400 };
+  const updated = await updatePostContent({ username: user.username, postId, content });
+  return { data: updated, status: 200 };
 }
 
 export async function likePost({ user, postId }) {

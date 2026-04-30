@@ -3,7 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Topbar from '../components/layout/Topbar';
 import { Button, Modal, FormField } from '../components/ui';
-import { createCommunity, fetchCommunities, joinCommunity, leaveCommunity } from '../services/communities';
+import PostComposer from '../components/post/PostComposer';
+import PostCard from '../components/post/PostCard';
+import { createPost } from '../services/posts';
+import { createCommunity, fetchCommunities, fetchCommunityPosts, joinCommunity, leaveCommunity } from '../services/communities';
 
 function normalizeCommunity(item, index = 0) {
   const colors = ['#00A8FF', '#7C3AED', '#16A34A', '#F59E0B', '#8B5CF6', '#F97316'];
@@ -16,12 +19,15 @@ function normalizeCommunity(item, index = 0) {
   };
 }
 
-export default function CommunitiesPage() {
+export default function CommunitiesPage({ onOpenProfile }) {
   const { token } = useAuth();
   const { showToast } = useToast();
   const [communities, setCommunities] = useState([]);
   const [filter, setFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [activeCommunity, setActiveCommunity] = useState(null);
+  const [communityPosts, setCommunityPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', type: 'public' });
 
   useEffect(() => {
@@ -60,6 +66,26 @@ export default function CommunitiesPage() {
     } catch (err) {
       showToast(err.message || 'Erro ao criar', '!');
     }
+  };
+
+  const openCommunity = async (community) => {
+    setActiveCommunity(community);
+    setPostsLoading(true);
+    try {
+      setCommunityPosts(await fetchCommunityPosts({ token, id: community.id }));
+    } catch (err) {
+      setCommunityPosts([]);
+      showToast(err.message || 'Erro ao carregar posts', '!');
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const submitCommunityPost = async ({ content, file }) => {
+    if (!activeCommunity?.id) return;
+    const created = await createPost({ token, content, file, communityId: activeCommunity.id });
+    setCommunityPosts(prev => [{ ...created, community: activeCommunity.name }, ...prev]);
+    showToast('Post publicado', '✓');
   };
 
   return (
@@ -117,13 +143,16 @@ export default function CommunitiesPage() {
                 {com.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}
               </div>
 
-              <Button
-                variant={com.joined ? 'secondary' : 'primary'}
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => toggleJoin(com)}
-              >
-                {com.joined ? 'Membro' : com.type === 'private' ? 'Solicitar entrada' : 'Entrar'}
-              </Button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button
+                  variant={com.joined ? 'secondary' : 'primary'}
+                  style={{ flex: 1, justifyContent: 'center' }}
+                  onClick={() => toggleJoin(com)}
+                >
+                  {com.joined ? 'Membro' : com.type === 'private' ? 'Solicitar entrada' : 'Entrar'}
+                </Button>
+                <Button variant="secondary" onClick={() => openCommunity(com)}>Ver posts</Button>
+              </div>
             </article>
           ))}
         </div>
@@ -147,6 +176,25 @@ export default function CommunitiesPage() {
               <option value="private">Privada</option>
             </select>
           </FormField>
+        </Modal>
+      )}
+
+      {activeCommunity && (
+        <Modal
+          title={activeCommunity.name}
+          onClose={() => setActiveCommunity(null)}
+          maxWidth={720}
+        >
+          <PostComposer onSubmit={submitCommunityPost} placeholder={`Publicar em ${activeCommunity.name}`} />
+          <div className="section-grid" style={{ marginTop: 12 }}>
+            {postsLoading ? (
+              <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
+            ) : communityPosts.length === 0 ? (
+              <div className="search-empty">Nenhum post nesta comunidade.</div>
+            ) : communityPosts.map(post => (
+              <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
+            ))}
+          </div>
         </Modal>
       )}
     </div>

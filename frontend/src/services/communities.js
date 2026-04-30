@@ -30,3 +30,9 @@ export async function leaveCommunity({ token, id }) {
   const res = await apiFetch(`/communities/${id}/join`, { method: 'DELETE', headers: authHeaders(token) });
   return parseResponse(res, 'Erro ao sair');
 }
+
+export async function fetchCommunityPosts({ token, id }) {
+  const res = await apiFetch(`/communities/${id}/posts`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar posts da comunidade');
+  return data.posts || [];
+}

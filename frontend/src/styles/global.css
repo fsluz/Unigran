@@ -124,3 +124,30 @@ button { cursor: pointer; font-family: var(--font-body); }
 textarea { resize: none; }
 input, textarea, select { font-family: var(--font-body); }
 img { display: block; max-width: 100%; }
+
+@keyframes shimmer {
+  0% { background-position: -240px 0; }
+  100% { background-position: 240px 0; }
+}
+
+.skeleton-row,
+.skeleton-line {
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--border), var(--card), var(--border));
+  background-size: 480px 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
+.skeleton-row {
+  height: 62px;
+  margin-bottom: 12px;
+}
+
+.post-card-skeleton {
+  padding: 16px;
+}
+
+.post-card-skeleton .skeleton-line {
+  height: 12px;
+  margin-top: 10px;
+}

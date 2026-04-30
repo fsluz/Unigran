@@ -1,6 +1,7 @@
 import {
   createCommentWithRules,
   createPostWithRules,
+  editPostWithRules,
   favoritePost,
   getFeed,
   getFavorites,
@@ -28,8 +29,11 @@ function cloudinaryAwareError(res, err, fallback) {
 export async function getFeedController(req, res) {
   try {
     const limit = Math.min(parseInt(req.query.limit || '20', 10), 50);
-    const offset = parseInt(req.query.offset || '0', 10);
-    const posts = await getFeed({ user: req.user, limit, offset });
+    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const offset = req.query.offset != null
+      ? parseInt(req.query.offset || '0', 10)
+      : (page - 1) * limit;
+    const posts = await getFeed({ user: req.user, limit, offset, feed: req.query.feed || '' });
     res.json({ posts });
   } catch (err) {
     console.error('[posts feed]', err);
@@ -71,6 +75,17 @@ export async function createCommentController(req, res) {
   } catch (err) {
     console.error('[comments create]', err);
     cloudinaryAwareError(res, err, 'Erro ao criar comentário');
+  }
+}
+
+export async function editPostController(req, res) {
+  try {
+    const result = await editPostWithRules({ user: req.user, postId: req.params.id, body: req.body });
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.status(result.status || 200).json(result.data);
+  } catch (err) {
+    console.error('[posts edit]', err);
+    res.status(500).json({ error: 'Erro ao editar post' });
   }
 }
 
