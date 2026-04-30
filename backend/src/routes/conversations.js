@@ -121,7 +121,6 @@ router.post('/direct/:username', auth, async (req, res) => {
         $to isa person, has username "${target}";
       insert
         $c isa conversation,
-          has id "${cid}",
           has conversation-id "${cid}",
           has name "${typeqlLiteral(title)}",
           has creation-timestamp ${now};
@@ -190,7 +189,6 @@ router.post('/:id/messages', auth, async (req, res) => {
         conversation-participant (participant: $u, conversation: $conv);
       insert
         $m isa message,
-          has id "${mid}",
           has message-id "${mid}",
           has message-text "${typeqlLiteral(content.trim())}",
           has creation-timestamp ${now};
