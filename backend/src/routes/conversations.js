@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
-import { readQuery, writeQuery, val, typeqlLiteral } from '../db/typedb.js';
+import { readQuery, writeQuery, val, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 import { getOnlineUsers } from '../socket/handlers.js';
 
@@ -20,7 +20,7 @@ async function canMessage({ fromUser, toUsername }) {
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      try { friendship (friend: $from, friend: $to); };
+      try { $fr (friend: $from, friend: $to) isa friendship; };
       try { $to has page-visibility $visibility; };
     select $visibility;
   `);
@@ -32,7 +32,7 @@ async function canMessage({ fromUser, toUsername }) {
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      friendship (friend: $from, friend: $to);
+      $fr (friend: $from, friend: $to) isa friendship;
     select $from;
   `);
   return friendRows.length
@@ -48,8 +48,8 @@ router.get('/', auth, async (req, res) => {
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
         $c isa conversation, has conversation-id $cid, has name $t;
-        conversation-participant (participant: $u, conversation: $c);
-        conversation-participant (participant: $p, conversation: $c);
+        $cp1 (participant: $u, conversation: $c) isa conversation-participant;
+        $cp2 (participant: $p, conversation: $c) isa conversation-participant;
         $p isa person, has username $pun, has name $pn;
         not { $p has username "${typeqlLiteral(req.user.username)}"; };
         try { $p has profile-picture $pp; };
@@ -85,8 +85,8 @@ router.post('/direct/:username', auth, async (req, res) => {
         $me isa person, has username "${me}";
         $to isa person, has username "${target}", has name $to_name;
         $c isa conversation, has conversation-id $cid;
-        conversation-participant (participant: $me, conversation: $c);
-        conversation-participant (participant: $to, conversation: $c);
+        $cp1 (participant: $me, conversation: $c) isa conversation-participant;
+        $cp2 (participant: $to, conversation: $c) isa conversation-participant;
       select $cid, $to_name;
     `);
     if (existing.length) {
@@ -94,7 +94,7 @@ router.post('/direct/:username', auth, async (req, res) => {
     }
 
     const cid = uuid();
-    const now = new Date().toISOString();
+    const now = typeqlDatetime();
     const targetRows = await readQuery(`
       match $to isa person, has username "${target}", has name $to_name;
       select $to_name;
@@ -110,8 +110,8 @@ router.post('/direct/:username', auth, async (req, res) => {
           has conversation-id "${cid}",
           has name "${typeqlLiteral(title)}",
           has creation-timestamp ${now};
-        conversation-participant (participant: $me, conversation: $c);
-        conversation-participant (participant: $to, conversation: $c);
+        $cp1 (participant: $me, conversation: $c) isa conversation-participant;
+        $cp2 (participant: $to, conversation: $c) isa conversation-participant;
     `);
     res.status(201).json({ conversation: { id: cid, title, type: 'direct' } });
   } catch (err) {
@@ -129,10 +129,10 @@ router.get('/:id/messages', auth, async (req, res) => {
       match
         $user isa person, has username "${typeqlLiteral(req.user.username)}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        conversation-participant (participant: $user, conversation: $conv);
-        message-delivery (conversation: $conv, message: $m);
+        $cp (participant: $user, conversation: $conv) isa conversation-participant;
+        $delivery (conversation: $conv, message: $m) isa message-delivery;
         $m isa message, has message-id $mid, has message-text $ct, has creation-timestamp $ts;
-        message-author (author: $a, message: $m);
+        $ma (author: $a, message: $m) isa message-author;
         $a has username $aun, has name $adn;
       sort $ts asc; limit ${limit}; offset ${offset};
       select $mid, $ct, $ts, $aun, $adn;
@@ -149,20 +149,20 @@ router.post('/:id/messages', auth, async (req, res) => {
   const { content } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'Conteúdo obrigatório' });
   const mid = uuid();
-  const now = new Date().toISOString();
+  const now = typeqlDatetime();
   try {
     await writeQuery(`
       match
         $u isa person, has username "${req.user.username}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        conversation-participant (participant: $u, conversation: $conv);
+        $cp (participant: $u, conversation: $conv) isa conversation-participant;
       insert
         $m isa message,
           has message-id "${mid}",
           has message-text "${typeqlLiteral(content.trim())}",
           has creation-timestamp ${now};
-        message-author (author: $u, message: $m);
-        message-delivery (conversation: $conv, message: $m);
+        $ma (author: $u, message: $m) isa message-author;
+        $delivery (conversation: $conv, message: $m) isa message-delivery;
     `);
     res.status(201).json({ id: mid, content, time: now,
       author: { id: req.user.username, displayName: req.user.displayName },
@@ -175,10 +175,10 @@ router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
   try {
     await writeQuery(`
       match $m isa message, has message-id "${req.params.msgId}";
-      message-delivery (conversation: $conv, message: $m);
-      message-author (author: $a, message: $m);
-      delete message-delivery (conversation: $conv, message: $m);
-      delete message-author (author: $a, message: $m);
+      $delivery (conversation: $conv, message: $m) isa message-delivery;
+      $ma (author: $a, message: $m) isa message-author;
+      delete $delivery isa message-delivery;
+      delete $ma isa message-author;
       delete $m isa message;
     `);
     res.json({ deleted: true });

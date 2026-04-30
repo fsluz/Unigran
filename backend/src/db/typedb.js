@@ -6,6 +6,11 @@ export function typeqlLiteral(value) {
     .replace(/"/g, '\\"');
 }
 
+export function typeqlDatetime(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toISOString().replace('Z', '').slice(0, 23);
+}
+
 export function encodeHash(hash) {
   return Buffer.from(hash).toString('base64');
 }

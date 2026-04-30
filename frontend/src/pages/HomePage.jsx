@@ -7,6 +7,8 @@ import PostDetailModal from '../components/post/PostDetailModal';
 import Topbar from '../components/layout/Topbar';
 import unigranCharacters from '../assets/unigran_characters.png';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
+import { apiFetch, authHeaders } from '../utils/api';
+import { Avatar } from '../components/ui';
 
 const TRENDING = [
   { tag: 'Inteligência Artificial', count: '12.543' },
@@ -33,11 +35,25 @@ export default function HomePage() {
   const { showToast } = useToast();
   const [posts, setPosts]       = useState([]);
   const [openPost, setOpenPost] = useState(null);
+  const [suggestedPeople, setSuggestedPeople] = useState([]);
+  const [suggestedCommunities, setSuggestedCommunities] = useState([]);
 
   useEffect(() => {
     fetchPosts(token)
       .then((loaded) => setPosts(loaded))
       .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch('/users/suggestions/list', { headers: authHeaders(token) })
+      .then(r => r.json())
+      .then(data => setSuggestedPeople(data.users || []))
+      .catch(() => setSuggestedPeople([]));
+    apiFetch('/communities', { headers: authHeaders(token) })
+      .then(r => r.json())
+      .then(data => setSuggestedCommunities((data.communities || []).filter(c => !c.joined).slice(0, 3)))
+      .catch(() => setSuggestedCommunities([]));
   }, [token]);
 
   const handleNewPost = async ({ content, file }) => {
@@ -129,12 +145,12 @@ export default function HomePage() {
           {/* Suggested communities */}
           <div className="panel-card" style={{ marginBottom: 18 }}>
             <div style={{ fontFamily:"var(--font-head)", fontWeight:800, fontSize:15, color:"var(--text)", marginBottom:14 }}>Sugeridas para você</div>
-            {SUGGESTED_COMMUNITIES.map(com => (
-              <div key={com.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${com.color}22`, color: com.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, border: `1px solid ${com.color}33` }}>{com.icon}</div>
+            {(suggestedCommunities.length ? suggestedCommunities : SUGGESTED_COMMUNITIES).map(com => (
+              <div key={com.id || com.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${com.color || 'var(--accent)'}22`, color: com.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, border: '1px solid var(--border)' }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{com.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{com.members.toLocaleString()} membros</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{Number(com.members || 0).toLocaleString()} membros</div>
                 </div>
                 <button style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Entrar</button>
               </div>
@@ -144,12 +160,12 @@ export default function HomePage() {
           {/* Suggested people */}
           <div className="panel-card">
             <div style={{ fontFamily:"var(--font-head)", fontWeight:800, fontSize:15, color:"var(--text)", marginBottom:14 }}>Pessoas sugeridas</div>
-            {SUGGESTED_PEOPLE.map((person, i) => (
-              <div key={person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < SUGGESTED_PEOPLE.length - 1 ? 14 : 0 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${person.color}22`, color: person.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, border: `1px solid ${person.color}33` }}>{person.avatar}</div>
+            {(suggestedPeople.length ? suggestedPeople : SUGGESTED_PEOPLE).map((person, i, arr) => (
+              <div key={person.username || person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
+                <Avatar size={40} src={person.profilePicture || null} name={person.displayName || person.name || person.username} initials={person.avatar || (person.displayName || person.name || '?').slice(0, 2)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Amigo(a) de {person.mutual}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.displayName || person.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{person.username ? `@${person.username}` : `Amigo(a) de ${person.mutual}`}</div>
                 </div>
                 <button style={{ padding: '5px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Seguir</button>
               </div>

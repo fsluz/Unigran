@@ -4,6 +4,37 @@ import { auth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
+router.get('/suggestions/list', auth, async (req, res) => {
+  try {
+    const safeMe = typeqlLiteral(req.user.username);
+    const rows = await readQuery(`
+      match
+        $u isa person, has username $username, has name $name;
+        not { $u has username "${safeMe}"; };
+        not {
+          $me isa person, has username "${safeMe}";
+          $follow (follower: $me, page: $u) isa following;
+        };
+        try { $u has profile-picture $pic; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "profile_picture": $pic
+      };
+      limit 8;
+    `);
+    res.json({ users: rows.map(row => ({
+      username: row.username,
+      displayName: row.name || row.username,
+      profilePicture: row.profile_picture || null,
+      role: 'user',
+    })) });
+  } catch (err) {
+    console.error('[suggestions]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 /* GET /api/users/:id  (id = username) */
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -194,7 +225,7 @@ router.post('/:id/follow', auth, async (req, res) => {
       match
         $a isa person, has username "${req.user.username}";
         $b isa page, has username "${req.params.id}";
-      insert following (follower: $a, page: $b);
+      insert $follow (follower: $a, page: $b) isa following;
     `);
     res.json({ following: true });
   } catch (err) { console.error('[follow]', err); res.status(500).json({ error: 'Erro interno' }); }
@@ -221,7 +252,7 @@ router.get('/:id/followers', auth, async (req, res) => {
       match
         $target isa page, has username "${safeId}";
         $follower isa person, has username $username, has name $name;
-        following (follower: $follower, page: $target);
+        $follow (follower: $follower, page: $target) isa following;
         try { $follower has profile-picture $pic; };
       fetch { "username": $username, "name": $name, "profile_picture": $pic };
     `);
@@ -239,7 +270,7 @@ router.get('/:id/following', auth, async (req, res) => {
       match
         $user isa person, has username "${safeId}";
         $page isa page, has page-id $pid, has name $name;
-        following (follower: $user, page: $page);
+        $follow (follower: $user, page: $page) isa following;
         try { $page has profile-picture $pic; };
       fetch { "id": $pid, "name": $name, "profile_picture": $pic };
     `);
@@ -277,7 +308,7 @@ router.get('/:id/friends', auth, async (req, res) => {
       match
         $u isa person, has username "${req.params.id}";
         $f isa person, has username $fname;
-        friendship (friend: $u, friend: $f);
+        $friendship (friend: $u, friend: $f) isa friendship;
         not { $f has username "${req.params.id}"; };
         try { $f has name $dname; };
         select $fname, $dname;
@@ -303,10 +334,8 @@ router.get('/:id/friends', auth, async (req, res) => {
         match 
         $u isa person, has username "${req.params.id}";
         $f isa person, has username "${req.params.friendId}";
-        $rel isa friendship;
-        $rel isa friendship, links ($u, $f);
-        $rel isa friendship, links ($u, $f);
-        delete $rel;
+        $rel (friend: $u, friend: $f) isa friendship;
+        delete $rel isa friendship;
       `);
       res.json({ removed: true });
     } catch (err) {

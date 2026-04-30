@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { readQuery, typeqlLiteral, val, writeQuery } from '../db/typedb.js';
+import { readQuery, typeqlDatetime, typeqlLiteral, val, writeQuery } from '../db/typedb.js';
 
 const cache = new Map();
 const CACHE_TTL_MS = 8_000;
@@ -52,7 +52,7 @@ async function loadFriendSet(username) {
     match
       $me isa person, has username "${safeUsername}";
       $friend isa person, has username $friend_username;
-      friendship (friend: $me, friend: $friend);
+      $fr (friend: $me, friend: $friend) isa friendship;
       not { $friend has username "${safeUsername}"; };
     select $friend_username;
   `);
@@ -70,7 +70,7 @@ export async function listFeed({ viewerUsername, limit, offset }) {
         has post-id $post_id,
         has creation-timestamp $post_ts;
 
-      posting (post: $post, page: $user);
+      $posting (post: $post, page: $user) isa posting;
       $user isa person, has username $username, has name $user_name;
 
       try { $user has profile-picture $user_profile_pic; };
@@ -93,7 +93,7 @@ export async function listFeed({ viewerUsername, limit, offset }) {
 
       "comments": [
         match
-          commenting (parent: $post, comment: $comment, author: $comment_author);
+          $commenting (parent: $post, comment: $comment, author: $comment_author) isa commenting;
 
           $comment isa comment,
             has comment-id $comment_id,
@@ -175,7 +175,7 @@ export async function listFeed({ viewerUsername, limit, offset }) {
 
 export async function createPost({ authorUsername, postType, content, media }) {
   const postId = uuid();
-  const now = new Date().toISOString();
+  const now = typeqlDatetime();
   const safeUser = typeqlLiteral(authorUsername);
   const safeContent = typeqlLiteral(content || '');
 
@@ -193,7 +193,7 @@ export async function createPost({ authorUsername, postType, content, media }) {
     insert
       $post isa ${postType},
         ${attributes.join(',\n        ')};
-      posting (page: $author, post: $post);
+      $posting (page: $author, post: $post) isa posting;
   `);
 
   cache.clear();
@@ -203,7 +203,7 @@ export async function createPost({ authorUsername, postType, content, media }) {
 export async function reactToPost({ username, postId, emoji = 'like' }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
-  const now = new Date().toISOString();
+  const now = typeqlDatetime();
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
@@ -238,7 +238,7 @@ export async function savePost({ username, postId }) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-    insert subscription (subscriber: $user, content: $post);
+    insert $sub (subscriber: $user, content: $post) isa subscription;
   `);
   return { saved: true };
 }
@@ -262,7 +262,7 @@ export async function listSavedPosts(username) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id $pid, has post-text $text, has creation-timestamp $ts;
-      subscription (subscriber: $user, content: $post);
+      $sub (subscriber: $user, content: $post) isa subscription;
     select $pid, $text, $ts;
   `);
   return rows.map(row => ({
@@ -276,7 +276,7 @@ export async function sharePost({ username, postId, content = '' }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
   const shareId = uuid();
-  const now = new Date().toISOString();
+  const now = typeqlDatetime();
   const attrs = [
     `has post-id "${shareId}"`,
     `has creation-timestamp ${now}`,
@@ -290,8 +290,8 @@ export async function sharePost({ username, postId, content = '' }) {
     insert
       $share isa share-post,
         ${attrs.join(',\n        ')};
-      posting (page: $user, post: $share);
-      sharing (original-post: $original, share-post: $share);
+      $posting (page: $user, post: $share) isa posting;
+      $sharing (original-post: $original, share-post: $share) isa sharing;
   `);
   cache.clear();
   return { id: shareId, time: now };
@@ -302,7 +302,7 @@ export async function listComments(parentPostId) {
   const rows = await readQuery(`
     match
       $post isa post, has post-id "${safePostId}";
-      commenting (parent: $post, comment: $c, author: $author);
+      $commenting (parent: $post, comment: $c, author: $author) isa commenting;
       $c isa comment, has comment-id $cid, has comment-text $ct, has creation-timestamp $ts;
       $author has username $aun, has name $adn;
       try { $author has profile-picture $pp; };
@@ -324,7 +324,7 @@ export async function listComments(parentPostId) {
 
 export async function createComment({ authorUsername, parentPostId, parentCommentId, content, media }) {
   const commentId = uuid();
-  const now = new Date().toISOString();
+  const now = typeqlDatetime();
   const safeUser = typeqlLiteral(authorUsername);
   const safeContent = typeqlLiteral(content);
   const commentAttributes = [
@@ -341,7 +341,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        commenting (parent: $parent, comment: $c, author: $author);
+        $commenting (parent: $parent, comment: $c, author: $author) isa commenting;
     `);
   } else {
     await writeQuery(`
@@ -351,7 +351,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        commenting (parent: $parent, comment: $c, author: $author);
+        $commenting (parent: $parent, comment: $c, author: $author) isa commenting;
     `);
   }
 
