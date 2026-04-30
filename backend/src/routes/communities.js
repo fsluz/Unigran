@@ -61,6 +61,7 @@ router.post('/', auth, async (req, res) => {
       match $u isa person, has username "${req.user.username}";
       insert
         $g isa group,
+          has id "${gid}",
           has group-id "${gid}",
           has name "${typeqlLiteral(name.trim())}",
           ${description ? `has bio "${typeqlLiteral(description)}",` : ''}

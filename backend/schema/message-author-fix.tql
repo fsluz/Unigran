@@ -1,0 +1,7 @@
+define
+
+entity profile @abstract,
+  plays message-author:author;
+
+entity message,
+  plays message-author:message;

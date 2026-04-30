@@ -10,6 +10,14 @@ function roleCanMessage(role) {
   return ['admin', 'moderator', 'professor', 'recruiter'].includes(role);
 }
 
+function unpackMessageText(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.v === 1) return parsed;
+  } catch (_) {}
+  return { content: raw, author: null };
+}
+
 async function canMessage({ fromUser, toUsername }) {
   if (fromUser.username === toUsername) return { ok: false, reason: 'Nao pode enviar mensagem para si mesmo' };
   if (roleCanMessage(fromUser.role)) return { ok: true };
@@ -113,6 +121,7 @@ router.post('/direct/:username', auth, async (req, res) => {
         $to isa person, has username "${target}";
       insert
         $c isa conversation,
+          has id "${cid}",
           has conversation-id "${cid}",
           has name "${typeqlLiteral(title)}",
           has creation-timestamp ${now};
@@ -138,8 +147,10 @@ router.get('/:id/messages', auth, async (req, res) => {
         conversation-participant (participant: $user, conversation: $conv);
         message-delivery (conversation: $conv, message: $m);
         $m isa message, has message-id $mid, has message-text $ct, has creation-timestamp $ts;
-        message-author (author: $a, message: $m);
-        $a has username $aun, has name $adn;
+        try {
+          message-author (author: $a, message: $m);
+          $a has username $aun, has name $adn;
+        };
       sort $ts asc;
       offset ${offset};
       limit ${limit};
@@ -151,10 +162,17 @@ router.get('/:id/messages', auth, async (req, res) => {
         "author_name": $adn
       };
     `);
-    res.json({ messages: rows.map(r => ({
-      id: r.message_id, content: r.content, time: r.created_at,
-      author: { id: r.author_username, displayName: r.author_name },
-    }))});
+    res.json({ messages: rows.map(r => {
+      const payload = unpackMessageText(r.content);
+      return {
+        id: r.message_id,
+        content: payload.content,
+        time: r.created_at,
+        author: r.author_username
+          ? { id: r.author_username, displayName: r.author_name || r.author_username }
+          : payload.author || { id: null, displayName: 'Usuario' },
+      };
+    })});
   } catch (err) { console.error('[messages GET]', err); res.status(500).json({ error: 'Erro ao carregar' }); }
 });
 
@@ -167,11 +185,12 @@ router.post('/:id/messages', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
-        $u isa person, has username "${req.user.username}";
+        $u isa person, has username "${typeqlLiteral(req.user.username)}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
         conversation-participant (participant: $u, conversation: $conv);
       insert
         $m isa message,
+          has id "${mid}",
           has message-id "${mid}",
           has message-text "${typeqlLiteral(content.trim())}",
           has creation-timestamp ${now};
@@ -190,10 +209,8 @@ router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
     await writeQuery(`
       match $m isa message, has message-id "${req.params.msgId}";
       $d isa message-delivery, links (message: $m, conversation: $conv);
-      $ma isa message-author, links (message: $m, author: $a);
       delete
         $d;
-        $ma;
         $m;
     `);
     res.json({ deleted: true });
