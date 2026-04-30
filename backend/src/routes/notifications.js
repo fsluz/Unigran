@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
           has notification-text $text,
           has notification-type $type,
           has creation-timestamp $ts;
-        $delivery (recipient: $recipient, notification: $notification) isa notification-delivery;
+        $delivery isa notification-delivery (recipient: $recipient, notification: $notification);
       fetch {
         "id": $id,
         "text": $text,

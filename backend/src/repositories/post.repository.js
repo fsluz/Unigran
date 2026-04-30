@@ -52,7 +52,7 @@ async function loadFriendSet(username) {
     match
       $me isa person, has username "${safeUsername}";
       $friend isa person, has username $friend_username;
-      $fr (friend: $me, friend: $friend) isa friendship;
+      $fr isa friendship (friend: $me, friend: $friend);
       not { $friend has username "${safeUsername}"; };
     select $friend_username;
   `);
@@ -66,7 +66,7 @@ async function loadFollowingSet(username) {
     match
       $me isa person, has username "${safeUsername}";
       $page isa page, has username $followed_username;
-      $follow (follower: $me, page: $page) isa following;
+      $follow isa following (follower: $me, page: $page);
     select $followed_username;
   `);
   return new Set(rows.map(row => val(row, 'followed_username')).filter(Boolean));
@@ -83,7 +83,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         has post-id $post_id,
         has creation-timestamp $post_ts;
 
-      $posting (post: $post, page: $user) isa posting;
+      $posting isa posting (post: $post, page: $user);
       $user isa person, has username $username, has name $user_name;
 
       try { $user has profile-picture $user_profile_pic; };
@@ -106,7 +106,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
       "comments": [
         match
-          $commenting (parent: $post, comment: $comment, author: $comment_author) isa commenting;
+          $commenting isa commenting (parent: $post, comment: $comment, author: $comment_author);
 
           $comment isa comment,
             has comment-id $comment_id,
@@ -209,8 +209,8 @@ export async function createPost({ authorUsername, postType, content, media, com
     insert
       $post isa ${postType},
         ${attributes.join(',\n        ')};
-      $posting (page: $author, post: $post) isa posting;
-      ${communityId ? '$group_posting (page: $group, post: $post) isa posting;' : ''}
+      $posting isa posting (page: $author, post: $post);
+      ${communityId ? '$group_posting isa posting (page: $group, post: $post);' : ''}
   `);
 
   cache.clear();
@@ -226,15 +226,15 @@ export async function updatePostContent({ username, postId, content }) {
       match
         $user isa person, has username "${safeUser}";
         $post isa post, has post-id "${safePost}", has post-text $old;
-        $posting (page: $user, post: $post) isa posting;
-      delete $old of $post;
+        $posting isa posting (page: $user, post: $post);
+      delete has $old of $post;
     `);
   } catch (_) {}
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-      $posting (page: $user, post: $post) isa posting;
+      $posting isa posting (page: $user, post: $post);
     insert $post has post-text "${safeContent}";
   `);
   cache.clear();
@@ -252,7 +252,7 @@ export async function listLikedPosts(username) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id $pid;
-      $reaction (author: $user, parent: $post) isa reaction;
+      $reaction isa reaction (author: $user, parent: $post);
     select $pid;
   `);
   const ids = new Set(rows.map(row => val(row, 'pid')).filter(Boolean));
@@ -266,7 +266,7 @@ export async function listReposts(username) {
     match
       $user isa person, has username "${safeUser}";
       $share isa share-post, has post-id $pid;
-      $posting (page: $user, post: $share) isa posting;
+      $posting isa posting (page: $user, post: $share);
     select $pid;
   `);
   const ids = new Set(rows.map(row => val(row, 'pid')).filter(Boolean));
@@ -280,9 +280,9 @@ export async function listCommunityPosts({ communityId, viewerUsername }) {
     match
       $group isa group, has group-id "${safeCommunity}", has name $group_name;
       $post isa post, has post-id $post_id, has creation-timestamp $post_ts;
-      $group_posting (page: $group, post: $post) isa posting;
+      $group_posting isa posting (page: $group, post: $post);
       $author isa person, has username $username, has name $user_name;
-      $author_posting (page: $author, post: $post) isa posting;
+      $author_posting isa posting (page: $author, post: $post);
       try { $author has profile-picture $user_profile_pic; };
     fetch {
       "post_id": $post_id,
@@ -330,7 +330,7 @@ export async function reactToPost({ username, postId, emoji = 'like' }) {
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
     insert
-      $reaction (author: $user, parent: $post) isa reaction,
+      $reaction isa reaction (author: $user, parent: $post),
         has emoji "${typeqlLiteral(emoji)}",
         has creation-timestamp ${now};
   `);
@@ -345,8 +345,8 @@ export async function unreactToPost({ username, postId }) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-      $reaction (author: $user, parent: $post) isa reaction;
-    delete $reaction isa reaction;
+      $reaction isa reaction (author: $user, parent: $post);
+    delete $reaction;
   `);
   cache.clear();
   return { liked: false };
@@ -359,7 +359,7 @@ export async function savePost({ username, postId }) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-    insert $sub (subscriber: $user, content: $post) isa subscription;
+    insert $sub isa subscription (subscriber: $user, content: $post);
   `);
   return { saved: true };
 }
@@ -371,8 +371,8 @@ export async function unsavePost({ username, postId }) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-      $sub (subscriber: $user, content: $post) isa subscription;
-    delete $sub isa subscription;
+      $sub isa subscription (subscriber: $user, content: $post);
+    delete $sub;
   `);
   return { saved: false };
 }
@@ -383,7 +383,7 @@ export async function listSavedPosts(username) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id $pid, has post-text $text, has creation-timestamp $ts;
-      $sub (subscriber: $user, content: $post) isa subscription;
+      $sub isa subscription (subscriber: $user, content: $post);
     select $pid, $text, $ts;
   `);
   return rows.map(row => ({
@@ -411,8 +411,8 @@ export async function sharePost({ username, postId, content = '' }) {
     insert
       $share isa share-post,
         ${attrs.join(',\n        ')};
-      $posting (page: $user, post: $share) isa posting;
-      $sharing (original-post: $original, share-post: $share) isa sharing;
+      $posting isa posting (page: $user, post: $share);
+      $sharing isa sharing (original-post: $original, share-post: $share);
   `);
   cache.clear();
   return { id: shareId, time: now };
@@ -423,7 +423,7 @@ export async function listComments(parentPostId) {
   const rows = await readQuery(`
     match
       $post isa post, has post-id "${safePostId}";
-      $commenting (parent: $post, comment: $c, author: $author) isa commenting;
+      $commenting isa commenting (parent: $post, comment: $c, author: $author);
       $c isa comment, has comment-id $cid, has comment-text $ct, has creation-timestamp $ts;
       $author has username $aun, has name $adn;
       try { $author has profile-picture $pp; };
@@ -462,7 +462,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        $commenting (parent: $parent, comment: $c, author: $author) isa commenting;
+        $commenting isa commenting (parent: $parent, comment: $c, author: $author);
     `);
   } else {
     await writeQuery(`
@@ -472,7 +472,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        $commenting (parent: $parent, comment: $c, author: $author) isa commenting;
+        $commenting isa commenting (parent: $parent, comment: $c, author: $author);
     `);
   }
 

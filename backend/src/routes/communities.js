@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
         try { $g has bio $desc; };
-        try { $m (group: $g, member: $member) isa group-membership; $member has username $member_username; };
+        try { $m isa group-membership (group: $g, member: $member); $member has username $member_username; };
       fetch {
         "id": $gid,
         "name": $t,
@@ -21,7 +21,7 @@ router.get('/', auth, async (req, res) => {
         "description": $desc,
         "members": [
           match
-            $m2 (group: $g, member: $member2) isa group-membership;
+            $m2 isa group-membership (group: $g, member: $member2);
             $member2 has username $mu;
           fetch { "username": $mu };
         ]
@@ -67,7 +67,7 @@ router.post('/', auth, async (req, res) => {
           ${description ? `has bio "${typeqlLiteral(description)}",` : ''}
           has page-visibility "${type === 'public' ? 'public' : 'private'}",
           has is-active true;
-        $membership (member: $u, group: $g) isa group-membership,
+        $membership isa group-membership (member: $u, group: $g),
           has rank "admin",
           has start-timestamp ${now};
     `);
@@ -83,7 +83,7 @@ router.post('/:id/join', auth, async (req, res) => {
       match
         $u isa person, has username "${req.user.username}";
         $g isa group, has group-id "${req.params.id}";
-      insert $membership (member: $u, group: $g) isa group-membership,
+      insert $membership isa group-membership (member: $u, group: $g),
         has rank "member",
         has start-timestamp ${now};
     `);
@@ -98,8 +98,8 @@ router.delete('/:id/join', auth, async (req, res) => {
       match
         $u isa person, has username "${req.user.username}";
         $g isa group, has group-id "${req.params.id}";
-        $m (member: $u, group: $g) isa group-membership;
-      delete $m isa group-membership;
+        $m isa group-membership (member: $u, group: $g);
+      delete $m;
     `);
     res.json({ left: true });
   } catch (err) { console.error('[leave]', err); res.status(500).json({ error: 'Erro ao sair' }); }
@@ -110,7 +110,7 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
   try {
     await writeQuery(`
       match $g isa group, has group-id "${req.params.id}", has is-active $a;
-      delete $g has is-active $a;
+      delete has $a of $g;
       insert $g has is-active false;
     `);
     res.json({ deleted: true });

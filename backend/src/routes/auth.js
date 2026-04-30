@@ -198,7 +198,7 @@ router.put('/reset-password', async (req, res) => {
 
     await writeQuery(`
       match $u isa person, has email "${safeEmail}", has password-hash $ph;
-      delete $ph of $u;
+      delete has $ph of $u;
     `);
     await writeQuery(`
       match $u isa person, has email "${safeEmail}";
@@ -247,7 +247,7 @@ router.put('/change-password', async (req, res) => {
 
     await writeQuery(`
       match $u isa person, has username "${safeUsername}", has password-hash $ph;
-      delete $ph of $u;
+      delete has $ph of $u;
     `);
     await writeQuery(`
       match $u isa person, has username "${safeUsername}";
@@ -258,7 +258,7 @@ router.put('/change-password', async (req, res) => {
     try {
       await writeQuery(`
         match $u isa person, has username "${safeUsername}", has password-changed-at $d;
-        delete $d of $u;
+        delete has $d of $u;
       `);
     } catch (_) { /* campo ainda não existe no banco — ok */ }
     await writeQuery(`
