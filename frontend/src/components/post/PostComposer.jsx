@@ -83,7 +83,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           <button
             className="btn btn-primary btn-sm"
             onClick={submit}
-            disabled={!text.trim()}
+            disabled={!text.trim() && !file}
           >
             Publicar
           </button>

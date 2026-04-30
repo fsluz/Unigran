@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
+import { relativeTime } from '../../utils/time';
+import { likePost, reportPost, savePost, sharePost, unlikePost, unsavePost } from '../../services/posts';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -55,18 +57,19 @@ function CommentItem({ comment }) {
       <div style={{ flex: 1, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
         <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{comment.author.displayName}</div>
         <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text || comment.content}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>agora</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{relativeTime(comment.time)}</div>
       </div>
     </div>
   );
 }
 
 export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadComments, onAddComment }) {
-  const { user }      = useAuth();
+  const { user, token }      = useAuth();
   const { showToast } = useToast();
 
   const [liked, setLiked]             = useState(post.liked);
   const [likes, setLikes]             = useState(post.likes);
+  const [saved, setSaved]             = useState(post.saved || false);
   const [editing, setEditing]         = useState(false);
   const [editText, setEditText]       = useState(post.content);
   const [isEdited, setIsEdited]       = useState(post.edited || false);
@@ -79,7 +82,9 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
 
   const toggleLike = () => {
     setLiked(v => !v);
-    setLikes(v => liked ? v - 1 : v + 1);
+    setLikes(v => liked ? Math.max(0, v - 1) : v + 1);
+    const fn = liked ? unlikePost : likePost;
+    fn({ token, postId: post.id }).catch(() => {});
   };
 
   const saveEdit = () => {
@@ -117,7 +122,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
     ...(canDelete ? [{ icon: '🗑️', label: 'Excluir post', danger: true, onClick: () => { onDelete(post.id); showToast('Post excluído', '🗑️'); } }] : []),
     ...(user?.role === 'admin' && !isOwner ? [{ icon: '🚫', label: 'Banir usuário', danger: true, onClick: () => showToast('Usuário banido', '🚫') }] : []),
     'sep',
-    { icon: '🚩', label: 'Reportar', onClick: () => showToast('Post reportado', '🚩') },
+    { icon: '🚩', label: 'Reportar', onClick: async () => { await reportPost({ token, postId: post.id }).catch(() => null); showToast('Post reportado', '🚩'); } },
   ];
 
   return (
@@ -141,7 +146,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
             </span>
           )}
           <div className="post-author-sub">
-            @{post.author.username} · {post.time}
+            @{post.author.username} · {relativeTime(post.time)}
             {isEdited && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>(editado)</span>}
           </div>
         </div>
@@ -197,9 +202,23 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onLoadC
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span>{comments.length > 0 ? `${comments.length} Comentários` : post.comments > 0 ? `${post.comments} Comentários` : '0 Comentários'}</span>
         </button>
-        <button className="post-action-btn" onClick={() => showToast('Link copiado!', '✓')}>
+        <button className="post-action-btn" onClick={async () => {
+          await sharePost({ token, postId: post.id }).catch(() => null);
+          showToast('Post compartilhado!', '✓');
+        }}>
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           <span>Compartilhar</span>
+        </button>
+        <button
+          className={`post-action-btn ${saved ? 'liked' : ''}`}
+          onClick={async () => {
+            setSaved(v => !v);
+            const fn = saved ? unsavePost : savePost;
+            await fn({ token, postId: post.id }).catch(() => null);
+            showToast(saved ? 'Removido dos favoritos' : 'Post salvo', '✓');
+          }}
+        >
+          <span>{saved ? 'Salvo' : 'Salvar'}</span>
         </button>
       </div>
 

@@ -2,8 +2,14 @@ import { z } from 'zod';
 import {
   createComment,
   createPost,
+  listSavedPosts,
   listComments,
   listFeed,
+  reactToPost,
+  savePost,
+  sharePost,
+  unreactToPost,
+  unsavePost,
 } from '../repositories/post.repository.js';
 import { uploadMediaBuffer } from './cloudinary.service.js';
 
@@ -23,8 +29,8 @@ function inferPostType(media) {
   return 'image-post';
 }
 
-export async function getFeed({ limit = 20, offset = 0 }) {
-  return listFeed(limit, offset);
+export async function getFeed({ user, limit = 20, offset = 0 }) {
+  return listFeed({ viewerUsername: user?.username, limit, offset });
 }
 
 export async function createPostWithRules({ user, body, file }) {
@@ -103,4 +109,29 @@ export async function createCommentWithRules({ user, postId, body, file }) {
     },
     status: 201,
   };
+}
+
+export async function likePost({ user, postId }) {
+  return reactToPost({ username: user.username, postId, emoji: 'like' });
+}
+
+export async function unlikePost({ user, postId }) {
+  return unreactToPost({ username: user.username, postId });
+}
+
+export async function favoritePost({ user, postId }) {
+  return savePost({ username: user.username, postId });
+}
+
+export async function unfavoritePost({ user, postId }) {
+  return unsavePost({ username: user.username, postId });
+}
+
+export async function getFavorites({ user }) {
+  return listSavedPosts(user.username);
+}
+
+export async function sharePostWithRules({ user, postId, body }) {
+  const created = await sharePost({ username: user.username, postId, content: body?.content || '' });
+  return { data: created, status: 201 };
 }

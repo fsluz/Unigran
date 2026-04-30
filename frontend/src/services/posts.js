@@ -6,10 +6,23 @@ async function parseResponse(res, fallback) {
   return data;
 }
 
+function normalizePost(post) {
+  return {
+    likes: 0,
+    comments: Array.isArray(post.comments) ? post.comments.length : 0,
+    liked: false,
+    ...post,
+    author: {
+      role: 'user',
+      ...(post.author || {}),
+    },
+  };
+}
+
 export async function fetchPosts(token) {
   const res = await apiFetch('/posts', { headers: authHeaders(token) });
   const data = await parseResponse(res, 'Erro ao carregar posts');
-  return data.posts || [];
+  return (data.posts || []).map(normalizePost);
 }
 
 export async function createPost({ token, content, file }) {
@@ -21,7 +34,8 @@ export async function createPost({ token, content, file }) {
     headers: authHeaders(token),
     body: fd,
   });
-  return parseResponse(res, 'Erro ao criar post');
+  const created = await parseResponse(res, 'Erro ao criar post');
+  return normalizePost(created);
 }
 
 export async function fetchComments({ token, postId }) {
@@ -54,4 +68,38 @@ export async function uploadMedia({ token, file }) {
     body: fd,
   });
   return parseResponse(res, 'Erro ao enviar mídia');
+}
+
+export async function likePost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/like`, { method: 'POST', headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao curtir');
+}
+
+export async function unlikePost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/like`, { method: 'DELETE', headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao remover curtida');
+}
+
+export async function savePost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/save`, { method: 'POST', headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao salvar');
+}
+
+export async function unsavePost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/save`, { method: 'DELETE', headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao remover favorito');
+}
+
+export async function sharePost({ token, postId, content = '' }) {
+  const res = await apiFetch(`/posts/${postId}/share`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, 'Erro ao compartilhar');
+}
+
+export async function reportPost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/report`, { method: 'POST', headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao denunciar');
 }

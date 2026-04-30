@@ -149,8 +149,10 @@ match
   $u isa person, has username "${safeUsername}", has email $email;
 try { $u has name $dname; };
 try { $u has phone $phone; };
+try { $u has profile-picture $profile_pic; };
+try { $u has cover-picture $cover_pic; };
 try { $u has password-changed-at $pwdat; };
-select $email, $dname, $phone, $pwdat;
+select $email, $dname, $phone, $profile_pic, $cover_pic, $pwdat;
     `);
 
     if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
@@ -166,6 +168,8 @@ select $email, $dname, $phone, $pwdat;
       displayName:       val(row, 'dname') || decoded.displayName,
       email:             val(row, 'email') || decoded.email,
       phone:             val(row, 'phone') || null,
+      profilePicture:    val(row, 'profile_pic') || decoded.profilePicture || null,
+      coverPicture:      val(row, 'cover_pic') || decoded.coverPicture || null,
       passwordChangedAt,
     };
 

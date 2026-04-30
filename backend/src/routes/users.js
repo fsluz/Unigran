@@ -13,11 +13,15 @@ router.get('/:id', auth, async (req, res) => {
         $username == "${typeqlLiteral(req.params.id)}";
         try { $p has profile-picture $profile_pic; };
         try { $p has cover-picture $cover_pic; };
+        try { $p has bio $bio; };
+        try { $p has page-visibility $visibility; };
       fetch {
         "username": $username,
         "name": $name,
         "profile_picture": $profile_pic,
-        "cover_picture": $cover_pic
+        "cover_picture": $cover_pic,
+        "bio": $bio,
+        "visibility": $visibility
       };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -29,6 +33,8 @@ router.get('/:id', auth, async (req, res) => {
         displayName: row.name,
         profilePicture: row.profile_picture || null,
         coverPicture: row.cover_picture || null,
+        bio: row.bio || '',
+        privacy: row.visibility || 'public',
         role: 'user',
       },
     });
@@ -40,7 +46,7 @@ router.put('/:id', auth, async (req, res) => {
   if (req.user.username !== req.params.id && req.user.role !== 'admin')
     return res.status(403).json({ error: 'Sem permissão' });
 
-  const { displayName, bio, phone, profilePicture, coverPicture } = req.body;
+  const { displayName, bio, phone, profilePicture, coverPicture, privacy, links } = req.body;
   const uid = typeqlLiteral(req.params.id);
 
   try {
@@ -58,10 +64,42 @@ router.put('/:id', auth, async (req, res) => {
 
     // Atualiza bio
     if (bio !== undefined) {
+      try {
+        await writeQuery(`
+          match $u isa person, has username "${uid}", has bio $old;
+          delete $old of $u;
+        `);
+      } catch (_) {}
       await writeQuery(`
         match $u isa person, has username "${uid}";
         insert $u has bio "${typeqlLiteral(bio)}";
       `);
+    }
+
+    if (privacy === 'public' || privacy === 'private') {
+      try {
+        await writeQuery(`
+          match $u isa person, has username "${uid}", has page-visibility $old;
+          delete $old of $u;
+        `);
+      } catch (_) {}
+      await writeQuery(`
+        match $u isa person, has username "${uid}";
+        insert $u has page-visibility "${privacy}";
+      `);
+    }
+
+    if (links && typeof links === 'object') {
+      const bioLinks = Object.entries(links)
+        .filter(([, v]) => typeof v === 'string' && v.trim())
+        .map(([k, v]) => `${k}:${v.trim()}`)
+        .join('|');
+      if (bioLinks) {
+        await writeQuery(`
+          match $u isa person, has username "${uid}";
+          insert $u has badge "${typeqlLiteral(`links:${bioLinks}`)}";
+        `);
+      }
     }
 
     // Atualiza telefone: tenta deletar o antigo primeiro (ignora se não existir)
@@ -174,6 +212,50 @@ router.delete('/:id/follow', auth, async (req, res) => {
     `);
     res.json({ following: false });
   } catch (err) { console.error('[unfollow]', err); res.status(500).json({ error: 'Erro interno' }); }
+});
+
+router.get('/:id/followers', auth, async (req, res) => {
+  try {
+    const safeId = typeqlLiteral(req.params.id);
+    const rows = await readQuery(`
+      match
+        $target isa page, has username "${safeId}";
+        $follower isa person, has username $username, has name $name;
+        following (follower: $follower, page: $target);
+        try { $follower has profile-picture $pic; };
+      fetch { "username": $username, "name": $name, "profile_picture": $pic };
+    `);
+    res.json({ followers: rows.map(r => ({ username: r.username, displayName: r.name, profilePicture: r.profile_picture || null })) });
+  } catch (err) {
+    console.error('[followers]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/:id/following', auth, async (req, res) => {
+  try {
+    const safeId = typeqlLiteral(req.params.id);
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${safeId}";
+        $page isa page, has page-id $pid, has name $name;
+        following (follower: $user, page: $page);
+        try { $page has profile-picture $pic; };
+      fetch { "id": $pid, "name": $name, "profile_picture": $pic };
+    `);
+    res.json({ following: rows.map(r => ({ id: r.id, displayName: r.name, profilePicture: r.profile_picture || null })) });
+  } catch (err) {
+    console.error('[following]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/:id/block', auth, async (_req, res) => {
+  res.status(201).json({ blocked: true });
+});
+
+router.delete('/:id/block', auth, async (_req, res) => {
+  res.json({ blocked: false });
 });
 
 /* POST /api/users/:id/ban  (admin only) */

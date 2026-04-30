@@ -45,8 +45,22 @@ async function loadAllProfilesMap() {
   return map;
 }
 
-export async function listFeed(limit, offset) {
-  const key = `feed:${limit}:${offset}`;
+async function loadFriendSet(username) {
+  if (!username) return new Set();
+  const safeUsername = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $me isa person, has username "${safeUsername}";
+      $friend isa person, has username $friend_username;
+      friendship (friend: $me, friend: $friend);
+      not { $friend has username "${safeUsername}"; };
+    select $friend_username;
+  `);
+  return new Set(rows.map(row => val(row, 'friend_username')).filter(Boolean));
+}
+
+export async function listFeed({ viewerUsername, limit, offset }) {
+  const key = `feed:${viewerUsername || 'anon'}:${limit}:${offset}`;
   const cached = getCached(key);
   if (cached) return cached;
 
@@ -61,6 +75,7 @@ export async function listFeed(limit, offset) {
 
       try { $user has profile-picture $user_profile_pic; };
       try { $user has cover-picture $user_cover_pic; };
+      try { $user has page-visibility $user_visibility; };
 
     fetch {
       "post_id": $post_id,
@@ -70,7 +85,8 @@ export async function listFeed(limit, offset) {
         "username": $username,
         "name": $user_name,
         "profile_picture": $user_profile_pic,
-        "cover_picture": $user_cover_pic
+        "cover_picture": $user_cover_pic,
+        "visibility": $user_visibility
       },
 
       "post_all_attributes": { $post.* },
@@ -103,11 +119,18 @@ export async function listFeed(limit, offset) {
     };
   `);
   const profilesMap = await loadAllProfilesMap();
+  const friendSet = await loadFriendSet(viewerUsername);
 
-  const normalized = rows.map((entry) => {
+  const normalized = rows.filter((entry) => {
+    const authorUsername = entry?.author?.username || '';
+    const visibility = entry?.author?.visibility || 'public';
+    return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
+  }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
     const comments = Array.isArray(entry?.comments) ? entry.comments : [];
-    const mediaUrl = attrs['media-url'] || null;
+    const imageUrl = attrs['post-image'] || null;
+    const videoUrl = attrs['post-video'] || null;
+    const mediaUrl = imageUrl || videoUrl;
     const authorProfile = profilesMap.get(entry?.author?.username || '');
     return {
       id: entry?.post_id || attrs['post-id'] || uuid(),
@@ -115,8 +138,7 @@ export async function listFeed(limit, offset) {
       time: entry?.created_at || attrs['creation-timestamp'] || null,
       media: mediaUrl ? {
         url: mediaUrl,
-        public_id: attrs['media-public-id'] || null,
-        resource_type: attrs['media-type'] || 'image',
+        resource_type: videoUrl ? 'video' : 'image',
       } : null,
       author: {
         id: authorProfile?.username || entry?.author?.username || 'unknown',
@@ -163,11 +185,8 @@ export async function createPost({ authorUsername, postType, content, media }) {
     `has post-visibility "public"`,
   ];
   if (content) attributes.push(`has post-text "${safeContent}"`);
-  if (media) {
-    attributes.push(`has media-url "${typeqlLiteral(media.url)}"`);
-    attributes.push(`has media-public-id "${typeqlLiteral(media.public_id)}"`);
-    attributes.push(`has media-type "${typeqlLiteral(media.resource_type)}"`);
-  }
+  if (media?.resource_type === 'video') attributes.push(`has post-video "${typeqlLiteral(media.url)}"`);
+  else if (media?.url) attributes.push(`has post-image "${typeqlLiteral(media.url)}"`);
 
   await writeQuery(`
     match $author isa person, has username "${safeUser}";
@@ -181,6 +200,103 @@ export async function createPost({ authorUsername, postType, content, media }) {
   return { id: postId, time: now };
 }
 
+export async function reactToPost({ username, postId, emoji = 'like' }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  const now = new Date().toISOString();
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id "${safePost}";
+    insert
+      $reaction (author: $user, parent: $post) isa reaction,
+        has emoji "${typeqlLiteral(emoji)}",
+        has creation-timestamp ${now};
+  `);
+  cache.clear();
+  return { liked: true };
+}
+
+export async function unreactToPost({ username, postId }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id "${safePost}";
+      $reaction (author: $user, parent: $post) isa reaction;
+    delete $reaction isa reaction;
+  `);
+  cache.clear();
+  return { liked: false };
+}
+
+export async function savePost({ username, postId }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id "${safePost}";
+    insert subscription (subscriber: $user, content: $post);
+  `);
+  return { saved: true };
+}
+
+export async function unsavePost({ username, postId }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id "${safePost}";
+      $sub (subscriber: $user, content: $post) isa subscription;
+    delete $sub isa subscription;
+  `);
+  return { saved: false };
+}
+
+export async function listSavedPosts(username) {
+  const safeUser = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $post isa post, has post-id $pid, has post-text $text, has creation-timestamp $ts;
+      subscription (subscriber: $user, content: $post);
+    select $pid, $text, $ts;
+  `);
+  return rows.map(row => ({
+    id: val(row, 'pid'),
+    content: val(row, 'text'),
+    time: val(row, 'ts'),
+  }));
+}
+
+export async function sharePost({ username, postId, content = '' }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+  const shareId = uuid();
+  const now = new Date().toISOString();
+  const attrs = [
+    `has post-id "${shareId}"`,
+    `has creation-timestamp ${now}`,
+    `has post-visibility "public"`,
+  ];
+  if (content) attrs.push(`has post-text "${typeqlLiteral(content)}"`);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $original isa post, has post-id "${safePost}";
+    insert
+      $share isa share-post,
+        ${attrs.join(',\n        ')};
+      posting (page: $user, post: $share);
+      sharing (original-post: $original, share-post: $share);
+  `);
+  cache.clear();
+  return { id: shareId, time: now };
+}
+
 export async function listComments(parentPostId) {
   const safePostId = typeqlLiteral(parentPostId);
   const rows = await readQuery(`
@@ -190,22 +306,14 @@ export async function listComments(parentPostId) {
       $c isa comment, has comment-id $cid, has comment-text $ct, has creation-timestamp $ts;
       $author has username $aun, has name $adn;
       try { $author has profile-picture $pp; };
-      try { $c has media-url $media_url; };
-      try { $c has media-public-id $media_pid; };
-      try { $c has media-type $media_type; };
     sort $ts asc;
-    select $cid, $ct, $ts, $aun, $adn, $pp, $media_url, $media_pid, $media_type;
+    select $cid, $ct, $ts, $aun, $adn, $pp;
   `);
 
   return rows.map((row) => ({
     id: val(row, 'cid'),
     content: val(row, 'ct'),
     time: val(row, 'ts'),
-    media: val(row, 'media_url') ? {
-      url: val(row, 'media_url'),
-      public_id: val(row, 'media_pid'),
-      resource_type: val(row, 'media_type'),
-    } : null,
     author: {
       username: val(row, 'aun'),
       displayName: val(row, 'adn'),
@@ -224,11 +332,6 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
     `has comment-text "${safeContent}"`,
     `has creation-timestamp ${now}`,
   ];
-  if (media) {
-    commentAttributes.push(`has media-url "${typeqlLiteral(media.url)}"`);
-    commentAttributes.push(`has media-public-id "${typeqlLiteral(media.public_id)}"`);
-    commentAttributes.push(`has media-type "${typeqlLiteral(media.resource_type)}"`);
-  }
 
   if (parentCommentId) {
     await writeQuery(`

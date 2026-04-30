@@ -701,7 +701,15 @@
 ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) { .right-panel { display: none; } }
 @media (max-width: 768px)  { .comm-grid { grid-template-columns: 1fr; } .settings-sidenav { width: 190px; } }
-@media (max-width: 600px)  { .conv-list { width: 220px; } }
+@media (max-width: 700px)  {
+  .messages-shell { flex-direction: column; min-height: 0; }
+  .conv-list { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--border); }
+  .chat-area { min-height: 420px; }
+  .msg-bubble { max-width: 82%; }
+  .chat-head { padding: 10px 14px; }
+  .chat-messages { padding: 14px; }
+  .chat-input-bar { padding: 10px; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    THEME ADAPTATIONS — light mode overrides

@@ -1,0 +1,37 @@
+import { apiFetch, authHeaders, formatApiError } from '../utils/api';
+
+async function parseResponse(res, fallback) {
+  const data = await res.json();
+  if (!res.ok) throw new Error(formatApiError(data.error, fallback));
+  return data;
+}
+
+export async function fetchConversations(token) {
+  const res = await apiFetch('/conversations', { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar conversas');
+  return data.conversations || [];
+}
+
+export async function fetchMessages({ token, conversationId }) {
+  const res = await apiFetch(`/conversations/${conversationId}/messages`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar mensagens');
+  return data.messages || [];
+}
+
+export async function sendMessage({ token, conversationId, content }) {
+  const res = await apiFetch(`/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, 'Erro ao enviar mensagem');
+}
+
+export async function startDirectConversation({ token, username }) {
+  const res = await apiFetch(`/conversations/direct/${username}`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  const data = await parseResponse(res, 'Erro ao iniciar conversa');
+  return data.conversation;
+}
