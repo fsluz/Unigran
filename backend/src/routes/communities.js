@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
-import { readQuery, writeQuery, val, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireRole } from '../middleware/auth.js';
 import { listCommunityPosts } from '../repositories/post.repository.js';
 
@@ -13,7 +13,6 @@ router.get('/', auth, async (req, res) => {
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
         try { $g has bio $desc; };
-        try { $m isa group-membership (group: $g, member: $member); $member has username $member_username; };
       fetch {
         "id": $gid,
         "name": $t,
@@ -21,9 +20,9 @@ router.get('/', auth, async (req, res) => {
         "description": $desc,
         "members": [
           match
-            $m2 isa group-membership (group: $g, member: $member2);
-            $member2 has username $mu;
-          fetch { "username": $mu };
+            group-membership (group: $g, member: $member);
+            $member has username $member_username;
+          fetch { "username": $member_username };
         ]
       };
     `);
@@ -67,7 +66,7 @@ router.post('/', auth, async (req, res) => {
           ${description ? `has bio "${typeqlLiteral(description)}",` : ''}
           has page-visibility "${type === 'public' ? 'public' : 'private'}",
           has is-active true;
-        $membership isa group-membership (member: $u, group: $g),
+        $m isa group-membership, links (member: $u, group: $g),
           has rank "admin",
           has start-timestamp ${now};
     `);
@@ -83,7 +82,7 @@ router.post('/:id/join', auth, async (req, res) => {
       match
         $u isa person, has username "${req.user.username}";
         $g isa group, has group-id "${req.params.id}";
-      insert $membership isa group-membership (member: $u, group: $g),
+      insert $m isa group-membership, links (member: $u, group: $g),
         has rank "member",
         has start-timestamp ${now};
     `);
@@ -98,8 +97,9 @@ router.delete('/:id/join', auth, async (req, res) => {
       match
         $u isa person, has username "${req.user.username}";
         $g isa group, has group-id "${req.params.id}";
-        $m isa group-membership (member: $u, group: $g);
-      delete $m;
+        $m isa group-membership, links (member: $u, group: $g);
+      delete
+        $m;
     `);
     res.json({ left: true });
   } catch (err) { console.error('[leave]', err); res.status(500).json({ error: 'Erro ao sair' }); }
@@ -109,9 +109,13 @@ router.delete('/:id/join', auth, async (req, res) => {
 router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
   try {
     await writeQuery(`
-      match $g isa group, has group-id "${req.params.id}", has is-active $a;
-      delete has $a of $g;
-      insert $g has is-active false;
+      match
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+        try { $g has is-active $a; };
+      delete
+        has $a of $g;
+      insert
+        $g has is-active false;
     `);
     res.json({ deleted: true });
   } catch (err) { console.error('[communities DELETE]', err); res.status(500).json({ error: 'Erro ao excluir' }); }

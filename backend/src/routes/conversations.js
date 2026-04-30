@@ -20,20 +20,20 @@ async function canMessage({ fromUser, toUsername }) {
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      try { $fr isa friendship (friend: $from, friend: $to); };
+      try { friendship (friend: $from, friend: $to); };
       try { $to has page-visibility $visibility; };
-    select $visibility;
+    fetch { "visibility": $visibility };
   `);
   if (!rows.length) return { ok: false, reason: 'Usuario nao encontrado' };
-  const isPublic = rows.some(r => val(r, 'visibility') === 'public');
+  const isPublic = rows.some(r => r.visibility === 'public');
   if (isPublic) return { ok: true };
 
   const friendRows = await readQuery(`
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      $fr isa friendship (friend: $from, friend: $to);
-    select $from;
+      friendship (friend: $from, friend: $to);
+    fetch { "from": "${safeFrom}", "to": "${safeTo}" };
   `);
   return friendRows.length
     ? { ok: true }
@@ -48,22 +48,28 @@ router.get('/', auth, async (req, res) => {
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
         $c isa conversation, has conversation-id $cid, has name $t;
-        $cp1 isa conversation-participant (participant: $u, conversation: $c);
-        $cp2 isa conversation-participant (participant: $p, conversation: $c);
+        conversation-participant (participant: $u, conversation: $c);
+        conversation-participant (participant: $p, conversation: $c);
         $p isa person, has username $pun, has name $pn;
-        not { $p has username "${typeqlLiteral(req.user.username)}"; };
+        not { $p is $u; };
         try { $p has profile-picture $pp; };
-      select $cid, $t, $pun, $pn, $pp;
+      fetch {
+        "conversation_id": $cid,
+        "title": $t,
+        "other_username": $pun,
+        "other_name": $pn,
+        "other_profile_picture": $pp
+      };
     `);
     res.json({ conversations: rows.map(r => ({
-      id: val(r,'cid'),
-      title: val(r,'t') || val(r, 'pn') || val(r, 'pun'),
+      id: r.conversation_id,
+      title: r.title || r.other_name || r.other_username,
       type: 'direct',
       participant: {
-        username: val(r, 'pun'),
-        displayName: val(r, 'pn') || val(r, 'pun'),
-        profilePicture: val(r, 'pp') || null,
-        online: online.has(val(r, 'pun')),
+        username: r.other_username,
+        displayName: r.other_name || r.other_username,
+        profilePicture: r.other_profile_picture || null,
+        online: online.has(r.other_username),
       },
     })) });
   } catch (err) { console.error('[conversations GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
@@ -85,21 +91,21 @@ router.post('/direct/:username', auth, async (req, res) => {
         $me isa person, has username "${me}";
         $to isa person, has username "${target}", has name $to_name;
         $c isa conversation, has conversation-id $cid;
-        $cp1 isa conversation-participant (participant: $me, conversation: $c);
-        $cp2 isa conversation-participant (participant: $to, conversation: $c);
-      select $cid, $to_name;
+        conversation-participant (participant: $me, conversation: $c);
+        conversation-participant (participant: $to, conversation: $c);
+      fetch { "conversation_id": $cid, "to_name": $to_name };
     `);
     if (existing.length) {
-      return res.json({ conversation: { id: val(existing[0], 'cid'), title: val(existing[0], 'to_name'), type: 'direct' } });
+      return res.json({ conversation: { id: existing[0].conversation_id, title: existing[0].to_name, type: 'direct' } });
     }
 
     const cid = uuid();
     const now = typeqlDatetime();
     const targetRows = await readQuery(`
       match $to isa person, has username "${target}", has name $to_name;
-      select $to_name;
+      fetch { "to_name": $to_name };
     `);
-    const title = val(targetRows[0], 'to_name') || req.params.username;
+    const title = targetRows[0]?.to_name || req.params.username;
 
     await writeQuery(`
       match
@@ -110,8 +116,8 @@ router.post('/direct/:username', auth, async (req, res) => {
           has conversation-id "${cid}",
           has name "${typeqlLiteral(title)}",
           has creation-timestamp ${now};
-        $cp1 isa conversation-participant (participant: $me, conversation: $c);
-        $cp2 isa conversation-participant (participant: $to, conversation: $c);
+        conversation-participant (participant: $me, conversation: $c);
+        conversation-participant (participant: $to, conversation: $c);
     `);
     res.status(201).json({ conversation: { id: cid, title, type: 'direct' } });
   } catch (err) {
@@ -129,17 +135,25 @@ router.get('/:id/messages', auth, async (req, res) => {
       match
         $user isa person, has username "${typeqlLiteral(req.user.username)}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        $cp isa conversation-participant (participant: $user, conversation: $conv);
-        $delivery isa message-delivery (conversation: $conv, message: $m);
+        conversation-participant (participant: $user, conversation: $conv);
+        message-delivery (conversation: $conv, message: $m);
         $m isa message, has message-id $mid, has message-text $ct, has creation-timestamp $ts;
-        $ma isa message-author (author: $a, message: $m);
+        message-author (author: $a, message: $m);
         $a has username $aun, has name $adn;
-      sort $ts asc; limit ${limit}; offset ${offset};
-      select $mid, $ct, $ts, $aun, $adn;
+      sort $ts asc;
+      offset ${offset};
+      limit ${limit};
+      fetch {
+        "message_id": $mid,
+        "content": $ct,
+        "created_at": $ts,
+        "author_username": $aun,
+        "author_name": $adn
+      };
     `);
     res.json({ messages: rows.map(r => ({
-      id: val(r,'mid'), content: val(r,'ct'), time: val(r,'ts'),
-      author: { id: val(r,'aun'), displayName: val(r,'adn') },
+      id: r.message_id, content: r.content, time: r.created_at,
+      author: { id: r.author_username, displayName: r.author_name },
     }))});
   } catch (err) { console.error('[messages GET]', err); res.status(500).json({ error: 'Erro ao carregar' }); }
 });
@@ -155,14 +169,14 @@ router.post('/:id/messages', auth, async (req, res) => {
       match
         $u isa person, has username "${req.user.username}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        $cp isa conversation-participant (participant: $u, conversation: $conv);
+        conversation-participant (participant: $u, conversation: $conv);
       insert
         $m isa message,
           has message-id "${mid}",
           has message-text "${typeqlLiteral(content.trim())}",
           has creation-timestamp ${now};
-        $ma isa message-author (author: $u, message: $m);
-        $delivery isa message-delivery (conversation: $conv, message: $m);
+        message-author (author: $u, message: $m);
+        message-delivery (conversation: $conv, message: $m);
     `);
     res.status(201).json({ id: mid, content, time: now,
       author: { id: req.user.username, displayName: req.user.displayName },
@@ -175,11 +189,12 @@ router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
   try {
     await writeQuery(`
       match $m isa message, has message-id "${req.params.msgId}";
-      $delivery isa message-delivery (conversation: $conv, message: $m);
-      $ma isa message-author (author: $a, message: $m);
-      delete $delivery;
-      delete $ma;
-      delete $m;
+      $d isa message-delivery, links (message: $m, conversation: $conv);
+      $ma isa message-author, links (message: $m, author: $a);
+      delete
+        $d;
+        $ma;
+        $m;
     `);
     res.json({ deleted: true });
   } catch (err) { console.error('[messages DELETE]', err); res.status(500).json({ error: 'Erro ao excluir' }); }

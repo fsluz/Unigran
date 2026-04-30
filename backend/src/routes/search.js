@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readQuery, typeqlLiteral, val } from '../db/typedb.js';
+import { readQuery, typeqlLiteral } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
@@ -16,37 +16,51 @@ router.get('/', auth, async (req, res) => {
           $u isa person, has name $dn, has username $un;
           $dn like "(?i).*${safe}.*";
           try { $u has profile-picture $pic; };
-        select $dn, $un, $pic; limit 10;
+        limit 10;
+        fetch {
+          "name": $dn,
+          "username": $un,
+          "profile_picture": $pic
+        };
       `),
       readQuery(`
         match
           $g isa group, has name $name, has group-id $gid, has page-visibility $v;
           $name like "(?i).*${safe}.*";
-        select $gid, $name, $v; limit 10;
+        limit 10;
+        fetch {
+          "id": $gid,
+          "name": $name,
+          "visibility": $v
+        };
       `),
       readQuery(`
         match
           $p isa post, has post-text $ct, has post-id $pid;
           $ct like "(?i).*${safe}.*";
-        select $pid, $ct; limit 10;
+        limit 10;
+        fetch {
+          "post_id": $pid,
+          "text": $ct
+        };
       `),
     ]);
 
     res.json({
       users: userRows.map(r => ({
-        id: val(r, 'un'),
-        username: val(r, 'un'),
-        displayName: val(r, 'dn'),
-        profilePicture: val(r, 'pic') || null,
+        id: r.username,
+        username: r.username,
+        displayName: r.name,
+        profilePicture: r.profile_picture || null,
       })),
       communities: communityRows.map(r => ({
-        id: val(r, 'gid'),
-        name: val(r, 'name'),
-        type: val(r, 'v'),
+        id: r.id,
+        name: r.name,
+        type: r.visibility,
       })),
       posts: postRows.map(r => ({
-        id: val(r, 'pid'),
-        content: String(val(r, 'ct') || '').slice(0, 160),
+        id: r.post_id,
+        content: String(r.text || '').slice(0, 160),
       })),
       q,
     });

@@ -10,19 +10,17 @@ router.get('/suggestions/list', auth, async (req, res) => {
     const safeMe = typeqlLiteral(req.user.username);
     const rows = await readQuery(`
       match
+        $me isa person, has username "${safeMe}";
         $u isa person, has username $username, has name $name;
-        not { $u has username "${safeMe}"; };
-        not {
-          $me isa person, has username "${safeMe}";
-          $follow isa following (follower: $me, page: $u);
-        };
+        not { $u is $me; };
+        not { following (follower: $me, page: $u); };
         try { $u has profile-picture $pic; };
+      limit 8;
       fetch {
         "username": $username,
         "name": $name,
         "profile_picture": $pic
       };
-      limit 8;
     `);
     res.json({ users: rows.map(row => ({
       username: row.username,
@@ -71,19 +69,18 @@ router.get('/:id/reposts', auth, async (req, res) => {
   }
 });
 
-/* GET /api/users/:id  (id = username) */
 router.get('/:id', auth, async (req, res) => {
   try {
+    const safeId = typeqlLiteral(req.params.id);
     const rows = await readQuery(`
       match
-        $p isa person, has username $username, has name $name;
-        $username == "${typeqlLiteral(req.params.id)}";
+        $p isa person, has username "${safeId}", has name $name;
         try { $p has profile-picture $profile_pic; };
         try { $p has cover-picture $cover_pic; };
         try { $p has bio $bio; };
         try { $p has page-visibility $visibility; };
       fetch {
-        "username": $username,
+        "username": "${safeId}",
         "name": $name,
         "profile_picture": $profile_pic,
         "cover_picture": $cover_pic,
@@ -91,7 +88,7 @@ router.get('/:id', auth, async (req, res) => {
         "visibility": $visibility
       };
     `);
-    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
     const row = rows[0];
     res.json({
       user: {
@@ -105,54 +102,54 @@ router.get('/:id', auth, async (req, res) => {
         role: 'user',
       },
     });
-  } catch (err) { console.error('[users GET]', err); res.status(500).json({ error: 'Erro interno' }); }
+  } catch (err) {
+    console.error('[users GET]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-/* PUT /api/users/:id */
 router.put('/:id', auth, async (req, res) => {
-  if (req.user.username !== req.params.id && req.user.role !== 'admin')
-    return res.status(403).json({ error: 'Sem permissão' });
+  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissao' });
+  }
 
   const { displayName, bio, phone, profilePicture, coverPicture, privacy, links } = req.body;
   const uid = typeqlLiteral(req.params.id);
 
   try {
-    // Atualiza nome: delete atributo antigo, insere novo (dois queries separados)
     if (displayName) {
       await writeQuery(`
-        match $u isa person, has username "${uid}", has name $dn;
-        delete has $dn of $u;
-      `);
-      await writeQuery(`
-        match $u isa person, has username "${uid}";
-        insert $u has name "${typeqlLiteral(displayName)}";
+        match
+          $u isa person, has username "${uid}";
+          try { $u has name $old; };
+        delete
+          has $old of $u;
+        insert
+          $u has name "${typeqlLiteral(displayName)}";
       `);
     }
 
-    // Atualiza bio
     if (bio !== undefined) {
-      try {
-        await writeQuery(`
-          match $u isa person, has username "${uid}", has bio $old;
-          delete has $old of $u;
-        `);
-      } catch (_) {}
       await writeQuery(`
-        match $u isa person, has username "${uid}";
-        insert $u has bio "${typeqlLiteral(bio)}";
+        match
+          $u isa person, has username "${uid}";
+          try { $u has bio $old; };
+        delete
+          has $old of $u;
+        insert
+          $u has bio "${typeqlLiteral(bio)}";
       `);
     }
 
     if (privacy === 'public' || privacy === 'private') {
-      try {
-        await writeQuery(`
-          match $u isa person, has username "${uid}", has page-visibility $old;
-          delete has $old of $u;
-        `);
-      } catch (_) {}
       await writeQuery(`
-        match $u isa person, has username "${uid}";
-        insert $u has page-visibility "${privacy}";
+        match
+          $u isa person, has username "${uid}";
+          try { $u has page-visibility $old; };
+        delete
+          has $old of $u;
+        insert
+          $u has page-visibility "${privacy}";
       `);
     }
 
@@ -163,88 +160,87 @@ router.put('/:id', auth, async (req, res) => {
         .join('|');
       if (bioLinks) {
         await writeQuery(`
-          match $u isa person, has username "${uid}";
-          insert $u has badge "${typeqlLiteral(`links:${bioLinks}`)}";
+          match
+            $u isa person, has username "${uid}";
+          insert
+            $u has badge "${typeqlLiteral(`links:${bioLinks}`)}";
         `);
       }
     }
 
-    // Atualiza telefone: tenta deletar o antigo primeiro (ignora se não existir)
     if (phone !== undefined) {
-      try {
-        await writeQuery(`
-          match $u isa person, has username "${uid}", has phone $ph;
-          delete has $ph of $u;
-        `);
-      } catch (_) { /* usuário não tinha telefone — normal */ }
-
-      if (phone) {
-        await writeQuery(`
-          match $u isa person, has username "${uid}";
-          insert $u has phone "${typeqlLiteral(phone)}";
-        `);
-      }
+      await writeQuery(`
+        match
+          $u isa person, has username "${uid}";
+          try { $u has phone $old; };
+        delete
+          has $old of $u;
+        ${phone ? `insert $u has phone "${typeqlLiteral(phone)}";` : ''}
+      `);
     }
 
     if (profilePicture?.url) {
-      try {
-        await writeQuery(`
-          match $u isa person, has username "${uid}", has profile-picture $old;
-          delete has $old of $u;
-        `);
-      } catch (_) {}
-
       await writeQuery(`
-        match $u isa person, has username "${uid}";
+        match
+          $u isa person, has username "${uid}";
+          try { $u has profile-picture $old; };
+        delete
+          has $old of $u;
         insert
           $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
       `);
     }
 
     if (coverPicture?.url) {
-      try {
-        await writeQuery(`
-          match $u isa person, has username "${uid}", has cover-picture $old;
-          delete has $old of $u;
-        `);
-      } catch (_) {}
-
       await writeQuery(`
-        match $u isa person, has username "${uid}";
+        match
+          $u isa person, has username "${uid}";
+          try { $u has cover-picture $old; };
+        delete
+          has $old of $u;
         insert
           $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
       `);
     }
 
     res.json({ updated: true });
-  } catch (err) { console.error('[users PUT]', err); res.status(500).json({ error: 'Erro interno' }); }
+  } catch (err) {
+    console.error('[users PUT]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-/* POST /api/users/:id/follow */
 router.post('/:id/follow', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
         $a isa person, has username "${typeqlLiteral(req.user.username)}";
         $b isa page, has username "${typeqlLiteral(req.params.id)}";
-      insert $follow isa following (follower: $a, page: $b);
+      insert
+        following (follower: $a, page: $b);
     `);
     res.json({ following: true });
-  } catch (err) { console.error('[follow]', err); res.status(500).json({ error: 'Erro interno' }); }
+  } catch (err) {
+    console.error('[follow]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-/* DELETE /api/users/:id/follow */
 router.delete('/:id/follow', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
         $a isa person, has username "${typeqlLiteral(req.user.username)}";
         $b isa page, has username "${typeqlLiteral(req.params.id)}";
-        $f isa following (follower: $a, page: $b);
-      delete $f;
+        $f isa following, links (follower: $a, page: $b);
+      delete
+        $f;
     `);
     res.json({ following: false });
-  } catch (err) { console.error('[unfollow]', err); res.status(500).json({ error: 'Erro interno' }); }
+  } catch (err) {
+    console.error('[unfollow]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
 router.get('/:id/followers', auth, async (req, res) => {
@@ -254,9 +250,13 @@ router.get('/:id/followers', auth, async (req, res) => {
       match
         $target isa page, has username "${safeId}";
         $follower isa person, has username $username, has name $name;
-        $follow isa following (follower: $follower, page: $target);
+        following (follower: $follower, page: $target);
         try { $follower has profile-picture $pic; };
-      fetch { "username": $username, "name": $name, "profile_picture": $pic };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "profile_picture": $pic
+      };
     `);
     res.json({ followers: rows.map(r => ({ username: r.username, displayName: r.name, profilePicture: r.profile_picture || null })) });
   } catch (err) {
@@ -272,9 +272,13 @@ router.get('/:id/following', auth, async (req, res) => {
       match
         $user isa person, has username "${safeId}";
         $page isa page, has page-id $pid, has name $name;
-        $follow isa following (follower: $user, page: $page);
+        following (follower: $user, page: $page);
         try { $page has profile-picture $pic; };
-      fetch { "id": $pid, "name": $name, "profile_picture": $pic };
+      fetch {
+        "id": $pid,
+        "name": $name,
+        "profile_picture": $pic
+      };
     `);
     res.json({ following: rows.map(r => ({ id: r.id, displayName: r.name, profilePicture: r.profile_picture || null })) });
   } catch (err) {
@@ -291,60 +295,44 @@ router.delete('/:id/block', auth, async (_req, res) => {
   res.json({ blocked: false });
 });
 
-/* POST /api/users/:id/ban  (admin only) */
 router.post('/:id/ban', auth, requireRole('admin'), async (req, res) => {
   try {
     await writeQuery(`
-      match $u isa person, has username "${req.params.id}", has is-banned $b;
-      delete has $b of $u;
-      insert $u has is-banned true;
+      match
+        $u isa person, has username "${typeqlLiteral(req.params.id)}";
+        try { $u has is-banned $b; };
+      delete
+        has $b of $u;
+      insert
+        $u has is-banned true;
     `);
     res.json({ banned: true });
-  } catch (err) { console.error('[ban]', err); res.status(500).json({ error: 'Erro interno' }); }
+  } catch (err) {
+    console.error('[ban]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-/* GET /api/users/:id/friends */
 router.get('/:id/friends', auth, async (req, res) => {
   try {
+    const safeId = typeqlLiteral(req.params.id);
     const rows = await readQuery(`
       match
-        $u isa person, has username "${req.params.id}";
+        $u isa person, has username "${safeId}";
         $f isa person, has username $fname;
-        $friendship isa friendship (friend: $u, friend: $f);
-        not { $f has username "${req.params.id}"; };
+        friendship (friend: $u, friend: $f);
+        not { $f is $u; };
         try { $f has name $dname; };
-        select $fname, $dname;
+      fetch {
+        "username": $fname,
+        "name": $dname
+      };
     `);
-
-    const friends = rows.map(r => ({ 
-      username: val(r, 'fname'),
-      displayName: val(r, 'dname') || val(r, 'fname'),
-    })).filter(f => f.username);
-
-    res.json({ friends });
+    res.json({ friends: rows.map(r => ({ username: r.username, displayName: r.name || r.username })).filter(f => f.username) });
   } catch (err) {
     console.error('[friends GET]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
-
-  /*DELETE / api/users/:id/friends/:friendId */
-  router.delete('/:id/friends/:friendId', auth, async (req, res) => {
-    if (req.user.username !== req.params.id)
-      return res.status(403).json({ error: 'Sem permissão' });
-    try {
-      await writeQuery(`
-        match 
-        $u isa person, has username "${req.params.id}";
-        $f isa person, has username "${req.params.friendId}";
-        $rel isa friendship (friend: $u, friend: $f);
-        delete $rel;
-      `);
-      res.json({ removed: true });
-    } catch (err) {
-      console.error(' [friends DELETE]', err);
-      res.status(500).json({ error: 'Erro interno' });
-    }
-  });
 });
 
 router.delete('/:id/friends/:friendId', auth, async (req, res) => {
@@ -356,8 +344,9 @@ router.delete('/:id/friends/:friendId', auth, async (req, res) => {
       match
         $u isa person, has username "${typeqlLiteral(req.params.id)}";
         $f isa person, has username "${typeqlLiteral(req.params.friendId)}";
-        $rel isa friendship (friend: $u, friend: $f);
-      delete $rel;
+        $rel isa friendship, links (friend: $u, friend: $f);
+      delete
+        $rel;
     `);
     res.json({ removed: true });
   } catch (err) {
