@@ -30,12 +30,6 @@ function AppShell() {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  if (!user) {
-    return authView === 'login'
-      ? <LoginPage    onGoRegister={() => setAuthView('register')} />
-      : <RegisterPage onGoLogin={()    => setAuthView('login')}    />;
-  }
-
   const navigate = (id) => {
     setPage(id);
   };
@@ -55,6 +49,12 @@ function AppShell() {
       window.removeEventListener('unigran:navigate', nav);
     };
   }, []);
+
+  if (!user) {
+    return authView === 'login'
+      ? <LoginPage    onGoRegister={() => setAuthView('register')} />
+      : <RegisterPage onGoLogin={()    => setAuthView('login')}    />;
+  }
 
   const handleLogout = () => {
     logout();
