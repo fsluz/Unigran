@@ -195,7 +195,6 @@ export async function createPost({ authorUsername, postType, content, media, com
   const safeContent = typeqlLiteral(content || '');
 
   const attributes = [
-    `has id "${postId}"`,
     `has post-id "${postId}"`,
     `has creation-timestamp ${now}`,
     `has post-visibility "public"`,
@@ -413,7 +412,6 @@ export async function sharePost({ username, postId, content = '' }) {
       $original isa post, has post-id "${safePost}";
     insert
       $share isa share-post,
-        has id "${shareId}",
         ${attrs.join(',\n        ')};
       posting (page: $user, post: $share);
       sharing (original-post: $original, share-post: $share);
@@ -460,7 +458,6 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
   const safeUser = typeqlLiteral(authorUsername);
   const safeContent = typeqlLiteral(content);
   const commentAttributes = [
-    `has id "${commentId}"`,
     `has comment-id "${commentId}"`,
     `has comment-text "${safeContent}"`,
     `has creation-timestamp ${now}`,
