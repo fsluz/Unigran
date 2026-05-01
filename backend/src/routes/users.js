@@ -1,9 +1,52 @@
 import { Router } from 'express';
-import { readQuery, writeQuery, typeqlLiteral, val } from '../db/typedb.js';
+import { v4 as uuid } from 'uuid';
+import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireRole } from '../middleware/auth.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
+
+async function getFollowStats(username, viewerUsername) {
+  const safeId = typeqlLiteral(username);
+  const safeViewer = typeqlLiteral(viewerUsername || '');
+  const [followerRows, followingRows, postRows, viewerRows] = await Promise.all([
+    readQuery(`
+      match
+        $target isa page, has username "${safeId}";
+        $follower isa person, has username $username;
+        following (follower: $follower, page: $target);
+      fetch { "username": $username };
+    `),
+    readQuery(`
+      match
+        $user isa person, has username "${safeId}";
+        $page isa page, has page-id $page_id;
+        following (follower: $user, page: $page);
+      fetch { "page_id": $page_id };
+    `),
+    readQuery(`
+      match
+        $user isa person, has username "${safeId}";
+        $post isa post, has post-id $post_id;
+        posting (page: $user, post: $post);
+      fetch { "post_id": $post_id };
+    `),
+    viewerUsername ? readQuery(`
+      match
+        $viewer isa person, has username "${safeViewer}";
+        $target isa page, has username "${safeId}", has username $target_username;
+        following (follower: $viewer, page: $target);
+      fetch { "following": $target_username };
+    `) : Promise.resolve([]),
+  ]);
+
+  return {
+    posts: postRows.length,
+    followers: followerRows.length,
+    following: followingRows.length,
+    viewerFollowing: viewerRows.length > 0,
+  };
+}
 
 router.get('/suggestions/list', auth, async (req, res) => {
   try {
@@ -90,6 +133,7 @@ router.get('/:id', auth, async (req, res) => {
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
     const row = rows[0];
+    const stats = await getFollowStats(req.params.id, req.user.username);
     res.json({
       user: {
         id: row.username,
@@ -100,6 +144,12 @@ router.get('/:id', auth, async (req, res) => {
         bio: row.bio || '',
         privacy: row.visibility || 'public',
         role: 'user',
+        following: stats.viewerFollowing,
+        stats: {
+          posts: stats.posts,
+          followers: stats.followers,
+          following: stats.following,
+        },
       },
     });
   } catch (err) {
@@ -121,10 +171,7 @@ router.put('/:id', auth, async (req, res) => {
       await writeQuery(`
         match
           $u isa person, has username "${uid}";
-          try { $u has name $old; };
-        delete
-          has $old of $u;
-        insert
+        update
           $u has name "${typeqlLiteral(displayName)}";
       `);
     }
@@ -133,10 +180,7 @@ router.put('/:id', auth, async (req, res) => {
       await writeQuery(`
         match
           $u isa person, has username "${uid}";
-          try { $u has bio $old; };
-        delete
-          has $old of $u;
-        insert
+        update
           $u has bio "${typeqlLiteral(bio)}";
       `);
     }
@@ -145,10 +189,7 @@ router.put('/:id', auth, async (req, res) => {
       await writeQuery(`
         match
           $u isa person, has username "${uid}";
-          try { $u has page-visibility $old; };
-        delete
-          has $old of $u;
-        insert
+        update
           $u has page-visibility "${privacy}";
       `);
     }
@@ -169,24 +210,28 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     if (phone !== undefined) {
-      await writeQuery(`
-        match
-          $u isa person, has username "${uid}";
-          try { $u has phone $old; };
-        delete
-          has $old of $u;
-        ${phone ? `insert $u has phone "${typeqlLiteral(phone)}";` : ''}
-      `);
+      if (phone) {
+        await writeQuery(`
+          match
+            $u isa person, has username "${uid}";
+          update
+            $u has phone "${typeqlLiteral(phone)}";
+        `);
+      } else {
+        await writeQuery(`
+          match
+            $u isa person, has username "${uid}", has phone $old;
+          delete
+            has $old of $u;
+        `);
+      }
     }
 
     if (profilePicture?.url) {
       await writeQuery(`
         match
           $u isa person, has username "${uid}";
-          try { $u has profile-picture $old; };
-        delete
-          has $old of $u;
-        insert
+        update
           $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
       `);
     }
@@ -195,10 +240,7 @@ router.put('/:id', auth, async (req, res) => {
       await writeQuery(`
         match
           $u isa person, has username "${uid}";
-          try { $u has cover-picture $old; };
-        delete
-          has $old of $u;
-        insert
+        update
           $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
       `);
     }
@@ -212,13 +254,29 @@ router.put('/:id', auth, async (req, res) => {
 
 router.post('/:id/follow', auth, async (req, res) => {
   try {
+    const notificationId = uuid();
+    const now = typeqlDatetime();
     await writeQuery(`
       match
         $a isa person, has username "${typeqlLiteral(req.user.username)}";
         $b isa page, has username "${typeqlLiteral(req.params.id)}";
+        not { following (follower: $a, page: $b); };
       insert
         following (follower: $a, page: $b);
     `);
+    await writeQuery(`
+      match
+        $actor isa person, has username "${typeqlLiteral(req.user.username)}";
+        $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
+        not { $recipient is $actor; };
+      insert
+        $notification isa notification,
+          has notification-id "${notificationId}",
+          has notification-text "${typeqlLiteral(`${req.user.displayName || req.user.username} comecou a te seguir`)}",
+          has notification-type "follow",
+          has creation-timestamp ${now};
+        notification-delivery (recipient: $recipient, notification: $notification);
+    `).catch(() => null);
     res.json({ following: true });
   } catch (err) {
     console.error('[follow]', err);
@@ -300,10 +358,7 @@ router.post('/:id/ban', auth, requireRole('admin'), async (req, res) => {
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(req.params.id)}";
-        try { $u has is-banned $b; };
-      delete
-        has $b of $u;
-      insert
+      update
         $u has is-banned true;
     `);
     res.json({ banned: true });

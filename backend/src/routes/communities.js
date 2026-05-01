@@ -22,7 +22,7 @@ router.get('/', auth, async (req, res) => {
           match
             group-membership (group: $g, member: $member);
             $member has username $member_username;
-          fetch { "username": $member_username };
+          fetch { "username": $member_username }
         ]
       };
     `);
@@ -58,7 +58,8 @@ router.post('/', auth, async (req, res) => {
   const now = typeqlDatetime();
   try {
     await writeQuery(`
-      match $u isa person, has username "${req.user.username}";
+      match
+        $u isa person, has username "${typeqlLiteral(req.user.username)}";
       insert
         $g isa group,
           has group-id "${gid}",
@@ -80,11 +81,12 @@ router.post('/:id/join', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
-        $u isa person, has username "${req.user.username}";
-        $g isa group, has group-id "${req.params.id}";
-      insert $m isa group-membership, links (member: $u, group: $g),
-        has rank "member",
-        has start-timestamp ${now};
+        $u isa person, has username "${typeqlLiteral(req.user.username)}";
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+      insert
+        $m isa group-membership, links (member: $u, group: $g),
+          has rank "member",
+          has start-timestamp ${now};
     `);
     res.json({ joined: true });
   } catch (err) { console.error('[join]', err); res.status(500).json({ error: 'Erro ao entrar' }); }
@@ -95,8 +97,8 @@ router.delete('/:id/join', auth, async (req, res) => {
   try {
     await writeQuery(`
       match
-        $u isa person, has username "${req.user.username}";
-        $g isa group, has group-id "${req.params.id}";
+        $u isa person, has username "${typeqlLiteral(req.user.username)}";
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
         $m isa group-membership, links (member: $u, group: $g);
       delete
         $m;
@@ -111,10 +113,7 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
     await writeQuery(`
       match
         $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
-        try { $g has is-active $a; };
-      delete
-        has $a of $g;
-      insert
+      update
         $g has is-active false;
     `);
     res.json({ deleted: true });

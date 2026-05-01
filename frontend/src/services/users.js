@@ -44,3 +44,15 @@ export async function fetchUserPosts({ token, username }) {
   const data = await parseResponse(res, 'Erro ao carregar posts');
   return data.posts || [];
 }
+
+export async function fetchFollowers({ token, username }) {
+  const res = await apiFetch(`/users/${username}/followers`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar seguidores');
+  return data.followers || [];
+}
+
+export async function fetchFollowing({ token, username }) {
+  const res = await apiFetch(`/users/${username}/following`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar seguindo');
+  return data.following || [];
+}

@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { readQuery, typeqlDatetime, typeqlLiteral, val, writeQuery } from '../db/typedb.js';
+import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 const cache = new Map();
 const CACHE_TTL_MS = 8_000;
@@ -72,6 +72,67 @@ async function loadFollowingSet(username) {
   return new Set(rows.map(row => row.followed_username).filter(Boolean));
 }
 
+async function loadPostMetrics(viewerUsername) {
+  const [reactionRows, commentRows] = await Promise.all([
+    readQuery(`
+      match
+        $post isa post, has post-id $post_id;
+        reaction (parent: $post, author: $author);
+        $author isa person, has username $author_username;
+      fetch {
+        "post_id": $post_id,
+        "author_username": $author_username
+      };
+    `),
+    readQuery(`
+      match
+        $post isa post, has post-id $post_id;
+        commenting (parent: $post, comment: $comment);
+      fetch { "post_id": $post_id };
+    `),
+  ]);
+
+  const metrics = new Map();
+  const ensure = (id) => {
+    if (!metrics.has(id)) metrics.set(id, { likes: 0, comments: 0, liked: false });
+    return metrics.get(id);
+  };
+
+  for (const row of reactionRows) {
+    if (!row.post_id) continue;
+    const metric = ensure(row.post_id);
+    metric.likes += 1;
+    if (viewerUsername && row.author_username === viewerUsername) metric.liked = true;
+  }
+
+  for (const row of commentRows) {
+    if (!row.post_id) continue;
+    ensure(row.post_id).comments += 1;
+  }
+
+  return metrics;
+}
+
+async function notifyPostOwner({ actorUsername, postId, type, text }) {
+  const notificationId = uuid();
+  const now = typeqlDatetime();
+  await writeQuery(`
+    match
+      $actor isa person, has username "${typeqlLiteral(actorUsername)}";
+      $post isa post, has post-id "${typeqlLiteral(postId)}";
+      $recipient isa person;
+      posting (page: $recipient, post: $post);
+      not { $recipient is $actor; };
+    insert
+      $notification isa notification,
+        has notification-id "${notificationId}",
+        has notification-text "${typeqlLiteral(`${actorUsername} ${text}`)}",
+        has notification-type "${typeqlLiteral(type)}",
+        has creation-timestamp ${now};
+      notification-delivery (recipient: $recipient, notification: $notification);
+  `);
+}
+
 export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const key = `feed:${viewerUsername || 'anon'}:${feed}:${limit}:${offset}`;
   const cached = getCached(key);
@@ -127,13 +188,14 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
             "profile_picture": $comment_author_profile_pic,
             "cover_picture": $comment_author_cover_pic
           }
-        };
+        }
       ]
     };
   `);
   const profilesMap = await loadAllProfilesMap();
   const friendSet = await loadFriendSet(viewerUsername);
   const followingSet = await loadFollowingSet(viewerUsername);
+  const metrics = await loadPostMetrics(viewerUsername);
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
@@ -147,8 +209,10 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const videoUrl = attrs['post-video'] || null;
     const mediaUrl = imageUrl || videoUrl;
     const authorProfile = profilesMap.get(entry?.author?.username || '');
+    const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
     return {
-      id: entry?.post_id || attrs['post-id'] || uuid(),
+      id: postId,
       content: attrs['post-text'] || '',
       time: entry?.created_at || attrs['creation-timestamp'] || null,
       media: mediaUrl ? {
@@ -163,7 +227,10 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         coverPicture: authorProfile?.cover_picture || entry?.author?.cover_picture || null,
         role: 'user',
       },
-      comments: comments.map((comment) => {
+      likes: metric.likes,
+      liked: metric.liked,
+      comments: metric.comments || comments.length,
+      _comments: comments.map((comment) => {
         const commentAuthorProfile = profilesMap.get(comment?.author?.username || '');
         return {
           id: comment?.comment_id,
@@ -226,10 +293,7 @@ export async function updatePostContent({ username, postId, content }) {
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
       posting (page: $user, post: $post);
-      try { $post has post-text $old; };
-    delete
-      has $old of $post;
-    insert
+    update
       $post has post-text "${safeContent}";
   `);
   cache.clear();
@@ -291,13 +355,16 @@ export async function listCommunityPosts({ communityId, viewerUsername }) {
       "post_all_attributes": { $post.* }
     };
   `);
+  const metrics = await loadPostMetrics(viewerUsername);
   return rows.map(entry => {
     const attrs = entry?.post_all_attributes || {};
     const imageUrl = attrs['post-image'] || null;
     const videoUrl = attrs['post-video'] || null;
     const mediaUrl = imageUrl || videoUrl;
+    const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const metric = metrics.get(postId) || { likes: 0, comments: 0, liked: false };
     return {
-      id: entry?.post_id || attrs['post-id'] || uuid(),
+      id: postId,
       content: attrs['post-text'] || '',
       time: entry?.created_at || attrs['creation-timestamp'] || null,
       community: entry?.group_name || '',
@@ -309,9 +376,9 @@ export async function listCommunityPosts({ communityId, viewerUsername }) {
         profilePicture: entry?.author?.profile_picture || null,
         role: 'user',
       },
-      comments: 0,
-      likes: 0,
-      liked: false,
+      comments: metric.comments,
+      likes: metric.likes,
+      liked: metric.liked,
     };
   }).sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
 }
@@ -324,11 +391,18 @@ export async function reactToPost({ username, postId, emoji = 'like' }) {
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
+      not { reaction (author: $user, parent: $post); };
     insert
       $r isa reaction, links (author: $user, parent: $post),
         has emoji "${typeqlLiteral(emoji)}",
         has creation-timestamp ${now};
   `);
+  await notifyPostOwner({
+    actorUsername: username,
+    postId,
+    type: 'like',
+    text: 'curtiu seu post',
+  }).catch(() => null);
   cache.clear();
   return { liked: true };
 }
@@ -483,7 +557,14 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
           ${commentAttributes.join(',\n          ')};
         commenting (parent: $parent, comment: $c, author: $author);
     `);
+    await notifyPostOwner({
+      actorUsername: authorUsername,
+      postId: parentPostId,
+      type: 'comment',
+      text: 'comentou no seu post',
+    }).catch(() => null);
   }
 
+  cache.clear();
   return { id: commentId, time: now };
 }

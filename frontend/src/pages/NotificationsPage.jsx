@@ -87,7 +87,7 @@ export default function NotificationsPage() {
                   {(n.actorName || n.actor || 'UN').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="notif-text">
-                  <strong>{n.actorName || n.actor || 'Unigran'}</strong> {n.text}
+                  {n.actorName || n.actor ? <strong>{n.actorName || n.actor}</strong> : null} {n.text}
                 </div>
                 <span className="notif-time">{relativeTime(n.time)}</span>
               </button>

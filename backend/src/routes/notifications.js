@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readQuery, typeqlLiteral } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
           text: row.text,
           type: row.type,
           time: row.time,
-          actorName: 'Unigran',
+          actorName: '',
           read: false,
         }))
         .sort((a, b) => String(b.time || '').localeCompare(String(a.time || ''))),
@@ -43,11 +43,37 @@ router.get('/', auth, async (req, res) => {
 });
 
 router.patch('/read-all', auth, (_req, res) => {
-  res.json({ read: true });
+  writeQuery(`
+    match
+      $recipient isa person, has username "${typeqlLiteral(_req.user.username)}";
+      $notification isa notification;
+      $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+    delete
+      $delivery;
+      $notification;
+  `)
+    .then(() => res.json({ read: true }))
+    .catch((err) => {
+      console.error('[notifications read-all]', err);
+      res.status(500).json({ error: 'Erro ao marcar notificacoes' });
+    });
 });
 
-router.patch('/:id/read', auth, (_req, res) => {
-  res.json({ read: true });
+router.patch('/:id/read', auth, (req, res) => {
+  writeQuery(`
+    match
+      $recipient isa person, has username "${typeqlLiteral(req.user.username)}";
+      $notification isa notification, has notification-id "${typeqlLiteral(req.params.id)}";
+      $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+    delete
+      $delivery;
+      $notification;
+  `)
+    .then(() => res.json({ read: true }))
+    .catch((err) => {
+      console.error('[notifications read]', err);
+      res.status(500).json({ error: 'Erro ao marcar notificacao' });
+    });
 });
 
 export default router;

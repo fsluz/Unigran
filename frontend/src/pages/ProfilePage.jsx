@@ -8,7 +8,7 @@ import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
-import { fetchLikedPosts, fetchReposts } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts } from '../services/users';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
@@ -32,6 +32,9 @@ export default function ProfilePage({ onNavigate }) {
   const [posts, setPosts] = useState([]);
   const [likedPosts, setLikedPosts] = useState([]);
   const [reposts, setReposts] = useState([]);
+  const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
+  const [peopleModal, setPeopleModal] = useState(null);
+  const [people, setPeople] = useState([]);
   const [tabLoading, setTabLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     displayName: user.displayName,
@@ -78,6 +81,7 @@ export default function ProfilePage({ onNavigate }) {
         const serverUser = data.user;
         setProfilePreview(serverUser.profilePicture || null);
         setCoverPreview(serverUser.coverPicture || null);
+        setStats(serverUser.stats || { posts: 0, followers: 0, following: 0 });
         setEditForm((prev) => ({
           ...prev,
           displayName: serverUser.displayName || prev.displayName,
@@ -90,6 +94,17 @@ export default function ProfilePage({ onNavigate }) {
       })
       .catch(() => {});
   }, [token, user?.username]);
+
+  const openPeople = async (type) => {
+    setPeopleModal(type);
+    setPeople([]);
+    try {
+      const loader = type === 'followers' ? fetchFollowers : fetchFollowing;
+      setPeople(await loader({ token, username: user.username }));
+    } catch {
+      showToast('Falha ao carregar lista', '!');
+    }
+  };
 
   const saveProfile = async () => {
     try {
@@ -171,16 +186,16 @@ export default function ProfilePage({ onNavigate }) {
 
           <div className="profile-stats">
             <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>48</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.posts || posts.length}</div>
               <div className="profile-stat-label">Publicações</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>1.234</div>
-              <div className="profile-stat-label">Seguidores</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.followers || 0}</div>
+              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('followers')}>Seguidores</div>
             </div>
             <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{user.following}</div>
-              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => onNavigate('friends')}>Seguindo</div>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.following || 0}</div>
+              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('following')}>Seguindo</div>
             </div>
           </div>
 
@@ -360,6 +375,22 @@ export default function ProfilePage({ onNavigate }) {
       )}
 
       {openPost && <PostDetailModal post={openPost} onClose={() => setOpenPost(null)} />}
+
+      {peopleModal && (
+        <Modal title={peopleModal === 'followers' ? 'Seguidores' : 'Seguindo'} onClose={() => setPeopleModal(null)} maxWidth={420}>
+          {people.length === 0 ? <div className="search-empty">Nada aqui.</div> : people.map(p => (
+            <div key={p.username || p.id} className="search-result-row">
+              <div className="search-result-ava" style={p.profilePicture ? { backgroundImage: `url(${p.profilePicture})`, backgroundSize: 'cover', color: 'transparent' } : {}}>
+                {(p.displayName || p.name || p.username || p.id || '?').slice(0, 2).toUpperCase()}
+              </div>
+              <div className="search-result-info">
+                <div className="search-result-name">{p.displayName || p.name || p.username || p.id}</div>
+                <div className="search-result-sub">{p.username ? `@${p.username}` : p.id}</div>
+              </div>
+            </div>
+          ))}
+        </Modal>
+      )}
     </div>
   );
 }

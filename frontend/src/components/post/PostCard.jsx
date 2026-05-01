@@ -69,6 +69,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
 
   const [liked, setLiked]             = useState(post.liked);
   const [likes, setLikes]             = useState(post.likes);
+  const [commentsCount, setCommentsCount] = useState(Array.isArray(post.comments) ? post.comments.length : Number(post.comments || post._comments?.length || 0));
   const [saved, setSaved]             = useState(post.saved || false);
   const [editing, setEditing]         = useState(false);
   const [editText, setEditText]       = useState(post.content);
@@ -119,6 +120,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         author: { displayName: user.displayName, avatar: user.avatar },
       };
       setComments(prev => [...prev, c]);
+      setCommentsCount(v => v + 1);
       setNewComment('');
       showToast('Comentário adicionado!', '💬');
     } catch (err) {
@@ -203,7 +205,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       <div className="post-footer">
         <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike}>
           <span>{liked ? '❤️' : '🤍'}</span>
-          <span>{likes > 0 ? likes : ''}</span>
+          <span>{Number(likes || 0)} Curtidas</span>
         </button>
         <button
           className="post-action-btn"
@@ -213,12 +215,13 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             if (next && onLoadComments) {
               const loaded = await onLoadComments(post.id);
               setComments(loaded || []);
+              setCommentsCount((loaded || []).length);
             }
           }}
           style={{ color: showComments ? 'var(--accent)' : undefined }}
         >
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span>{comments.length > 0 ? `${comments.length} Comentários` : post.comments > 0 ? `${post.comments} Comentários` : '0 Comentários'}</span>
+          <span>{commentsCount} Comentarios</span>
         </button>
         <button className="post-action-btn" onClick={async () => {
           await sharePost({ token, postId: post.id }).catch(() => null);

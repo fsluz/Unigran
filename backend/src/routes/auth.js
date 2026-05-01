@@ -1,28 +1,24 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt    from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
-import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash, val } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
 
 const router = Router();
 
 const RegisterSchema = z.object({
-  name:     z.string().min(2),
+  name: z.string().min(2),
   username: z.string().min(3).regex(/^[a-zA-Z0-9_]+$/),
-  email: z.preprocess(
-    (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
-    z.string().email()
-  ),
-  phone:    z.string().optional(),
+  email: z.preprocess(v => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.string().email()),
+  phone: z.string().optional(),
   password: z.string().min(6),
 });
 
 const LoginSchema = z.object({
   email: z.preprocess(
-    (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
-    z.string().min(3).max(320)
-     .refine((s) => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email inválido')
+    v => (typeof v === 'string' ? v.trim().toLowerCase() : v),
+    z.string().min(3).max(320).refine(s => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email invalido'),
   ),
   password: z.string().min(1),
 });
@@ -37,97 +33,88 @@ function attrBoolTrue(v) {
   return false;
 }
 
-/* POST /api/auth/register */
 router.post('/register', async (req, res) => {
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { name, username, email, phone, password } = parsed.data;
   const hash = encodeHash(await bcrypt.hash(password, 12));
-
   const esc = {
     username: typeqlLiteral(username),
-    name:     typeqlLiteral(name),
-    email:    typeqlLiteral(email),
+    name: typeqlLiteral(name),
+    email: typeqlLiteral(email),
     hash,
-    phone:    phone ? typeqlLiteral(phone) : '',
+    phone: phone ? typeqlLiteral(phone) : '',
   };
 
   try {
     await writeQuery(`
-      insert $u isa person,
-        has username "${esc.username}",
-        has name "${esc.name}",
-        has email "${esc.email}",
-        ${esc.phone ? `has phone "${esc.phone}",` : ''}
-        has password-hash "${esc.hash}",
-        has is-active true,
-        has is-banned false,
-        has can-publish true,
-        has page-visibility "public",
-        has post-visibility "public";
+      insert
+        $u isa person,
+          has username "${esc.username}",
+          has name "${esc.name}",
+          has email "${esc.email}",
+          ${esc.phone ? `has phone "${esc.phone}",` : ''}
+          has password-hash "${esc.hash}",
+          has is-active true,
+          has is-banned false,
+          has can-publish true,
+          has page-visibility "public",
+          has post-visibility "public";
     `);
     const payload = { id: username, username, email, role: 'user', displayName: name, phone: phone || null };
-    const token = sign(payload);
-    res.status(201).json({ token, user: payload });
+    res.status(201).json({ token: sign(payload), user: payload });
   } catch (err) {
-    if (err.message?.includes('unique')) return res.status(409).json({ error: 'Email ou username já em uso' });
+    if (err.message?.includes('unique') || err.message?.includes('key')) {
+      return res.status(409).json({ error: 'Email ou username ja em uso' });
+    }
     console.error('[register]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });
 
-/* POST /api/auth/login */
 router.post('/login', async (req, res) => {
-  const body = req.body;
-  if (body == null || typeof body !== 'object' || Array.isArray(body)) {
-    return res.status(400).json({ error: 'Corpo da requisição deve ser um objeto JSON com email e password' });
-  }
-
-  const parsed = LoginSchema.safeParse(body);
+  const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { email, password } = parsed.data;
-
   try {
-    const safeEmail = typeqlLiteral(email);
     const rows = await readQuery(`
-match
-  $u isa person,
-    has email "${safeEmail}",
-    has password-hash $phash;
-try { $u has username $uname; };
-try { $u has name $dname; };
-try { $u has is-banned $banned; };
-try { $u has phone $phone; };
-try { $u has password-changed-at $pwdat; };
-select $uname, $dname, $phash, $banned, $phone, $pwdat;
+      match
+        $u isa person,
+          has email "${typeqlLiteral(email)}",
+          has password-hash $phash;
+        try { $u has username $username; };
+        try { $u has name $name; };
+        try { $u has is-banned $banned; };
+        try { $u has phone $phone; };
+        try { $u has password-changed-at $changed; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "password_hash": $phash,
+        "banned": $banned,
+        "phone": $phone,
+        "password_changed_at": $changed
+      };
     `);
+    if (!rows.length || !rows[0].password_hash) return res.status(401).json({ error: 'Credenciais invalidas' });
 
-    if (!rows.length) return res.status(401).json({ error: 'Credenciais inválidas' });
     const row = rows[0];
+    const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
+    if (!ok) return res.status(401).json({ error: 'Credenciais invalidas' });
+    if (attrBoolTrue(row.banned)) return res.status(403).json({ error: 'Conta banida' });
 
-    const phashRaw = val(row, 'phash');
-    console.log('[login] phashRaw:', phashRaw);
-    if (typeof phashRaw !== 'string' || !phashRaw.length) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
-
-    console.log('[login] decoded:', decodeHash(phashRaw));
-    const ok = await bcrypt.compare(password, decodeHash(phashRaw));
-    console.log('[login] ok:', ok);
-    if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
-    if (attrBoolTrue(val(row, 'banned'))) return res.status(403).json({ error: 'Conta banida' });
-
-    let username    = val(row, 'uname');
-    let displayName = val(row, 'dname');
-    let phone       = val(row, 'phone') || null;
-    const rawPwdat  = (row.data ?? row)['pwdat'];
-    const passwordChangedAt = rawPwdat?.value ?? val(row, 'pwdat') ?? null;
-    if (typeof username !== 'string' || !username.length) username = email.split('@')[0] || 'user';
-    if (typeof displayName !== 'string' || !displayName.length) displayName = username;
-
-    const payload = { id: username, username, displayName, email, role: 'user', phone, passwordChangedAt };
+    const username = row.username || email.split('@')[0] || 'user';
+    const payload = {
+      id: username,
+      username,
+      displayName: row.name || username,
+      email,
+      role: 'user',
+      phone: row.phone || null,
+      passwordChangedAt: row.password_changed_at || null,
+    };
     res.json({ token: sign(payload), user: payload });
   } catch (err) {
     console.error('[login]', err);
@@ -135,76 +122,68 @@ select $uname, $dname, $phash, $banned, $phone, $pwdat;
   }
 });
 
-/* GET /api/auth/me */
-// Busca dados frescos do banco em vez de confiar só no token
 router.get('/me', async (req, res) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Não autenticado' });
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
   try {
     const decoded = jwt.verify(header.slice(7), jwtSecret());
-    const safeUsername = typeqlLiteral(decoded.username);
-
     const rows = await readQuery(`
-match
-  $u isa person, has username "${safeUsername}", has email $email;
-try { $u has name $dname; };
-try { $u has phone $phone; };
-try { $u has profile-picture $profile_pic; };
-try { $u has cover-picture $cover_pic; };
-try { $u has password-changed-at $pwdat; };
-select $email, $dname, $phone, $profile_pic, $cover_pic, $pwdat;
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}", has email $email;
+        try { $u has name $name; };
+        try { $u has phone $phone; };
+        try { $u has profile-picture $profile_picture; };
+        try { $u has cover-picture $cover_picture; };
+        try { $u has password-changed-at $changed; };
+      fetch {
+        "email": $email,
+        "name": $name,
+        "phone": $phone,
+        "profile_picture": $profile_picture,
+        "cover_picture": $cover_picture,
+        "password_changed_at": $changed
+      };
     `);
+    if (!rows.length) return res.status(401).json({ error: 'Usuario nao encontrado' });
 
-    if (!rows.length) return res.status(401).json({ error: 'Usuário não encontrado' });
     const row = rows[0];
-
-    // val() às vezes não lê atributos opcionais do TypeDB 3 corretamente
-    // então lemos direto do objeto quando necessário
-    const rawPwdat = (row.data ?? row)['pwdat'];
-    const passwordChangedAt = rawPwdat?.value ?? val(row, 'pwdat') ?? null;
-
-    const user = {
-      ...decoded,
-      displayName:       val(row, 'dname') || decoded.displayName,
-      email:             val(row, 'email') || decoded.email,
-      phone:             val(row, 'phone') || null,
-      profilePicture:    val(row, 'profile_pic') || decoded.profilePicture || null,
-      coverPicture:      val(row, 'cover_pic') || decoded.coverPicture || null,
-      passwordChangedAt,
-    };
-
-    res.json({ user });
+    res.json({
+      user: {
+        ...decoded,
+        displayName: row.name || decoded.displayName,
+        email: row.email || decoded.email,
+        phone: row.phone || null,
+        profilePicture: row.profile_picture || decoded.profilePicture || null,
+        coverPicture: row.cover_picture || decoded.coverPicture || null,
+        passwordChangedAt: row.password_changed_at || null,
+      },
+    });
   } catch {
-    res.status(401).json({ error: 'Token inválido' });
+    res.status(401).json({ error: 'Token invalido' });
   }
 });
 
-/* PUT /api/auth/reset-password */
 router.put('/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;
-  if (!email || !newPassword) return res.status(400).json({ error: 'Email e nova senha obrigatórios' });
+  if (!email || !newPassword) return res.status(400).json({ error: 'Email e nova senha obrigatorios' });
   if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
 
   try {
     const safeEmail = typeqlLiteral(String(email).trim().toLowerCase());
-
     const rows = await readQuery(`
-      match $u isa person, has email "${safeEmail}", has password-hash $ph;
-      select $u, $ph;
+      match
+        $u isa person, has email "${safeEmail}", has password-hash $ph;
+      fetch { "password_hash": $ph };
     `);
-    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
     const newHash = encodeHash(await bcrypt.hash(newPassword, 12));
-
     await writeQuery(`
-      match $u isa person, has email "${safeEmail}", has password-hash $ph;
-      delete has $ph of $u;
+      match
+        $u isa person, has email "${safeEmail}";
+      update
+        $u has password-hash "${newHash}";
     `);
-    await writeQuery(`
-      match $u isa person, has email "${safeEmail}";
-      insert $u has password-hash "${newHash}";
-    `);
-
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password]', err);
@@ -212,60 +191,40 @@ router.put('/reset-password', async (req, res) => {
   }
 });
 
-/* PUT /api/auth/change-password  (usuário logado, valida senha atual) */
 router.put('/change-password', async (req, res) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Não autenticado' });
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
 
   let decoded;
   try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
-  catch { return res.status(401).json({ error: 'Token inválido' }); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
 
   const { currentPassword, newPassword, confirmPassword } = req.body;
-  if (!currentPassword || !newPassword || !confirmPassword)
-    return res.status(400).json({ error: 'Preencha todos os campos' });
-  if (newPassword.length < 6)
-    return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
-  if (newPassword !== confirmPassword)
-    return res.status(400).json({ error: 'As senhas não coincidem' });
+  if (!currentPassword || !newPassword || !confirmPassword) return res.status(400).json({ error: 'Preencha todos os campos' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'A nova senha deve ter pelo menos 6 caracteres' });
+  if (newPassword !== confirmPassword) return res.status(400).json({ error: 'As senhas nao coincidem' });
 
   try {
     const safeUsername = typeqlLiteral(decoded.username);
-
     const rows = await readQuery(`
-      match $u isa person, has username "${safeUsername}", has password-hash $ph;
-      select $ph;
+      match
+        $u isa person, has username "${safeUsername}", has password-hash $ph;
+      fetch { "password_hash": $ph };
     `);
-    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
-    const phashRaw = val(rows[0], 'ph');
-    const ok = await bcrypt.compare(currentPassword, decodeHash(phashRaw));
+    const ok = await bcrypt.compare(currentPassword, decodeHash(rows[0].password_hash));
     if (!ok) return res.status(401).json({ error: 'Senha atual incorreta' });
 
     const newHash = encodeHash(await bcrypt.hash(newPassword, 12));
     const changedAt = new Date().toISOString();
-
     await writeQuery(`
-      match $u isa person, has username "${safeUsername}", has password-hash $ph;
-      delete has $ph of $u;
+      match
+        $u isa person, has username "${safeUsername}";
+      update
+        $u has password-hash "${newHash}";
+        $u has password-changed-at "${changedAt}";
     `);
-    await writeQuery(`
-      match $u isa person, has username "${safeUsername}";
-      insert $u has password-hash "${newHash}";
-    `);
-
-    // Salva data da última alteração de senha
-    try {
-      await writeQuery(`
-        match $u isa person, has username "${safeUsername}", has password-changed-at $d;
-        delete has $d of $u;
-      `);
-    } catch (_) { /* campo ainda não existe no banco — ok */ }
-    await writeQuery(`
-      match $u isa person, has username "${safeUsername}";
-      insert $u has password-changed-at "${changedAt}";
-    `);
-
     res.json({ ok: true, passwordChangedAt: changedAt });
   } catch (err) {
     console.error('[change-password]', err);
@@ -273,38 +232,35 @@ router.put('/change-password', async (req, res) => {
   }
 });
 
-/* DELETE /api/auth/account  (usuário logado, confirma com senha) */
 router.delete('/account', async (req, res) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Não autenticado' });
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
 
   let decoded;
   try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
-  catch { return res.status(401).json({ error: 'Token inválido' }); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
 
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Informe a senha para confirmar' });
 
   try {
     const safeUsername = typeqlLiteral(decoded.username);
-
-    // Busca hash da senha para validar
     const rows = await readQuery(`
-      match $u isa person, has username "${safeUsername}", has password-hash $ph;
-      select $ph;
+      match
+        $u isa person, has username "${safeUsername}", has password-hash $ph;
+      fetch { "password_hash": $ph };
     `);
-    if (!rows.length) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
-    const phashRaw = val(rows[0], 'ph');
-    const ok = await bcrypt.compare(password, decodeHash(phashRaw));
+    const ok = await bcrypt.compare(password, decodeHash(rows[0].password_hash));
     if (!ok) return res.status(401).json({ error: 'Senha incorreta' });
 
-    // Deleta o usuário e todos os seus atributos
     await writeQuery(`
-      match $u isa person, has username "${safeUsername}";
-      delete $u;
+      match
+        $u isa person, has username "${safeUsername}";
+      delete
+        $u;
     `);
-
     res.json({ deleted: true });
   } catch (err) {
     console.error('[delete account]', err);
