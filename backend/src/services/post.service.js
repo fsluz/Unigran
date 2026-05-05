@@ -68,6 +68,10 @@ export async function createPostWithRules({ user, body, file }) {
     communityId: body?.communityId || null,
   });
 
+  if (isZuni) {
+    console.log('[zuni create]', { id: created.id, user: user.username, media: media?.url || null });
+  }
+
   return {
     data: {
       id: created.id,

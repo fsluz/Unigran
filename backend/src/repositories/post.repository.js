@@ -212,6 +212,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   if (cached) return cached;
 
   // FIXED: removed nested `fetch` subquery; comments are fetched separately with a TypeDB 3.x pipeline.
+  // FIXED: fetched post text/media explicitly so Zuni posts can be detected from the #Zuni marker.
   const rows = await readQuery(`
     match
       $post isa post,
@@ -224,10 +225,16 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       try { $user has profile-picture $user_profile_pic; };
       try { $user has cover-picture $user_cover_pic; };
       try { $user has page-visibility $user_visibility; };
+      try { $post has post-text $post_text; };
+      try { $post has post-image $post_image; };
+      try { $post has post-video $post_video; };
 
     fetch {
       "post_id": $post_id,
       "created_at": $post_ts,
+      "post_text": $post_text,
+      "post_image": $post_image,
+      "post_video": $post_video,
 
       "author": {
         "username": $username,
@@ -251,7 +258,8 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const authorUsername = entry?.author?.username || '';
     const visibility = entry?.author?.visibility || 'public';
     const attrs = entry?.post_all_attributes || {};
-    const isZuni = String(attrs['post-text'] || '').toLowerCase().includes('#zuni');
+    const postText = entry?.post_text || attrs['post-text'] || '';
+    const isZuni = String(postText).toLowerCase().includes('#zuni');
     if (feed === 'zuni') return isZuni;
     if (isZuni) return false;
     if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
@@ -259,8 +267,9 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
-    const imageUrl = attrs['post-image'] || null;
-    const videoUrl = attrs['post-video'] || null;
+    const postText = entry?.post_text || attrs['post-text'] || '';
+    const imageUrl = entry?.post_image || attrs['post-image'] || null;
+    const videoUrl = entry?.post_video || attrs['post-video'] || null;
     const mediaUrl = imageUrl || videoUrl;
     const authorProfile = profilesMap.get(entry?.author?.username || '');
     const postId = entry?.post_id || attrs['post-id'] || uuid();
@@ -269,7 +278,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
     return {
       id: postId,
-      content: attrs['post-text'] || '',
+      content: postText,
       time: entry?.created_at || attrs['creation-timestamp'] || null,
       media: mediaUrl ? {
         url: mediaUrl,
@@ -319,6 +328,10 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       return String(b.time || '').localeCompare(String(a.time || ''));
     })
     .slice(offset, offset + limit);
+
+  if (feed === 'zuni') {
+    console.log('[zuni feed]', { viewer: viewerUsername || 'anon', total: normalized.length, returned: posts.length, offset, limit });
+  }
 
   setCached(key, posts);
   return posts;
