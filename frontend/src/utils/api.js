@@ -1,11 +1,12 @@
 // src/utils/api.js
 
 // Detecta ambiente Vercel ou local
+const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : 'https://unigran-backend.vercel.app/api');
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.MODE === 'development' || isLocalHost
+    ? ''
+    : '');
 
 export function apiFetch(path, options = {}) {
   const url = `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
