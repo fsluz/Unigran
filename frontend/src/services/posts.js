@@ -38,7 +38,6 @@ async function uploadDirectCloudinary(token, file, resourceType = 'video') {
   cloudForm.append('timestamp', signatureData.timestamp);
   cloudForm.append('signature', signatureData.signature);
   cloudForm.append('folder', signatureData.folder);
-  cloudForm.append('resource_type', signatureData.resourceType);
 
   const cloudResponse = await fetch(
     `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType}/upload`,

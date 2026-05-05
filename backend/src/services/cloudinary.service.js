@@ -28,7 +28,6 @@ export function createCloudinaryUploadSignature({ folder = 'unigran/posts', reso
   }
   const paramsToSign = {
     folder,
-    resource_type: resourceType,
     timestamp,
   };
   const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
