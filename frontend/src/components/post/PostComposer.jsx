@@ -8,13 +8,50 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [postMode, setPostMode] = useState('post');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = () => {
+  const checkZuniVideo = (videoFile) => new Promise((resolve, reject) => {
+    if (!videoFile?.type?.startsWith('video/')) {
+      reject(new Error('Zuni aceita apenas video. Limite: ate 1:30 e qualidade maxima 720p.'));
+      return;
+    }
+    const url = URL.createObjectURL(videoFile);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      const tooLong = video.duration > 90;
+      const tooLarge = video.videoWidth > 1280 || video.videoHeight > 720;
+      if (tooLong || tooLarge) {
+        reject(new Error('Video muito grande. Zuni aceita ate 1:30 e qualidade maxima 720p.'));
+        return;
+      }
+      resolve();
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Nao foi possivel ler o video. Use ate 1:30 e 720p.'));
+    };
+    video.src = url;
+  });
+
+  const submit = async () => {
     if (!text.trim() && !file) return;
-    onSubmit({ content: text.trim(), file, postType: forcedPostType || (postMode === 'zuni' ? 'zuni-post' : undefined) });
-    setT('');
-    setFile(null);
-    setPreview(null);
+    const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : undefined);
+    setError('');
+    setSubmitting(true);
+    try {
+      if (postType === 'zuni-post') await checkZuniVideo(file);
+      await onSubmit({ content: text.trim(), file, postType });
+      setT('');
+      setFile(null);
+      setPreview(null);
+    } catch (err) {
+      setError(err.message || 'Erro ao publicar.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const MediaIcon = ({ d, title }) => (
@@ -95,12 +132,13 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           <button
             className="btn btn-primary btn-sm"
             onClick={submit}
-            disabled={!text.trim() && !file}
+            disabled={submitting || (!text.trim() && !file)}
           >
-            Publicar
+            {submitting ? 'Publicando...' : 'Publicar'}
           </button>
         </div>
       </div>
+      {error && <div className="form-error" style={{ marginTop: 8 }}>{error}</div>}
       {preview && (
         <div style={{ marginTop: 10 }}>
           {file?.type?.startsWith('video/')

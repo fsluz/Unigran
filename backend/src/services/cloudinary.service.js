@@ -63,7 +63,7 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
 
     if (exceedsDuration || exceedsResolution) {
       await safeDestroy(result.public_id, 'video');
-      const err = new Error(`Video invalido. Limite: ${maxDuration}s e resolucao maxima ${maxHeight}p.`);
+      const err = new Error(`Video muito grande. Limite: ate 1:30 e qualidade maxima ${maxHeight}p.`);
       err.statusCode = 400;
       throw err;
     }
