@@ -193,7 +193,7 @@ async function notifyPostOwner({ actorUsername, postId, type, text }) {
     match
       $actor isa person, has username "${typeqlLiteral(actorUsername)}";
       $post isa post, has post-id "${typeqlLiteral(postId)}";
-      $recipient isa person;
+      $recipient has username $recipient_username;
       posting(page: $recipient, post: $post);
       not { $recipient is $actor; };
     insert

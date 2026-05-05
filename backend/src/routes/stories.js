@@ -33,6 +33,97 @@ function packStories(rows, username) {
   });
 }
 
+function packStoryMessage({ content, author, storyId }) {
+  return JSON.stringify({
+    v: 2,
+    content,
+    media: null,
+    readBy: [author.username],
+    storyId,
+    author: { id: author.username, displayName: author.displayName || author.username },
+  });
+}
+
+async function notifyStoryOwner({ actor, storyId, type, text }) {
+  const rows = await readQuery(`
+    match
+      $story isa story, has story-id "${typeqlLiteral(storyId)}";
+      posting(page: $owner, post: $story);
+      $owner has username $owner_username;
+    fetch { "owner_username": $owner_username };
+  `);
+  const ownerUsername = rows[0]?.owner_username;
+  if (!ownerUsername || ownerUsername === actor.username) return;
+
+  await writeQuery(`
+    match
+      $recipient has username "${typeqlLiteral(ownerUsername)}";
+    insert
+      $notification isa notification,
+        has notification-id "${uuid()}",
+        has notification-text "${typeqlLiteral(`${actor.displayName || actor.username} ${text}`)}",
+        has notification-type "${typeqlLiteral(type)}",
+        has creation-timestamp ${typeqlDatetime()};
+      $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+  `).catch((err) => console.error('[story notification]', err));
+}
+
+async function sendStoryCommentMessage({ actor, storyId, content }) {
+  const ownerRows = await readQuery(`
+    match
+      $story isa story, has story-id "${typeqlLiteral(storyId)}";
+      posting(page: $owner, post: $story);
+      $owner isa person, has username $owner_username, has name $owner_name;
+    fetch { "owner_username": $owner_username, "owner_name": $owner_name };
+  `);
+  const owner = ownerRows[0];
+  if (!owner?.owner_username || owner.owner_username === actor.username) return;
+
+  const existing = await readQuery(`
+    match
+      $me isa person, has username "${typeqlLiteral(actor.username)}";
+      $to isa person, has username "${typeqlLiteral(owner.owner_username)}";
+      $c isa conversation, has conversation-id $cid;
+      conversation-participant(participant: $me, conversation: $c);
+      conversation-participant(participant: $to, conversation: $c);
+    fetch { "conversation_id": $cid };
+  `);
+
+  let conversationId = existing[0]?.conversation_id;
+  const now = typeqlDatetime();
+  if (!conversationId) {
+    conversationId = uuid();
+    await writeQuery(`
+      match
+        $me isa person, has username "${typeqlLiteral(actor.username)}";
+        $to isa person, has username "${typeqlLiteral(owner.owner_username)}";
+      insert
+        $c isa conversation,
+          has conversation-id "${conversationId}",
+          has name "${typeqlLiteral(owner.owner_name || owner.owner_username)}",
+          has creation-timestamp ${now};
+        conversation-participant(participant: $me, conversation: $c);
+        conversation-participant(participant: $to, conversation: $c);
+    `);
+  }
+
+  const messageText = packStoryMessage({
+    content: `Respondeu seu story: ${content}`,
+    storyId,
+    author: actor,
+  });
+  await writeQuery(`
+    match
+      $conv isa conversation, has conversation-id "${conversationId}";
+    insert
+      $m isa message,
+        has message-id "${uuid()}",
+        has message-text "${typeqlLiteral(messageText)}",
+        has creation-timestamp ${typeqlDatetime()};
+      message-delivery(conversation: $conv, message: $m);
+  `);
+}
+
 router.get('/', auth, async (req, res) => {
   try {
     const now = typeqlDatetime();
@@ -148,6 +239,12 @@ router.post('/:id/like', auth, async (req, res) => {
           has emoji "like",
           has creation-timestamp ${typeqlDatetime()};
     `);
+    await notifyStoryOwner({
+      actor: req.user,
+      storyId: req.params.id,
+      type: 'story-like',
+      text: 'curtiu seu story',
+    });
     res.status(201).json({ liked: true });
   } catch (err) {
     console.error('[stories like]', err);
@@ -172,6 +269,11 @@ router.post('/:id/comments', auth, async (req, res) => {
           has creation-timestamp ${now};
         $commenting isa story-commenting, links (author: $author, story: $story, comment: $comment);
     `);
+    await sendStoryCommentMessage({
+      actor: req.user,
+      storyId: req.params.id,
+      content,
+    }).catch((err) => console.error('[story comment message]', err));
     res.status(201).json({
       id: commentId,
       content,

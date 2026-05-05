@@ -275,7 +275,7 @@ router.post('/:id/follow', auth, async (req, res) => {
     await writeQuery(`
       match
         $actor isa person, has username "${typeqlLiteral(req.user.username)}";
-        $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
+        $recipient has username "${typeqlLiteral(req.params.id)}";
         not { $recipient is $actor; };
       insert
         $notification isa notification,
