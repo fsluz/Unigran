@@ -39,7 +39,7 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('[notifications]', err);
-    res.status(500).json({ error: 'Erro ao carregar notificacoes' });
+    res.json({ notifications: [] });
   }
 });
 
