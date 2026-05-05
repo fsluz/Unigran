@@ -14,12 +14,13 @@ import { followUser, unfollowUser } from '../services/users';
 import { joinCommunity } from '../services/communities';
 
 const TRENDING = [
-  { tag: 'Inteligencia Artificial', count: '12.543' },
-  { tag: 'Web3 e Blockchain', count: '8.765' },
-  { tag: 'Sustentabilidade', count: '6.234' },
-  { tag: 'Startups', count: '5.432' },
-  { tag: 'Produtividade', count: '4.321' },
+  { tag: 'tecnologia', count: '0' },
+  { tag: 'programacao', count: '0' },
+  { tag: 'unigran', count: '0' },
+  { tag: 'estudos', count: '0' },
+  { tag: 'carreira', count: '0' },
 ];
+const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programação', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
 
 const SUGGESTED_COMMUNITIES = [
   { icon: 'IA', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
@@ -52,6 +53,10 @@ export default function HomePage({ onOpenProfile }) {
       for (const tag of String(post.content || '').match(/#[A-Za-z0-9_\u00C0-\u017F-]+/g) || []) {
         const clean = tag.slice(1);
         counts.set(clean, (counts.get(clean) || 0) + 1);
+      }
+      const lower = String(post.content || '').toLowerCase();
+      for (const word of TRENDING_KEYWORDS) {
+        if (lower.includes(word)) counts.set(word, (counts.get(word) || 0) + 1);
       }
     }
     const dynamic = [...counts.entries()]

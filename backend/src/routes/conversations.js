@@ -77,17 +77,34 @@ router.get('/', auth, async (req, res) => {
         "other_profile_picture": $pp
       };
     `);
-    res.json({ conversations: rows.map(row => ({
+    const conversations = await Promise.all(rows.map(async row => {
+      const messageRows = await readQuery(`
+        match
+          $conv isa conversation, has conversation-id "${typeqlLiteral(row.conversation_id)}";
+          message-delivery(conversation: $conv, message: $m);
+          $m isa message, has message-text $text;
+        fetch { "text": $text };
+      `).catch(() => []);
+      const sentUnreadCount = messageRows.reduce((count, msgRow) => {
+        const payload = unpackMessageText(msgRow.text);
+        const mine = payload.author?.id === req.user.username;
+        const other = row.other_username;
+        return mine && other && !(payload.readBy || []).includes(other) ? count + 1 : count;
+      }, 0);
+      return {
       id: row.conversation_id,
       title: row.title || row.other_name || row.other_username,
       type: 'direct',
+      sentUnreadCount,
       participant: {
         username: row.other_username,
         displayName: row.other_name || row.other_username,
         profilePicture: row.other_profile_picture || null,
         online: online.has(row.other_username),
       },
-    })) });
+    };
+    }));
+    res.json({ conversations });
   } catch (err) {
     console.error('[conversations GET]', err);
     res.status(500).json({ error: 'Erro ao listar' });
@@ -228,6 +245,34 @@ router.post('/:id/messages', auth, async (req, res) => {
   }
 });
 
+router.post('/group', auth, async (req, res) => {
+  try {
+    const title = String(req.body?.title || 'Grupo').trim().slice(0, 80);
+    const participants = [...new Set((req.body?.participants || []).map(item => String(item).replace(/^@/, '').trim()).filter(Boolean))];
+    if (participants.length < 1) return res.status(400).json({ error: 'Informe pelo menos um usuario' });
+    const cid = uuid();
+    const now = typeqlDatetime();
+    const memberMatches = participants.map((username, index) => `$p${index} isa person, has username "${typeqlLiteral(username)}";`).join('\n        ');
+    const memberLinks = participants.map((_username, index) => `conversation-participant(participant: $p${index}, conversation: $c);`).join('\n        ');
+    await writeQuery(`
+      match
+        $me isa person, has username "${typeqlLiteral(req.user.username)}";
+        ${memberMatches}
+      insert
+        $c isa conversation,
+          has conversation-id "${cid}",
+          has name "${typeqlLiteral(title)}",
+          has creation-timestamp ${now};
+        conversation-participant(participant: $me, conversation: $c);
+        ${memberLinks}
+    `);
+    res.status(201).json({ conversation: { id: cid, title, type: 'group', sentUnreadCount: 0 } });
+  } catch (err) {
+    console.error('[group conversation]', err);
+    res.status(500).json({ error: 'Erro ao criar grupo' });
+  }
+});
+
 router.patch('/:id/read', auth, async (req, res) => {
   try {
     const rows = await readQuery(`
@@ -294,6 +339,34 @@ router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
   } catch (err) {
     console.error('[messages DELETE]', err);
     res.status(500).json({ error: 'Erro ao excluir' });
+  }
+});
+
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    await writeQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        conversation-participant(participant: $user, conversation: $conv);
+        $d isa message-delivery, links (conversation: $conv, message: $m);
+      delete
+        $d;
+        $m;
+    `).catch(() => null);
+    await writeQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        $p isa conversation-participant, links (conversation: $conv);
+      delete
+        $p;
+        $conv;
+    `);
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('[conversation DELETE]', err);
+    res.status(500).json({ error: 'Erro ao excluir conversa' });
   }
 });
 

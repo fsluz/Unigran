@@ -3,7 +3,7 @@ import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
-import { fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, sendMessage, setConversationTyping, startDirectConversation } from '../services/conversations';
+import { deleteConversation, deleteMessage, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { relativeTime } from '../utils/time';
 
@@ -15,6 +15,8 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
+  const [groupUsers, setGroupUsers] = useState('');
+  const [groupTitle, setGroupTitle] = useState('');
   const [conversationSearch, setConversationSearch] = useState('');
   const [typingUsers, setTypingUsers] = useState([]);
   const [file, setFile] = useState(null);
@@ -109,6 +111,42 @@ export default function MessagesPage() {
     }
   };
 
+  const beginGroup = async () => {
+    const participants = groupUsers.split(',').map(item => item.trim().replace(/^@/, '')).filter(Boolean);
+    if (!participants.length) return;
+    setLoading(true);
+    try {
+      const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants });
+      setConversations(prev => [conversation, ...prev]);
+      setActive(conversation);
+      setGroupUsers('');
+      setGroupTitle('');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar grupo', '');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeActiveConversation = async () => {
+    if (!active?.id || !window.confirm('Excluir conversa?')) return;
+    const id = active.id;
+    await deleteConversation({ token, conversationId: id }).catch(err => showToast(err.message || 'Erro ao excluir conversa', ''));
+    setConversations(prev => prev.filter(conv => conv.id !== id));
+    setMessages(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setActive(conversations.find(conv => conv.id !== id) || null);
+  };
+
+  const removeMessage = async (messageId) => {
+    if (!active?.id || !window.confirm('Excluir mensagem?')) return;
+    await deleteMessage({ token, conversationId: active.id, messageId }).catch(err => showToast(err.message || 'Erro ao excluir mensagem', ''));
+    setMessages(prev => ({ ...prev, [active.id]: (prev[active.id] || []).filter(msg => msg.id !== messageId) }));
+  };
+
   const send = async () => {
     if ((!text.trim() && !file) || !active?.id) return;
     const content = text.trim();
@@ -130,6 +168,9 @@ export default function MessagesPage() {
         ...prev,
         [active.id]: [...(prev[active.id] || []), created],
       }));
+      setConversations(prev => prev.map(conv => (
+        conv.id === active.id ? { ...conv, sentUnreadCount: Number(conv.sentUnreadCount || 0) + 1 } : conv
+      )));
     } catch (err) {
       setText(content);
       setFile(chosenFile);
@@ -182,6 +223,11 @@ export default function MessagesPage() {
               value={conversationSearch}
               onChange={e => setConversationSearch(e.target.value)}
             />
+            <div className="group-create-box">
+              <input placeholder="Nome do grupo" value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
+              <input placeholder="@user1, @user2" value={groupUsers} onChange={e => setGroupUsers(e.target.value)} onKeyDown={e => e.key === 'Enter' && beginGroup()} />
+              <button className="btn btn-secondary btn-sm" onClick={beginGroup} disabled={loading || !groupUsers.trim()}>Criar grupo</button>
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -204,7 +250,7 @@ export default function MessagesPage() {
                   <div className="conv-name">{conv.participant?.displayName || conv.title}</div>
                   <div className="conv-preview">@{conv.participant?.username || 'usuario'} · {conv.participant?.online ? 'Online agora' : 'Offline'}</div>
                 </div>
-                <span className="sidebar-wide-badge">{(messages[conv.id] || []).length || ''}</span>
+                {Number(conv.sentUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.sentUnreadCount}</span>}
               </button>
             ))}
           </div>
@@ -225,6 +271,7 @@ export default function MessagesPage() {
                   {activeParticipant?.online ? 'Online agora' : 'Offline'}
                 </div>
               </div>
+              <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={removeActiveConversation}>Excluir conversa</button>
             </div>
 
             <div className="chat-messages">
@@ -245,6 +292,7 @@ export default function MessagesPage() {
                         {msg.content && <div>{msg.content}</div>}
                         {renderMedia(msg.media)}
                       </div>
+                      {mine && <button className="msg-delete" onClick={() => removeMessage(msg.id)}>Excluir</button>}
                       <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
                       {mine && activeParticipant?.username && msg.readBy?.includes(activeParticipant.username) && (
                         <div className="msg-read">Lido</div>

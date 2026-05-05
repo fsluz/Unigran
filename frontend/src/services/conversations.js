@@ -58,3 +58,29 @@ export async function startDirectConversation({ token, username }) {
   const data = await parseResponse(res, 'Erro ao iniciar conversa');
   return data.conversation;
 }
+
+export async function startGroupConversation({ token, title, participants }) {
+  const res = await apiFetch('/conversations/group', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ title, participants }),
+  });
+  const data = await parseResponse(res, 'Erro ao criar grupo');
+  return data.conversation;
+}
+
+export async function deleteMessage({ token, conversationId, messageId }) {
+  const res = await apiFetch(`/conversations/${conversationId}/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao excluir mensagem');
+}
+
+export async function deleteConversation({ token, conversationId }) {
+  const res = await apiFetch(`/conversations/${conversationId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao excluir conversa');
+}
