@@ -18,6 +18,7 @@ export default function MessagesPage() {
   const [groupUsers, setGroupUsers] = useState('');
   const [groupTitle, setGroupTitle] = useState('');
   const [conversationSearch, setConversationSearch] = useState('');
+  const [groupOpen, setGroupOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
@@ -52,6 +53,7 @@ export default function MessagesPage() {
     fetchMessages({ token, conversationId: active.id })
       .then(loaded => {
         setMessages(prev => ({ ...prev, [active.id]: loaded }));
+        setConversations(prev => prev.map(conv => conv.id === active.id ? { ...conv, receivedUnreadCount: 0 } : conv));
         return markConversationRead({ token, conversationId: active.id }).catch(() => null);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar mensagens', ''));
@@ -168,9 +170,6 @@ export default function MessagesPage() {
         ...prev,
         [active.id]: [...(prev[active.id] || []), created],
       }));
-      setConversations(prev => prev.map(conv => (
-        conv.id === active.id ? { ...conv, sentUnreadCount: Number(conv.sentUnreadCount || 0) + 1 } : conv
-      )));
     } catch (err) {
       setText(content);
       setFile(chosenFile);
@@ -204,29 +203,30 @@ export default function MessagesPage() {
       <div className="messages-shell">
         <div className="conv-list">
           <div className="conv-list-head">
-            <h3 style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 20, color: 'var(--text)', marginBottom: 14 }}>Mensagens</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="messages-title-row">
+              <h3>Mensagens</h3>
+              {conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
+                <span className="messages-title-badge">{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
+              )}
+            </div>
+            <div className="messages-search-row">
               <input
-                style={{ flex: 1, background: 'var(--page-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px', fontSize: 13, outline: 'none', color: 'var(--text)' }}
-                placeholder="@usuario"
+                className="messages-search-input"
+                placeholder="Buscar ou iniciar por @username"
                 value={targetUsername}
-                onChange={e => setTargetUsername(e.target.value.replace(/^@/, ''))}
+                onChange={e => {
+                  const value = e.target.value.replace(/^@/, '');
+                  setTargetUsername(value);
+                  setConversationSearch(value);
+                }}
                 onKeyDown={e => e.key === 'Enter' && beginConversation()}
               />
               <button className="btn btn-primary btn-sm" onClick={beginConversation} disabled={loading || !targetUsername.trim()}>
                 Nova
               </button>
-            </div>
-            <input
-              style={{ marginTop: 10, width: '100%', background: 'var(--page-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px', fontSize: 13, outline: 'none', color: 'var(--text)' }}
-              placeholder="Buscar por nome ou username"
-              value={conversationSearch}
-              onChange={e => setConversationSearch(e.target.value)}
-            />
-            <div className="group-create-box">
-              <input placeholder="Nome do grupo" value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
-              <input placeholder="@user1, @user2" value={groupUsers} onChange={e => setGroupUsers(e.target.value)} onKeyDown={e => e.key === 'Enter' && beginGroup()} />
-              <button className="btn btn-secondary btn-sm" onClick={beginGroup} disabled={loading || !groupUsers.trim()}>Criar grupo</button>
+              <button className="messages-group-btn" onClick={() => setGroupOpen(true)}>
+                Criar grupo
+              </button>
             </div>
           </div>
 
@@ -250,7 +250,7 @@ export default function MessagesPage() {
                   <div className="conv-name">{conv.participant?.displayName || conv.title}</div>
                   <div className="conv-preview">@{conv.participant?.username || 'usuario'} · {conv.participant?.online ? 'Online agora' : 'Offline'}</div>
                 </div>
-                {Number(conv.sentUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.sentUnreadCount}</span>}
+                {Number(conv.receivedUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.receivedUnreadCount}</span>}
               </button>
             ))}
           </div>
@@ -334,6 +334,21 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+      {groupOpen && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setGroupOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 430 }}>
+            <div className="modal-header">
+              <span className="modal-title">Criar grupo</span>
+              <button className="modal-close" onClick={() => setGroupOpen(false)}>x</button>
+            </div>
+            <div className="modal-body group-popout">
+              <input placeholder="Nome do grupo" value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
+              <input placeholder="@user1, @user2, @user3" value={groupUsers} onChange={e => setGroupUsers(e.target.value)} onKeyDown={e => e.key === 'Enter' && beginGroup()} />
+              <button className="messages-group-btn" onClick={() => { beginGroup(); setGroupOpen(false); }} disabled={loading || !groupUsers.trim()}>Criar grupo</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

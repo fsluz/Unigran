@@ -91,11 +91,17 @@ router.get('/', auth, async (req, res) => {
         const other = row.other_username;
         return mine && other && !(payload.readBy || []).includes(other) ? count + 1 : count;
       }, 0);
+      const receivedUnreadCount = messageRows.reduce((count, msgRow) => {
+        const payload = unpackMessageText(msgRow.text);
+        const fromOther = payload.author?.id && payload.author.id !== req.user.username;
+        return fromOther && !(payload.readBy || []).includes(req.user.username) ? count + 1 : count;
+      }, 0);
       return {
       id: row.conversation_id,
       title: row.title || row.other_name || row.other_username,
       type: 'direct',
       sentUnreadCount,
+      receivedUnreadCount,
       participant: {
         username: row.other_username,
         displayName: row.other_name || row.other_username,

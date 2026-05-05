@@ -88,7 +88,7 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
   useEffect(() => {
     if (!token) return;
     fetchConversations(token)
-      .then(items => setMessageCount((items || []).filter(item => Number(item.sentUnreadCount || 0) > 0).length))
+      .then(items => setMessageCount((items || []).reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)))
       .catch(() => setMessageCount(0));
   }, [token, page]);
 
