@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
-import PostComposer from '../components/post/PostComposer';
-import PostCard from '../components/post/PostCard';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
-import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
+import { Avatar } from '../components/ui';
+import { fetchPosts, likePost, unlikePost } from '../services/posts';
+import { relativeTime } from '../utils/time';
 
 export default function ZuniPage({ onOpenProfile }) {
   const { token } = useAuth();
-  const { showToast } = useToast();
   const [posts, setPosts] = useState([]);
+  const [liked, setLiked] = useState({});
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -42,51 +41,44 @@ export default function ZuniPage({ onOpenProfile }) {
     return () => observer.disconnect();
   }, [hasMore, loading, page]);
 
-  const publishZuni = async ({ content, file }) => {
-    if (!file?.type?.startsWith('video/')) {
-      showToast('Zuni precisa ser video', '!');
-      return;
-    }
-    const created = await createPost({ token, content, file, postType: 'zuni-post' });
-    setPosts(prev => [created, ...prev]);
-    showToast('Zuni publicado', 'OK');
+  const toggleLike = async (post) => {
+    const isLiked = liked[post.id] ?? post.liked;
+    setLiked(prev => ({ ...prev, [post.id]: !isLiked }));
+    const fn = isLiked ? unlikePost : likePost;
+    await fn({ token, postId: post.id }).catch(() => setLiked(prev => ({ ...prev, [post.id]: isLiked })));
   };
-
-  const loadComments = (postId) => fetchComments({ token, postId }).catch(() => []);
-  const addComment = (postId, { content }) => createComment({ token, postId, content });
 
   return (
     <div className="page-scroll">
       <Topbar title="Zuni" />
       <div className="zuni-page">
         <main className="zuni-feed">
-          <section className="zuni-hero">
-            <div>
-              <div className="home-welcome-kicker">ZUNI</div>
-              <h1>Videos curtos</h1>
-              <p>Publique videos de ate 30 segundos em 720p.</p>
-            </div>
-          </section>
-
-          <PostComposer
-            onSubmit={publishZuni}
-            placeholder="Legenda do Zuni..."
-            allowMode={false}
-            forcedPostType="zuni-post"
-          />
-
           {posts.length === 0 && !loading && (
             <div className="search-empty">Nenhum Zuni ainda.</div>
           )}
 
           {posts.map(post => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onOpenProfile={onOpenProfile}
-              onLoadComments={loadComments}
-              onAddComment={addComment}
-            />
+            <article key={post.id} className="zuni-reel">
+              {post.media?.url ? (
+                <video src={post.media.url} controls loop playsInline preload="metadata" />
+              ) : (
+                <div className="zuni-empty-video">Video indisponivel</div>
+              )}
+              <div className="zuni-overlay">
+                <button className="zuni-author" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
+                  <Avatar size={42} src={post.author?.profilePicture || null} name={post.author?.displayName || post.author?.username || ''} initials={(post.author?.displayName || post.author?.username || '?').slice(0, 2)} />
+                  <span>
+                    <strong>{post.author?.displayName || post.author?.username}</strong>
+                    <small>@{post.author?.username} · {relativeTime(post.time)}</small>
+                  </span>
+                </button>
+                {post.content && <p>{post.content.replace(/#Zuni/gi, '').trim()}</p>}
+              </div>
+              <div className="zuni-actions">
+                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''}>♥</button>
+                <span>{Number(post.likes || 0)}</span>
+              </div>
+            </article>
           ))}
 
           {hasMore && posts.length > 0 && (

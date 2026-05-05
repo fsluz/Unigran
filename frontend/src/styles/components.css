@@ -408,11 +408,19 @@
 .post-card { margin-bottom: 10px; border-radius: 24px; }
 .post-card:hover { box-shadow: var(--shadow); }
 .repost-card { margin: 10px 0 14px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--page-bg); }
-.zuni-page { width: 100%; display: flex; justify-content: center; padding: 18px; }
-.zuni-feed { width: min(100%, 640px); display: grid; gap: 14px; }
-.zuni-hero { min-height: 150px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(135deg,#111827,#7c3aed); display: flex; align-items: end; box-shadow: var(--shadow-sm); }
-.zuni-hero h1 { margin: 0 0 6px; font-family: var(--font-head); font-size: 30px; }
-.zuni-hero p { margin: 0; color: #e9d5ff; }
+.zuni-page { width: 100%; height: calc(100vh - 64px); display: flex; justify-content: center; padding: 12px; overflow: hidden; background: #050505; }
+.zuni-feed { width: min(100%, 430px); height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; display: grid; gap: 12px; padding-bottom: 24px; }
+.zuni-reel { position: relative; height: calc(100vh - 88px); min-height: 560px; overflow: hidden; border-radius: 18px; background: #000; scroll-snap-align: start; box-shadow: 0 24px 70px rgba(0,0,0,.34); }
+.zuni-reel video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.zuni-empty-video { width: 100%; height: 100%; display: grid; place-items: center; color: #fff; background: #111827; }
+.zuni-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 88px 16px 18px; color: #fff; background: linear-gradient(to top,rgba(0,0,0,.72),transparent); }
+.zuni-overlay p { margin: 10px 0 0; line-height: 1.5; }
+.zuni-author { display: flex; gap: 10px; align-items: center; border: 0; padding: 0; background: transparent; color: #fff; text-align: left; cursor: pointer; }
+.zuni-author span { display: grid; gap: 2px; }
+.zuni-author small { color: #d1d5db; font-size: 12px; }
+.zuni-actions { position: absolute; right: 12px; bottom: 120px; display: grid; justify-items: center; gap: 4px; color: #fff; }
+.zuni-actions button { width: 44px; height: 44px; border: 0; border-radius: 999px; background: rgba(255,255,255,.18); color: #fff; font-size: 24px; cursor: pointer; }
+.zuni-actions button.active { background: #ef4444; }
 .stories-strip { display: flex; gap: 12px; overflow-x: auto; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
 .story-pill { width: 74px; flex: 0 0 auto; border: 0; background: transparent; color: var(--text); display: grid; gap: 6px; justify-items: center; cursor: pointer; }
 .story-pill span { width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
