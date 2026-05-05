@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { jwtSecret } from '../config/jwt.js';
 
 const onlineUsers = new Map(); // userId -> socketId
+const heartbeatUsers = new Map(); // userId -> expiresAt
 
 export function setupSocket(io) {
   // Auth middleware for socket connections
@@ -67,5 +68,14 @@ export function setupSocket(io) {
 }
 
 export function getOnlineUsers() {
-  return Array.from(onlineUsers.keys());
+  const now = Date.now();
+  for (const [uid, expiresAt] of heartbeatUsers.entries()) {
+    if (expiresAt < now) heartbeatUsers.delete(uid);
+  }
+  return Array.from(new Set([...onlineUsers.keys(), ...heartbeatUsers.keys()]));
+}
+
+export function markUserOnline(userId) {
+  if (!userId) return;
+  heartbeatUsers.set(userId, Date.now() + 45_000);
 }

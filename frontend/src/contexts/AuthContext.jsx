@@ -28,6 +28,17 @@ export function AuthProvider({ children }) {
       });
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return undefined;
+    const ping = () => apiFetch('/conversations/online/heartbeat', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null);
+    ping();
+    const interval = setInterval(ping, 25000);
+    return () => clearInterval(interval);
+  }, [token]);
+
   function login(userData, jwt) {
     setUser(userData);
     setToken(jwt);

@@ -55,6 +55,19 @@ export default function MessagesPage() {
   }, [token, showToast]);
 
   useEffect(() => {
+    if (!token) return undefined;
+    const interval = setInterval(() => {
+      fetchConversations(token)
+        .then((loaded) => {
+          setConversations(loaded);
+          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (loaded[0] || null));
+        })
+        .catch(() => null);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [token]);
+
+  useEffect(() => {
     if (!active?.id) return;
     fetchMessages({ token, conversationId: active.id })
       .then(loaded => {
@@ -250,6 +263,13 @@ export default function MessagesPage() {
     return <a href={media.url} target="_blank" rel="noreferrer">Abrir arquivo</a>;
   };
 
+  const conversationTitle = (conv) => conv?.type === 'group'
+    ? conv.title
+    : (conv?.participant?.displayName || conv?.title);
+  const conversationSub = (conv) => conv?.type === 'group'
+    ? 'Grupo'
+    : `@${conv?.participant?.username || 'usuario'} - ${conv?.participant?.online ? 'Online agora' : 'Offline'}`;
+
   return (
     <div className="page-scroll">
       <Topbar title="Mensagens" />
@@ -308,12 +328,12 @@ export default function MessagesPage() {
                 <Avatar
                   size={40}
                   src={conv.groupPicture || conv.participant?.profilePicture || null}
-                  name={conv.participant?.displayName || conv.title}
-                  initials={(conv.participant?.displayName || conv.title || '?').slice(0, 2)}
+                  name={conversationTitle(conv)}
+                  initials={(conversationTitle(conv) || '?').slice(0, 2)}
                 />
                 <div className="conv-info">
-                  <div className="conv-name">{conv.participant?.displayName || conv.title}</div>
-                  <div className="conv-preview">@{conv.participant?.username || 'usuario'} · {conv.participant?.online ? 'Online agora' : 'Offline'}</div>
+                  <div className="conv-name">{conversationTitle(conv)}</div>
+                  <div className="conv-preview">{conversationSub(conv)}</div>
                 </div>
                 {Number(conv.receivedUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.receivedUnreadCount}</span>}
               </button>
@@ -327,13 +347,13 @@ export default function MessagesPage() {
               <Avatar
                 size={40}
                 src={active.groupPicture || activeParticipant?.profilePicture || null}
-                name={activeParticipant?.displayName || active.title}
-                initials={(activeParticipant?.displayName || active.title || '?').slice(0, 2)}
+                name={conversationTitle(active)}
+                initials={(conversationTitle(active) || '?').slice(0, 2)}
               />
               <div>
-                <div className="chat-head-name">{activeParticipant?.displayName || active.title}</div>
-                <div className="chat-head-sub" style={{ color: activeParticipant?.online ? '#22C55E' : 'var(--text-muted)' }}>
-                  {activeParticipant?.online ? 'Online agora' : 'Offline'}
+                <div className="chat-head-name">{conversationTitle(active)}</div>
+                <div className="chat-head-sub" style={{ color: active.type !== 'group' && activeParticipant?.online ? '#22C55E' : 'var(--text-muted)' }}>
+                  {conversationSub(active)}
                 </div>
               </div>
               <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={removeActiveConversation}>Excluir conversa</button>

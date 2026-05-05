@@ -40,7 +40,7 @@ export default function ZuniPage({ onOpenProfile }) {
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentsOpen, setCommentsOpen] = useState(null);
   const [commentText, setCommentText] = useState('');
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [activePostId, setActivePostId] = useState(null);
@@ -51,6 +51,7 @@ export default function ZuniPage({ onOpenProfile }) {
   const [loading, setLoading] = useState(false);
   const moreRef = useRef(null);
   const videoRefs = useRef(new Map());
+  const volumeRef = useRef(null);
 
   const loadPage = async (nextPage = 1, append = false) => {
     if (loading) return;
@@ -68,6 +69,14 @@ export default function ZuniPage({ onOpenProfile }) {
   useEffect(() => {
     loadPage(1, false);
   }, [token]);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (volumeRef.current && !volumeRef.current.contains(event.target)) setVolumeOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   useEffect(() => {
     const node = moreRef.current;
@@ -212,7 +221,7 @@ export default function ZuniPage({ onOpenProfile }) {
                   <div className="zuni-empty-video">Video indisponivel</div>
                 )}
 
-                <div className={`zuni-sound ${volumeOpen ? 'open' : ''}`}>
+                <div ref={volumeRef} className={`zuni-sound ${volumeOpen ? 'open' : ''}`}>
                   <button onClick={toggleActivePlayback} title={playing ? 'Pausar' : 'Tocar'} aria-label={playing ? 'Pausar' : 'Tocar'}>
                     <ZuniIcon name={playing ? 'pause' : 'play'} />
                   </button>

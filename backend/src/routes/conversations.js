@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
-import { getOnlineUsers } from '../socket/handlers.js';
+import { getOnlineUsers, markUserOnline } from '../socket/handlers.js';
 
 const router = Router();
 const typingByConversation = new Map();
@@ -15,8 +15,8 @@ function packMessageText({ content, author, media = null, readBy = [] }) {
   return JSON.stringify({ v: 2, content, author, media, readBy });
 }
 
-function packConversationName({ title, picture = null }) {
-  return JSON.stringify({ v: 1, title, picture });
+function packConversationName({ title, picture = null, type = 'direct' }) {
+  return JSON.stringify({ v: 1, title, picture, type });
 }
 
 function unpackConversationName(raw) {
@@ -24,7 +24,7 @@ function unpackConversationName(raw) {
     const parsed = JSON.parse(raw);
     if (parsed?.v === 1) return parsed;
   } catch (_) {}
-  return { title: raw, picture: null };
+  return { title: raw, picture: null, type: 'direct' };
 }
 
 function unpackMessageText(raw) {
@@ -112,7 +112,7 @@ router.get('/', auth, async (req, res) => {
       return {
       id: row.conversation_id,
       title: packedName.title || row.other_name || row.other_username,
-      type: packedName.picture ? 'group' : 'direct',
+      type: packedName.type || (packedName.picture ? 'group' : 'direct'),
       groupPicture: packedName.picture || null,
       sentUnreadCount,
       receivedUnreadCount,
@@ -133,6 +133,11 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/online', auth, (_req, res) => {
   res.json({ online: getOnlineUsers() });
+});
+
+router.post('/online/heartbeat', auth, (req, res) => {
+  markUserOnline(req.user.username || req.user.id);
+  res.json({ online: true });
 });
 
 router.post('/direct/:username', auth, async (req, res) => {
@@ -282,7 +287,7 @@ router.post('/group', auth, async (req, res) => {
       insert
         $c isa conversation,
           has conversation-id "${cid}",
-          has name "${typeqlLiteral(packConversationName({ title, picture }))}",
+          has name "${typeqlLiteral(packConversationName({ title, picture, type: 'group' }))}",
           has creation-timestamp ${now};
         conversation-participant(participant: $me, conversation: $c);
         ${memberLinks}

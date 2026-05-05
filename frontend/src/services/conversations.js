@@ -9,7 +9,11 @@ async function parseResponse(res, fallback) {
 export async function fetchConversations(token) {
   const res = await apiFetch('/conversations', { headers: authHeaders(token) });
   const data = await parseResponse(res, 'Erro ao carregar conversas');
-  return data.conversations || [];
+  const map = new Map();
+  for (const conversation of data.conversations || []) {
+    if (!map.has(conversation.id)) map.set(conversation.id, conversation);
+  }
+  return [...map.values()];
 }
 
 export async function fetchMessages({ token, conversationId }) {

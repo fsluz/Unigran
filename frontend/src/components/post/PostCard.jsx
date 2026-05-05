@@ -13,6 +13,20 @@ function formatContent(text) {
   );
 }
 
+function AutoPauseVideo(props) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || entry.intersectionRatio < 0.45) video.pause();
+    }, { threshold: [0, 0.45] });
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+  return <video ref={ref} {...props} />;
+}
+
 function DotMenu({ items }) {
   const [open, setOpen] = useState(false);
   const ref = useRef();
@@ -290,7 +304,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               {post.originalPost.media?.url && (
                 <div style={{ marginTop: 10 }}>
                   {post.originalPost.media.resource_type === 'video'
-                    ? <video src={post.originalPost.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 10, maxHeight: 300 }} />
+                    ? <AutoPauseVideo src={post.originalPost.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 10, maxHeight: 300 }} />
                     : <img src={post.originalPost.media.url} alt="post original" loading="lazy" style={{ width: '100%', borderRadius: 10, maxHeight: 300, objectFit: 'cover' }} />}
                 </div>
               )}
@@ -299,7 +313,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           {post.media?.url && (
             <div style={{ marginBottom: 14 }}>
               {post.media.resource_type === 'video'
-                ? <video src={post.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 12, maxHeight: 420 }} />
+                ? <AutoPauseVideo src={post.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 12, maxHeight: 420 }} />
                 : <img src={post.media.url} alt="post media" loading="lazy" style={{ width: '100%', borderRadius: 12, maxHeight: 420, objectFit: 'cover' }} />}
             </div>
           )}
