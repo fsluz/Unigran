@@ -17,8 +17,7 @@ import { setupSocket }     from './socket/handlers.js';
 
 const app    = express();
 const server = createServer(app);
-const corsOrigin = process.env.CLIENT_URL ||
-  (process.env.VERCEL ? ['https://unigran-frontend.vercel.app', 'https://unigran-backend.vercel.app'] : 'http://localhost:5173');
+const corsOrigin = process.env.CLIENT_URL || true;
 
 const io     = new IO(server, {
   cors: {

@@ -1,13 +1,25 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { auth } from '../middleware/auth.js';
-import { uploadMediaBuffer } from '../services/cloudinary.service.js';
+import { createCloudinaryUploadSignature, uploadMediaBuffer } from '../services/cloudinary.service.js';
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+router.get('/signature', auth, (req, res) => {
+  try {
+    const resourceType = String(req.query.resourceType || 'image');
+    const folder = String(req.query.folder || 'unigran/posts');
+    const signatureData = createCloudinaryUploadSignature({ folder, resourceType });
+    res.json(signatureData);
+  } catch (err) {
+    console.error('[upload signature]', err);
+    res.status(500).json({ error: String(err.message || 'Falha ao gerar assinatura de upload') });
+  }
 });
 
 router.post('/media', auth, upload.single('file'), async (req, res) => {

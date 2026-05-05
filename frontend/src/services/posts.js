@@ -19,6 +19,42 @@ function normalizePost(post) {
   };
 }
 
+async function uploadDirectCloudinary(token, file, resourceType = 'video') {
+  const params = new URLSearchParams();
+  params.set('resourceType', resourceType);
+  params.set('folder', 'unigran/posts');
+
+  const signatureRes = await apiFetch(`/uploads/signature?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  const signatureData = await signatureRes.json();
+  if (!signatureRes.ok) {
+    throw new Error(signatureData.error || 'Erro ao assinar upload');
+  }
+
+  const cloudForm = new FormData();
+  cloudForm.append('file', file);
+  cloudForm.append('api_key', signatureData.apiKey);
+  cloudForm.append('timestamp', signatureData.timestamp);
+  cloudForm.append('signature', signatureData.signature);
+  cloudForm.append('folder', signatureData.folder);
+  cloudForm.append('resource_type', signatureData.resourceType);
+
+  const cloudResponse = await fetch(
+    `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType}/upload`,
+    { method: 'POST', body: cloudForm },
+  );
+  const cloudResult = await cloudResponse.json();
+  if (!cloudResponse.ok) {
+    throw new Error(cloudResult.error?.message || 'Erro ao enviar vídeo para Cloudinary');
+  }
+
+  return {
+    url: cloudResult.secure_url,
+    resourceType: signatureData.resourceType,
+  };
+}
+
 export async function fetchPosts(token, { page = 1, limit = 10, feed = '' } = {}) {
   const params = new URLSearchParams();
   params.set('page', String(page));
@@ -38,9 +74,17 @@ export async function fetchSavedPosts(token) {
 export async function createPost({ token, content, file, communityId, postType }) {
   const fd = new FormData();
   if (content) fd.append('content', content);
-  if (file) fd.append('file', file);
   if (communityId) fd.append('communityId', communityId);
   if (postType) fd.append('postType', postType);
+
+  if (file && file.type.startsWith('video/')) {
+    const videoMedia = await uploadDirectCloudinary(token, file, 'video');
+    fd.append('mediaUrl', videoMedia.url);
+    fd.append('mediaType', 'video');
+  } else if (file) {
+    fd.append('file', file);
+  }
+
   const res = await apiFetch('/posts', {
     method: 'POST',
     headers: authHeaders(token),

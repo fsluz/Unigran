@@ -22,6 +22,26 @@ async function safeDestroy(publicId, resourceType) {
   }
 }
 
+export function createCloudinaryUploadSignature({ folder = 'unigran/posts', resourceType = 'image', timestamp = Math.floor(Date.now() / 1000) } = {}) {
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+  }
+  const paramsToSign = {
+    folder,
+    resource_type: resourceType,
+    timestamp,
+  };
+  const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+  return {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    timestamp,
+    signature,
+    folder,
+    resourceType,
+  };
+}
+
 export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits = {}) {
   if (!file?.buffer) throw new Error('Arquivo inválido para upload');
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {

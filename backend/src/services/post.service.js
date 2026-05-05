@@ -17,6 +17,8 @@ import { uploadMediaBuffer } from './cloudinary.service.js';
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
   postType: z.enum(['text-post', 'image-post', 'video-post', 'live-video-post', 'poll-post', 'share-post', 'zuni-post']).optional(),
+  mediaUrl: z.string().url().optional(),
+  mediaType: z.enum(['image', 'video']).optional(),
 });
 
 const createCommentSchema = z.object({
@@ -49,6 +51,11 @@ export async function createPostWithRules({ user, body, file }) {
       'unigran/posts',
       parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 90, maxVideoResolution: 720 } : {},
     );
+  } else if (parsed.data.mediaUrl) {
+    media = {
+      url: parsed.data.mediaUrl,
+      resource_type: parsed.data.mediaType || 'video',
+    };
   }
 
   if (parsed.data.postType === 'zuni-post' && (!media || media.resource_type !== 'video')) {
