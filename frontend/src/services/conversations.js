@@ -59,11 +59,11 @@ export async function startDirectConversation({ token, username }) {
   return data.conversation;
 }
 
-export async function startGroupConversation({ token, title, participants }) {
+export async function startGroupConversation({ token, title, participants, picture = '' }) {
   const res = await apiFetch('/conversations/group', {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ title, participants }),
+    body: JSON.stringify({ title, participants, picture }),
   });
   const data = await parseResponse(res, 'Erro ao criar grupo');
   return data.conversation;

@@ -15,6 +15,18 @@ function packMessageText({ content, author, media = null, readBy = [] }) {
   return JSON.stringify({ v: 2, content, author, media, readBy });
 }
 
+function packConversationName({ title, picture = null }) {
+  return JSON.stringify({ v: 1, title, picture });
+}
+
+function unpackConversationName(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.v === 1) return parsed;
+  } catch (_) {}
+  return { title: raw, picture: null };
+}
+
 function unpackMessageText(raw) {
   try {
     const parsed = JSON.parse(raw);
@@ -96,10 +108,12 @@ router.get('/', auth, async (req, res) => {
         const fromOther = payload.author?.id && payload.author.id !== req.user.username;
         return fromOther && !(payload.readBy || []).includes(req.user.username) ? count + 1 : count;
       }, 0);
+      const packedName = unpackConversationName(row.title);
       return {
       id: row.conversation_id,
-      title: row.title || row.other_name || row.other_username,
-      type: 'direct',
+      title: packedName.title || row.other_name || row.other_username,
+      type: packedName.picture ? 'group' : 'direct',
+      groupPicture: packedName.picture || null,
       sentUnreadCount,
       receivedUnreadCount,
       participant: {
@@ -254,6 +268,7 @@ router.post('/:id/messages', auth, async (req, res) => {
 router.post('/group', auth, async (req, res) => {
   try {
     const title = String(req.body?.title || 'Grupo').trim().slice(0, 80);
+    const picture = String(req.body?.picture || '').trim();
     const participants = [...new Set((req.body?.participants || []).map(item => String(item).replace(/^@/, '').trim()).filter(Boolean))];
     if (participants.length < 1) return res.status(400).json({ error: 'Informe pelo menos um usuario' });
     const cid = uuid();
@@ -267,12 +282,12 @@ router.post('/group', auth, async (req, res) => {
       insert
         $c isa conversation,
           has conversation-id "${cid}",
-          has name "${typeqlLiteral(title)}",
+          has name "${typeqlLiteral(packConversationName({ title, picture }))}",
           has creation-timestamp ${now};
         conversation-participant(participant: $me, conversation: $c);
         ${memberLinks}
     `);
-    res.status(201).json({ conversation: { id: cid, title, type: 'group', sentUnreadCount: 0 } });
+    res.status(201).json({ conversation: { id: cid, title, groupPicture: picture || null, type: 'group', sentUnreadCount: 0, receivedUnreadCount: 0 } });
   } catch (err) {
     console.error('[group conversation]', err);
     res.status(500).json({ error: 'Erro ao criar grupo' });

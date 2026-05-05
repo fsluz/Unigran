@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { deleteConversation, deleteMessage, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
+import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 
 export default function MessagesPage() {
@@ -17,6 +18,11 @@ export default function MessagesPage() {
   const [targetUsername, setTargetUsername] = useState('');
   const [groupUsers, setGroupUsers] = useState('');
   const [groupTitle, setGroupTitle] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [groupResults, setGroupResults] = useState([]);
+  const [selectedGroupUsers, setSelectedGroupUsers] = useState([]);
+  const [groupFile, setGroupFile] = useState(null);
+  const [userResults, setUserResults] = useState([]);
   const [conversationSearch, setConversationSearch] = useState('');
   const [groupOpen, setGroupOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -95,6 +101,39 @@ export default function MessagesPage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const q = targetUsername.trim();
+    if (!q) {
+      setUserResults([]);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      apiFetch(`/search?q=${encodeURIComponent(q)}`, { headers: authHeaders(token) })
+        .then(res => res.json())
+        .then(data => setUserResults((data.users || []).slice(0, 6)))
+        .catch(() => setUserResults([]));
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [targetUsername, token]);
+
+  useEffect(() => {
+    const q = groupSearch.trim();
+    if (!q) {
+      setGroupResults([]);
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      apiFetch(`/search?q=${encodeURIComponent(q)}`, { headers: authHeaders(token) })
+        .then(res => res.json())
+        .then(data => {
+          const selected = new Set(selectedGroupUsers.map(item => item.username));
+          setGroupResults((data.users || []).filter(item => !selected.has(item.username)).slice(0, 8));
+        })
+        .catch(() => setGroupResults([]));
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [groupSearch, selectedGroupUsers, token]);
+
   const beginConversation = async () => {
     if (!targetUsername.trim()) return;
     setLoading(true);
@@ -114,20 +153,34 @@ export default function MessagesPage() {
   };
 
   const beginGroup = async () => {
-    const participants = groupUsers.split(',').map(item => item.trim().replace(/^@/, '')).filter(Boolean);
+    const participants = selectedGroupUsers.map(item => item.username);
     if (!participants.length) return;
     setLoading(true);
     try {
-      const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants });
+      let picture = '';
+      if (groupFile) {
+        const media = await uploadMedia({ token, file: groupFile });
+        picture = media?.url || '';
+      }
+      const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants, picture });
       setConversations(prev => [conversation, ...prev]);
       setActive(conversation);
-      setGroupUsers('');
+      setSelectedGroupUsers([]);
+      setGroupSearch('');
+      setGroupFile(null);
       setGroupTitle('');
     } catch (err) {
       showToast(err.message || 'Erro ao criar grupo', '');
     } finally {
       setLoading(false);
     }
+  };
+
+  const addGroupUser = (person) => {
+    if (!person?.username || selectedGroupUsers.some(item => item.username === person.username)) return;
+    setSelectedGroupUsers(prev => [...prev, person]);
+    setGroupSearch('');
+    setGroupResults([]);
   };
 
   const removeActiveConversation = async () => {
@@ -210,17 +263,29 @@ export default function MessagesPage() {
               )}
             </div>
             <div className="messages-search-row">
-              <input
-                className="messages-search-input"
-                placeholder="Buscar ou iniciar por @username"
-                value={targetUsername}
-                onChange={e => {
-                  const value = e.target.value.replace(/^@/, '');
-                  setTargetUsername(value);
-                  setConversationSearch(value);
-                }}
-                onKeyDown={e => e.key === 'Enter' && beginConversation()}
-              />
+              <div className="messages-user-search">
+                <input
+                  className="messages-search-input"
+                  placeholder="Buscar ou iniciar por @username"
+                  value={targetUsername}
+                  onChange={e => {
+                    const value = e.target.value.replace(/^@/, '');
+                    setTargetUsername(value);
+                    setConversationSearch(value);
+                  }}
+                  onKeyDown={e => e.key === 'Enter' && beginConversation()}
+                />
+                {userResults.length > 0 && (
+                  <div className="messages-search-popout">
+                    {userResults.map(person => (
+                      <button key={person.username} onClick={() => { setTargetUsername(person.username); setConversationSearch(person.username); setUserResults([]); }}>
+                        <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <span>{person.displayName || person.username}<small>@{person.username}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button className="btn btn-primary btn-sm" onClick={beginConversation} disabled={loading || !targetUsername.trim()}>
                 Nova
               </button>
@@ -242,7 +307,7 @@ export default function MessagesPage() {
               >
                 <Avatar
                   size={40}
-                  src={conv.participant?.profilePicture || null}
+                  src={conv.groupPicture || conv.participant?.profilePicture || null}
                   name={conv.participant?.displayName || conv.title}
                   initials={(conv.participant?.displayName || conv.title || '?').slice(0, 2)}
                 />
@@ -261,7 +326,7 @@ export default function MessagesPage() {
             <div className="chat-head">
               <Avatar
                 size={40}
-                src={activeParticipant?.profilePicture || null}
+                src={active.groupPicture || activeParticipant?.profilePicture || null}
                 name={activeParticipant?.displayName || active.title}
                 initials={(activeParticipant?.displayName || active.title || '?').slice(0, 2)}
               />
@@ -342,9 +407,32 @@ export default function MessagesPage() {
               <button className="modal-close" onClick={() => setGroupOpen(false)}>x</button>
             </div>
             <div className="modal-body group-popout">
+              <label className="group-photo-picker">
+                {groupFile ? <img src={URL.createObjectURL(groupFile)} alt="grupo" /> : <span>Foto</span>}
+                <input type="file" accept="image/*" onChange={e => setGroupFile(e.target.files?.[0] || null)} />
+              </label>
               <input placeholder="Nome do grupo" value={groupTitle} onChange={e => setGroupTitle(e.target.value)} />
-              <input placeholder="@user1, @user2, @user3" value={groupUsers} onChange={e => setGroupUsers(e.target.value)} onKeyDown={e => e.key === 'Enter' && beginGroup()} />
-              <button className="messages-group-btn" onClick={() => { beginGroup(); setGroupOpen(false); }} disabled={loading || !groupUsers.trim()}>Criar grupo</button>
+              <div className="group-selected-users">
+                {selectedGroupUsers.map(person => (
+                  <button key={person.username} onClick={() => setSelectedGroupUsers(prev => prev.filter(item => item.username !== person.username))}>
+                    @{person.username} x
+                  </button>
+                ))}
+              </div>
+              <div className="messages-user-search">
+                <input placeholder="Pesquisar pessoas" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} />
+                {groupResults.length > 0 && (
+                  <div className="messages-search-popout in-modal">
+                    {groupResults.map(person => (
+                      <button key={person.username} onClick={() => addGroupUser(person)}>
+                        <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <span>{person.displayName || person.username}<small>@{person.username}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button className="messages-group-btn" onClick={() => { beginGroup(); setGroupOpen(false); }} disabled={loading || selectedGroupUsers.length === 0}>Criar grupo</button>
             </div>
           </div>
         </div>
