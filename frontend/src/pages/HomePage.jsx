@@ -116,7 +116,7 @@ export default function HomePage({ onOpenProfile }) {
     }
   };
 
-  const handleAddComment = async (postId, { content }) => createComment({ token, postId, content });
+  const handleAddComment = async (postId, { content, parentCommentId }) => createComment({ token, postId, content, parentCommentId });
 
   const loadMore = async () => {
     if (loadingPosts || !hasMore) return;

@@ -1,14 +1,17 @@
 import {
   createCommentWithRules,
   createPostWithRules,
+  deletePostWithRules,
   editPostWithRules,
   favoritePost,
   getFeed,
   getFavorites,
   getPostComments,
+  likeComment,
   likePost,
   sharePostWithRules,
   unfavoritePost,
+  unlikeComment,
   unlikePost,
 } from '../services/post.service.js';
 
@@ -54,11 +57,20 @@ export async function createPostController(req, res) {
 
 export async function getCommentsController(req, res) {
   try {
-    const comments = await getPostComments(req.params.id);
+    const comments = await getPostComments({ user: req.user, postId: req.params.id });
     res.json({ comments });
   } catch (err) {
     console.error('[comments list]', err);
     res.status(500).json({ error: 'Erro ao carregar comentários' });
+  }
+}
+
+export async function deletePostController(req, res) {
+  try {
+    res.json(await deletePostWithRules({ user: req.user, postId: req.params.id }));
+  } catch (err) {
+    console.error('[posts delete]', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao excluir post' });
   }
 }
 
@@ -104,6 +116,24 @@ export async function unlikePostController(req, res) {
   } catch (err) {
     console.error('[posts unlike]', err);
     res.status(500).json({ error: 'Erro ao remover curtida' });
+  }
+}
+
+export async function likeCommentController(req, res) {
+  try {
+    res.json(await likeComment({ user: req.user, commentId: req.params.commentId }));
+  } catch (err) {
+    console.error('[comments like]', err);
+    res.status(500).json({ error: 'Erro ao curtir comentario' });
+  }
+}
+
+export async function unlikeCommentController(req, res) {
+  try {
+    res.json(await unlikeComment({ user: req.user, commentId: req.params.commentId }));
+  } catch (err) {
+    console.error('[comments unlike]', err);
+    res.status(500).json({ error: 'Erro ao remover curtida do comentario' });
   }
 }
 

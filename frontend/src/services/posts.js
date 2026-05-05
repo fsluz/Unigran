@@ -114,6 +114,30 @@ export async function createComment({ token, postId, content, parentCommentId, f
   return parseResponse(res, 'Erro ao criar comentário');
 }
 
+export async function deletePost({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao excluir post');
+}
+
+export async function likeComment({ token, commentId }) {
+  const res = await apiFetch(`/posts/comments/${commentId}/like`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao curtir comentario');
+}
+
+export async function unlikeComment({ token, commentId }) {
+  const res = await apiFetch(`/posts/comments/${commentId}/like`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao remover curtida');
+}
+
 export async function uploadMedia({ token, file }) {
   const fd = new FormData();
   fd.append('file', file);

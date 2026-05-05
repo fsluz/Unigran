@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
-import { likePost, reportPost, savePost, sharePost, unlikePost, unsavePost, updatePost } from '../../services/posts';
+import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -44,21 +44,62 @@ function DotMenu({ items }) {
   );
 }
 
-function CommentItem({ comment }) {
+function CommentItem({ comment, onReply, onToggleLike }) {
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [liked, setLiked] = useState(Boolean(comment.liked));
+  const [likes, setLikes] = useState(Number(comment.likes || 0));
+
+  const sendReply = async () => {
+    if (!replyText.trim()) return;
+    await onReply(comment.id, replyText.trim());
+    setReplyText('');
+    setShowReply(false);
+  };
+
+  const toggleLike = async () => {
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikes(v => nextLiked ? v + 1 : Math.max(0, v - 1));
+    await onToggleLike(comment.id, nextLiked).catch(() => {
+      setLiked(!nextLiked);
+      setLikes(v => nextLiked ? Math.max(0, v - 1) : v + 1);
+    });
+  };
+
   return (
-    <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-      <Avatar
-        size={30}
-        src={comment.author.profilePicture || null}
-        name={comment.author.displayName || ''}
-        initials={comment.author.avatar || comment.author.displayName?.slice(0, 2) || 'U'}
-        style={{ flexShrink: 0 }}
-      />
-      <div style={{ flex: 1, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{comment.author.displayName}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text || comment.content}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{relativeTime(comment.time)}</div>
+    <div className="comment-thread">
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        <Avatar
+          size={30}
+          src={comment.author?.profilePicture || null}
+          name={comment.author?.displayName || ''}
+          initials={comment.author?.avatar || comment.author?.displayName?.slice(0, 2) || 'U'}
+          style={{ flexShrink: 0 }}
+        />
+        <div style={{ flex: 1, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '8px 12px' }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', marginBottom: 2 }}>{comment.author?.displayName || comment.author?.username}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.55 }}>{comment.text || comment.content}</div>
+          <div className="comment-actions-inline">
+            <span>{relativeTime(comment.time)}</span>
+            <button className={liked ? 'liked' : ''} onClick={toggleLike}>{likes} Curtir</button>
+            <button onClick={() => setShowReply(v => !v)}>Responder</button>
+          </div>
+        </div>
       </div>
+      {showReply && (
+        <div className="comment-reply-box">
+          <input value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendReply()} placeholder="Responder comentario..." />
+          <button onClick={sendReply}>Enviar</button>
+        </div>
+      )}
+      {Array.isArray(comment.replies) && comment.replies.length > 0 && (
+        <div className="comment-replies">
+          {comment.replies.map(reply => (
+            <CommentItem key={reply.id} comment={reply} onReply={onReply} onToggleLike={onToggleLike} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -78,7 +119,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const [comments, setComments]       = useState(post._comments || []);
   const [newComment, setNewComment]   = useState('');
 
-  const isOwner   = user?.id === post.author.id;
+  const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
 
   const toggleLike = () => {
@@ -113,7 +154,9 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const addComment = async () => {
     if (!newComment.trim()) return;
     try {
-      const created = await onAddComment?.(post.id, { content: newComment.trim() });
+      const created = onAddComment
+        ? await onAddComment(post.id, { content: newComment.trim() })
+        : await createComment({ token, postId: post.id, content: newComment.trim() });
       const c = created || {
         id: Date.now(),
         content: newComment.trim(),
@@ -128,9 +171,45 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
     }
   };
 
+  const addReply = async (parentCommentId, content) => {
+    const created = onAddComment
+      ? await onAddComment(post.id, { content, parentCommentId })
+      : await createComment({ token, postId: post.id, content, parentCommentId });
+    const reply = created || {
+      id: Date.now(),
+      content,
+      parentCommentId,
+      likes: 0,
+      liked: false,
+      replies: [],
+      author: { displayName: user.displayName, username: user.username, profilePicture: user.profilePicture || null },
+    };
+    setComments(prev => prev.map(comment => (
+      comment.id === parentCommentId
+        ? { ...comment, replies: [...(comment.replies || []), reply] }
+        : comment
+    )));
+  };
+
+  const toggleCommentLike = (commentId, shouldLike) => {
+    const fn = shouldLike ? likeComment : unlikeComment;
+    return fn({ token, commentId });
+  };
+
+  const deleteCurrentPost = async () => {
+    if (!window.confirm('Excluir post?')) return;
+    try {
+      await deletePostRequest({ token, postId: post.id });
+      onDelete?.(post.id);
+      showToast('Post excluido', 'x');
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir post', '!');
+    }
+  };
+
   const menuItems = [
     ...(isOwner && onEdit ? [{ icon: '✏️', label: 'Editar post', onClick: () => setEditing(true) }] : []),
-    ...(canDelete ? [{ icon: '🗑️', label: 'Excluir post', danger: true, onClick: () => { onDelete(post.id); showToast('Post excluído', '🗑️'); } }] : []),
+    ...(canDelete ? [{ icon: 'x', label: 'Excluir post', danger: true, onClick: deleteCurrentPost }] : []),
     ...(user?.role === 'admin' && !isOwner ? [{ icon: '🚫', label: 'Banir usuário', danger: true, onClick: () => showToast('Usuário banido', '🚫') }] : []),
     'sep',
     { icon: '🚩', label: 'Reportar', onClick: async () => { await reportPost({ token, postId: post.id }).catch(() => null); showToast('Post reportado', '🚩'); } },
@@ -238,8 +317,10 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           onClick={async () => {
             const next = !showComments;
             setShowComments(next);
-            if (next && onLoadComments) {
-              const loaded = await onLoadComments(post.id);
+            if (next) {
+              const loaded = onLoadComments
+                ? await onLoadComments(post.id)
+                : await fetchComments({ token, postId: post.id });
               setComments(loaded || []);
               setCommentsCount((loaded || []).length);
             }
@@ -278,7 +359,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               Nenhum comentário ainda. Seja o primeiro! 💬
             </p>
           ) : (
-            comments.map(c => <CommentItem key={c.id} comment={c} />)
+            comments.map(c => <CommentItem key={c.id} comment={c} onReply={addReply} onToggleLike={toggleCommentLike} />)
           )}
 
           {/* New comment input */}

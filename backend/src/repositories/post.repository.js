@@ -384,6 +384,70 @@ export async function updatePostContent({ username, postId, content }) {
   return { id: postId, content };
 }
 
+export async function deletePostById({ username, postId, canModerate = false }) {
+  const safeUser = typeqlLiteral(username);
+  const safePost = typeqlLiteral(postId);
+
+  if (!canModerate) {
+    const ownerRows = await readQuery(`
+      match
+        $user isa person, has username "${safeUser}";
+        $post isa post, has post-id $pid;
+        $pid == "${safePost}";
+        posting(page: $user, post: $post);
+      fetch { "post_id": $pid };
+    `);
+    if (!ownerRows.length) {
+      const err = new Error('Sem permissao para excluir post');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
+  const cleanupQueries = [
+    `
+      match
+        $post isa post, has post-id "${safePost}";
+        $r isa reaction, links (parent: $post);
+      delete $r;
+    `,
+    `
+      match
+        $post isa post, has post-id "${safePost}";
+        $s isa subscription, links (content: $post);
+      delete $s;
+    `,
+    `
+      match
+        $post isa post, has post-id "${safePost}";
+        $p isa posting, links (post: $post);
+      delete $p;
+    `,
+    `
+      match
+        $post isa post, has post-id "${safePost}";
+        $c isa comment;
+        $link isa commenting, links (parent: $post, comment: $c);
+      delete
+        $link;
+        $c;
+    `,
+  ];
+
+  for (const query of cleanupQueries) {
+    await writeQuery(query).catch(() => null);
+  }
+
+  await writeQuery(`
+    match
+      $post isa post, has post-id "${safePost}";
+    delete
+      $post;
+  `);
+  cache.clear();
+  return { deleted: true, id: postId };
+}
+
 export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
   const posts = await listFeed({ viewerUsername, limit: 200, offset: 0 });
   return posts.filter(post => post.author?.username === username).slice(0, limit);
@@ -585,7 +649,7 @@ export async function sharePost({ username, postId, content = '' }) {
   return { id: shareId, time: now };
 }
 
-export async function listComments(parentPostId) {
+export async function listComments(parentPostId, viewerUsername) {
   const safePostId = typeqlLiteral(parentPostId);
   // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
@@ -606,16 +670,83 @@ export async function listComments(parentPostId) {
     };
   `);
 
-  return rows.map((row) => ({
+  const replyRows = await readQuery(`
+    match
+      $post isa post, has post-id "${safePostId}";
+      commenting(parent: $post, comment: $parent);
+      $parent isa comment, has comment-id $parent_id;
+      commenting(parent: $parent, comment: $reply, author: $author);
+      $reply isa comment, has comment-id $reply_id, has comment-text $reply_text, has creation-timestamp $reply_ts;
+      $author has username $reply_author_username, has name $reply_author_name;
+      try { $author has profile-picture $reply_author_pic; };
+    sort $reply_ts asc;
+    fetch {
+      "parent_id": $parent_id,
+      "comment_id": $reply_id,
+      "text": $reply_text,
+      "created_at": $reply_ts,
+      "author_username": $reply_author_username,
+      "author_name": $reply_author_name,
+      "author_profile_picture": $reply_author_pic
+    };
+  `).catch(() => []);
+
+  const reactionRows = await readQuery(`
+    match
+      $comment isa comment, has comment-id $comment_id;
+      reaction(parent: $comment, author: $author);
+      $author isa person, has username $author_username;
+    fetch {
+      "comment_id": $comment_id,
+      "author_username": $author_username
+    };
+  `).catch(() => []);
+
+  const metrics = new Map();
+  for (const row of reactionRows) {
+    if (!row?.comment_id) continue;
+    if (!metrics.has(row.comment_id)) metrics.set(row.comment_id, { likes: 0, liked: false });
+    const metric = metrics.get(row.comment_id);
+    metric.likes += 1;
+    if (viewerUsername && row.author_username === viewerUsername) metric.liked = true;
+  }
+
+  const repliesByParent = new Map();
+  for (const row of replyRows) {
+    if (!row?.parent_id) continue;
+    if (!repliesByParent.has(row.parent_id)) repliesByParent.set(row.parent_id, []);
+    const metric = metrics.get(row.comment_id) || { likes: 0, liked: false };
+    repliesByParent.get(row.parent_id).push({
+      id: row.comment_id,
+      content: row.text,
+      time: row.created_at,
+      likes: metric.likes,
+      liked: metric.liked,
+      replies: [],
+      author: {
+        username: row.author_username,
+        displayName: row.author_name,
+        profilePicture: row.author_profile_picture || null,
+      },
+    });
+  }
+
+  return rows.map((row) => {
+    const metric = metrics.get(row.comment_id) || { likes: 0, liked: false };
+    return ({
     id: row.comment_id,
     content: row.text,
     time: row.created_at,
+    likes: metric.likes,
+    liked: metric.liked,
+    replies: repliesByParent.get(row.comment_id) || [],
     author: {
       username: row.author_username,
       displayName: row.author_name,
       profilePicture: row.author_profile_picture || null,
     },
-  }));
+  });
+  });
 }
 
 export async function createComment({ authorUsername, parentPostId, parentCommentId, content, media }) {
@@ -661,4 +792,36 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
 
   cache.clear();
   return { id: commentId, time: now };
+}
+
+export async function reactToComment({ username, commentId, emoji = 'like' }) {
+  const safeUser = typeqlLiteral(username);
+  const safeComment = typeqlLiteral(commentId);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $comment isa comment, has comment-id "${safeComment}";
+      not { reaction(author: $user, parent: $comment); };
+    insert
+      $reaction isa reaction, links (author: $user, parent: $comment),
+        has emoji "${typeqlLiteral(emoji)}",
+        has creation-timestamp ${typeqlDatetime()};
+  `);
+  cache.clear();
+  return { liked: true };
+}
+
+export async function unreactToComment({ username, commentId }) {
+  const safeUser = typeqlLiteral(username);
+  const safeComment = typeqlLiteral(commentId);
+  await writeQuery(`
+    match
+      $user isa person, has username "${safeUser}";
+      $comment isa comment, has comment-id "${safeComment}";
+      $reaction isa reaction, links (author: $user, parent: $comment);
+    delete
+      $reaction;
+  `);
+  cache.clear();
+  return { liked: false };
 }

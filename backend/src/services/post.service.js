@@ -2,13 +2,16 @@ import { z } from 'zod';
 import {
   createComment,
   createPost,
+  deletePostById,
   listSavedPosts,
   listComments,
   listFeed,
   updatePostContent,
   reactToPost,
+  reactToComment,
   savePost,
   sharePost,
+  unreactToComment,
   unreactToPost,
   unsavePost,
 } from '../repositories/post.repository.js';
@@ -97,8 +100,8 @@ export async function createPostWithRules({ user, body, file }) {
   };
 }
 
-export async function getPostComments(postId) {
-  return listComments(postId);
+export async function getPostComments({ user, postId }) {
+  return listComments(postId, user?.username);
 }
 
 export async function createCommentWithRules({ user, postId, body, file }) {
@@ -142,12 +145,28 @@ export async function editPostWithRules({ user, postId, body }) {
   return { data: updated, status: 200 };
 }
 
+export async function deletePostWithRules({ user, postId }) {
+  return deletePostById({
+    username: user.username,
+    postId,
+    canModerate: ['admin', 'moderator'].includes(user.role),
+  });
+}
+
 export async function likePost({ user, postId }) {
   return reactToPost({ username: user.username, postId, emoji: 'like' });
 }
 
 export async function unlikePost({ user, postId }) {
   return unreactToPost({ username: user.username, postId });
+}
+
+export async function likeComment({ user, commentId }) {
+  return reactToComment({ username: user.username, commentId, emoji: 'like' });
+}
+
+export async function unlikeComment({ user, commentId }) {
+  return unreactToComment({ username: user.username, commentId });
 }
 
 export async function favoritePost({ user, postId }) {
