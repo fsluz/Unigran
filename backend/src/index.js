@@ -17,9 +17,12 @@ import { setupSocket }     from './socket/handlers.js';
 
 const app    = express();
 const server = createServer(app);
+const corsOrigin = process.env.CLIENT_URL ||
+  (process.env.NODE_ENV === 'production' ? true : 'http://localhost:5173');
+
 const io     = new IO(server, {
   cors: {
-    origin:      process.env.CLIENT_URL || 'http://localhost:5173',
+    origin:      corsOrigin,
     credentials: true,
   },
 });
@@ -28,8 +31,8 @@ const io     = new IO(server, {
 app.get('/api/hello', (_req, res) => res.json({ message: 'Hello, world!' }));
 
 /* ── Global middleware ── */
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
-app.use(express.json({ limit: '10mb' }));
+app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 /* ── Routes ── */
