@@ -9,7 +9,14 @@ const API_BASE_URL =
     : 'https://unigran-backend.vercel.app/api');
 
 export function apiFetch(path, options = {}) {
-  const url = `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
+  if (/^https?:\/\//i.test(path)) return fetch(path, options);
+
+  const base = API_BASE_URL.replace(/\/$/, '');
+  const rawPath = path.startsWith('/') ? path : `/${path}`;
+  const apiPath = rawPath.startsWith('/api/') ? rawPath : `/api${rawPath}`;
+  const url = base.endsWith('/api')
+    ? `${base}${apiPath.slice(4)}`
+    : `${base}${apiPath}`;
   return fetch(url, options);
 }
 
