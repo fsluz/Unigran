@@ -14,6 +14,8 @@ import MessagesPage       from './pages/MessagesPage';
 import NotificationsPage  from './pages/NotificationsPage';
 import SettingsPage       from './pages/SettingsPage';
 import PublicProfilePage  from './pages/PublicProfilePage';
+import FavoritesPage      from './pages/FavoritesPage';
+import ZuniPage           from './pages/ZuniPage';
 
 function AppShell() {
   const { user, logout } = useAuth();
@@ -35,6 +37,10 @@ function AppShell() {
   };
 
   const openProfile = (username) => {
+    if (username) {
+      const visited = JSON.parse(localStorage.getItem('visitedProfiles') || '[]');
+      localStorage.setItem('visitedProfiles', JSON.stringify([username, ...visited.filter(item => item !== username)].slice(0, 12)));
+    }
     setProfileUsername(username);
     setPage('publicProfile');
   };
@@ -68,6 +74,8 @@ function AppShell() {
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
     communities:   <CommunitiesPage onOpenProfile={openProfile} />,
+    zuni:          <ZuniPage onOpenProfile={openProfile} />,
+    favorites:     <FavoritesPage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,

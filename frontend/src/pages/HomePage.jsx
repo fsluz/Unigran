@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PostComposer from '../components/post/PostComposer';
 import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
+import StoriesBar from '../components/stories/StoriesBar';
 import Topbar from '../components/layout/Topbar';
 import unigranCharacters from '../assets/unigran_characters.png';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
@@ -43,6 +44,22 @@ export default function HomePage({ onOpenProfile }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const loadMoreRef = useRef(null);
+
+  const trending = useMemo(() => {
+    const counts = new Map();
+    for (const post of posts) {
+      for (const tag of String(post.content || '').match(/#[A-Za-z0-9_\u00C0-\u017F-]+/g) || []) {
+        const clean = tag.slice(1);
+        counts.set(clean, (counts.get(clean) || 0) + 1);
+      }
+    }
+    const dynamic = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag, count]) => ({ tag, count: String(count) }));
+    return dynamic.length ? dynamic : TRENDING;
+  }, [posts]);
 
   useEffect(() => {
     let alive = true;
@@ -72,8 +89,12 @@ export default function HomePage({ onOpenProfile }) {
       .catch(() => setSuggestedCommunities([]));
   }, [token]);
 
-  const handleNewPost = async ({ content, file }) => {
-    const created = await createPost({ token, content, file });
+  const handleNewPost = async ({ content, file, postType }) => {
+    const created = await createPost({ token, content, file, postType });
+    if (postType === 'zuni-post') {
+      showToast('Short publicado no Zuni', 'OK');
+      return;
+    }
     setPosts(prev => [created, ...prev]);
     showToast('Post publicado', '✓');
   };
@@ -98,6 +119,7 @@ export default function HomePage({ onOpenProfile }) {
   const handleAddComment = async (postId, { content }) => createComment({ token, postId, content });
 
   const loadMore = async () => {
+    if (loadingPosts || !hasMore) return;
     const nextPage = page + 1;
     setLoadingPosts(true);
     try {
@@ -109,6 +131,16 @@ export default function HomePage({ onOpenProfile }) {
       setLoadingPosts(false);
     }
   };
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) loadMore();
+    }, { rootMargin: '280px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadingPosts, page, feed]);
 
   const toggleFollow = async (person) => {
     if (!person.username) return;
@@ -147,6 +179,8 @@ export default function HomePage({ onOpenProfile }) {
             </div>
             <img src={unigranCharacters} alt="Personagens Unigran" className="home-welcome-image" />
           </section>
+
+          <StoriesBar onOpenProfile={onOpenProfile} />
 
           <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
 
@@ -193,7 +227,7 @@ export default function HomePage({ onOpenProfile }) {
             ))}
 
             {hasMore && posts.length > 0 && (
-              <button className="btn btn-secondary" onClick={loadMore} disabled={loadingPosts}>
+              <button ref={loadMoreRef} className="btn btn-secondary" onClick={loadMore} disabled={loadingPosts}>
                 {loadingPosts ? 'Carregando...' : 'Carregar mais'}
               </button>
             )}
@@ -203,8 +237,8 @@ export default function HomePage({ onOpenProfile }) {
         <aside className="right-panel">
           <div className="panel-card" style={{ marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Tendencias</div>
-            {TRENDING.map((item, i) => (
-              <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < TRENDING.length - 1 ? '1px solid var(--border)' : 'none' }}>
+            {trending.map((item, i) => (
+              <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < trending.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{item.tag}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} mencoes</div>

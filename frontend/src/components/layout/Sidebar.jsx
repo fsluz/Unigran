@@ -1,5 +1,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui';
+import { useEffect, useState } from 'react';
+import { fetchConversations } from '../../services/conversations';
 
 const NAV_TOP = [
   { id: 'home',          label: 'Início',        icon: () => (
@@ -14,7 +16,13 @@ const NAV_TOP = [
       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
     </svg>
   )},
-  { id: 'messages',      label: 'Mensagens',     badge: 3, icon: () => (
+  { id: 'zuni',          label: 'Zuni',          icon: () => (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="16" rx="3"/>
+      <polygon points="10 8 16 12 10 16 10 8"/>
+    </svg>
+  )},
+  { id: 'messages',      label: 'Mensagens',     badge: 'messages', icon: () => (
     <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
@@ -72,9 +80,17 @@ function Toggle({ value, onChange }) {
 }
 
 export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTheme }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const [messageCount, setMessageCount] = useState(0);
 
   const isActive = (id) => !searchOpen && page === id;
+
+  useEffect(() => {
+    if (!token) return;
+    fetchConversations(token)
+      .then(items => setMessageCount(items.length || 0))
+      .catch(() => setMessageCount(0));
+  }, [token, page]);
 
   return (
     <aside className="sidebar-wide">
@@ -97,8 +113,8 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
           >
             <span className="sidebar-wide-icon">{item.icon()}</span>
             <span className="sidebar-wide-label">{item.label}</span>
-            {item.badge && (
-              <span className="sidebar-wide-badge">{item.badge}</span>
+            {item.badge && (item.badge !== 'messages' || messageCount > 0) && (
+              <span className="sidebar-wide-badge">{item.badge === 'messages' ? messageCount : item.badge}</span>
             )}
           </button>
         ))}

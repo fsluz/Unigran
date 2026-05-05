@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
-import { fetchConversations, fetchMessages, sendMessage, startDirectConversation } from '../services/conversations';
+import { fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, sendMessage, setConversationTyping, startDirectConversation } from '../services/conversations';
+import { uploadMedia } from '../services/posts';
 import { relativeTime } from '../utils/time';
 
 export default function MessagesPage() {
@@ -14,10 +15,26 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
+  const [conversationSearch, setConversationSearch] = useState('');
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [file, setFile] = useState(null);
+  const [sendingMedia, setSendingMedia] = useState(false);
+  const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  const typingTimerRef = useRef(null);
 
   const activeParticipant = active?.participant;
   const activeMessages = useMemo(() => messages[active?.id] || [], [messages, active]);
+  const filteredConversations = useMemo(() => {
+    const q = conversationSearch.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter(conv => {
+      const name = conv.participant?.displayName || conv.title || '';
+      const username = conv.participant?.username || '';
+      return name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+    });
+  }, [conversations, conversationSearch]);
 
   useEffect(() => {
     fetchConversations(token)
@@ -31,7 +48,10 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!active?.id) return;
     fetchMessages({ token, conversationId: active.id })
-      .then(loaded => setMessages(prev => ({ ...prev, [active.id]: loaded })))
+      .then(loaded => {
+        setMessages(prev => ({ ...prev, [active.id]: loaded }));
+        return markConversationRead({ token, conversationId: active.id }).catch(() => null);
+      })
       .catch(err => showToast(err.message || 'Erro ao carregar mensagens', ''));
   }, [active?.id, token, showToast]);
 
@@ -48,12 +68,28 @@ export default function MessagesPage() {
             if (sameIds(current, loaded)) return prev;
             return { ...prev, [active.id]: loaded };
           });
+          markConversationRead({ token, conversationId: active.id }).catch(() => null);
         })
         .catch(() => {});
     }, 3000);
 
     return () => clearInterval(interval);
   }, [active?.id, token]);
+
+  useEffect(() => {
+    if (!active?.id) return;
+    const interval = setInterval(() => {
+      fetchConversationTyping({ token, conversationId: active.id })
+        .then(setTypingUsers)
+        .catch(() => setTypingUsers([]));
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [active?.id, token]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(v => v + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const beginConversation = async () => {
     if (!targetUsername.trim()) return;
@@ -74,19 +110,51 @@ export default function MessagesPage() {
   };
 
   const send = async () => {
-    if (!text.trim() || !active?.id) return;
+    if ((!text.trim() && !file) || !active?.id) return;
     const content = text.trim();
     setText('');
+    const chosenFile = file;
+    setFile(null);
+    setSendingMedia(Boolean(chosenFile));
     try {
-      const created = await sendMessage({ token, conversationId: active.id, content });
+      let media = null;
+      if (chosenFile) media = await uploadMedia({ token, file: chosenFile });
+      const created = await sendMessage({
+        token,
+        conversationId: active.id,
+        content,
+        mediaUrl: media?.url || '',
+        mediaType: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media?.resource_type || ''),
+      });
       setMessages(prev => ({
         ...prev,
         [active.id]: [...(prev[active.id] || []), created],
       }));
     } catch (err) {
       setText(content);
+      setFile(chosenFile);
       showToast(err.message || 'Erro ao enviar mensagem', '');
+    } finally {
+      setSendingMedia(false);
     }
+  };
+
+  const onTextChange = (value) => {
+    setText(value);
+    if (!active?.id) return;
+    setConversationTyping({ token, conversationId: active.id, typing: true }).catch(() => null);
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      setConversationTyping({ token, conversationId: active.id, typing: false }).catch(() => null);
+    }, 1200);
+  };
+
+  const renderMedia = (media) => {
+    if (!media?.url) return null;
+    if (media.type === 'video') return <video className="msg-media" src={media.url} controls preload="metadata" />;
+    if (media.type === 'audio') return <audio className="msg-audio" src={media.url} controls />;
+    if (media.type === 'image') return <img className="msg-media" src={media.url} alt="mensagem" />;
+    return <a href={media.url} target="_blank" rel="noreferrer">Abrir arquivo</a>;
   };
 
   return (
@@ -108,12 +176,18 @@ export default function MessagesPage() {
                 Nova
               </button>
             </div>
+            <input
+              style={{ marginTop: 10, width: '100%', background: 'var(--page-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '9px 12px', fontSize: 13, outline: 'none', color: 'var(--text)' }}
+              placeholder="Buscar por nome ou username"
+              value={conversationSearch}
+              onChange={e => setConversationSearch(e.target.value)}
+            />
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {conversations.length === 0 ? (
+            {filteredConversations.length === 0 ? (
               <div className="search-empty">Nenhuma conversa.</div>
-            ) : conversations.map(conv => (
+            ) : filteredConversations.map(conv => (
               <button
                 key={conv.id}
                 className={`conv-item ${active?.id === conv.id ? 'active' : ''}`}
@@ -128,8 +202,9 @@ export default function MessagesPage() {
                 />
                 <div className="conv-info">
                   <div className="conv-name">{conv.participant?.displayName || conv.title}</div>
-                  <div className="conv-preview">{conv.participant?.online ? 'Online agora' : 'Offline'}</div>
+                  <div className="conv-preview">@{conv.participant?.username || 'usuario'} · {conv.participant?.online ? 'Online agora' : 'Offline'}</div>
                 </div>
+                <span className="sidebar-wide-badge">{(messages[conv.id] || []).length || ''}</span>
               </button>
             ))}
           </div>
@@ -165,24 +240,42 @@ export default function MessagesPage() {
                         initials={(activeParticipant?.displayName || active.title || '?').slice(0, 2)}
                       />
                     )}
-                    <div>
-                      <div className={`msg-bubble ${mine ? 'me' : ''}`}>{msg.content}</div>
+                    <div className="msg-stack">
+                      <div className={`msg-bubble ${mine ? 'me' : ''}`}>
+                        {msg.content && <div>{msg.content}</div>}
+                        {renderMedia(msg.media)}
+                      </div>
                       <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
+                      {mine && activeParticipant?.username && msg.readBy?.includes(activeParticipant.username) && (
+                        <div className="msg-read">Lido</div>
+                      )}
                     </div>
                   </div>
                 );
               })}
+              {typingUsers.length > 0 && <div className="typing-dot">{typingUsers.join(', ')} digitando...</div>}
             </div>
 
             <div className="chat-input-bar">
               <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*,audio/*"
+                style={{ display: 'none' }}
+                onChange={e => setFile(e.target.files?.[0] || null)}
+              />
+              <button className="chat-input-icon" onClick={() => fileInputRef.current?.click()} title="Foto, video ou audio">
+                +
+              </button>
+              <input
                 className="chat-input"
-                placeholder="Digite uma mensagem..."
+                placeholder={file ? file.name : 'Digite uma mensagem...'}
                 value={text}
-                onChange={e => setText(e.target.value)}
+                onChange={e => onTextChange(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
               />
-              <button className="chat-send-btn" onClick={send} disabled={!text.trim()}>
+              {file && <button className="chat-input-icon" onClick={() => setFile(null)} title="Remover arquivo">x</button>}
+              <button className="chat-send-btn" onClick={send} disabled={(!text.trim() && !file) || sendingMedia}>
                 Enviar
               </button>
             </div>

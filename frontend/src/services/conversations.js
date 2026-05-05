@@ -18,13 +18,36 @@ export async function fetchMessages({ token, conversationId }) {
   return data.messages || [];
 }
 
-export async function sendMessage({ token, conversationId, content }) {
+export async function sendMessage({ token, conversationId, content, mediaUrl = '', mediaType = '' }) {
   const res = await apiFetch(`/conversations/${conversationId}/messages`, {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, mediaUrl, mediaType }),
   });
   return parseResponse(res, 'Erro ao enviar mensagem');
+}
+
+export async function markConversationRead({ token, conversationId }) {
+  const res = await apiFetch(`/conversations/${conversationId}/read`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao marcar leitura');
+}
+
+export async function setConversationTyping({ token, conversationId, typing = true }) {
+  const res = await apiFetch(`/conversations/${conversationId}/typing`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ typing }),
+  });
+  return parseResponse(res, 'Erro ao enviar digitacao');
+}
+
+export async function fetchConversationTyping({ token, conversationId }) {
+  const res = await apiFetch(`/conversations/${conversationId}/typing`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar digitacao');
+  return data.typing || [];
 }
 
 export async function startDirectConversation({ token, username }) {

@@ -156,6 +156,35 @@ async function loadCommentsMap() {
   return map;
 }
 
+async function loadRepostOriginalMap() {
+  // FIXED: loads repost source separately so cards can render quote/repost data without nested fetch.
+  const rows = await readQuery(`
+    match
+      $share isa share-post, has post-id $share_id;
+      $original isa post, has post-id $original_id;
+      $sharing isa sharing, links (original-post: $original, share-post: $share);
+      $posting isa posting, links (page: $author, post: $original);
+      $author isa person, has username $author_username, has name $author_name;
+      try { $author has profile-picture $author_profile_picture; };
+      try { $original has post-text $original_text; };
+      try { $original has post-image $original_image; };
+      try { $original has post-video $original_video; };
+    fetch {
+      "share_id": $share_id,
+      "id": $original_id,
+      "content": $original_text,
+      "image": $original_image,
+      "video": $original_video,
+      "author": {
+        "username": $author_username,
+        "name": $author_name,
+        "profile_picture": $author_profile_picture
+      }
+    };
+  `);
+  return new Map(rows.filter(row => row?.share_id).map(row => [row.share_id, row]));
+}
+
 async function notifyPostOwner({ actorUsername, postId, type, text }) {
   const notificationId = uuid();
   const now = typeqlDatetime();
@@ -216,11 +245,17 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const followingSet = await loadFollowingSet(viewerUsername);
   const metrics = await loadPostMetrics(viewerUsername);
   const commentsMap = await loadCommentsMap();
+  const repostOriginalMap = await loadRepostOriginalMap();
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
     const visibility = entry?.author?.visibility || 'public';
+    const attrs = entry?.post_all_attributes || {};
+    const isZuni = String(attrs['post-text'] || '').toLowerCase().includes('#zuni');
+    if (feed === 'zuni') return isZuni;
+    if (isZuni) return false;
     if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
+    if (feed === 'trending') return true;
     return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
@@ -230,6 +265,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const authorProfile = profilesMap.get(entry?.author?.username || '');
     const postId = entry?.post_id || attrs['post-id'] || uuid();
     const comments = commentsMap.get(postId) || [];
+    const repostOriginal = repostOriginalMap.get(postId) || null;
     const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
     return {
       id: postId,
@@ -264,11 +300,24 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
           },
         };
       }),
+      originalPost: repostOriginal ? {
+        id: repostOriginal.id,
+        content: repostOriginal.content || '',
+        media: repostOriginal.video ? { url: repostOriginal.video, resource_type: 'video' } : (repostOriginal.image ? { url: repostOriginal.image, resource_type: 'image' } : null),
+        author: {
+          username: repostOriginal.author?.username,
+          displayName: repostOriginal.author?.name || repostOriginal.author?.username,
+          profilePicture: repostOriginal.author?.profile_picture || null,
+        },
+      } : null,
     };
   });
 
   const posts = normalized
-    .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+    .sort((a, b) => {
+      if (feed === 'trending') return (Number(b.likes || 0) + Number(b.comments || 0)) - (Number(a.likes || 0) + Number(a.comments || 0)) || String(b.time || '').localeCompare(String(a.time || ''));
+      return String(b.time || '').localeCompare(String(a.time || ''));
+    })
     .slice(offset, offset + limit);
 
   setCached(key, posts);

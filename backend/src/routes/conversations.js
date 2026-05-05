@@ -5,21 +5,23 @@ import { auth } from '../middleware/auth.js';
 import { getOnlineUsers } from '../socket/handlers.js';
 
 const router = Router();
+const typingByConversation = new Map();
 
 function roleCanMessage(role) {
   return ['admin', 'moderator', 'professor', 'recruiter'].includes(role);
 }
 
-function packMessageText({ content, author }) {
-  return JSON.stringify({ v: 1, content, author });
+function packMessageText({ content, author, media = null, readBy = [] }) {
+  return JSON.stringify({ v: 2, content, author, media, readBy });
 }
 
 function unpackMessageText(raw) {
   try {
     const parsed = JSON.parse(raw);
-    if (parsed?.v === 1) return parsed;
+    if (parsed?.v === 1) return { ...parsed, media: null, readBy: [] };
+    if (parsed?.v === 2) return parsed;
   } catch (_) {}
-  return { content: raw, author: null };
+  return { content: raw, author: null, media: null, readBy: [] };
 }
 
 async function canMessage({ fromUser, toUsername }) {
@@ -172,6 +174,8 @@ router.get('/:id/messages', auth, async (req, res) => {
       return {
         id: row.message_id,
         content: payload.content,
+        media: payload.media || null,
+        readBy: payload.readBy || [],
         time: row.created_at,
         author: payload.author || { id: null, displayName: 'Usuario' },
       };
@@ -183,12 +187,16 @@ router.get('/:id/messages', auth, async (req, res) => {
 });
 
 router.post('/:id/messages', auth, async (req, res) => {
-  const { content } = req.body;
-  if (!content?.trim()) return res.status(400).json({ error: 'Conteudo obrigatorio' });
+  const { content = '', mediaUrl = '', mediaType = '' } = req.body;
+  const cleanContent = String(content || '').trim();
+  const media = mediaUrl ? { url: String(mediaUrl), type: String(mediaType || 'file') } : null;
+  if (!cleanContent && !media) return res.status(400).json({ error: 'Conteudo ou midia obrigatorio' });
   const mid = uuid();
   const now = typeqlDatetime();
   const payload = packMessageText({
-    content: content.trim(),
+    content: cleanContent,
+    media,
+    readBy: [req.user.username],
     author: { id: req.user.username, displayName: req.user.displayName },
   });
 
@@ -208,7 +216,9 @@ router.post('/:id/messages', auth, async (req, res) => {
     `);
     res.status(201).json({
       id: mid,
-      content: content.trim(),
+      content: cleanContent,
+      media,
+      readBy: [req.user.username],
       time: now,
       author: { id: req.user.username, displayName: req.user.displayName },
     });
@@ -216,6 +226,58 @@ router.post('/:id/messages', auth, async (req, res) => {
     console.error('[messages POST]', err);
     res.status(500).json({ error: 'Erro ao enviar' });
   }
+});
+
+router.patch('/:id/read', auth, async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        conversation-participant(participant: $user, conversation: $conv);
+        message-delivery(conversation: $conv, message: $m);
+        $m isa message, has message-id $mid, has message-text $text;
+      fetch {
+        "message_id": $mid,
+        "text": $text
+      };
+    `);
+    await Promise.all(rows.map(async (row) => {
+      const payload = unpackMessageText(row.text);
+      if (payload.author?.id === req.user.username) return;
+      const readBy = new Set(payload.readBy || []);
+      if (readBy.has(req.user.username)) return;
+      readBy.add(req.user.username);
+      const nextPayload = JSON.stringify({ ...payload, v: 2, readBy: [...readBy] });
+      await writeQuery(`
+        match
+          $m isa message, has message-id "${typeqlLiteral(row.message_id)}";
+        update
+          $m has message-text "${typeqlLiteral(nextPayload)}";
+      `);
+    }));
+    res.json({ read: true });
+  } catch (err) {
+    console.error('[messages read]', err);
+    res.status(500).json({ error: 'Erro ao marcar leitura' });
+  }
+});
+
+router.post('/:id/typing', auth, (req, res) => {
+  const map = typingByConversation.get(req.params.id) || new Map();
+  if (req.body?.typing === false) map.delete(req.user.username);
+  else map.set(req.user.username, Date.now() + 3500);
+  typingByConversation.set(req.params.id, map);
+  res.json({ typing: true });
+});
+
+router.get('/:id/typing', auth, (req, res) => {
+  const now = Date.now();
+  const map = typingByConversation.get(req.params.id) || new Map();
+  for (const [username, expires] of map.entries()) {
+    if (expires < now) map.delete(username);
+  }
+  res.json({ typing: [...map.keys()].filter(username => username !== req.user.username) });
 });
 
 router.delete('/:convId/messages/:msgId', auth, async (req, res) => {

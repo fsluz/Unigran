@@ -9,6 +9,7 @@ cloudinary.config({
 function resourceTypeFromMime(mimetype = '') {
   if (mimetype === 'image/gif') return 'image';
   if (mimetype.startsWith('video/')) return 'video';
+  if (mimetype.startsWith('audio/')) return 'video';
   return 'image';
 }
 
@@ -21,13 +22,16 @@ async function safeDestroy(publicId, resourceType) {
   }
 }
 
-export async function uploadMediaBuffer(file, folder = 'unigran/posts') {
+export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits = {}) {
   if (!file?.buffer) throw new Error('Arquivo inválido para upload');
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
   }
 
   const resourceType = resourceTypeFromMime(file.mimetype);
+  const maxDuration = limits.maxVideoDurationSec || 120;
+  const maxWidth = limits.maxVideoWidth || 1920;
+  const maxHeight = limits.maxVideoHeight || 1080;
   const result = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -40,7 +44,7 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts') {
         overwrite: false,
         transformation: resourceType === 'image'
           ? [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto:good' }]
-          : [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto:good' }],
+          : [{ width: maxWidth, height: maxHeight, crop: 'limit', quality: 'auto:good' }],
       },
       (err, uploadResult) => {
         if (err) return reject(err);
@@ -54,12 +58,12 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts') {
     const duration = Number(result.duration || 0);
     const width = Number(result.width || 0);
     const height = Number(result.height || 0);
-    const exceedsDuration = duration > 120;
-    const exceedsResolution = width > 1920 || height > 1080;
+    const exceedsDuration = duration > maxDuration;
+    const exceedsResolution = width > maxWidth || height > maxHeight;
 
     if (exceedsDuration || exceedsResolution) {
       await safeDestroy(result.public_id, 'video');
-      const err = new Error('Video invalido. Limite: 2 minutos e resolucao maxima 1080p.');
+      const err = new Error(`Video invalido. Limite: ${maxDuration}s e resolucao maxima ${maxHeight}p.`);
       err.statusCode = 400;
       throw err;
     }

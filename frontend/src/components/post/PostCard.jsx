@@ -191,6 +191,32 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       ) : (
         <>
           <div className="post-body">{formatContent(post.content || '')}</div>
+          {post.originalPost && (
+            <div className="repost-card">
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                <Avatar
+                  size={32}
+                  src={post.originalPost.author?.profilePicture || null}
+                  name={post.originalPost.author?.displayName || post.originalPost.author?.username || ''}
+                  initials={(post.originalPost.author?.displayName || post.originalPost.author?.username || '?').slice(0, 2)}
+                />
+                <button
+                  onClick={() => post.originalPost.author?.username && onOpenProfile?.(post.originalPost.author.username)}
+                  style={{ border: 0, background: 'transparent', padding: 0, color: 'var(--text)', fontWeight: 800, textAlign: 'left' }}
+                >
+                  {post.originalPost.author?.displayName || post.originalPost.author?.username}
+                </button>
+              </div>
+              <div style={{ color: 'var(--text-2)', fontSize: 14, lineHeight: 1.55 }}>{formatContent(post.originalPost.content || '')}</div>
+              {post.originalPost.media?.url && (
+                <div style={{ marginTop: 10 }}>
+                  {post.originalPost.media.resource_type === 'video'
+                    ? <video src={post.originalPost.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 10, maxHeight: 300 }} />
+                    : <img src={post.originalPost.media.url} alt="post original" loading="lazy" style={{ width: '100%', borderRadius: 10, maxHeight: 300, objectFit: 'cover' }} />}
+                </div>
+              )}
+            </div>
+          )}
           {post.media?.url && (
             <div style={{ marginBottom: 14 }}>
               {post.media.resource_type === 'video'

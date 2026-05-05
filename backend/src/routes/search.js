@@ -45,7 +45,7 @@ router.get('/', auth, async (req, res) => {
     ]);
 
     res.json({
-      users: userRows.filter(r => matchesNeedle(r.name)).slice(0, 10).map(r => ({
+      users: userRows.filter(r => matchesNeedle(r.name) || matchesNeedle(r.username)).slice(0, 10).map(r => ({
         id: r.username,
         username: r.username,
         displayName: r.name,

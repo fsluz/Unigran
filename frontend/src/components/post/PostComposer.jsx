@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui';
 
-export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?' }) {
+export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?', allowMode = true, forcedPostType = null }) {
   const { user }   = useAuth();
   const [text, setT] = useState('');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [postMode, setPostMode] = useState('post');
 
   const submit = () => {
     if (!text.trim() && !file) return;
-    onSubmit({ content: text.trim(), file });
+    onSubmit({ content: text.trim(), file, postType: forcedPostType || (postMode === 'zuni' ? 'zuni-post' : undefined) });
     setT('');
     setFile(null);
     setPreview(null);
@@ -49,6 +50,17 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
         />
       </div>
       <div className="composer-footer">
+        {allowMode && (
+          <select
+            className="form-input"
+            value={postMode}
+            onChange={e => setPostMode(e.target.value)}
+            style={{ width: 116, minHeight: 34, padding: '6px 10px', fontSize: 12 }}
+          >
+            <option value="post">Post</option>
+            <option value="zuni">Zuni</option>
+          </select>
+        )}
         <label className="composer-btn" title="Foto/Vídeo/GIF">
           <input
             type="file"

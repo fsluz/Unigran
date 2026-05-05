@@ -6,13 +6,13 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
-import { fetchPosts, uploadMedia } from '../services/posts';
+import { fetchSavedPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
-import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPosts, updateUserProfile } from '../services/users';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Links'];
+const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
@@ -31,6 +31,7 @@ export default function ProfilePage({ onNavigate }) {
   const [openPost, setOpenPost]     = useState(null);
   const [posts, setPosts] = useState([]);
   const [likedPosts, setLikedPosts] = useState([]);
+  const [savedPosts, setSavedPosts] = useState([]);
   const [reposts, setReposts] = useState([]);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [peopleModal, setPeopleModal] = useState(null);
@@ -40,6 +41,7 @@ export default function ProfilePage({ onNavigate }) {
     displayName: user.displayName,
     bio:         user.bio,
     institution: user.institution,
+    links: user.links || {},
   });
   const [profileFile, setProfileFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
@@ -47,10 +49,11 @@ export default function ProfilePage({ onNavigate }) {
   const [coverPreview, setCoverPreview] = useState(user.coverPicture || null);
 
   useEffect(() => {
-    fetchPosts(token)
+    if (!user?.username) return;
+    fetchUserPosts({ token, username: user.username })
       .then((loaded) => setPosts(loaded))
       .catch(() => setPosts([]));
-  }, [token]);
+  }, [token, user?.username]);
 
   useEffect(() => {
     if (!token || !user?.username) return;
@@ -66,6 +69,13 @@ export default function ProfilePage({ onNavigate }) {
       fetchReposts({ token, username: user.username })
         .then(setReposts)
         .catch(() => setReposts([]))
+        .finally(() => setTabLoading(false));
+    }
+    if (tab === 'Salvos') {
+      setTabLoading(true);
+      fetchSavedPosts(token)
+        .then(setSavedPosts)
+        .catch(() => setSavedPosts([]))
         .finally(() => setTabLoading(false));
     }
   }, [tab, token, user?.username]);
@@ -113,11 +123,7 @@ export default function ProfilePage({ onNavigate }) {
       if (profileFile) profilePicture = await uploadMedia({ token, file: profileFile });
       if (coverFile) coverPicture = await uploadMedia({ token, file: coverFile });
 
-      await apiFetch(`/users/${user.username}`, {
-        method: 'PUT',
-        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ ...editForm, profilePicture, coverPicture }),
-      });
+      await updateUserProfile({ token, username: user.username, data: { ...editForm, profilePicture, coverPicture } });
 
       updateUser({
         ...editForm,
@@ -128,6 +134,22 @@ export default function ProfilePage({ onNavigate }) {
       showToast('Perfil atualizado!', '✅');
     } catch {
       showToast('Falha ao atualizar perfil', '⚠️');
+    }
+  };
+
+  const changeCoverNow = async (event) => {
+    const next = event.target.files?.[0];
+    if (!next) return;
+    const previewUrl = URL.createObjectURL(next);
+    if (!window.confirm('Usar esta imagem como capa?')) return;
+    setCoverPreview(previewUrl);
+    try {
+      const coverPicture = await uploadMedia({ token, file: next });
+      await updateUserProfile({ token, username: user.username, data: { coverPicture } });
+      updateUser({ coverPicture: coverPicture.url });
+      showToast('Capa atualizada!', 'OK');
+    } catch {
+      showToast('Falha ao atualizar capa', '!');
     }
   };
 
@@ -162,7 +184,10 @@ export default function ProfilePage({ onNavigate }) {
       {/* Banner */}
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
         <div className="profile-banner" style={coverPreview ? { backgroundImage: `url(${coverPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
-          <button className="profile-banner-btn">Editar Capa</button>
+          <label className="profile-banner-btn">
+            Editar Capa
+            <input type="file" accept="image/*,.gif" style={{ display: 'none' }} onChange={changeCoverNow} />
+          </label>
         </div>
 
         <div className="profile-info-wrap">
@@ -284,6 +309,20 @@ export default function ProfilePage({ onNavigate }) {
           </div>
         )}
 
+        {tab === 'Salvos' && (
+          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+            {tabLoading ? (
+              <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
+            ) : savedPosts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>Nenhum post salvo.</div>
+            ) : savedPosts.map(post => (
+              <div key={post.id} style={{ marginBottom: 10 }}>
+                <PostCard post={post} onDelete={deletePost} onEdit={editPost} onOpenDetail={setOpenPost} />
+              </div>
+            ))}
+          </div>
+        )}
+
         {tab === 'Links' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {linkPosts.length === 0 ? (
@@ -344,6 +383,11 @@ export default function ProfilePage({ onNavigate }) {
           </FormField>
           <FormField label="Bio">
             <textarea className="form-input" rows={3} value={editForm.bio} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} />
+          </FormField>
+          <FormField label="Adicionar links">
+            <input className="form-input" placeholder="Instagram" value={editForm.links?.instagram || ''} onChange={e => setEditForm(p => ({ ...p, links: { ...(p.links || {}), instagram: e.target.value } }))} />
+            <input className="form-input" placeholder="Facebook" value={editForm.links?.facebook || ''} onChange={e => setEditForm(p => ({ ...p, links: { ...(p.links || {}), facebook: e.target.value } }))} style={{ marginTop: 8 }} />
+            <input className="form-input" placeholder="Outros" value={editForm.links?.outros || ''} onChange={e => setEditForm(p => ({ ...p, links: { ...(p.links || {}), outros: e.target.value } }))} style={{ marginTop: 8 }} />
           </FormField>
           <FormField label="Foto de perfil">
             <input

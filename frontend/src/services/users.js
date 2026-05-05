@@ -45,6 +45,15 @@ export async function fetchUserPosts({ token, username }) {
   return data.posts || [];
 }
 
+export async function updateUserProfile({ token, username, data }) {
+  const res = await apiFetch(`/users/${username}`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(data),
+  });
+  return parseResponse(res, 'Erro ao atualizar perfil');
+}
+
 export async function fetchFollowers({ token, username }) {
   const res = await apiFetch(`/users/${username}/followers`, { headers: authHeaders(token) });
   const data = await parseResponse(res, 'Erro ao carregar seguidores');

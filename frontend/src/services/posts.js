@@ -29,11 +29,18 @@ export async function fetchPosts(token, { page = 1, limit = 10, feed = '' } = {}
   return (data.posts || []).map(normalizePost);
 }
 
-export async function createPost({ token, content, file, communityId }) {
+export async function fetchSavedPosts(token) {
+  const res = await apiFetch('/posts/favorites', { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar salvos');
+  return (data.posts || []).map(normalizePost);
+}
+
+export async function createPost({ token, content, file, communityId, postType }) {
   const fd = new FormData();
   if (content) fd.append('content', content);
   if (file) fd.append('file', file);
   if (communityId) fd.append('communityId', communityId);
+  if (postType) fd.append('postType', postType);
   const res = await apiFetch('/posts', {
     method: 'POST',
     headers: authHeaders(token),

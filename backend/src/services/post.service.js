@@ -16,7 +16,7 @@ import { uploadMediaBuffer } from './cloudinary.service.js';
 
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
-  postType: z.enum(['text-post', 'image-post', 'video-post', 'live-video-post', 'poll-post', 'share-post']).optional(),
+  postType: z.enum(['text-post', 'image-post', 'video-post', 'live-video-post', 'poll-post', 'share-post', 'zuni-post']).optional(),
 });
 
 const createCommentSchema = z.object({
@@ -40,15 +40,26 @@ export async function createPostWithRules({ user, body, file }) {
     return { error: parsed.error.flatten(), status: 400 };
   }
 
-  const content = parsed.data.content.trim();
+  const isZuni = parsed.data.postType === 'zuni-post';
+  const content = `${parsed.data.content.trim()}${isZuni ? ' #Zuni' : ''}`.trim();
   let media = null;
-  if (file) media = await uploadMediaBuffer(file, 'unigran/posts');
+  if (file) {
+    media = await uploadMediaBuffer(
+      file,
+      'unigran/posts',
+      parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 30, maxVideoWidth: 1280, maxVideoHeight: 720 } : {},
+    );
+  }
+
+  if (parsed.data.postType === 'zuni-post' && (!media || media.resource_type !== 'video')) {
+    return { error: 'Zuni precisa ser video', status: 400 };
+  }
 
   if (!content && !media) {
     return { error: 'Texto ou mídia são obrigatórios', status: 400 };
   }
 
-  const postType = parsed.data.postType || inferPostType(media);
+  const postType = isZuni ? 'video-post' : (parsed.data.postType || inferPostType(media));
   const created = await createPost({
     authorUsername: user.username,
     postType,
