@@ -28,23 +28,25 @@ async function canMessage({ fromUser, toUsername }) {
 
   const safeFrom = typeqlLiteral(fromUser.username);
   const safeTo = typeqlLiteral(toUsername);
+  // FIXED: removed the space between relation labels and role-player lists inside the optional match pattern.
   const rows = await readQuery(`
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      try { friendship (friend: $from, friend: $to); };
+      try { friendship(friend: $from, friend: $to); };
       try { $to has page-visibility $visibility; };
     fetch { "visibility": $visibility };
   `);
   if (!rows.length) return { ok: false, reason: 'Usuario nao encontrado' };
   if (rows.some(row => row.visibility === 'public')) return { ok: true };
 
+  // FIXED: removed the space between relation labels and role-player lists, and replaced literal fetch values with select.
   const friendRows = await readQuery(`
     match
       $from isa person, has username "${safeFrom}";
       $to isa person, has username "${safeTo}";
-      friendship (friend: $from, friend: $to);
-    fetch { "from": "${safeFrom}", "to": "${safeTo}" };
+      friendship(friend: $from, friend: $to);
+    select $from, $to;
   `);
   return friendRows.length
     ? { ok: true }
@@ -55,12 +57,13 @@ router.get('/', auth, async (req, res) => {
   try {
     const online = new Set(getOnlineUsers());
     const me = typeqlLiteral(req.user.username);
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $u isa person, has username "${me}";
         $c isa conversation, has conversation-id $cid, has name $title;
-        conversation-participant (participant: $u, conversation: $c);
-        conversation-participant (participant: $p, conversation: $c);
+        conversation-participant(participant: $u, conversation: $c);
+        conversation-participant(participant: $p, conversation: $c);
         $p isa person, has username $pun, has name $pn;
         not { $p is $u; };
         try { $p has profile-picture $pp; };
@@ -100,13 +103,14 @@ router.post('/direct/:username', auth, async (req, res) => {
     const allowed = await canMessage({ fromUser: req.user, toUsername: req.params.username });
     if (!allowed.ok) return res.status(403).json({ error: allowed.reason });
 
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const existing = await readQuery(`
       match
         $me isa person, has username "${me}";
         $to isa person, has username "${target}", has name $to_name;
         $c isa conversation, has conversation-id $cid;
-        conversation-participant (participant: $me, conversation: $c);
-        conversation-participant (participant: $to, conversation: $c);
+        conversation-participant(participant: $me, conversation: $c);
+        conversation-participant(participant: $to, conversation: $c);
       fetch { "conversation_id": $cid, "to_name": $to_name };
     `);
     if (existing.length) {
@@ -122,6 +126,7 @@ router.post('/direct/:username', auth, async (req, res) => {
     const cid = uuid();
     const now = typeqlDatetime();
 
+    // FIXED: removed the space between relation labels and role-player lists in insert stage.
     await writeQuery(`
       match
         $me isa person, has username "${me}";
@@ -131,8 +136,8 @@ router.post('/direct/:username', auth, async (req, res) => {
           has conversation-id "${cid}",
           has name "${typeqlLiteral(title)}",
           has creation-timestamp ${now};
-        conversation-participant (participant: $me, conversation: $c);
-        conversation-participant (participant: $to, conversation: $c);
+        conversation-participant(participant: $me, conversation: $c);
+        conversation-participant(participant: $to, conversation: $c);
     `);
     res.status(201).json({ conversation: { id: cid, title, type: 'direct' } });
   } catch (err) {
@@ -145,12 +150,13 @@ router.get('/:id/messages', auth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '50', 10), 100);
   const offset = parseInt(req.query.offset || '0', 10);
   try {
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $user isa person, has username "${typeqlLiteral(req.user.username)}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        conversation-participant (participant: $user, conversation: $conv);
-        message-delivery (conversation: $conv, message: $m);
+        conversation-participant(participant: $user, conversation: $conv);
+        message-delivery(conversation: $conv, message: $m);
         $m isa message, has message-id $mid, has message-text $text, has creation-timestamp $ts;
       sort $ts asc;
       offset ${offset};
@@ -187,17 +193,18 @@ router.post('/:id/messages', auth, async (req, res) => {
   });
 
   try {
+    // FIXED: removed the space between relation labels and role-player lists in match and insert stages.
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
         $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
-        conversation-participant (participant: $u, conversation: $conv);
+        conversation-participant(participant: $u, conversation: $conv);
       insert
         $m isa message,
           has message-id "${mid}",
           has message-text "${typeqlLiteral(payload)}",
           has creation-timestamp ${now};
-        message-delivery (conversation: $conv, message: $m);
+        message-delivery(conversation: $conv, message: $m);
     `);
     res.status(201).json({
       id: mid,

@@ -7,6 +7,7 @@ const router = Router();
 router.get('/', auth, async (req, res) => {
   try {
     const safeUser = typeqlLiteral(req.user.username);
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $recipient isa person, has username "${safeUser}";
@@ -15,7 +16,7 @@ router.get('/', auth, async (req, res) => {
           has notification-text $text,
           has notification-type $type,
           has creation-timestamp $ts;
-        notification-delivery (recipient: $recipient, notification: $notification);
+        notification-delivery(recipient: $recipient, notification: $notification);
       fetch {
         "id": $id,
         "text": $text,

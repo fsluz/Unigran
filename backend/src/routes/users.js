@@ -10,32 +10,36 @@ async function getFollowStats(username, viewerUsername) {
   const safeId = typeqlLiteral(username);
   const safeViewer = typeqlLiteral(viewerUsername || '');
   const [followerRows, followingRows, postRows, viewerRows] = await Promise.all([
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $target isa page, has username "${safeId}";
         $follower isa person, has username $username;
-        following (follower: $follower, page: $target);
+        following(follower: $follower, page: $target);
       fetch { "username": $username };
     `),
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $user isa person, has username "${safeId}";
         $page isa page, has page-id $page_id;
-        following (follower: $user, page: $page);
+        following(follower: $user, page: $page);
       fetch { "page_id": $page_id };
     `),
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $user isa person, has username "${safeId}";
         $post isa post, has post-id $post_id;
-        posting (page: $user, post: $post);
+        posting(page: $user, post: $post);
       fetch { "post_id": $post_id };
     `),
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     viewerUsername ? readQuery(`
       match
         $viewer isa person, has username "${safeViewer}";
         $target isa page, has username "${safeId}", has username $target_username;
-        following (follower: $viewer, page: $target);
+        following(follower: $viewer, page: $target);
       fetch { "following": $target_username };
     `) : Promise.resolve([]),
   ]);
@@ -51,12 +55,13 @@ async function getFollowStats(username, viewerUsername) {
 router.get('/suggestions/list', auth, async (req, res) => {
   try {
     const safeMe = typeqlLiteral(req.user.username);
+    // FIXED: removed the space between relation labels and role-player lists inside the negated match pattern.
     const rows = await readQuery(`
       match
         $me isa person, has username "${safeMe}";
         $u isa person, has username $username, has name $name;
         not { $u is $me; };
-        not { following (follower: $me, page: $u); };
+        not { following(follower: $me, page: $u); };
         try { $u has profile-picture $pic; };
       limit 8;
       fetch {
@@ -115,15 +120,16 @@ router.get('/:id/reposts', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const safeId = typeqlLiteral(req.params.id);
+    // FIXED: replaced literal fetch value with a bound username variable.
     const rows = await readQuery(`
       match
-        $p isa person, has username "${safeId}", has name $name;
+        $p isa person, has username "${safeId}", has username $username, has name $name;
         try { $p has profile-picture $profile_pic; };
         try { $p has cover-picture $cover_pic; };
         try { $p has bio $bio; };
         try { $p has page-visibility $visibility; };
       fetch {
-        "username": "${safeId}",
+        "username": $username,
         "name": $name,
         "profile_picture": $profile_pic,
         "cover_picture": $cover_pic,
@@ -256,14 +262,16 @@ router.post('/:id/follow', auth, async (req, res) => {
   try {
     const notificationId = uuid();
     const now = typeqlDatetime();
+    // FIXED: removed the space between relation labels and role-player lists inside the negated match pattern and insert stage.
     await writeQuery(`
       match
         $a isa person, has username "${typeqlLiteral(req.user.username)}";
         $b isa page, has username "${typeqlLiteral(req.params.id)}";
-        not { following (follower: $a, page: $b); };
+        not { following(follower: $a, page: $b); };
       insert
-        following (follower: $a, page: $b);
+        following(follower: $a, page: $b);
     `);
+    // FIXED: removed the space between relation labels and role-player lists in insert stage.
     await writeQuery(`
       match
         $actor isa person, has username "${typeqlLiteral(req.user.username)}";
@@ -275,7 +283,7 @@ router.post('/:id/follow', auth, async (req, res) => {
           has notification-text "${typeqlLiteral(`${req.user.displayName || req.user.username} comecou a te seguir`)}",
           has notification-type "follow",
           has creation-timestamp ${now};
-        notification-delivery (recipient: $recipient, notification: $notification);
+        notification-delivery(recipient: $recipient, notification: $notification);
     `).catch(() => null);
     res.json({ following: true });
   } catch (err) {
@@ -304,11 +312,12 @@ router.delete('/:id/follow', auth, async (req, res) => {
 router.get('/:id/followers', auth, async (req, res) => {
   try {
     const safeId = typeqlLiteral(req.params.id);
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $target isa page, has username "${safeId}";
         $follower isa person, has username $username, has name $name;
-        following (follower: $follower, page: $target);
+        following(follower: $follower, page: $target);
         try { $follower has profile-picture $pic; };
       fetch {
         "username": $username,
@@ -326,11 +335,12 @@ router.get('/:id/followers', auth, async (req, res) => {
 router.get('/:id/following', auth, async (req, res) => {
   try {
     const safeId = typeqlLiteral(req.params.id);
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $user isa person, has username "${safeId}";
         $page isa page, has page-id $pid, has name $name;
-        following (follower: $user, page: $page);
+        following(follower: $user, page: $page);
         try { $page has profile-picture $pic; };
       fetch {
         "id": $pid,
@@ -371,11 +381,12 @@ router.post('/:id/ban', auth, requireRole('admin'), async (req, res) => {
 router.get('/:id/friends', auth, async (req, res) => {
   try {
     const safeId = typeqlLiteral(req.params.id);
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
         $u isa person, has username "${safeId}";
         $f isa person, has username $fname;
-        friendship (friend: $u, friend: $f);
+        friendship(friend: $u, friend: $f);
         not { $f is $u; };
         try { $f has name $dname; };
       fetch {

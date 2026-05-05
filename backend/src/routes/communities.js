@@ -9,6 +9,7 @@ const router = Router();
 /* GET /api/communities */
 router.get('/', auth, async (req, res) => {
   try {
+    // FIXED: removed the space between relation labels and role-player lists in the nested fetch query.
     const rows = await readQuery(`
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
@@ -20,7 +21,7 @@ router.get('/', auth, async (req, res) => {
         "description": $desc,
         "members": [
           match
-            group-membership (group: $g, member: $member);
+            group-membership(group: $g, member: $member);
             $member has username $member_username;
           fetch { "username": $member_username }
         ]

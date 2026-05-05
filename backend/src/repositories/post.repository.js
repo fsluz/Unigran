@@ -48,11 +48,12 @@ async function loadAllProfilesMap() {
 async function loadFriendSet(username) {
   if (!username) return new Set();
   const safeUsername = typeqlLiteral(username);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $me isa person, has username "${safeUsername}";
       $friend isa person, has username $friend_username;
-      friendship (friend: $me, friend: $friend);
+      friendship(friend: $me, friend: $friend);
       not { $friend is $me; };
     fetch { "friend_username": $friend_username };
   `);
@@ -62,11 +63,12 @@ async function loadFriendSet(username) {
 async function loadFollowingSet(username) {
   if (!username) return new Set();
   const safeUsername = typeqlLiteral(username);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $me isa person, has username "${safeUsername}";
       $page isa page, has username $followed_username;
-      following (follower: $me, page: $page);
+      following(follower: $me, page: $page);
     fetch { "followed_username": $followed_username };
   `);
   return new Set(rows.map(row => row.followed_username).filter(Boolean));
@@ -74,20 +76,22 @@ async function loadFollowingSet(username) {
 
 async function loadPostMetrics(viewerUsername) {
   const [reactionRows, commentRows] = await Promise.all([
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $post isa post, has post-id $post_id;
-        reaction (parent: $post, author: $author);
+        reaction(parent: $post, author: $author);
         $author isa person, has username $author_username;
       fetch {
         "post_id": $post_id,
         "author_username": $author_username
       };
     `),
+    // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $post isa post, has post-id $post_id;
-        commenting (parent: $post, comment: $comment);
+        commenting(parent: $post, comment: $comment);
       fetch { "post_id": $post_id };
     `),
   ]);
@@ -116,12 +120,13 @@ async function loadPostMetrics(viewerUsername) {
 async function notifyPostOwner({ actorUsername, postId, type, text }) {
   const notificationId = uuid();
   const now = typeqlDatetime();
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   await writeQuery(`
     match
       $actor isa person, has username "${typeqlLiteral(actorUsername)}";
       $post isa post, has post-id "${typeqlLiteral(postId)}";
       $recipient isa person;
-      posting (page: $recipient, post: $post);
+      posting(page: $recipient, post: $post);
       not { $recipient is $actor; };
     insert
       $notification isa notification,
@@ -129,7 +134,7 @@ async function notifyPostOwner({ actorUsername, postId, type, text }) {
         has notification-text "${typeqlLiteral(`${actorUsername} ${text}`)}",
         has notification-type "${typeqlLiteral(type)}",
         has creation-timestamp ${now};
-      notification-delivery (recipient: $recipient, notification: $notification);
+      notification-delivery(recipient: $recipient, notification: $notification);
   `);
 }
 
@@ -138,13 +143,14 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const cached = getCached(key);
   if (cached) return cached;
 
+  // FIXED: removed the space between relation labels and role-player lists in match and nested fetch queries.
   const rows = await readQuery(`
     match
       $post isa post,
         has post-id $post_id,
         has creation-timestamp $post_ts;
 
-      posting (post: $post, page: $user);
+      posting(post: $post, page: $user);
       $user isa person, has username $username, has name $user_name;
 
       try { $user has profile-picture $user_profile_pic; };
@@ -167,7 +173,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
       "comments": [
         match
-          commenting (parent: $post, comment: $comment, author: $comment_author);
+          commenting(parent: $post, comment: $comment, author: $comment_author);
 
           $comment isa comment,
             has comment-id $comment_id,
@@ -270,14 +276,15 @@ export async function createPost({ authorUsername, postType, content, media, com
   if (media?.resource_type === 'video') attributes.push(`has post-video "${typeqlLiteral(media.url)}"`);
   else if (media?.url) attributes.push(`has post-image "${typeqlLiteral(media.url)}"`);
 
+  // FIXED: removed the space between relation labels and role-player lists in insert stage.
   await writeQuery(`
     match $author isa person, has username "${safeUser}";
     ${communityId ? `$group isa group, has group-id "${typeqlLiteral(communityId)}";` : ''}
     insert
       $post isa ${postType},
         ${attributes.join(',\n        ')};
-      posting (page: $author, post: $post);
-      ${communityId ? 'posting (page: $group, post: $post);' : ''}
+      posting(page: $author, post: $post);
+      ${communityId ? 'posting(page: $group, post: $post);' : ''}
   `);
 
   cache.clear();
@@ -288,11 +295,12 @@ export async function updatePostContent({ username, postId, content }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
   const safeContent = typeqlLiteral(content);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-      posting (page: $user, post: $post);
+      posting(page: $user, post: $post);
     update
       $post has post-text "${safeContent}";
   `);
@@ -307,11 +315,12 @@ export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
 
 export async function listLikedPosts(username) {
   const safeUser = typeqlLiteral(username);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id $pid;
-      reaction (author: $user, parent: $post);
+      reaction(author: $user, parent: $post);
     fetch { "post_id": $pid };
   `);
   const ids = new Set(rows.map(row => row.post_id).filter(Boolean));
@@ -321,11 +330,12 @@ export async function listLikedPosts(username) {
 
 export async function listReposts(username) {
   const safeUser = typeqlLiteral(username);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $user isa person, has username "${safeUser}";
       $share isa share-post, has post-id $pid;
-      posting (page: $user, post: $share);
+      posting(page: $user, post: $share);
     fetch { "share_post_id": $pid };
   `);
   const ids = new Set(rows.map(row => row.share_post_id).filter(Boolean));
@@ -335,13 +345,14 @@ export async function listReposts(username) {
 
 export async function listCommunityPosts({ communityId, viewerUsername }) {
   const safeCommunity = typeqlLiteral(communityId);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $group isa group, has group-id "${safeCommunity}", has name $group_name;
       $post isa post, has post-id $post_id, has creation-timestamp $post_ts;
-      posting (page: $group, post: $post);
+      posting(page: $group, post: $post);
       $author isa person, has username $username, has name $user_name;
-      posting (page: $author, post: $post);
+      posting(page: $author, post: $post);
       try { $author has profile-picture $user_profile_pic; };
     fetch {
       "post_id": $post_id,
@@ -387,11 +398,12 @@ export async function reactToPost({ username, postId, emoji = 'like' }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
   const now = typeqlDatetime();
+  // FIXED: removed the space between relation labels and role-player lists inside the negated match pattern.
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
-      not { reaction (author: $user, parent: $post); };
+      not { reaction(author: $user, parent: $post); };
     insert
       $r isa reaction, links (author: $user, parent: $post),
         has emoji "${typeqlLiteral(emoji)}",
@@ -425,12 +437,13 @@ export async function unreactToPost({ username, postId }) {
 export async function savePost({ username, postId }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
+  // FIXED: removed the space between relation labels and role-player lists in insert stage.
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id "${safePost}";
     insert
-      subscription (subscriber: $user, content: $post);
+      subscription(subscriber: $user, content: $post);
   `);
   return { saved: true };
 }
@@ -451,11 +464,12 @@ export async function unsavePost({ username, postId }) {
 
 export async function listSavedPosts(username) {
   const safeUser = typeqlLiteral(username);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $user isa person, has username "${safeUser}";
       $post isa post, has post-id $pid, has post-text $text, has creation-timestamp $ts;
-      subscription (subscriber: $user, content: $post);
+      subscription(subscriber: $user, content: $post);
     fetch {
       "post_id": $pid,
       "text": $text,
@@ -480,6 +494,7 @@ export async function sharePost({ username, postId, content = '' }) {
     `has post-visibility "public"`,
   ];
   if (content) attrs.push(`has post-text "${typeqlLiteral(content)}"`);
+  // FIXED: removed the space between relation labels and role-player lists in insert stage.
   await writeQuery(`
     match
       $user isa person, has username "${safeUser}";
@@ -487,8 +502,8 @@ export async function sharePost({ username, postId, content = '' }) {
     insert
       $share isa share-post,
         ${attrs.join(',\n        ')};
-      posting (page: $user, post: $share);
-      sharing (original-post: $original, share-post: $share);
+      posting(page: $user, post: $share);
+      sharing(original-post: $original, share-post: $share);
   `);
   cache.clear();
   return { id: shareId, time: now };
@@ -496,10 +511,11 @@ export async function sharePost({ username, postId, content = '' }) {
 
 export async function listComments(parentPostId) {
   const safePostId = typeqlLiteral(parentPostId);
+  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $post isa post, has post-id "${safePostId}";
-      commenting (parent: $post, comment: $c, author: $author);
+      commenting(parent: $post, comment: $c, author: $author);
       $c isa comment, has comment-id $cid, has comment-text $ct, has creation-timestamp $ts;
       $author has username $aun, has name $adn;
       try { $author has profile-picture $pp; };
@@ -538,6 +554,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
   ];
 
   if (parentCommentId) {
+    // FIXED: removed the space between relation labels and role-player lists in insert stage.
     await writeQuery(`
       match
         $author isa person, has username "${safeUser}";
@@ -545,9 +562,10 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        commenting (parent: $parent, comment: $c, author: $author);
+        commenting(parent: $parent, comment: $c, author: $author);
     `);
   } else {
+    // FIXED: removed the space between relation labels and role-player lists in insert stage.
     await writeQuery(`
       match
         $author isa person, has username "${safeUser}";
@@ -555,7 +573,7 @@ export async function createComment({ authorUsername, parentPostId, parentCommen
       insert
         $c isa comment,
           ${commentAttributes.join(',\n          ')};
-        commenting (parent: $parent, comment: $c, author: $author);
+        commenting(parent: $parent, comment: $c, author: $author);
     `);
     await notifyPostOwner({
       actorUsername: authorUsername,
