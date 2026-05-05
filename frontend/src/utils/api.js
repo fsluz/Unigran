@@ -14,10 +14,18 @@ export function apiFetch(path, options = {}) {
 }
 
 export function authHeaders(token, extra = {}) {
-  return {
+  const headers = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
   };
+
+  // Não incluir Content-Type se for FormData (browser define automaticamente)
+  for (const [key, value] of Object.entries(extra)) {
+    if (key.toLowerCase() !== 'content-type' || !(extra instanceof FormData)) {
+      headers[key] = value;
+    }
+  }
+
+  return headers;
 }
 
 /** Zod .flatten() and similar API errors are objects; React cannot render them as children. */
