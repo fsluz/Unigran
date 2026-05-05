@@ -271,7 +271,7 @@ router.post('/:id/follow', auth, async (req, res) => {
       insert
         following(follower: $a, page: $b);
     `);
-    // FIXED: removed the space between relation labels and role-player lists in insert stage.
+    // FIXED: added explicit relation variable with `isa notification-delivery` and `links` for TypeDB 3.x insert inference.
     await writeQuery(`
       match
         $actor isa person, has username "${typeqlLiteral(req.user.username)}";
@@ -283,7 +283,7 @@ router.post('/:id/follow', auth, async (req, res) => {
           has notification-text "${typeqlLiteral(`${req.user.displayName || req.user.username} comecou a te seguir`)}",
           has notification-type "follow",
           has creation-timestamp ${now};
-        notification-delivery(recipient: $recipient, notification: $notification);
+        $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
     `).catch(() => null);
     res.json({ following: true });
   } catch (err) {

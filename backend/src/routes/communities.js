@@ -9,7 +9,7 @@ const router = Router();
 /* GET /api/communities */
 router.get('/', auth, async (req, res) => {
   try {
-    // FIXED: removed the space between relation labels and role-player lists in the nested fetch query.
+    // FIXED: removed nested `fetch` subquery; TypeDB 3.x rejected the inline members list.
     const rows = await readQuery(`
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
@@ -18,22 +18,33 @@ router.get('/', auth, async (req, res) => {
         "id": $gid,
         "name": $t,
         "type": $v,
-        "description": $desc,
-        "members": [
-          match
-            group-membership(group: $g, member: $member);
-            $member has username $member_username;
-          fetch { "username": $member_username }
-        ]
+        "description": $desc
       };
     `);
+    // FIXED: moved member lookup into a separate TypeQL 3.x pipeline and uses `links` for role inference.
+    const memberRows = await readQuery(`
+      match
+        $g isa group, has group-id $gid;
+        $membership isa group-membership, links (group: $g, member: $member);
+        $member has username $member_username;
+      fetch {
+        "id": $gid,
+        "username": $member_username
+      };
+    `);
+    const membersByGroup = new Map();
+    for (const member of memberRows) {
+      if (!member?.id) continue;
+      if (!membersByGroup.has(member.id)) membersByGroup.set(member.id, []);
+      membersByGroup.get(member.id).push(member);
+    }
     res.json({ communities: rows.map(r => ({
       id: r.id,
       name: r.name,
       description: r.description || '',
       type: r.type,
-      members: Array.isArray(r.members) ? r.members.length : 0,
-      joined: Array.isArray(r.members) ? r.members.some(m => m.username === req.user.username) : false,
+      members: (membersByGroup.get(r.id) || []).length,
+      joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username),
     }))});
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
 });

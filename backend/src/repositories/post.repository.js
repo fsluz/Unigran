@@ -117,10 +117,49 @@ async function loadPostMetrics(viewerUsername) {
   return metrics;
 }
 
+async function loadCommentsMap() {
+  // FIXED: removed nested `fetch` subquery that TypeDB rejected; comments now load in a separate TypeQL 3.x pipeline.
+  const rows = await readQuery(`
+    match
+      $post isa post, has post-id $post_id;
+      commenting(parent: $post, comment: $comment, author: $comment_author);
+      $comment isa comment,
+        has comment-id $comment_id,
+        has comment-text $comment_text,
+        has creation-timestamp $comment_ts;
+      $comment_author isa person, has username $comment_author_username, has name $comment_author_name;
+      try { $comment_author has profile-picture $comment_author_profile_pic; };
+      try { $comment_author has cover-picture $comment_author_cover_pic; };
+    fetch {
+      "post_id": $post_id,
+      "comment_id": $comment_id,
+      "text": $comment_text,
+      "created_at": $comment_ts,
+      "author": {
+        "username": $comment_author_username,
+        "name": $comment_author_name,
+        "profile_picture": $comment_author_profile_pic,
+        "cover_picture": $comment_author_cover_pic
+      }
+    };
+  `);
+
+  const map = new Map();
+  for (const row of rows) {
+    if (!row?.post_id) continue;
+    if (!map.has(row.post_id)) map.set(row.post_id, []);
+    map.get(row.post_id).push(row);
+  }
+  for (const comments of map.values()) {
+    comments.sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+  }
+  return map;
+}
+
 async function notifyPostOwner({ actorUsername, postId, type, text }) {
   const notificationId = uuid();
   const now = typeqlDatetime();
-  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
+  // FIXED: added explicit relation variable with `isa notification-delivery` and `links` for TypeDB 3.x insert inference.
   await writeQuery(`
     match
       $actor isa person, has username "${typeqlLiteral(actorUsername)}";
@@ -134,7 +173,7 @@ async function notifyPostOwner({ actorUsername, postId, type, text }) {
         has notification-text "${typeqlLiteral(`${actorUsername} ${text}`)}",
         has notification-type "${typeqlLiteral(type)}",
         has creation-timestamp ${now};
-      notification-delivery(recipient: $recipient, notification: $notification);
+      $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
   `);
 }
 
@@ -143,7 +182,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const cached = getCached(key);
   if (cached) return cached;
 
-  // FIXED: removed the space between relation labels and role-player lists in match and nested fetch queries.
+  // FIXED: removed nested `fetch` subquery; comments are fetched separately with a TypeDB 3.x pipeline.
   const rows = await readQuery(`
     match
       $post isa post,
@@ -169,39 +208,14 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         "visibility": $user_visibility
       },
 
-      "post_all_attributes": { $post.* },
-
-      "comments": [
-        match
-          commenting(parent: $post, comment: $comment, author: $comment_author);
-
-          $comment isa comment,
-            has comment-id $comment_id,
-            has comment-text $comment_text,
-            has creation-timestamp $comment_ts;
-
-          $comment_author isa person, has username $comment_author_username, has name $comment_author_name;
-          try { $comment_author has profile-picture $comment_author_profile_pic; };
-          try { $comment_author has cover-picture $comment_author_cover_pic; };
-
-        fetch {
-          "comment_id": $comment_id,
-          "text": $comment_text,
-          "created_at": $comment_ts,
-          "author": {
-            "username": $comment_author_username,
-            "name": $comment_author_name,
-            "profile_picture": $comment_author_profile_pic,
-            "cover_picture": $comment_author_cover_pic
-          }
-        }
-      ]
+      "post_all_attributes": { $post.* }
     };
   `);
   const profilesMap = await loadAllProfilesMap();
   const friendSet = await loadFriendSet(viewerUsername);
   const followingSet = await loadFollowingSet(viewerUsername);
   const metrics = await loadPostMetrics(viewerUsername);
+  const commentsMap = await loadCommentsMap();
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
@@ -210,12 +224,12 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
-    const comments = Array.isArray(entry?.comments) ? entry.comments : [];
     const imageUrl = attrs['post-image'] || null;
     const videoUrl = attrs['post-video'] || null;
     const mediaUrl = imageUrl || videoUrl;
     const authorProfile = profilesMap.get(entry?.author?.username || '');
     const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const comments = commentsMap.get(postId) || [];
     const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
     return {
       id: postId,
