@@ -6,6 +6,32 @@ import { createComment, fetchComments, fetchPosts, likePost, unlikePost } from '
 import { followUser, unfollowUser } from '../services/users';
 import { relativeTime } from '../utils/time';
 
+function ZuniIcon({ name, size = 20 }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  };
+  const paths = {
+    play: <polygon points="8 5 19 12 8 19 8 5" fill="currentColor" stroke="none" />,
+    pause: <><path d="M8 5v14" /><path d="M16 5v14" /></>,
+    muted: <><path d="M11 5 6 9H3v6h3l5 4V5Z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></>,
+    volume: <><path d="M11 5 6 9H3v6h3l5 4V5Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></>,
+    up: <path d="m6 15 6-6 6 6" />,
+    down: <path d="m6 9 6 6 6-6" />,
+    heart: <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />,
+    comment: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></>,
+    share: <><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="m16 6-4-4-4 4" /><path d="M12 2v13" /></>,
+  };
+  return <svg {...common}>{paths[name]}</svg>;
+}
+
 export default function ZuniPage({ onOpenProfile }) {
   const { token, user } = useAuth();
   const [posts, setPosts] = useState([]);
@@ -16,6 +42,7 @@ export default function ZuniPage({ onOpenProfile }) {
   const [commentText, setCommentText] = useState('');
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(0.8);
+  const [volumeOpen, setVolumeOpen] = useState(false);
   const [activePostId, setActivePostId] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -97,11 +124,23 @@ export default function ZuniPage({ onOpenProfile }) {
     }
   };
 
+  const seekActiveVideo = (nextPercent) => {
+    const video = videoRefs.current.get(activePostId);
+    if (!video?.duration) return;
+    video.currentTime = (Number(nextPercent) / 100) * video.duration;
+    setProgress(Number(nextPercent));
+  };
+
   const scrollToNeighbor = (direction) => {
     const index = posts.findIndex(post => post.id === activePostId);
     const next = posts[index + direction];
     if (!next) return;
     document.querySelector(`.zuni-reel[data-post-id="${next.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const toggleVolumePanel = () => {
+    setVolumeOpen(prev => !prev);
+    if (muted) setMuted(false);
   };
 
   const toggleFollow = async (post) => {
@@ -173,12 +212,32 @@ export default function ZuniPage({ onOpenProfile }) {
                   <div className="zuni-empty-video">Video indisponivel</div>
                 )}
 
-                <div className="zuni-sound">
-                  <button onClick={toggleActivePlayback}>{playing ? 'Pausa' : 'Play'}</button>
-                  <button onClick={() => setMuted(prev => !prev)}>{muted ? 'Mudo' : 'Som'}</button>
-                  <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume} onChange={event => { setMuted(false); setVolume(Number(event.target.value)); }} />
+                <div className={`zuni-sound ${volumeOpen ? 'open' : ''}`}>
+                  <button onClick={toggleActivePlayback} title={playing ? 'Pausar' : 'Tocar'} aria-label={playing ? 'Pausar' : 'Tocar'}>
+                    <ZuniIcon name={playing ? 'pause' : 'play'} />
+                  </button>
+                  <button onClick={toggleVolumePanel} title="Volume" aria-label="Volume">
+                    <ZuniIcon name={muted ? 'muted' : 'volume'} />
+                  </button>
+                  {volumeOpen && (
+                    <div className="zuni-volume-panel">
+                      <button onClick={() => setMuted(prev => !prev)}>{muted ? 'Ativar' : 'Mutar'}</button>
+                      <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume} onChange={event => { setMuted(false); setVolume(Number(event.target.value)); }} />
+                    </div>
+                  )}
                 </div>
-                <div className="zuni-progress"><span style={{ width: post.id === activePostId ? `${progress}%` : '0%' }} /></div>
+                <div className="zuni-progress">
+                  <span style={{ width: post.id === activePostId ? `${progress}%` : '0%' }} />
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={post.id === activePostId ? progress : 0}
+                    onChange={event => seekActiveVideo(event.target.value)}
+                    aria-label="Tempo do video"
+                  />
+                </div>
 
                 <div className="zuni-overlay">
                   <div className="zuni-author-row">
@@ -200,14 +259,14 @@ export default function ZuniPage({ onOpenProfile }) {
               </div>
 
               <div className="zuni-actions">
-                <button onClick={() => scrollToNeighbor(-1)}>Up</button>
-                <button onClick={() => scrollToNeighbor(1)}>Down</button>
-                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''}>Like</button>
+                <button onClick={() => scrollToNeighbor(-1)} title="Anterior" aria-label="Anterior"><ZuniIcon name="up" /></button>
+                <button onClick={() => scrollToNeighbor(1)} title="Proximo" aria-label="Proximo"><ZuniIcon name="down" /></button>
+                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''} title="Curtir" aria-label="Curtir"><ZuniIcon name="heart" /></button>
                 <span>{Number(post.likes || 0)}</span>
-                <button onClick={() => openComments(post)}>Com</button>
+                <button onClick={() => openComments(post)} title="Comentarios" aria-label="Comentarios"><ZuniIcon name="comment" /></button>
                 <span>{Number(post.comments || 0)}</span>
-                <button onClick={() => navigator.share?.({ url: window.location.href }).catch(() => null)}>Share</button>
-                <span>Share</span>
+                <button onClick={() => navigator.share?.({ url: window.location.href }).catch(() => null)} title="Compartilhar" aria-label="Compartilhar"><ZuniIcon name="share" /></button>
+                <span>Enviar</span>
               </div>
 
               {commentsOpen === post.id && (
