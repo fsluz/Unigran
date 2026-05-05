@@ -47,7 +47,7 @@ export async function createPostWithRules({ user, body, file }) {
     media = await uploadMediaBuffer(
       file,
       'unigran/posts',
-      parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 90, maxVideoWidth: 1280, maxVideoHeight: 720 } : {},
+      parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 90, maxVideoResolution: 720 } : {},
     );
   }
 
