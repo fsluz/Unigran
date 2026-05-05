@@ -2,13 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { Avatar } from '../components/ui';
-import { fetchPosts, likePost, unlikePost } from '../services/posts';
+import { createComment, fetchComments, fetchPosts, likePost, unlikePost } from '../services/posts';
 import { relativeTime } from '../utils/time';
 
 export default function ZuniPage({ onOpenProfile }) {
   const { token } = useAuth();
   const [posts, setPosts] = useState([]);
   const [liked, setLiked] = useState({});
+  const [commentsByPost, setCommentsByPost] = useState({});
+  const [commentsOpen, setCommentsOpen] = useState(null);
+  const [commentText, setCommentText] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -33,7 +36,7 @@ export default function ZuniPage({ onOpenProfile }) {
 
   useEffect(() => {
     const node = moreRef.current;
-    if (!node || !hasMore) return;
+    if (!node || !hasMore) return undefined;
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) loadPage(page + 1, true);
     }, { rootMargin: '320px' });
@@ -48,8 +51,32 @@ export default function ZuniPage({ onOpenProfile }) {
     await fn({ token, postId: post.id }).catch(() => setLiked(prev => ({ ...prev, [post.id]: isLiked })));
   };
 
+  const openComments = async (post) => {
+    const nextOpen = commentsOpen === post.id ? null : post.id;
+    setCommentsOpen(nextOpen);
+    setCommentText('');
+    if (!nextOpen || commentsByPost[post.id]) return;
+    const loaded = await fetchComments({ token, postId: post.id }).catch(() => []);
+    setCommentsByPost(prev => ({ ...prev, [post.id]: loaded }));
+  };
+
+  const sendComment = async (post) => {
+    const content = commentText.trim();
+    if (!content) return;
+    const created = await createComment({ token, postId: post.id, content }).catch(() => null);
+    if (!created) return;
+    setCommentsByPost(prev => ({
+      ...prev,
+      [post.id]: [...(prev[post.id] || []), created],
+    }));
+    setPosts(prev => prev.map(item => (
+      item.id === post.id ? { ...item, comments: Number(item.comments || 0) + 1 } : item
+    )));
+    setCommentText('');
+  };
+
   return (
-    <div className="page-scroll">
+    <div className="page-scroll zuni-shell">
       <Topbar title="Zuni" />
       <div className="zuni-page">
         <main className="zuni-feed">
@@ -64,25 +91,57 @@ export default function ZuniPage({ onOpenProfile }) {
               ) : (
                 <div className="zuni-empty-video">Video indisponivel</div>
               )}
+
               <div className="zuni-overlay">
                 <button className="zuni-author" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
                   <Avatar size={42} src={post.author?.profilePicture || null} name={post.author?.displayName || post.author?.username || ''} initials={(post.author?.displayName || post.author?.username || '?').slice(0, 2)} />
                   <span>
                     <strong>{post.author?.displayName || post.author?.username}</strong>
-                    <small>@{post.author?.username} · {relativeTime(post.time)}</small>
+                    <small>@{post.author?.username} - {relativeTime(post.time)}</small>
                   </span>
                 </button>
                 {post.content && <p>{post.content.replace(/#Zuni/gi, '').trim()}</p>}
               </div>
+
               <div className="zuni-actions">
-                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''}>♥</button>
+                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''}>Like</button>
                 <span>{Number(post.likes || 0)}</span>
+                <button onClick={() => openComments(post)}>Com</button>
+                <span>{Number(post.comments || 0)}</span>
               </div>
+
+              {commentsOpen === post.id && (
+                <section className="zuni-comments">
+                  <div className="zuni-comments-head">
+                    <strong>Comentarios</strong>
+                    <button onClick={() => setCommentsOpen(null)}>x</button>
+                  </div>
+                  <div className="zuni-comments-list">
+                    {(commentsByPost[post.id] || []).length === 0 ? (
+                      <div className="zuni-comments-empty">Sem comentarios.</div>
+                    ) : (
+                      (commentsByPost[post.id] || []).map(comment => (
+                        <div key={comment.id || `${post.id}-${comment.time}-${comment.content}`} className="zuni-comment">
+                          <Avatar size={28} src={comment.author?.profilePicture || null} name={comment.author?.displayName || comment.author?.username || ''} initials={(comment.author?.displayName || comment.author?.username || '?').slice(0, 2)} />
+                          <div>
+                            <strong>{comment.author?.displayName || comment.author?.username || 'Usuario'}</strong>
+                            <p>{comment.text || comment.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="zuni-comment-form">
+                    <input value={commentText} onChange={event => setCommentText(event.target.value)} onKeyDown={event => event.key === 'Enter' && sendComment(post)} placeholder="Comentar..." />
+                    <button onClick={() => sendComment(post)}>Enviar</button>
+                  </div>
+                </section>
+              )}
             </article>
           ))}
 
           {hasMore && posts.length > 0 && (
-            <button ref={moreRef} className="btn btn-secondary" onClick={() => loadPage(page + 1, true)} disabled={loading}>
+            <button ref={moreRef} className="zuni-more" onClick={() => loadPage(page + 1, true)} disabled={loading}>
               {loading ? 'Carregando...' : 'Carregar mais'}
             </button>
           )}
