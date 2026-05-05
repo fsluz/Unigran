@@ -43,7 +43,7 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
         overwrite: false,
         transformation: resourceType === 'image'
           ? [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto:good' }]
-          : [{ width: maxResolution, height: maxResolution, crop: 'limit', quality: 'auto:good' }],
+          : [{ width: 1280, height: 720, crop: 'limit', quality: 'auto:good' }],
       },
       (err, uploadResult) => {
         if (err) return reject(err);
@@ -57,9 +57,9 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
     const duration = Number(result.duration || 0);
     const width = Number(result.width || 0);
     const height = Number(result.height || 0);
-    const maxDim = Math.max(width, height);
+    const minDim = Math.min(width, height);
     const exceedsDuration = duration > maxDuration;
-    const exceedsResolution = maxDim > maxResolution;
+    const exceedsResolution = minDim > maxResolution;
 
     if (exceedsDuration || exceedsResolution) {
       await safeDestroy(result.public_id, 'video');

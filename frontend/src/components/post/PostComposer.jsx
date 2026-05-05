@@ -22,7 +22,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     video.onloadedmetadata = () => {
       URL.revokeObjectURL(url);
       const tooLong = video.duration > 90;
-      const tooLarge = Math.max(video.videoWidth, video.videoHeight) > 720;
+      const tooLarge = Math.min(video.videoWidth, video.videoHeight) > 720;
       if (tooLong || tooLarge) {
         reject(new Error('Video muito grande. Zuni aceita ate 1:30 e qualidade maxima 720p.'));
         return;
