@@ -1,0 +1,213 @@
+{
+  "main": {
+    "id": "3af5a7c562d03968",
+    "type": "split",
+    "children": [
+      {
+        "id": "266d2ff1f7974bd8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "19ab396b062b2fcf",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Visualização em gráfico"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "d006acbab72bc34e",
+    "type": "split",
+    "children": [
+      {
+        "id": "b7db109e577c78e3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0c9dbb59ade3a169",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "0e7d9bcaaa882c85",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "139c877abf3718d2",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "3aa2c956b52252a3",
+    "type": "split",
+    "children": [
+      {
+        "id": "cbf5d47b91dcdbbb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f720b1c9717cf863",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos"
+            }
+          },
+          {
+            "id": "e6302e192f966dc4",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída"
+            }
+          },
+          {
+            "id": "2a647eb626a5782e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "fca172d15cbd5b4f",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "72191ecf348c2f50",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "19ab396b062b2fcf",
+  "lastOpenFiles": [
+    "36-exemplos-de-conversas-rai.md",
+    "35-vagas-e-oportunidades-modelos.md",
+    "34-mentoria-e-professores.md",
+    "33-modelos-de-posts.md",
+    "32-banco-de-projetos.md",
+    "31-curriculo-linkedin-entrevista.md",
+    "30-trilhas-por-curso.md",
+    "29-tags-e-convencoes.md",
+    "28-hub-dados-e-typedb.md",
+    "27-hub-comunidades-e-oportunidades.md",
+    "26-hub-projetos-e-ia.md",
+    "25-hub-carreira-e-portfolio.md",
+    "24-hub-aluno.md",
+    "23-matriz-de-conexoes.md",
+    "22-painel-obsidian-rai.md",
+    "10-portfolio-github.md",
+    "15-saude-mental.md",
+    "20-oportunidades-e-recomendacoes.md",
+    "21-dados-para-preencher.md",
+    "19-playbooks-de-resposta.md",
+    "18-perfis-e-sinais.md",
+    "17-jornadas-de-usuario.md",
+    "16-mapa-conexoes-rai.md",
+    "15-tom-e-exemplos.md",
+    "14-seguranca-e-privacidade.md",
+    "14-empreendedorismo.md",
+    "referencias-originais/Rai -3.docx",
+    "referencias-originais/Rai -2.docx",
+    "referencias-originais/PLANO DE NEGOCIOS UNIGRAM (1) (1).pdf",
+    "referencias-originais",
+    "PLANO DE NEGOCIOS UNIGRAM (1) (1).pdf"
+  ]
+}
