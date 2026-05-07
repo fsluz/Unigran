@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { Server as IO  } from 'socket.io';
 
 import authRouter          from './routes/auth.js';
+import adminRouter         from './routes/admin.js';
 import usersRouter         from './routes/users.js';
 import postsRouter         from './routes/posts.js';
 import communitiesRouter   from './routes/communities.js';
@@ -39,6 +40,7 @@ app.options('*', cors({ origin: corsOrigin, credentials: true }));
 
 /* ── Routes ── */
 app.use('/api/auth',          authRouter);
+app.use('/api/admin',         adminRouter);
 app.use('/api/users',         usersRouter);
 app.use('/api/posts',         postsRouter);
 app.use('/api/communities',   communitiesRouter);

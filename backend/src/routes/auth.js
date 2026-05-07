@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
+import { normalizeRole } from '../middleware/auth.js';
+import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 
 const router = Router();
 
@@ -59,6 +61,7 @@ router.post('/register', async (req, res) => {
           has is-active true,
           has is-banned false,
           has can-publish true,
+          has user-role "user",
           has page-visibility "public",
           has post-visibility "public";
     `);
@@ -88,6 +91,7 @@ router.post('/login', async (req, res) => {
         try { $u has name $name; };
         try { $u has is-banned $banned; };
         try { $u has phone $phone; };
+        try { $u has user-role $role; };
         try { $u has password-changed-at $changed; };
       fetch {
         "username": $username,
@@ -95,6 +99,7 @@ router.post('/login', async (req, res) => {
         "password_hash": $phash,
         "banned": $banned,
         "phone": $phone,
+        "role": $role,
         "password_changed_at": $changed
       };
     `);
@@ -111,7 +116,7 @@ router.post('/login', async (req, res) => {
       username,
       displayName: row.name || username,
       email,
-      role: 'user',
+      role: normalizeRole(row.role),
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
     };
@@ -134,6 +139,11 @@ router.get('/me', async (req, res) => {
         try { $u has phone $phone; };
         try { $u has profile-picture $profile_picture; };
         try { $u has cover-picture $cover_picture; };
+        try { $u has user-role $role; };
+        try { $u has page-visibility $visibility; };
+        try { $u has hide-online $hide_online; };
+        try { $u has hide-read-receipts $hide_read_receipts; };
+        try { $u has email-notifications-enabled $email_notifications; };
         try { $u has password-changed-at $changed; };
       fetch {
         "email": $email,
@@ -141,6 +151,11 @@ router.get('/me', async (req, res) => {
         "phone": $phone,
         "profile_picture": $profile_picture,
         "cover_picture": $cover_picture,
+        "role": $role,
+        "visibility": $visibility,
+        "hide_online": $hide_online,
+        "hide_read_receipts": $hide_read_receipts,
+        "email_notifications": $email_notifications,
         "password_changed_at": $changed
       };
     `);
@@ -152,9 +167,14 @@ router.get('/me', async (req, res) => {
         ...decoded,
         displayName: row.name || decoded.displayName,
         email: row.email || decoded.email,
+        role: normalizeRole(row.role || decoded.role),
         phone: row.phone || null,
         profilePicture: row.profile_picture || decoded.profilePicture || null,
         coverPicture: row.cover_picture || decoded.coverPicture || null,
+        privacy: row.visibility || decoded.privacy || 'public',
+        hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
+        hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
+        emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
         passwordChangedAt: row.password_changed_at || null,
       },
     });
@@ -248,12 +268,23 @@ router.delete('/account', async (req, res) => {
     const rows = await readQuery(`
       match
         $u isa person, has username "${safeUsername}", has password-hash $ph;
-      fetch { "password_hash": $ph };
+        try { $u has profile-picture $profile_picture; };
+        try { $u has cover-picture $cover_picture; };
+      fetch {
+        "password_hash": $ph,
+        "profile_picture": $profile_picture,
+        "cover_picture": $cover_picture
+      };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
     const ok = await bcrypt.compare(password, decodeHash(rows[0].password_hash));
     if (!ok) return res.status(401).json({ error: 'Senha incorreta' });
+
+    await Promise.all([
+      destroyCloudinaryUrl(rows[0].profile_picture),
+      destroyCloudinaryUrl(rows[0].cover_picture),
+    ]);
 
     await writeQuery(`
       match

@@ -13,6 +13,12 @@ function resourceTypeFromMime(mimetype = '') {
   return 'image';
 }
 
+function safeFolder(folder = 'unigran/posts') {
+  const value = String(folder || 'unigran/posts').replace(/\\/g, '/');
+  const allowed = ['unigran/posts', 'unigran/comments', 'unigran/zuni', 'unigran/stories', 'unigran/profiles', 'unigran/groups'];
+  return allowed.includes(value) ? value : 'unigran/posts';
+}
+
 async function safeDestroy(publicId, resourceType) {
   if (!publicId) return;
   try {
@@ -22,12 +28,34 @@ async function safeDestroy(publicId, resourceType) {
   }
 }
 
+function publicIdFromCloudinaryUrl(url = '') {
+  const value = String(url || '');
+  const marker = '/upload/';
+  const index = value.indexOf(marker);
+  if (index < 0) return '';
+  let path = value.slice(index + marker.length);
+  path = path.replace(/^v\d+\//, '');
+  path = path.replace(/\.[a-z0-9]+$/i, '');
+  return path.startsWith('unigran/') ? path : '';
+}
+
+export async function destroyCloudinaryUrl(url) {
+  const publicId = publicIdFromCloudinaryUrl(url);
+  if (!publicId) return false;
+  await Promise.all([
+    safeDestroy(publicId, 'image'),
+    safeDestroy(publicId, 'video'),
+  ]);
+  return true;
+}
+
 export function createCloudinaryUploadSignature({ folder = 'unigran/posts', resourceType = 'image', timestamp = Math.floor(Date.now() / 1000) } = {}) {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
   }
+  const cleanFolder = safeFolder(folder);
   const paramsToSign = {
-    folder,
+    folder: cleanFolder,
     timestamp,
   };
   const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
@@ -36,7 +64,7 @@ export function createCloudinaryUploadSignature({ folder = 'unigran/posts', reso
     apiKey: process.env.CLOUDINARY_API_KEY,
     timestamp,
     signature,
-    folder,
+    folder: cleanFolder,
     resourceType,
   };
 }
@@ -47,13 +75,14 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
     throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
   }
 
+  const cleanFolder = safeFolder(folder);
   const resourceType = resourceTypeFromMime(file.mimetype);
   const maxDuration = limits.maxVideoDurationSec || 120;
   const maxResolution = limits.maxVideoResolution || 1080;
   const result = await new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder,
+        folder: cleanFolder,
         resource_type: resourceType,
         quality: 'auto',
         fetch_format: 'auto',

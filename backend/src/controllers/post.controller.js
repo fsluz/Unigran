@@ -14,6 +14,7 @@ import {
   unlikeComment,
   unlikePost,
 } from '../services/post.service.js';
+import { typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
@@ -174,6 +175,28 @@ export async function sharePostController(req, res) {
   }
 }
 
-export async function reportPostController(_req, res) {
-  res.status(201).json({ reported: true });
+export async function reportPostController(req, res) {
+  const reason = String(req.body?.reason || 'Post denunciado').slice(0, 240);
+  const reportId = `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const createdAt = new Date().toISOString();
+
+  try {
+    await writeQuery(`
+      match
+        $reporter isa person, has username "${typeqlLiteral(req.user.username)}";
+        $post isa post, has post-id "${typeqlLiteral(req.params.id)}";
+        posting(post: $post, page: $reported_user);
+      insert
+        $report isa report,
+          has report-id "${reportId}",
+          has report-reason "${typeqlLiteral(reason)}",
+          has report-status "open",
+          has creation-timestamp "${createdAt}";
+        report-target(reporter: $reporter, reported-user: $reported_user, reported-post: $post, report: $report);
+    `);
+    res.status(201).json({ reported: true, reportId });
+  } catch (err) {
+    console.error('[posts report]', err);
+    res.status(500).json({ error: 'Schema de denuncia ausente ou denuncia falhou' });
+  }
 }

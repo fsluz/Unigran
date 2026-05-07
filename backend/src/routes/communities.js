@@ -1,10 +1,26 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
-import { auth, requireRole } from '../middleware/auth.js';
+import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
 import { listCommunityPosts } from '../repositories/post.repository.js';
 
 const router = Router();
+
+function rankAllowsModeration(rank, userRole) {
+  return rank === 'admin' || rank === 'professor' || ['admin', 'moderator'].includes(userRole);
+}
+
+async function getCommunityRank({ communityId, username }) {
+  const rows = await readQuery(`
+    match
+      $u isa person, has username "${typeqlLiteral(username)}";
+      $g isa group, has group-id "${typeqlLiteral(communityId)}";
+      $m isa group-membership, links (member: $u, group: $g);
+      try { $m has rank $rank; };
+    fetch { "rank": $rank };
+  `);
+  return rows[0]?.rank || '';
+}
 
 /* GET /api/communities */
 router.get('/', auth, async (req, res) => {
@@ -27,9 +43,11 @@ router.get('/', auth, async (req, res) => {
         $g isa group, has group-id $gid;
         $membership isa group-membership, links (group: $g, member: $member);
         $member has username $member_username;
+        try { $membership has rank $rank; };
       fetch {
         "id": $gid,
-        "username": $member_username
+        "username": $member_username,
+        "rank": $rank
       };
     `);
     const membersByGroup = new Map();
@@ -45,6 +63,7 @@ router.get('/', auth, async (req, res) => {
       type: r.type,
       members: (membersByGroup.get(r.id) || []).length,
       joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username),
+      role: (membersByGroup.get(r.id) || []).find(m => m.username === req.user.username)?.rank || '',
     }))});
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
 });
@@ -134,7 +153,70 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
 
 /* PUT /api/communities/:id/members/:uid */
 router.put('/:id/members/:uid', auth, async (req, res) => {
-  res.json({ updated: true });
+  const { rank } = req.body || {};
+  if (!['admin', 'professor', 'moderator', 'member'].includes(rank)) {
+    return res.status(400).json({ error: 'Cargo invalido' });
+  }
+  try {
+    const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
+    if (!rankAllowsModeration(myRank, req.user.role)) {
+      return res.status(403).json({ error: 'Sem permissao' });
+    }
+    await writeQuery(`
+      match
+        $member isa person, has username "${typeqlLiteral(req.params.uid)}";
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+        $m isa group-membership, links (member: $member, group: $g);
+      update
+        $m has rank "${rank}";
+    `);
+    res.json({ updated: true, rank });
+  } catch (err) {
+    console.error('[community member update]', err);
+    res.status(500).json({ error: 'Erro ao atualizar membro' });
+  }
+});
+
+router.delete('/:id/members/:uid', auth, async (req, res) => {
+  try {
+    const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
+    if (!rankAllowsModeration(myRank, req.user.role)) {
+      return res.status(403).json({ error: 'Sem permissao' });
+    }
+    await writeQuery(`
+      match
+        $member isa person, has username "${typeqlLiteral(req.params.uid)}";
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+        $m isa group-membership, links (member: $member, group: $g);
+      delete
+        $m;
+    `);
+    res.json({ removed: true });
+  } catch (err) {
+    console.error('[community member remove]', err);
+    res.status(500).json({ error: 'Erro ao remover membro' });
+  }
+});
+
+router.patch('/:id/moderation', auth, requireAtLeast('community_moderator'), async (req, res) => {
+  const { visibility, description } = req.body || {};
+  const updates = [];
+  if (visibility === 'public' || visibility === 'private') updates.push(`$g has page-visibility "${visibility}";`);
+  if (typeof description === 'string') updates.push(`$g has bio "${typeqlLiteral(description.slice(0, 500))}";`);
+  if (!updates.length) return res.status(400).json({ error: 'Nada para salvar' });
+
+  try {
+    await writeQuery(`
+      match
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+      update
+        ${updates.join('\n        ')}
+    `);
+    res.json({ updated: true });
+  } catch (err) {
+    console.error('[community moderation]', err);
+    res.status(500).json({ error: 'Erro ao moderar comunidade' });
+  }
 });
 
 export default router;

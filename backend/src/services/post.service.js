@@ -16,6 +16,7 @@ import {
   unsavePost,
 } from '../repositories/post.repository.js';
 import { uploadMediaBuffer } from './cloudinary.service.js';
+import { readQuery, typeqlLiteral } from '../db/typedb.js';
 
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
@@ -40,6 +41,24 @@ export async function getFeed({ user, limit = 20, offset = 0, feed = '' }) {
 }
 
 export async function createPostWithRules({ user, body, file }) {
+  const rows = await readQuery(`
+    match
+      $u isa person, has username "${typeqlLiteral(user.username)}";
+      try { $u has is-banned $banned; };
+      try { $u has can-publish $can_publish; };
+    fetch {
+      "banned": $banned,
+      "can_publish": $can_publish
+    };
+  `);
+  const account = rows[0] || {};
+  if (account.banned === true || String(account.banned).toLowerCase() === 'true') {
+    return { error: 'Conta banida', status: 403 };
+  }
+  if (account.can_publish === false || String(account.can_publish).toLowerCase() === 'false') {
+    return { error: 'Publicacao bloqueada pela moderacao', status: 403 };
+  }
+
   const parsed = createPostSchema.safeParse(body || {});
   if (!parsed.success) {
     return { error: parsed.error.flatten(), status: 400 };

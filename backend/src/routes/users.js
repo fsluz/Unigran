@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
-import { auth, requireRole } from '../middleware/auth.js';
+import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
@@ -128,13 +128,21 @@ router.get('/:id', auth, async (req, res) => {
         try { $p has cover-picture $cover_pic; };
         try { $p has bio $bio; };
         try { $p has page-visibility $visibility; };
+        try { $p has user-role $role; };
+        try { $p has hide-online $hide_online; };
+        try { $p has hide-read-receipts $hide_read_receipts; };
+        try { $p has email-notifications-enabled $email_notifications; };
       fetch {
         "username": $username,
         "name": $name,
         "profile_picture": $profile_pic,
         "cover_picture": $cover_pic,
         "bio": $bio,
-        "visibility": $visibility
+        "visibility": $visibility,
+        "role": $role,
+        "hide_online": $hide_online,
+        "hide_read_receipts": $hide_read_receipts,
+        "email_notifications": $email_notifications
       };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
@@ -149,7 +157,10 @@ router.get('/:id', auth, async (req, res) => {
         coverPicture: row.cover_picture || null,
         bio: row.bio || '',
         privacy: row.visibility || 'public',
-        role: 'user',
+        role: row.role || 'user',
+        hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
+        hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
+        emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
         following: stats.viewerFollowing,
         stats: {
           posts: stats.posts,
@@ -169,7 +180,18 @@ router.put('/:id', auth, async (req, res) => {
     return res.status(403).json({ error: 'Sem permissao' });
   }
 
-  const { displayName, bio, phone, profilePicture, coverPicture, privacy, links } = req.body;
+  const {
+    displayName,
+    bio,
+    phone,
+    profilePicture,
+    coverPicture,
+    privacy,
+    links,
+    hideOnline,
+    hideReadReceipts,
+    emailNotifications,
+  } = req.body;
   const uid = typeqlLiteral(req.params.id);
 
   try {
@@ -248,6 +270,19 @@ router.put('/:id', auth, async (req, res) => {
           $u isa person, has username "${uid}";
         update
           $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
+      `);
+    }
+
+    const prefUpdates = [];
+    if (typeof hideOnline === 'boolean') prefUpdates.push(`$u has hide-online ${hideOnline};`);
+    if (typeof hideReadReceipts === 'boolean') prefUpdates.push(`$u has hide-read-receipts ${hideReadReceipts};`);
+    if (typeof emailNotifications === 'boolean') prefUpdates.push(`$u has email-notifications-enabled ${emailNotifications};`);
+    if (prefUpdates.length) {
+      await writeQuery(`
+        match
+          $u isa person, has username "${uid}";
+        update
+          ${prefUpdates.join('\n          ')}
       `);
     }
 
