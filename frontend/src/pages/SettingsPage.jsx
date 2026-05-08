@@ -216,6 +216,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const profileInputRef = useRef(null);
+  const [profileUploading, setProfileUploading] = useState(false);
 
   const [emailModal,  setEmailModal]  = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -415,6 +416,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
   async function uploadProfilePhoto(file) {
     if (!file) return;
+    setProfileUploading(true);
     try {
       const profilePicture = await uploadMedia({ token, file });
       const res = await apiFetch(`/users/${user.username}`, {
@@ -427,6 +429,26 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       showToast('Foto salva', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro foto', '!');
+    } finally {
+      setProfileUploading(false);
+    }
+  }
+
+  async function removeProfilePhoto() {
+    setProfileUploading(true);
+    try {
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profilePicture: null }),
+      });
+      if (!res.ok) throw new Error('Remover falhou');
+      updateUser({ profilePicture: null });
+      showToast('Foto removida', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro foto', '!');
+    } finally {
+      setProfileUploading(false);
     }
   }
   async function disable2FA() {
@@ -493,8 +515,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
             <div className="settings-panel-card">
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Foto de Perfil</div>
               <div style={{ display:'flex', alignItems:'center', gap:20 }}>
-                <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
-                  {user?.avatar}
+                <div style={{ width:72, height:72, borderRadius:'50%', background:user?.profilePicture ? `url(${user.profilePicture}) center/cover` : 'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
+                  {!user?.profilePicture && (user?.avatar || user?.displayName?.slice(0, 2) || user?.username?.slice(0, 2))}
                   <div style={{ position:'absolute', bottom:0, right:0, width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#00A8FF)', border:'2px solid var(--card)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>âœï¸</div>
                 </div>
                 <div>
@@ -502,8 +524,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF Â· MÃ¡x 5MB</div>
                   <div style={{ display:'flex', gap:8 }}>
                     <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => uploadProfilePhoto(e.target.files?.[0])} />
-                    <button onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>Escolher</button>
-                    <button style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
+                    <button disabled={profileUploading} onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>{profileUploading ? 'Carregando...' : 'Escolher'}</button>
+                    <button disabled={profileUploading || !user?.profilePicture} onClick={removeProfilePhoto} style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
                   </div>
                 </div>
               </div>

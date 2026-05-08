@@ -307,6 +307,13 @@ router.put('/:id', auth, async (req, res) => {
         update
           $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
       `);
+    } else if (profilePicture === null) {
+      await writeQuery(`
+        match
+          $u isa person, has username "${uid}", has profile-picture $old;
+        delete
+          has $old of $u;
+      `);
     }
 
     if (coverPicture?.url) {

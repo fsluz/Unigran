@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -16,6 +16,7 @@ export default function LoginPage({ onGoRegister }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [googleReady, setGoogleReady] = useState(false);
+  const googleButtonRef = useRef(null);
 
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -47,6 +48,32 @@ export default function LoginPage({ onGoRegister }) {
     document.head.appendChild(script);
     return () => script.remove();
   }, []);
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleReady || !clientId || !window.google?.accounts?.id || !googleButtonRef.current) return;
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async ({ credential }) => {
+        const res = await apiFetch('/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential }),
+        });
+        const data = await res.json();
+        if (!res.ok) setError(data.error || 'Google Auth falhou.');
+        else login(data.user, data.token);
+      },
+    });
+    googleButtonRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: googleButtonRef.current.offsetWidth || 320,
+      text: 'signin_with',
+      shape: 'rectangular',
+    });
+  }, [googleReady, login]);
 
   const handleGoogle = () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -311,6 +338,7 @@ export default function LoginPage({ onGoRegister }) {
           >
             Entrar com Google
           </button>
+          <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
             Não tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
