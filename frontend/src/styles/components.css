@@ -630,17 +630,16 @@
 }
 .image-lightbox img { max-width: min(96vw, 1100px); max-height: 92vh; object-fit: contain; border-radius: 14px; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
 .image-lightbox-close { position: fixed; right: 22px; top: 18px; width: 40px; height: 40px; border: 0; border-radius: 999px; background: rgba(255,255,255,.16); color: #fff; font-size: 20px; }
-.crop-box { width: 100%; aspect-ratio: 16 / 5.2; overflow: hidden; border-radius: 16px; background: #000; display: grid; place-items: center; }
+.crop-box { width: 100%; aspect-ratio: 16 / 5.2; overflow: hidden; border-radius: 16px; background: #000; display: grid; place-items: center; position: relative; cursor: grab; touch-action: none; user-select: none; }
+.crop-box.dragging { cursor: grabbing; }
 .crop-box.avatar-shape { width: min(340px, 100%); aspect-ratio: 1; margin: 0 auto; border-radius: 50%; }
-.crop-box img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
-.crop-controls { display: grid; gap: 10px; margin-top: 16px; }
-.crop-controls label { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; color: var(--text); font-size: 13px; font-weight: 700; }
-.crop-controls input { width: 100%; accent-color: var(--accent); }
+.crop-box img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; pointer-events: none; }
+.crop-help { position: absolute; left: 12px; bottom: 12px; padding: 7px 10px; border-radius: 999px; background: rgba(0,0,0,.62); color: #fff; font-size: 12px; font-weight: 800; pointer-events: none; opacity: .9; }
 .post-head { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px 8px; }
 .post-meta { flex: 1; }
 .post-author-name { font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .post-author-sub  { font-size: 12px; color: var(--text-muted); }
-.post-body  { padding: 0 16px 12px; font-size: 15px; line-height: 1.65; color: var(--text); }
+.post-body  { padding: 0 16px 12px; font-size: 15px; line-height: 1.65; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 .post-hashtag { color: var(--accent); font-weight: 500; cursor: pointer; }
 .post-hashtag:hover { text-decoration: underline; }
 .post-footer { display: flex; border-top: 1px solid var(--border-soft); padding: 4px 8px; }

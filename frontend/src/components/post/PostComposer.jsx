@@ -55,7 +55,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
     setSubmitting(true);
     try {
       if (postType === 'zuni-post') await checkZuniVideo(file);
-      await onSubmit({ content: text.trim(), file, postType });
+      await onSubmit({ content: text.replace(/^\s+|\s+$/g, ''), file, postType });
       setT('');
       clearFile();
     } catch (err) {

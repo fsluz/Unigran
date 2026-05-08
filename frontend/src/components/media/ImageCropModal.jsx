@@ -6,8 +6,10 @@ function clamp(value, min, max) {
 }
 
 export default function ImageCropModal({ file, shape = 'cover', onCancel, onConfirm }) {
-  const [pos, setPos] = useState({ x: 50, y: 50, zoom: 1 });
+  const [pos, setPos] = useState({ x: 50, y: 50, zoom: 1.08 });
+  const [dragging, setDragging] = useState(false);
   const imgRef = useRef(null);
+  const dragRef = useRef({ x: 0, y: 0, startX: 50, startY: 50 });
 
   const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
@@ -16,6 +18,41 @@ export default function ImageCropModal({ file, shape = 'cover', onCancel, onConf
   }, [preview]);
 
   if (!file || !preview) return null;
+
+  const moveBy = (clientX, clientY) => {
+    const dx = clientX - dragRef.current.x;
+    const dy = clientY - dragRef.current.y;
+    const box = imgRef.current?.parentElement?.getBoundingClientRect();
+    if (!box) return;
+    setPos(p => ({
+      ...p,
+      x: clamp(dragRef.current.startX - (dx / box.width) * 100, 0, 100),
+      y: clamp(dragRef.current.startY - (dy / box.height) * 100, 0, 100),
+    }));
+  };
+
+  const startDrag = (clientX, clientY) => {
+    dragRef.current = { x: clientX, y: clientY, startX: pos.x, startY: pos.y };
+    setDragging(true);
+  };
+
+  const endDrag = () => setDragging(false);
+
+  const onWheel = (event) => {
+    event.preventDefault();
+    const nextZoom = pos.zoom + (event.deltaY > 0 ? -0.06 : 0.06);
+    setPos(p => ({ ...p, zoom: clamp(nextZoom, 1, 2.8) }));
+  };
+
+  const onPointerDown = (event) => {
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    startDrag(event.clientX, event.clientY);
+  };
+
+  const onPointerMove = (event) => {
+    if (!dragging) return;
+    moveBy(event.clientX, event.clientY);
+  };
 
   const crop = async () => {
     const img = imgRef.current;
@@ -51,7 +88,14 @@ export default function ImageCropModal({ file, shape = 'cover', onCancel, onConf
         <Button onClick={crop}>Usar imagem</Button>
       </>
     }>
-      <div className={`crop-box ${shape === 'avatar' ? 'avatar-shape' : ''}`}>
+      <div
+        className={`crop-box ${shape === 'avatar' ? 'avatar-shape' : ''} ${dragging ? 'dragging' : ''}`}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         <img
           ref={imgRef}
           src={preview}
@@ -60,12 +104,9 @@ export default function ImageCropModal({ file, shape = 'cover', onCancel, onConf
             objectPosition: `${pos.x}% ${pos.y}%`,
             transform: `scale(${pos.zoom})`,
           }}
+          draggable={false}
         />
-      </div>
-      <div className="crop-controls">
-        <label>Horizontal <input type="range" min="0" max="100" value={pos.x} onChange={e => setPos(p => ({ ...p, x: clamp(e.target.value, 0, 100) }))} /></label>
-        <label>Vertical <input type="range" min="0" max="100" value={pos.y} onChange={e => setPos(p => ({ ...p, y: clamp(e.target.value, 0, 100) }))} /></label>
-        <label>Zoom <input type="range" min="1" max="2.4" step="0.05" value={pos.zoom} onChange={e => setPos(p => ({ ...p, zoom: clamp(e.target.value, 1, 2.4) }))} /></label>
+        <div className="crop-help">Arraste para posicionar. Role para zoom.</div>
       </div>
     </Modal>
   );

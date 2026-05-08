@@ -29,6 +29,18 @@ function getEmbeds(text = '') {
   }).filter(Boolean);
 }
 
+function stripEmbedLinks(text = '') {
+  const embeds = getEmbeds(text);
+  if (!embeds.length) return text;
+  let next = String(text || '');
+  for (const embed of embeds) {
+    next = next.replace(embed.url, '');
+    if (embed.url.startsWith('https://www.')) next = next.replace(embed.url.replace('https://www.', 'www.'), '');
+    if (embed.url.startsWith('https://')) next = next.replace(embed.url.replace('https://', ''), '');
+  }
+  return next.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function AutoPauseVideo(props) {
   const ref = useRef(null);
   useEffect(() => {
@@ -172,6 +184,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
   const embeds = getEmbeds(post.content || '');
+  const bodyText = stripEmbedLinks(post.content || '');
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -334,7 +347,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         </div>
       ) : (
         <>
-          <div className="post-body">{formatContent(post.content || '')}</div>
+          {bodyText && <div className="post-body">{formatContent(bodyText)}</div>}
           {post.originalPost && (
             <div className="repost-card">
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>

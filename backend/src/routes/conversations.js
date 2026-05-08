@@ -299,6 +299,37 @@ router.post('/group', auth, async (req, res) => {
   }
 });
 
+router.patch('/:id/participants', auth, async (req, res) => {
+  try {
+    const participants = [...new Set((req.body?.participants || []).map(item => String(item).replace(/^@/, '').trim()).filter(Boolean))];
+    if (!participants.length) return res.status(400).json({ error: 'Informe pelo menos um usuario' });
+
+    const isMember = await readQuery(`
+      match
+        $me isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        conversation-participant(participant: $me, conversation: $conv);
+      select $me, $conv;
+    `);
+    if (!isMember.length) return res.status(403).json({ error: 'Sem permissao' });
+
+    for (const username of participants) {
+      await writeQuery(`
+        match
+          $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+          $p isa person, has username "${typeqlLiteral(username)}";
+          not { conversation-participant(participant: $p, conversation: $conv); };
+        insert
+          conversation-participant(participant: $p, conversation: $conv);
+      `).catch(() => null);
+    }
+    res.json({ added: participants });
+  } catch (err) {
+    console.error('[group participants PATCH]', err);
+    res.status(500).json({ error: 'Erro ao adicionar pessoas' });
+  }
+});
+
 router.patch('/:id/read', auth, async (req, res) => {
   try {
     const rows = await readQuery(`

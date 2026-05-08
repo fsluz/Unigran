@@ -75,7 +75,8 @@ export async function createPostWithRules({ user, body, file }) {
   }
 
   const isZuni = parsed.data.postType === 'zuni-post';
-  const content = `${parsed.data.content.trim()}${isZuni ? ' #Zuni' : ''}`.trim();
+  const baseContent = String(parsed.data.content || '').replace(/^\s+|\s+$/g, '');
+  const content = `${baseContent}${isZuni ? ' #Zuni' : ''}`.replace(/^\s+|\s+$/g, '');
   if (hasAdultText(content)) {
     return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
   }
@@ -153,14 +154,14 @@ export async function createCommentWithRules({ user, postId, body, file }) {
     authorUsername: user.username,
     parentPostId: postId,
     parentCommentId: parsed.data.parentCommentId,
-    content: parsed.data.content.trim(),
+    content: String(parsed.data.content || '').replace(/^\s+|\s+$/g, ''),
     media,
   });
 
   return {
     data: {
       id: created.id,
-      content: parsed.data.content.trim(),
+      content: String(parsed.data.content || '').replace(/^\s+|\s+$/g, ''),
       time: created.time,
       media,
       parentCommentId: parsed.data.parentCommentId || null,
@@ -175,7 +176,7 @@ export async function createCommentWithRules({ user, postId, body, file }) {
 }
 
 export async function editPostWithRules({ user, postId, body }) {
-  const content = String(body?.content || '').trim();
+  const content = String(body?.content || '').replace(/^\s+|\s+$/g, '');
   if (!content) return { error: 'Conteudo obrigatorio', status: 400 };
   const updated = await updatePostContent({ username: user.username, postId, content });
   return { data: updated, status: 200 };
