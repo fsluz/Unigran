@@ -4,7 +4,8 @@ import PostCard from '../components/post/PostCard';
 import { Avatar, Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { fetchFollowers, fetchFollowing, fetchUserPosts, fetchUserProfile, followUser, unfollowUser } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
+import ImageLightbox from '../components/media/ImageLightbox';
 
 export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const { token, user } = useAuth();
@@ -14,6 +15,8 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const [loading, setLoading] = useState(true);
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
+  const [confirmPerson, setConfirmPerson] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
 
   useEffect(() => {
     if (!username) return;
@@ -98,11 +101,11 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
       <Topbar title={`@${profile.username}`} left={<Button variant="secondary" size="sm" onClick={onBack}>Voltar</Button>} />
 
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
-        <div className="profile-banner" style={profile.coverPicture ? { backgroundImage: `url(${profile.coverPicture})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}} />
+        <div className="profile-banner profile-banner-bleed" style={profile.coverPicture ? { backgroundImage: `url(${profile.coverPicture})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}} />
         <div className="profile-info-wrap">
           <div className="profile-top-row">
             <div className="profile-avatar-pull">
-              <div className="profile-big-avatar" style={profile.profilePicture ? { backgroundImage: `url(${profile.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : {}}>
+              <div onClick={() => profile.profilePicture && setLightbox(profile.profilePicture)} className="profile-big-avatar" style={profile.profilePicture ? { backgroundImage: `url(${profile.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent', cursor: 'zoom-in' } : {}}>
                 {(profile.displayName || profile.username || '?').slice(0, 2)}
               </div>
             </div>
@@ -140,6 +143,12 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
               <div className="profile-stat-label">Seguindo</div>
             </div>
           </div>
+          <div className="profile-achievements">
+            <span className="profile-achievements-label">Conquistas:</span>
+            <div className={`achievement-circle ${(profile.stats?.posts || posts.length) > 0 ? 'done' : ''}`} title="Primeiro post - O comeco e aqui">1</div>
+            <div className={`achievement-circle ${profile.bio ? 'done' : ''}`} title="Perfil vivo">2</div>
+            <div className={`achievement-circle ${(profile.stats?.followers || 0) > 0 ? 'done' : ''}`} title="Gente por perto">3</div>
+          </div>
         </div>
         <div className="profile-tab-bar">
           <button className="profile-tab active">Publicacoes</button>
@@ -164,18 +173,54 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
             </div>
             <div className="modal-body">
               {people.length === 0 ? <div className="search-empty">Nada aqui.</div> : people.map(p => (
-                <button key={p.username || p.id} className="search-result-row" onClick={() => p.username && onOpenProfile?.(p.username)} style={{ width: '100%', border: 0, background: 'transparent' }}>
-                  <Avatar size={36} src={p.profilePicture || null} name={p.displayName || p.name || p.username || p.id} initials={(p.displayName || p.name || p.username || p.id || '?').slice(0, 2)} />
-                  <div className="search-result-info">
+                <div key={p.username || p.id} className="search-result-row">
+                  <button onClick={() => p.username && onOpenProfile?.(p.username)} style={{ border: 0, background: 'transparent', padding: 0 }}>
+                    <Avatar size={36} src={p.profilePicture || null} name={p.displayName || p.name || p.username || p.id} initials={(p.displayName || p.name || p.username || p.id || '?').slice(0, 2)} />
+                  </button>
+                  <button className="search-result-info" onClick={() => p.username && onOpenProfile?.(p.username)} style={{ border: 0, background: 'transparent', textAlign: 'left' }}>
                     <div className="search-result-name">{p.displayName || p.name || p.username || p.id}</div>
                     <div className="search-result-sub">{p.username ? `@${p.username}` : p.id}</div>
-                  </div>
-                </button>
+                  </button>
+                  {isMe && (
+                    <button className="btn btn-secondary btn-xs" onClick={() => setConfirmPerson({ type: peopleModal, person: p })}>
+                      {peopleModal === 'followers' ? 'Remover' : 'Seguindo'}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         </div>
       )}
+      {confirmPerson && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setConfirmPerson(null)}>
+          <div className="modal-box" style={{ maxWidth: 360 }}>
+            <div className="modal-header">
+              <span className="modal-title">{confirmPerson.type === 'followers' ? 'Remover seguidor' : 'Parar de seguir'}</span>
+              <button className="modal-close" onClick={() => setConfirmPerson(null)}>x</button>
+            </div>
+            <div className="modal-body">
+              <p>{confirmPerson.type === 'followers' ? 'Remover seguidor' : 'Parar de seguir'} {confirmPerson.person.displayName || confirmPerson.person.username || confirmPerson.person.id}?</p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+                <Button variant="secondary" onClick={() => setConfirmPerson(null)}>Nao</Button>
+                <Button variant="danger" onClick={async () => {
+                  const target = confirmPerson.person.username || confirmPerson.person.id;
+                  try {
+                    if (confirmPerson.type === 'followers') await removeFollower({ token, username: profile.username, followerUsername: target });
+                    else await unfollowUser(token, target);
+                    setPeople(list => list.filter(p => (p.username || p.id) !== target));
+                    showToast('Acao feita', 'OK');
+                  } catch (err) {
+                    showToast(err.message || 'Erro', '!');
+                  }
+                  setConfirmPerson(null);
+                }}>Sim</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }

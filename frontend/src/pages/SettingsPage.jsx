@@ -5,6 +5,7 @@ import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
 import { uploadMedia } from '../services/posts';
+import ImageCropModal from '../components/media/ImageCropModal';
 
 function SidebarToggle({ value, onChange }) {
   return (
@@ -217,6 +218,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const profileInputRef = useRef(null);
   const [profileUploading, setProfileUploading] = useState(false);
+  const [profileCropFile, setProfileCropFile] = useState(null);
   const [personalForm, setPersonalForm] = useState(() => ({
     displayName: user?.displayName || '',
     phone: user?.phone || '',
@@ -449,6 +451,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
+  function chooseProfilePhoto(file) {
+    if (!file) return;
+    setProfileCropFile(file);
+  }
+
   async function removeProfilePhoto() {
     setProfileUploading(true);
     try {
@@ -556,7 +563,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4 }}>Alterar foto</div>
                   <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF. Max 5MB</div>
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => uploadProfilePhoto(e.target.files?.[0])} />
+                    <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => { chooseProfilePhoto(e.target.files?.[0]); e.target.value = ''; }} />
                     <button disabled={profileUploading} onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>{profileUploading ? 'Carregando...' : 'Escolher'}</button>
                     <button disabled={profileUploading || !user?.profilePicture} onClick={removeProfilePhoto} style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
                   </div>
@@ -905,6 +912,18 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           </FormField>
           {deleteError && <p style={{ color: 'var(--danger, #ef4444)', marginTop: 8, fontSize: 14 }}>{deleteError}</p>}
         </Modal>
+      )}
+
+      {profileCropFile && (
+        <ImageCropModal
+          file={profileCropFile}
+          shape="avatar"
+          onCancel={() => setProfileCropFile(null)}
+          onConfirm={(cropped) => {
+            setProfileCropFile(null);
+            uploadProfilePhoto(cropped);
+          }}
+        />
       )}
     </div>
   );

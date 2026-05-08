@@ -65,3 +65,11 @@ export async function fetchFollowing({ token, username }) {
   const data = await parseResponse(res, 'Erro ao carregar seguindo');
   return data.following || [];
 }
+
+export async function removeFollower({ token, username, followerUsername }) {
+  const res = await apiFetch(`/users/${username}/followers/${followerUsername}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao remover seguidor');
+}

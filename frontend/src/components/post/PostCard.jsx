@@ -5,6 +5,7 @@ import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
 import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
 import { apiFetch, authHeaders } from '../../utils/api';
+import ImageLightbox from '../media/ImageLightbox';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -12,6 +13,20 @@ function formatContent(text) {
       ? <span key={i} className="post-hashtag">{word}</span>
       : word
   );
+}
+
+function getEmbeds(text = '') {
+  const urls = String(text).match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) || [];
+  return urls.slice(0, 3).map(raw => {
+    const url = raw.startsWith('http') ? raw : `https://${raw}`;
+    let host = '';
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { return null; }
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/);
+    if (yt?.[1]) return { type: 'youtube', url, embedUrl: `https://www.youtube.com/embed/${yt[1]}`, host };
+    if (host.includes('instagram.com')) return { type: 'link', url, host, title: 'Instagram', text: 'Abrir post no Instagram' };
+    if (host === 'x.com' || host === 'twitter.com') return { type: 'link', url, host, title: 'X', text: 'Abrir post no X' };
+    return { type: 'link', url, host, title: host, text: url };
+  }).filter(Boolean);
 }
 
 function AutoPauseVideo(props) {
@@ -26,6 +41,25 @@ function AutoPauseVideo(props) {
     return () => observer.disconnect();
   }, []);
   return <video ref={ref} {...props} />;
+}
+
+function ProfileHover({ author, onOpenProfile }) {
+  if (!author) return null;
+  return (
+    <div className="profile-hover-card">
+      <div className="profile-hover-banner" style={author.coverPicture ? { backgroundImage: `url(${author.coverPicture})` } : {}} />
+      <div className="profile-hover-body">
+        <Avatar size={52} src={author.profilePicture || null} name={author.displayName || author.username || ''} initials={(author.displayName || author.username || '?').slice(0, 2)} />
+        <strong>{author.displayName || author.username}</strong>
+        <span>@{author.username}</span>
+        <p>{author.bio || 'Sem bio.'}</p>
+        <div className="profile-hover-actions">
+          <button onClick={() => author.username && onOpenProfile?.(author.username)}>Ver perfil</button>
+          <button>Mensagem</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DotMenu({ items }) {
@@ -133,9 +167,11 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments]       = useState(post._comments || []);
   const [newComment, setNewComment]   = useState('');
+  const [lightbox, setLightbox] = useState(null);
 
   const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
+  const embeds = getEmbeds(post.content || '');
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -245,17 +281,20 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
     <div className="card post-card" style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
       {/* Header */}
       <div className="post-head">
-        <button
-          onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
-          style={{ border: 0, background: 'transparent', padding: 0, flexShrink: 0 }}
-        >
-          <Avatar
-            size={42}
-            src={post.author.profilePicture || null}
-            name={post.author.displayName || post.author.username || ''}
-            initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
-          />
-        </button>
+        <div className="profile-hover-wrap" style={{ flexShrink: 0 }}>
+          <button
+            onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
+            style={{ border: 0, background: 'transparent', padding: 0 }}
+          >
+            <Avatar
+              size={42}
+              src={post.author.profilePicture || null}
+              name={post.author.displayName || post.author.username || ''}
+              initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
+            />
+          </button>
+          <ProfileHover author={post.author} onOpenProfile={onOpenProfile} />
+        </div>
         <div className="post-meta">
           <button
             className="post-author-name"
@@ -322,11 +361,31 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               )}
             </div>
           )}
+          {embeds.length > 0 && (
+            <div className="post-embed-list">
+              {embeds.map(embed => embed.type === 'youtube' ? (
+                <iframe
+                  key={embed.url}
+                  className="post-embed-youtube"
+                  src={embed.embedUrl}
+                  title="YouTube embed"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              ) : (
+                <a key={embed.url} className="post-embed-card" href={embed.url} target="_blank" rel="noreferrer">
+                  <strong>{embed.title}</strong>
+                  <span>{embed.text}</span>
+                  <small>{embed.host}</small>
+                </a>
+              ))}
+            </div>
+          )}
           {post.media?.url && (
             <div style={{ marginBottom: 14 }}>
               {post.media.resource_type === 'video'
                 ? <AutoPauseVideo src={post.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 12, maxHeight: 420 }} />
-                : <img src={post.media.url} alt="post media" loading="lazy" style={{ width: '100%', borderRadius: 12, maxHeight: 420, objectFit: 'cover' }} />}
+                : <img src={post.media.url} alt="post media" loading="lazy" onClick={() => setLightbox(post.media.url)} style={{ width: '100%', borderRadius: 12, maxHeight: 420, objectFit: 'cover', cursor: 'zoom-in' }} />}
             </div>
           )}
         </>
@@ -413,6 +472,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           </div>
         </div>
       )}
+      <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }

@@ -114,6 +114,37 @@ body {
   background: var(--page-bg);
 }
 
+[data-theme="light"] .btn-secondary,
+[data-theme="light"] .chat-input-icon,
+[data-theme="light"] .composer-btn {
+  color: var(--text-2);
+}
+
+[data-theme="light"] .btn-secondary {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .modal-box,
+[data-theme="light"] .card,
+[data-theme="light"] .panel-card,
+[data-theme="light"] .settings-section,
+[data-theme="light"] .settings-panel {
+  color: var(--text);
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: var(--text);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  color: var(--text);
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

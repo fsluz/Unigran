@@ -426,18 +426,39 @@ router.get('/:id/following', auth, async (req, res) => {
     const rows = await readQuery(`
       match
         $user isa person, has username "${safeId}";
-        $page isa page, has page-id $pid, has name $name;
+        $page isa page, has page-id $pid, has username $username, has name $name;
         following(follower: $user, page: $page);
         try { $page has profile-picture $pic; };
       fetch {
         "id": $pid,
+        "username": $username,
         "name": $name,
         "profile_picture": $pic
       };
     `);
-    res.json({ following: rows.map(r => ({ id: r.id, displayName: r.name, profilePicture: r.profile_picture || null })) });
+    res.json({ following: rows.map(r => ({ id: r.id, username: r.username, displayName: r.name, profilePicture: r.profile_picture || null })) });
   } catch (err) {
     console.error('[following]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.delete('/:id/followers/:followerId', auth, async (req, res) => {
+  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissao' });
+  }
+  try {
+    await writeQuery(`
+      match
+        $target isa page, has username "${typeqlLiteral(req.params.id)}";
+        $follower isa person, has username "${typeqlLiteral(req.params.followerId)}";
+        $rel isa following, links (follower: $follower, page: $target);
+      delete
+        $rel;
+    `);
+    res.json({ removed: true });
+  } catch (err) {
+    console.error('[remove follower]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });
