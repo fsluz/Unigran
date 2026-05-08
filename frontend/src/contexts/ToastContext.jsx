@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -9,6 +9,18 @@ export function ToastProvider({ children }) {
     setToast({ msg, icon });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  useEffect(() => {
+    const showError = (message) => showToast(message || 'Erro no site.', '!');
+    const onError = (event) => showError(event?.message);
+    const onRejection = (event) => showError(event?.reason?.message || String(event?.reason || 'Erro no site.'));
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, [showToast]);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -26,4 +38,3 @@ export function ToastProvider({ children }) {
 export function useToast() {
   return useContext(ToastContext);
 }
-

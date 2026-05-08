@@ -36,6 +36,7 @@ export default function ZuniPage({ onOpenProfile }) {
   const { token, user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [liked, setLiked] = useState({});
+  const [likedPulse, setLikedPulse] = useState({});
   const [following, setFollowing] = useState({});
   const [commentsByPost, setCommentsByPost] = useState({});
   const [commentsOpen, setCommentsOpen] = useState(null);
@@ -119,13 +120,28 @@ export default function ZuniPage({ onOpenProfile }) {
   const toggleLike = async (post) => {
     const isLiked = liked[post.id] ?? post.liked;
     setLiked(prev => ({ ...prev, [post.id]: !isLiked }));
+    setPosts(prev => prev.map(item => (
+      item.id === post.id ? { ...item, likes: Math.max(0, Number(item.likes || 0) + (isLiked ? -1 : 1)), liked: !isLiked } : item
+    )));
     const fn = isLiked ? unlikePost : likePost;
-    await fn({ token, postId: post.id }).catch(() => setLiked(prev => ({ ...prev, [post.id]: isLiked })));
+    await fn({ token, postId: post.id }).catch(() => {
+      setLiked(prev => ({ ...prev, [post.id]: isLiked }));
+      setPosts(prev => prev.map(item => (
+        item.id === post.id ? { ...item, likes: Math.max(0, Number(item.likes || 0) + (isLiked ? 1 : -1)), liked: isLiked } : item
+      )));
+    });
   };
 
   const likeOnce = (post) => {
-    if (liked[post.id] ?? post.liked) return;
-    toggleLike(post);
+    setLikedPulse(prev => ({ ...prev, [post.id]: Date.now() }));
+    setTimeout(() => {
+      setLikedPulse(prev => {
+        const next = { ...prev };
+        delete next[post.id];
+        return next;
+      });
+    }, 700);
+    if (!(liked[post.id] ?? post.liked)) toggleLike(post);
   };
 
   const toggleActivePlayback = () => {
@@ -200,7 +216,7 @@ export default function ZuniPage({ onOpenProfile }) {
           )}
 
           {posts.map(post => (
-            <article key={post.id} className="zuni-reel" data-post-id={post.id}>
+            <article key={post.id} className={`zuni-reel ${likedPulse[post.id] ? 'liked-pulse' : ''}`} data-post-id={post.id}>
               <div className="zuni-video-stage" onDoubleClick={() => likeOnce(post)}>
                 {post.media?.url ? (
                   <video
@@ -224,6 +240,11 @@ export default function ZuniPage({ onOpenProfile }) {
                   />
                 ) : (
                   <div className="zuni-empty-video">Video indisponivel</div>
+                )}
+                {likedPulse[post.id] && (
+                  <div className="zuni-like-burst" aria-hidden="true">
+                    <ZuniIcon name="heart" size={84} />
+                  </div>
                 )}
 
                 <div ref={volumeRef} className={`zuni-sound ${volumeOpen ? 'open' : ''}`}>

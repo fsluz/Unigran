@@ -6,7 +6,6 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import StoriesBar from '../components/stories/StoriesBar';
 import Topbar from '../components/layout/Topbar';
-import unigranCharacters from '../assets/unigran_characters.png';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 import { apiFetch, authHeaders } from '../utils/api';
 import { Avatar } from '../components/ui';
@@ -195,15 +194,6 @@ export default function HomePage({ onOpenProfile }) {
 
       <div className="page-layout">
         <main className="section-grid">
-          <section className="home-welcome-card">
-            <div className="home-welcome-copy">
-              <span className="home-welcome-kicker">UNIGRAN SOCIAL</span>
-              <h1>Bem-vindo a comunidade Unigran</h1>
-              <p>Conecte-se com colegas, professores e projetos da vida academica.</p>
-            </div>
-            <img src={unigranCharacters} alt="Personagens Unigran" className="home-welcome-image" />
-          </section>
-
           <StoriesBar onOpenProfile={onOpenProfile} />
 
           <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
