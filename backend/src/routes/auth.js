@@ -41,6 +41,25 @@ function attrBoolTrue(v) {
   return false;
 }
 
+async function readTwoFactorByUsername(username) {
+  try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(username)}";
+        try { $u has two-factor-enabled $enabled; };
+        try { $u has two-factor-secret $secret; };
+      fetch {
+        "enabled": $enabled,
+        "secret": $secret
+      };
+    `);
+    return rows[0] || { enabled: false, secret: '' };
+  } catch (err) {
+    if (String(err?.message || '').includes('two-factor')) return { enabled: false, secret: '' };
+    throw err;
+  }
+}
+
 router.post('/register', async (req, res) => {
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -98,8 +117,6 @@ router.post('/login', async (req, res) => {
         try { $u has is-banned $banned; };
         try { $u has phone $phone; };
         try { $u has user-role $role; };
-        try { $u has two-factor-enabled $two_factor_enabled; };
-        try { $u has two-factor-secret $two_factor_secret; };
         try { $u has password-changed-at $changed; };
       fetch {
         "username": $username,
@@ -108,8 +125,6 @@ router.post('/login', async (req, res) => {
         "banned": $banned,
         "phone": $phone,
         "role": $role,
-        "two_factor_enabled": $two_factor_enabled,
-        "two_factor_secret": $two_factor_secret,
         "password_changed_at": $changed
       };
     `);
@@ -119,13 +134,14 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
     if (!ok) return res.status(401).json({ error: 'Credenciais invalidas' });
     if (attrBoolTrue(row.banned)) return res.status(403).json({ error: 'Conta banida' });
-    if (attrBoolTrue(row.two_factor_enabled)) {
-      if (!verifyTotp(row.two_factor_secret, parsed.data.twoFactorCode)) {
+    const username = row.username || email.split('@')[0] || 'user';
+    const twoFactor = await readTwoFactorByUsername(username);
+    if (attrBoolTrue(twoFactor.enabled)) {
+      if (!verifyTotp(twoFactor.secret, parsed.data.twoFactorCode)) {
         return res.json({ requires2FA: true, email });
       }
     }
 
-    const username = row.username || email.split('@')[0] || 'user';
     const payload = {
       id: username,
       username,
@@ -214,7 +230,6 @@ router.get('/me', async (req, res) => {
         try { $u has hide-online $hide_online; };
         try { $u has hide-read-receipts $hide_read_receipts; };
         try { $u has email-notifications-enabled $email_notifications; };
-        try { $u has two-factor-enabled $two_factor_enabled; };
         try { $u has password-changed-at $changed; };
       fetch {
         "email": $email,
@@ -227,13 +242,13 @@ router.get('/me', async (req, res) => {
         "hide_online": $hide_online,
         "hide_read_receipts": $hide_read_receipts,
         "email_notifications": $email_notifications,
-        "two_factor_enabled": $two_factor_enabled,
         "password_changed_at": $changed
       };
     `);
     if (!rows.length) return res.status(401).json({ error: 'Usuario nao encontrado' });
 
     const row = rows[0];
+    const twoFactor = await readTwoFactorByUsername(decoded.username);
     res.json({
       user: {
         ...decoded,
@@ -247,7 +262,7 @@ router.get('/me', async (req, res) => {
         hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
         hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
         emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
-        twoFactorEnabled: row.two_factor_enabled === true || String(row.two_factor_enabled).toLowerCase() === 'true',
+        twoFactorEnabled: attrBoolTrue(twoFactor.enabled),
         passwordChangedAt: row.password_changed_at || null,
       },
     });
