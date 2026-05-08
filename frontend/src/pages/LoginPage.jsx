@@ -330,13 +330,6 @@ export default function LoginPage({ onGoRegister }) {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          <button
-            className="btn btn-secondary"
-            style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
-            onClick={handleGoogle}
-          >
-            Entrar com Google
-          </button>
           <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
