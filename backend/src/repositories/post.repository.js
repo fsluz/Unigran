@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 const cache = new Map();
@@ -288,7 +288,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       author: {
         id: authorProfile?.username || entry?.author?.username || 'unknown',
         username: authorProfile?.username || entry?.author?.username || 'unknown',
-        displayName: authorProfile?.name || entry?.author?.name || 'Usuário',
+        displayName: authorProfile?.name || entry?.author?.name || 'Usuario',
         profilePicture: authorProfile?.profile_picture || entry?.author?.profile_picture || null,
         coverPicture: authorProfile?.cover_picture || entry?.author?.cover_picture || null,
         role: 'user',
@@ -304,7 +304,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
           time: comment?.created_at || null,
           author: {
             username: commentAuthorProfile?.username || comment?.author?.username || null,
-            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuário',
+            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuario',
             profilePicture: commentAuthorProfile?.profile_picture || comment?.author?.profile_picture || null,
             coverPicture: commentAuthorProfile?.cover_picture || comment?.author?.cover_picture || null,
           },
@@ -348,7 +348,7 @@ export async function listTrends() {
       "created_at": $created_at
     };
   `);
-  const keywords = ['tecnologia', 'programacao', 'programação', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
+  const keywords = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
   const now = Date.now();
   const counts = new Map();
   const hourCounts = new Map();
@@ -864,3 +864,4 @@ export async function unreactToComment({ username, commentId }) {
   cache.clear();
   return { liked: false };
 }
+

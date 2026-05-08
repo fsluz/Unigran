@@ -1,7 +1,7 @@
-import { useRef } from 'react';
+﻿import { useRef } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 
-// ─── Button ───────────────────────────────────────────────────────────────────
+//  Button 
 export function Button({ children, variant = 'primary', size = 'md', onClick, disabled, type = 'button', style, className = '' }) {
   const sizes = { sm: 'btn-sm', xs: 'btn-xs', md: '', icon: 'btn-icon' };
   return (
@@ -17,7 +17,7 @@ export function Button({ children, variant = 'primary', size = 'md', onClick, di
   );
 }
 
-// ─── Avatar ───────────────────────────────────────────────────────────────────
+//  Avatar 
 const AVATAR_COLORS = ['#4f7ef4', '#8b5cf6', '#ec4899', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444'];
 function colorFor(str = '') {
   let h = 0;
@@ -44,7 +44,7 @@ export function Avatar({ initials = '?', name = '', src = null, size = 40, color
   );
 }
 
-// ─── Toggle ───────────────────────────────────────────────────────────────────
+//  Toggle 
 export function Toggle({ checked, onChange }) {
   return (
     <label className="toggle">
@@ -54,7 +54,7 @@ export function Toggle({ checked, onChange }) {
   );
 }
 
-// ─── RoleBadge ────────────────────────────────────────────────────────────────
+//  RoleBadge 
 const ROLE_MAP = {
   admin:     { label: 'Admin',     cls: 'role-admin' },
   moderator: { label: 'Mod',       cls: 'role-moderator' },
@@ -67,14 +67,14 @@ export function RoleBadge({ role }) {
   return <span className={`role-badge ${r.cls}`}>{r.label}</span>;
 }
 
-// ─── Modal ────────────────────────────────────────────────────────────────────
+//  Modal 
 export function Modal({ title, onClose, children, footer, maxWidth = 540 }) {
   return (
     <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box" style={{ maxWidth }}>
         <div className="modal-header">
           <span className="modal-title">{title}</span>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}></button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
@@ -83,7 +83,7 @@ export function Modal({ title, onClose, children, footer, maxWidth = 540 }) {
   );
 }
 
-// ─── Dropdown ─────────────────────────────────────────────────────────────────
+//  Dropdown 
 export function Dropdown({ trigger, items, isOpen, onToggle, onClose }) {
   const ref = useRef(null);
   useClickOutside(ref, () => isOpen && onClose?.());
@@ -113,7 +113,7 @@ export function Dropdown({ trigger, items, isOpen, onToggle, onClose }) {
   );
 }
 
-// ─── FormField ────────────────────────────────────────────────────────────────
+//  FormField 
 export function FormField({ label, hint, error, children }) {
   return (
     <div className="form-group">
@@ -169,7 +169,7 @@ export function SelectInput({ value, onChange, options }) {
   );
 }
 
-// ─── EmptyState ───────────────────────────────────────────────────────────────
+//  EmptyState 
 export function EmptyState({ icon, title, subtitle, action }) {
   return (
     <div className="empty-state">
@@ -181,7 +181,7 @@ export function EmptyState({ icon, title, subtitle, action }) {
   );
 }
 
-// ─── IconButton ───────────────────────────────────────────────────────────────
+//  IconButton 
 export function IconButton({ icon, onClick, title, style }) {
   return (
     <button className="btn-icon" onClick={onClick} title={title} style={style}>
@@ -189,3 +189,4 @@ export function IconButton({ icon, onClick, title, style }) {
     </button>
   );
 }
+

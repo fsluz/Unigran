@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
@@ -84,7 +84,7 @@ router.get('/:id/posts', auth, async (req, res) => {
 /* POST /api/communities */
 router.post('/', auth, async (req, res) => {
   const { name, description = '', type = 'public' } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatório' });
+  if (!name?.trim()) return res.status(400).json({ error: 'Nome obrigatrio' });
   const gid = uuid();
   const now = typeqlDatetime();
   try {
@@ -138,7 +138,7 @@ router.delete('/:id/join', auth, async (req, res) => {
   } catch (err) { console.error('[leave]', err); res.status(500).json({ error: 'Erro ao sair' }); }
 });
 
-/* DELETE /api/communities/:id – admin only */
+/* DELETE /api/communities/:id  admin only */
 router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
   try {
     await writeQuery(`
@@ -220,3 +220,4 @@ router.patch('/:id/moderation', auth, requireAtLeast('community_moderator'), asy
 });
 
 export default router;
+

@@ -1,4 +1,4 @@
-// src/utils/api.js
+﻿// src/utils/api.js
 
 // Detecta ambiente Vercel ou local
 const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -25,7 +25,7 @@ export function authHeaders(token, extra = {}) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  // Não incluir Content-Type se for FormData (browser define automaticamente)
+  // Nao incluir Content-Type se for FormData (browser define automaticamente)
   for (const [key, value] of Object.entries(extra)) {
     if (key.toLowerCase() !== 'content-type' || !(extra instanceof FormData)) {
       headers[key] = value;
@@ -57,5 +57,6 @@ export function formatApiError(error, fallback = 'Ocorreu um erro.') {
       }
     }
   }
-  return parts.length ? parts.join(' · ') : fallback;
+  return parts.length ? parts.join(' - ') : fallback;
 }
+

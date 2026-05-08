@@ -1,4 +1,4 @@
-import { apiFetch, authHeaders, formatApiError } from '../utils/api';
+﻿import { apiFetch, authHeaders, formatApiError } from '../utils/api';
 
 async function parseResponse(res, fallback) {
   const data = await res.json();
@@ -45,7 +45,7 @@ async function uploadDirectCloudinary(token, file, resourceType = 'video') {
   );
   const cloudResult = await cloudResponse.json();
   if (!cloudResponse.ok) {
-    throw new Error(cloudResult.error?.message || 'Erro ao enviar vídeo para Cloudinary');
+    throw new Error(cloudResult.error?.message || 'Erro ao enviar video para Cloudinary');
   }
 
   return {
@@ -97,7 +97,7 @@ export async function fetchComments({ token, postId }) {
   const res = await apiFetch(`/posts/${postId}/comments`, {
     headers: authHeaders(token),
   });
-  const data = await parseResponse(res, 'Erro ao carregar comentários');
+  const data = await parseResponse(res, 'Erro ao carregar comentarios');
   return data.comments || [];
 }
 
@@ -111,7 +111,7 @@ export async function createComment({ token, postId, content, parentCommentId, f
     headers: authHeaders(token),
     body: fd,
   });
-  return parseResponse(res, 'Erro ao criar comentário');
+  return parseResponse(res, 'Erro ao criar comentario');
 }
 
 export async function deletePost({ token, postId }) {
@@ -146,7 +146,7 @@ export async function uploadMedia({ token, file }) {
     headers: authHeaders(token),
     body: fd,
   });
-  return parseResponse(res, 'Erro ao enviar mídia');
+  return parseResponse(res, 'Erro ao enviar midia');
 }
 
 export async function likePost({ token, postId }) {
@@ -191,3 +191,4 @@ export async function updatePost({ token, postId, content }) {
   });
   return parseResponse(res, 'Erro ao editar post');
 }
+

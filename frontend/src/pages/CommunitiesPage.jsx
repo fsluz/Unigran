@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Topbar from '../components/layout/Topbar';
@@ -49,7 +49,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
     try {
       if (community.joined) await leaveCommunity({ token, id: community.id });
       else await joinCommunity({ token, id: community.id });
-      showToast(community.joined ? 'Saiu da comunidade' : 'Entrou na comunidade', '✓');
+      showToast(community.joined ? 'Saiu da comunidade' : 'Entrou na comunidade', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro comunidade', '!');
     }
@@ -62,7 +62,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
       setCommunities(prev => [normalizeCommunity({ ...created, members: 1, joined: true }, prev.length), ...prev]);
       setForm({ name: '', description: '', type: 'public' });
       setCreateOpen(false);
-      showToast('Comunidade criada', '✓');
+      showToast('Comunidade criada', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao criar', '!');
     }
@@ -85,7 +85,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
     if (!activeCommunity?.id) return;
     const created = await createPost({ token, content, file, communityId: activeCommunity.id });
     setCommunityPosts(prev => [{ ...created, community: activeCommunity.name }, ...prev]);
-    showToast('Post publicado', '✓');
+    showToast('Post publicado', 'OK');
   };
 
   return (
@@ -133,7 +133,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <h3 style={{ margin: 0, color: 'var(--text)', fontSize: 16 }}>{com.name}</h3>
-                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>{com.type === 'private' ? 'Privada' : 'Publica'} · {com.members} membros</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>{com.type === 'private' ? 'Privada' : 'Publica'} - {com.members} membros</p>
                 </div>
               </div>
 
@@ -200,3 +200,4 @@ export default function CommunitiesPage({ onOpenProfile }) {
     </div>
   );
 }
+

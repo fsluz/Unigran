@@ -1,4 +1,4 @@
-import {
+﻿import {
   createCommentWithRules,
   createPostWithRules,
   deletePostWithRules,
@@ -25,7 +25,7 @@ function cloudinaryAwareError(res, err, fallback) {
   if (message.toLowerCase().includes('unauthorized')) {
     return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
   }
-  if (message.toLowerCase().includes('cloudinary não configurado')) {
+  if (message.toLowerCase().includes('cloudinary nao configurado')) {
     return res.status(500).json({ error: message });
   }
   return res.status(500).json({ error: fallback });
@@ -81,7 +81,7 @@ export async function getCommentsController(req, res) {
     res.json({ comments });
   } catch (err) {
     console.error('[comments list]', err);
-    res.status(500).json({ error: 'Erro ao carregar comentários' });
+    res.status(500).json({ error: 'Erro ao carregar comentarios' });
   }
 }
 
@@ -106,7 +106,7 @@ export async function createCommentController(req, res) {
     res.status(result.status || 201).json(result.data);
   } catch (err) {
     console.error('[comments create]', err);
-    cloudinaryAwareError(res, err, 'Erro ao criar comentário');
+    cloudinaryAwareError(res, err, 'Erro ao criar comentario');
   }
 }
 
@@ -219,3 +219,4 @@ export async function reportPostController(req, res) {
     res.status(500).json({ error: 'Schema de denuncia ausente ou denuncia falhou' });
   }
 }
+

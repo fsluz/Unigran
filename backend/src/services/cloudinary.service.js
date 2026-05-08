@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+﻿import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -24,8 +24,59 @@ async function safeDestroy(publicId, resourceType) {
   try {
     await cloudinary.uploader.destroy(publicId, { resource_type: resourceType || 'image' });
   } catch (_) {
-    // Melhor esforço de limpeza quando a mídia viola regra de negócio.
+    // Melhor esforo de limpeza quando a midia viola regra de negcio.
   }
+}
+
+function cloudinaryVideoFrameUrl(url = '') {
+  const value = String(url || '');
+  if (!value.includes('/video/upload/')) return value;
+  return value
+    .replace('/video/upload/', '/video/upload/so_0/')
+    .replace(/\.[a-z0-9]+$/i, '.jpg');
+}
+
+async function validateNsfwWithJigsaw(url, resourceType) {
+  const apiKey = process.env.JIGSAWSTACK_API_KEY;
+  if (!apiKey || !url) return { blocked: false, skipped: true };
+
+  const imageUrl = resourceType === 'video' ? cloudinaryVideoFrameUrl(url) : url;
+  const response = await fetch('https://api.jigsawstack.com/v1/validate/nsfw', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
+    body: JSON.stringify({ url: imageUrl }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.success === false) {
+    const err = new Error('Falha ao validar conteudo +18.');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  const threshold = Number(process.env.JIGSAWSTACK_NSFW_THRESHOLD || 0.72);
+  const nsfwScore = Number(data.nsfw_score || 0);
+  const nudityScore = Number(data.nudity_score || 0);
+  const goreScore = Number(data.gore_score || 0);
+  return {
+    blocked: Boolean(data.nsfw || data.nudity || data.gore)
+      || nsfwScore >= threshold
+      || nudityScore >= threshold
+      || goreScore >= threshold,
+    data,
+  };
+}
+
+export async function assertSafeMediaUrl(url, resourceType = 'image') {
+  const nsfw = await validateNsfwWithJigsaw(url, resourceType);
+  if (nsfw.blocked) {
+    const err = new Error('Conteudo +18 proibido na plataforma.');
+    err.statusCode = 400;
+    throw err;
+  }
+  return true;
 }
 
 function publicIdFromCloudinaryUrl(url = '') {
@@ -51,7 +102,7 @@ export async function destroyCloudinaryUrl(url) {
 
 export function createCloudinaryUploadSignature({ folder = 'unigran/posts', resourceType = 'image', timestamp = Math.floor(Date.now() / 1000) } = {}) {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+    throw new Error('Cloudinary nao configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
   }
   const cleanFolder = safeFolder(folder);
   const paramsToSign = {
@@ -70,9 +121,9 @@ export function createCloudinaryUploadSignature({ folder = 'unigran/posts', reso
 }
 
 export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits = {}) {
-  if (!file?.buffer) throw new Error('Arquivo inválido para upload');
+  if (!file?.buffer) throw new Error('Arquivo invalido para upload');
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    throw new Error('Cloudinary não configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+    throw new Error('Cloudinary nao configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
   }
 
   const cleanFolder = safeFolder(folder);
@@ -89,7 +140,6 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
         use_filename: true,
         unique_filename: true,
         overwrite: false,
-        moderation: process.env.CLOUDINARY_MODERATION || undefined,
         transformation: resourceType === 'image'
           ? [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto:good' }]
           : [{ width: 1280, height: 720, crop: 'limit', quality: 'auto:good' }],
@@ -118,12 +168,10 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
     }
   }
 
-  const moderation = Array.isArray(result.moderation) ? result.moderation : [];
-  const rejected = moderation.some(item => String(item.status || '').toLowerCase() === 'rejected');
-  if (rejected) {
+  try {
+    await assertSafeMediaUrl(result.secure_url, resourceType);
+  } catch (err) {
     await safeDestroy(result.public_id, resourceType);
-    const err = new Error('Conteudo +18 proibido na plataforma.');
-    err.statusCode = 400;
     throw err;
   }
 
@@ -133,3 +181,5 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
     resource_type: result.resource_type,
   };
 }
+
+

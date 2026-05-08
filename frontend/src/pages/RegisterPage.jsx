@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -81,11 +81,11 @@ export default function RegisterPage({ onGoLogin }) {
     const { name, username, email, password, confirm } = form;
 
     if (!name || !username || !email || !password || !confirm) {
-      setError('Preencha todos os campos obrigatórios.');
+      setError('Preencha todos os campos obrigatrios.');
       return;
     }
     if (password !== confirm) {
-      setError('As senhas não coincidem.');
+      setError('As senhas nao coincidem.');
       return;
     }
     if (password.length < 6) {
@@ -93,7 +93,7 @@ export default function RegisterPage({ onGoLogin }) {
       return;
     }
     if (!username.match(/^[a-z0-9_]+$/i)) {
-      setError('O nome de usuário deve conter apenas letras, números e _.');
+      setError('O nome de usuario deve conter apenas letras, nmeros e _.');
       return;
     }
 
@@ -126,9 +126,9 @@ export default function RegisterPage({ onGoLogin }) {
         <div className="card">
           <AuthLogo />
           <h1 className="auth-heading">Criar Conta</h1>
-          <p className="auth-sub-text">Junte-se à nossa comunidade</p>
+          <p className="auth-sub-text">Junte-se  nossa comunidade</p>
 
-          <div className="auth-tabs" role="tablist" aria-label="Autenticação">
+          <div className="auth-tabs" role="tablist" aria-label="Autenticacao">
             <button type="button" className="auth-tab" onClick={onGoLogin}>Entrar</button>
             <button type="button" className="auth-tab active">Cadastro</button>
           </div>
@@ -141,7 +141,7 @@ export default function RegisterPage({ onGoLogin }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Nome de usuário *</label>
+            <label className="form-label">Nome de usuario *</label>
             <div className="form-input-prefix-wrap">
               <span className="form-input-prefix">@</span>
               <input className="form-input has-prefix" placeholder="seu_usuario" value={form.username} onChange={set('username')} />
@@ -201,10 +201,12 @@ export default function RegisterPage({ onGoLogin }) {
           <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
-            Já tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faça login</a>
+            Ja tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faca login</a>
           </div>
         </div>
       </div>
     </AuthLayout>
   );
 }
+
+

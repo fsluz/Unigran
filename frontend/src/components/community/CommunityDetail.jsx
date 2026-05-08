@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button, EmptyState, RoleBadge, IconButton } from '../ui';
@@ -22,7 +22,7 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
       author: { id: user.id, username: user.username, displayName: user.displayName, avatar: user.avatar, role: user.role },
       content: text, likes: 0, comments: 0, shares: 0, time: 'agora', liked: false,
     }, ...prev]);
-    showToast('Post publicado!', '✅');
+    showToast('Post publicado!', 'OK');
   };
 
   return (
@@ -30,25 +30,25 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
       {/* Topbar */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="btn-icon" onClick={onBack} title="Voltar">←</button>
+          <button className="btn-icon" onClick={onBack} title="Voltar"></button>
           <span className="topbar-title">{community.name}</span>
         </div>
         <div className="topbar-actions">
           <button
             className="btn-icon"
-            title={community.muted ? 'Ativar notificações' : 'Silenciar'}
-            onClick={() => { onUpdate({ muted: !community.muted }); showToast(community.muted ? 'Notificações ativadas' : 'Comunidade silenciada', '🔔'); }}
+            title={community.muted ? 'Ativar notificaes' : 'Silenciar'}
+            onClick={() => { onUpdate({ muted: !community.muted }); showToast(community.muted ? 'Notificacoes ativadas' : 'Comunidade silenciada', ''); }}
           >
-            {community.muted ? '🔇' : '🔔'}
+            {community.muted ? '' : ''}
           </button>
           {(isPlatformAdmin || isCommunityAdmin) && (
             <button
               className="btn-icon"
               style={{ color: 'var(--red)' }}
               title="Apagar comunidade"
-              onClick={() => { onBack(); showToast('Comunidade apagada', '🗑️'); }}
+              onClick={() => { onBack(); showToast('Comunidade apagada', ''); }}
             >
-              🗑️
+              
             </button>
           )}
         </div>
@@ -64,7 +64,7 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
               <div className="comm-detail-desc">{community.description}</div>
             </div>
             <span className={`comm-type-badge ${community.type === 'private' ? 'comm-private' : 'comm-public'}`}>
-              {community.type === 'private' ? '🔒 Privada' : '🌐 Pública'}
+              {community.type === 'private' ? ' Privada' : ' Pblica'}
             </span>
           </div>
 
@@ -74,26 +74,26 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
             </span>
             {community.role && (
               <span className="tag" style={{ fontSize: 11 }}>
-                {community.role === 'admin' ? '👑 Admin' : community.role === 'moderator' ? '🛡️ Moderador' : '👤 Membro'}
+                {community.role === 'admin' ? ' Admin' : community.role === 'moderator' ? ' Moderador' : ' Membro'}
               </span>
             )}
           </div>
 
           <div className="comm-detail-actions">
             {community.type === 'private' && !community.joined ? (
-              <Button onClick={() => { onUpdate({ joined: true, members: community.members + 1 }); showToast('Solicitação enviada!', '📨'); }}>
-                📨 Solicitar entrada
+              <Button onClick={() => { onUpdate({ joined: true, members: community.members + 1 }); showToast('Solicitacao enviada!', ''); }}>
+                 Solicitar entrada
               </Button>
             ) : (
               <Button
                 variant={community.joined ? 'secondary' : 'primary'}
                 onClick={() => onUpdate({ joined: !community.joined, members: community.joined ? community.members - 1 : community.members + 1 })}
               >
-                {community.joined ? '✓ Membro' : '+ Participar'}
+                {community.joined ? 'OK Membro' : '+ Participar'}
               </Button>
             )}
             <Button variant="secondary" onClick={() => onUpdate({ favorite: !community.favorite })}>
-              {community.favorite ? '⭐ Favorita' : '☆ Favoritar'}
+              {community.favorite ? ' Favorita' : ' Favoritar'}
             </Button>
           </div>
         </div>
@@ -101,15 +101,15 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
 
       {/* Content */}
       {!canSeeContent ? (
-        <EmptyState icon="🔒" title="Comunidade Privada" subtitle="Solicite entrada para visualizar os posts desta comunidade." />
+        <EmptyState icon="" title="Comunidade Privada" subtitle="Solicite entrada para visualizar os posts desta comunidade." />
       ) : (
         <div className="page-center">
-          <PostComposer onSubmit={handleNewPost} placeholder={`Publicar em ${community.name}…`} />
+          <PostComposer onSubmit={handleNewPost} placeholder={`Publicar em ${community.name}...`} />
           {posts.map(p => (
             <PostCard
               key={p.id}
               post={p}
-              onDelete={id => { setPosts(prev => prev.filter(x => x.id !== id)); showToast('Post removido', '🗑️'); }}
+              onDelete={id => { setPosts(prev => prev.filter(x => x.id !== id)); showToast('Post removido', ''); }}
               onOpenDetail={() => {}}
             />
           ))}
@@ -118,3 +118,5 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
     </div>
   );
 }
+
+

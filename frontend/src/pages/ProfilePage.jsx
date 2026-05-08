@@ -1,4 +1,4 @@
-import Topbar from '../components/layout/Topbar';
+﻿import Topbar from '../components/layout/Topbar';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -12,12 +12,12 @@ import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUse
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
+const TABS = ['Publicaes', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
   { id: 'text',  label: 'Texto'      },
-  { id: 'media', label: 'Foto/Vídeo' },
+  { id: 'media', label: 'Foto/Vdeo' },
   { id: 'date',  label: 'Por data'   },
 ];
 
@@ -25,7 +25,7 @@ export default function ProfilePage({ onNavigate }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
-  const [tab, setTab]               = useState('Publicações');
+  const [tab, setTab]               = useState('Publicaes');
   const [postFilter, setPostFilter] = useState('all');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
@@ -131,9 +131,9 @@ export default function ProfilePage({ onNavigate }) {
         coverPicture: coverPicture?.url || coverPreview,
       });
       setEditOpen(false);
-      showToast('Perfil atualizado!', '✅');
+      showToast('Perfil atualizado!', 'OK');
     } catch {
-      showToast('Falha ao atualizar perfil', '⚠️');
+      showToast('Falha ao atualizar perfil', 'Aviso');
     }
   };
 
@@ -155,12 +155,12 @@ export default function ProfilePage({ onNavigate }) {
 
   const deletePost = id => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excluído', 'Excluído');
+    showToast('Post excludo', 'Excludo');
   };
 
   const editPost = (id, newText) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, content: newText, edited: true } : p));
-    showToast('Post editado!', '✏️');
+    showToast('Post editado!', '');
   };
 
   const filteredPosts = posts.filter(p => {
@@ -212,7 +212,7 @@ export default function ProfilePage({ onNavigate }) {
           <div className="profile-stats">
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.posts || posts.length}</div>
-              <div className="profile-stat-label">Publicações</div>
+              <div className="profile-stat-label">Publicaes</div>
             </div>
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.followers || 0}</div>
@@ -244,7 +244,7 @@ export default function ProfilePage({ onNavigate }) {
 
       {/* Tab content */}
       <div className="profile-tab-content">
-        {tab === 'Publicações' && (
+        {tab === 'Publicaes' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {/* Post filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -264,7 +264,7 @@ export default function ProfilePage({ onNavigate }) {
 
             {sortedPosts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                Nenhuma publicação ainda.
+                Nenhuma publicacao ainda.
               </div>
             ) : (
               sortedPosts.map(post => (
@@ -339,7 +339,7 @@ export default function ProfilePage({ onNavigate }) {
         {tab === 'Atividades' && (
           <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}></div>
-            <div style={{ fontSize: 15 }}>Histórico de atividades em breve.</div>
+            <div style={{ fontSize: 15 }}>Histrico de atividades em breve.</div>
           </div>
         )}
 
@@ -348,8 +348,8 @@ export default function ProfilePage({ onNavigate }) {
             {[
               ['', 'Email',       user.email],
               ['', 'Telefone',    user.phone],
-              ['', 'Instituição', user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
-              ['', 'Função',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
+              ['', 'Instituio', user.institution.split('*')[1]?.trim() || 'UNIGRAN'],
+              ['', 'Funo',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuario'],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
@@ -371,14 +371,14 @@ export default function ProfilePage({ onNavigate }) {
           footer={
             <>
               <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancelar</Button>
-              <Button onClick={saveProfile}>Salvar alterações</Button>
+              <Button onClick={saveProfile}>Salvar alteraes</Button>
             </>
           }
         >
           <FormField label="Nome completo">
             <input className="form-input" value={editForm.displayName} onChange={e => setEditForm(p => ({ ...p, displayName: e.target.value }))} />
           </FormField>
-          <FormField label="Instituição">
+          <FormField label="Instituio">
             <input className="form-input" value={editForm.institution} onChange={e => setEditForm(p => ({ ...p, institution: e.target.value }))} />
           </FormField>
           <FormField label="Bio">
@@ -438,3 +438,5 @@ export default function ProfilePage({ onNavigate }) {
     </div>
   );
 }
+
+

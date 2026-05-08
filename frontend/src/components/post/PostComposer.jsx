@@ -1,8 +1,8 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui';
 
-export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?', allowMode = true, forcedPostType = null }) {
+export default function PostComposer({ onSubmit, placeholder = 'No que voce est pensando?', allowMode = true, forcedPostType = null }) {
   const { user }   = useAuth();
   const [text, setT] = useState('');
   const [file, setFile] = useState(null);
@@ -98,7 +98,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
             <option value="zuni">Zuni</option>
           </select>
         )}
-        <label className="composer-btn" title="Foto/Vídeo/GIF">
+        <label className="composer-btn" title="Foto/Vdeo/GIF">
           <input
             type="file"
             accept="image/*,video/*,.gif"
@@ -111,7 +111,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           </svg>
         </label>
         {/* Video */}
-        <button className="composer-btn" title="Vídeo">
+        <button className="composer-btn" title="Vdeo">
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
           </svg>
@@ -149,3 +149,5 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     </div>
   );
 }
+
+

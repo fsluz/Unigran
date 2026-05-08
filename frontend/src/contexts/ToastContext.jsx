@@ -1,11 +1,11 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+﻿import { createContext, useContext, useState, useCallback } from 'react';
 
 const ToastContext = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null);
 
-  const showToast = useCallback((msg, icon = '✅') => {
+  const showToast = useCallback((msg, icon = 'OK') => {
     setToast({ msg, icon });
     setTimeout(() => setToast(null), 3000);
   }, []);
@@ -26,3 +26,4 @@ export function ToastProvider({ children }) {
 export function useToast() {
   return useContext(ToastContext);
 }
+

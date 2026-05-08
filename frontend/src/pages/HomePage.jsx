@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PostComposer from '../components/post/PostComposer';
@@ -20,7 +20,7 @@ const TRENDING = [
   { tag: 'estudos', count: '0' },
   { tag: 'carreira', count: '0' },
 ];
-const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programação', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
+const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
 
 const SUGGESTED_COMMUNITIES = [
   { icon: 'IA', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
@@ -120,12 +120,12 @@ export default function HomePage({ onOpenProfile }) {
       return;
     }
     setPosts(prev => [created, ...prev]);
-    showToast('Post publicado', '✓');
+    showToast('Post publicado', 'OK');
   };
 
   const handleDelete = id => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excluido', '✓');
+    showToast('Post excluido', 'OK');
   };
 
   const handleEdit = (id, newText) => {
@@ -183,7 +183,7 @@ export default function HomePage({ onOpenProfile }) {
     setSuggestedCommunities(prev => prev.filter(c => c.id !== community.id));
     try {
       await joinCommunity({ token, id: community.id });
-      showToast('Entrou na comunidade', '✓');
+      showToast('Entrou na comunidade', 'OK');
     } catch {
       showToast('Erro ao entrar', '!');
     }
@@ -271,7 +271,7 @@ export default function HomePage({ onOpenProfile }) {
               <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < trending.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
                   <button onClick={() => openTrend(item.tag)} style={{ border: 0, background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>#{item.tag}</button>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} posts · {item.lastHour || 0} ultima hora</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} posts - {item.lastHour || 0} ultima hora</div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10 }}>#{i + 1}</span>
               </div>
@@ -301,7 +301,7 @@ export default function HomePage({ onOpenProfile }) {
                 </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.displayName || person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{person.username ? `@${person.username}${person.mutualCount ? ` · ${person.mutualCount} amigos em comum` : ''}` : `Amigo(a) de ${person.mutual}`}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{person.username ? `@${person.username}${person.mutualCount ? ` - ${person.mutualCount} amigos em comum` : ''}` : `Amigo(a) de ${person.mutual}`}</div>
                 </div>
                 <button onClick={() => toggleFollow(person)} style={{ padding: '5px 12px', borderRadius: 10, border: '1px solid var(--border)', background: person.following ? 'var(--accent-light)' : 'transparent', color: person.following ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700 }}>
                   {person.following ? 'Seguindo' : 'Seguir'}
@@ -316,3 +316,4 @@ export default function HomePage({ onOpenProfile }) {
     </div>
   );
 }
+

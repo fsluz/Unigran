@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import {
   createComment,
   createPost,
@@ -15,7 +15,7 @@ import {
   unreactToPost,
   unsavePost,
 } from '../repositories/post.repository.js';
-import { uploadMediaBuffer } from './cloudinary.service.js';
+import { assertSafeMediaUrl, uploadMediaBuffer } from './cloudinary.service.js';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
 
 const createPostSchema = z.object({
@@ -87,6 +87,7 @@ export async function createPostWithRules({ user, body, file }) {
       parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 90, maxVideoResolution: 720 } : {},
     );
   } else if (parsed.data.mediaUrl) {
+    await assertSafeMediaUrl(parsed.data.mediaUrl, parsed.data.mediaType || 'video');
     media = {
       url: parsed.data.mediaUrl,
       resource_type: parsed.data.mediaType || 'video',
@@ -98,7 +99,7 @@ export async function createPostWithRules({ user, body, file }) {
   }
 
   if (!content && !media) {
-    return { error: 'Texto ou mídia são obrigatórios', status: 400 };
+    return { error: 'Texto ou midia so obrigatrios', status: 400 };
   }
 
   const postType = isZuni ? 'video-post' : (parsed.data.postType || inferPostType(media));
@@ -220,3 +221,5 @@ export async function sharePostWithRules({ user, postId, body }) {
   const created = await sharePost({ username: user.username, postId, content: body?.content || '' });
   return { data: created, status: 201 };
 }
+
+

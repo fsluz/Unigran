@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, RoleBadge, Modal, Button } from '../ui';
 import { MOCK_COMMENTS } from '../../data/mock';
@@ -58,7 +58,7 @@ export default function PostDetailModal({ post, onClose }) {
             {post.author.displayName}
             <RoleBadge role={post.author.role} />
           </div>
-          <div className="post-author-sub">@{post.author.username} · {post.time}</div>
+          <div className="post-author-sub">@{post.author.username} - {post.time}</div>
         </div>
       </div>
 
@@ -69,8 +69,8 @@ export default function PostDetailModal({ post, onClose }) {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 18, fontSize: 13, color: 'var(--text-muted)', paddingBottom: 14, marginBottom: 14, borderBottom: '1px solid var(--border)' }}>
-        <span>❤️ {post.likes} curtidas</span>
-        <span>{post.comments} comentários</span>
+        <span> {post.likes} curtidas</span>
+        <span>{post.comments} comentarios</span>
       </div>
 
       {/* Comments */}
@@ -88,7 +88,7 @@ export default function PostDetailModal({ post, onClose }) {
                 >
                   <div className="comment-summary-top">
                     <span className="comment-bubble-author">{c.author.displayName}</span>
-                    <span className="comment-summary-hint">{expanded ? 'Ocultar comentário' : 'Clique para abrir'}</span>
+                    <span className="comment-summary-hint">{expanded ? 'Ocultar comentario' : 'Clique para abrir'}</span>
                   </div>
                   <div className="comment-summary-text">{c.text}</div>
                 </button>
@@ -112,7 +112,7 @@ export default function PostDetailModal({ post, onClose }) {
                         className={`comment-action ${c.liked ? 'liked' : ''}`}
                         onClick={e => { e.stopPropagation(); toggleCommentLike(c.id); }}
                       >
-                        {c.liked ? '❤️' : '♡'} {c.likes > 0 ? c.likes : ''}
+                        {c.liked ? '' : ''} {c.likes > 0 ? c.likes : ''}
                       </button>
                       <button
                         type="button"
@@ -152,13 +152,15 @@ export default function PostDetailModal({ post, onClose }) {
         <Avatar initials={user.avatar} size={32} />
         <input
           className="comment-input"
-          placeholder="Escreva um comentário…"
+          placeholder="Escreva um comentario..."
           value={newText}
           onChange={e => setNewText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addComment()}
         />
-        <button className="comment-send-btn" onClick={addComment}>➤</button>
+        <button className="comment-send-btn" onClick={addComment}></button>
       </div>
     </Modal>
   );
 }
+
+

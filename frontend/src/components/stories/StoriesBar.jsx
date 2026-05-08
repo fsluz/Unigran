@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Modal, Button } from '../ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -127,7 +127,7 @@ export default function StoriesBar({ onOpenProfile }) {
           if (event.target === event.currentTarget) setActiveIndex(i => Math.min(stories.length - 1, i + 1));
         }}>
           <button className="story-close" onClick={() => setActiveIndex(null)}>x</button>
-          <button className="story-nav prev" onClick={() => setActiveIndex(i => Math.max(0, i - 1))}>‹</button>
+          <button className="story-nav prev" onClick={() => setActiveIndex(i => Math.max(0, i - 1))}></button>
           <div className="story-frame">
             <div className="story-head">
               <button onClick={() => activeStory.author?.username && onOpenProfile?.(activeStory.author.username)}>
@@ -152,9 +152,14 @@ export default function StoriesBar({ onOpenProfile }) {
               <button onClick={sendComment}>Enviar</button>
             </div>
           </div>
-          <button className="story-nav next" onClick={() => setActiveIndex(i => Math.min(stories.length - 1, i + 1))}>›</button>
+          <button className="story-nav next" onClick={() => setActiveIndex(i => Math.min(stories.length - 1, i + 1))}>&gt;</button>
         </div>
       )}
     </>
   );
 }
+
+
+
+
+

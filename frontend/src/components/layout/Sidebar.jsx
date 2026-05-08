@@ -1,10 +1,10 @@
-import { useAuth } from '../../contexts/AuthContext';
+﻿import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui';
 import { useEffect, useState } from 'react';
 import { fetchConversations } from '../../services/conversations';
 
 const NAV_TOP = [
-  { id: 'home',          label: 'Início',        icon: () => (
+  { id: 'home',          label: 'Incio',        icon: () => (
     <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
       <polyline points="9 22 9 12 15 12 15 22"/>
@@ -36,8 +36,8 @@ const NAV_TOP = [
 
 const COMMUNITIES_FOLLOWED = [
   { id: 'tec', label: 'Tecnologia', icon: 'TC', color: '#00A8FF', members: '2.541' },
-  { id: 'mus', label: 'Música',     icon: 'MS', color: '#F59E0B', members: '3.102' },
-  { id: 'cul', label: 'Culinária',  icon: 'CL', color: '#F97316', members: '2.834' },
+  { id: 'mus', label: 'Msica',     icon: 'MS', color: '#F59E0B', members: '3.102' },
+  { id: 'cul', label: 'Culinria',  icon: 'CL', color: '#F97316', members: '2.834' },
 ];
 
 function UnigranLogo() {
@@ -153,7 +153,7 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
           </span>
-          <span className="sidebar-wide-label">Configurações</span>
+          <span className="sidebar-wide-label">Configuracoes</span>
         </button>
 
         <button className="sidebar-wide-user" onClick={() => onNavigate('profile')}>
@@ -176,3 +176,5 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
     </aside>
   );
 }
+
+

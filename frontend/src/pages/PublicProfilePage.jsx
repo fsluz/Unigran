@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import PostCard from '../components/post/PostCard';
 import { Avatar, Button } from '../components/ui';
@@ -87,10 +87,10 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const isMe = profile.username === user?.username;
   const linkIcon = (key = '', url = '') => {
     const value = `${key} ${url}`.toLowerCase();
-    if (value.includes('instagram')) return '📷';
-    if (value.includes('linkedin')) return '💼';
+    if (value.includes('instagram')) return '';
+    if (value.includes('linkedin')) return '';
     if (value.includes('facebook')) return 'f';
-    return '🔗';
+    return '';
   };
 
   return (
@@ -179,3 +179,4 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
     </div>
   );
 }
+

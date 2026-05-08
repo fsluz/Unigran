@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import { Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,11 +7,11 @@ import { fetchNotifications, markAllAsRead, markAsRead } from '../services/notif
 import { relativeTime } from '../utils/time';
 
 function iconFor(type) {
-  if (type === 'like') return '♥';
-  if (type === 'comment') return '💬';
+  if (type === 'like') return '';
+  if (type === 'comment') return '';
   if (type === 'follow') return '+';
-  if (type === 'message') return '✉';
-  return '•';
+  if (type === 'message') return '';
+  return '*';
 }
 
 export default function NotificationsPage() {
@@ -44,7 +44,7 @@ export default function NotificationsPage() {
     setNotifs(prev => prev.map(n => ({ ...n, read: true })));
     try {
       await markAllAsRead(token);
-      showToast('Notificacoes lidas', '✓');
+      showToast('Notificacoes lidas', 'OK');
     } catch {
       setNotifs(before);
       showToast('Erro ao marcar notificacoes', '!');
@@ -70,7 +70,7 @@ export default function NotificationsPage() {
             </div>
           ) : notifs.length === 0 ? (
             <div style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}></div>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Tudo em dia</div>
               <div style={{ fontSize: 13, marginTop: 4 }}>Nenhuma notificacao por enquanto.</div>
             </div>
@@ -98,3 +98,5 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+

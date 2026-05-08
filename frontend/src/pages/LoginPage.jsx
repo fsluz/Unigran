@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -140,7 +140,7 @@ export default function LoginPage({ onGoRegister }) {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError('As senhas nao coincidem.');
       return;
     }
 
@@ -159,7 +159,7 @@ export default function LoginPage({ onGoRegister }) {
       if (!res.ok) {
         setError(formatApiError(data.error, 'Erro ao redefinir senha.'));
       } else {
-        setSuccess('Senha redefinida com sucesso! Faça login.');
+        setSuccess('Senha redefinida com sucesso! Faca login.');
         setTimeout(() => {
           setView('login');
           setEmail(resetEmail);
@@ -256,7 +256,7 @@ export default function LoginPage({ onGoRegister }) {
           <h1 className="auth-heading">Entrar</h1>
           <p className="auth-sub-text">Acesse sua conta institucional</p>
 
-          <div className="auth-tabs" role="tablist" aria-label="Autenticação">
+          <div className="auth-tabs" role="tablist" aria-label="Autenticacao">
             <button type="button" className="auth-tab active">Entrar</button>
             <button type="button" className="auth-tab" onClick={onGoRegister}>Cadastro</button>
           </div>
@@ -333,10 +333,11 @@ export default function LoginPage({ onGoRegister }) {
           <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
-            Não tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
+            Nao tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoRegister}>Cadastre-se gratuitamente</a>
           </div>
         </div>
       </div>
     </AuthLayout>
   );
 }
+

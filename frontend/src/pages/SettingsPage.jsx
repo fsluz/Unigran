@@ -26,30 +26,30 @@ function formatPasswordDate(iso) {
   if (!iso) return 'Nunca alterada';
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (diff < 60)    return 'Alterada agora mesmo';
-  if (diff < 3600)  return `HÃ¡ ${Math.floor(diff / 60)} minuto(s)`;
-  if (diff < 86400) return `HÃ¡ ${Math.floor(diff / 3600)} hora(s)`;
+  if (diff < 3600)  return `Ha ${Math.floor(diff / 60)} minuto(s)`;
+  if (diff < 86400) return `Ha ${Math.floor(diff / 3600)} hora(s)`;
   const days = Math.floor(diff / 86400);
-  if (days === 1)  return 'HÃ¡ 1 dia';
-  if (days < 30)   return `HÃ¡ ${days} dias`;
-  if (days < 365)  return `HÃ¡ ${Math.floor(days / 30)} mÃªs(es)`;
-  return `HÃ¡ ${Math.floor(days / 365)} ano(s)`;
+  if (days === 1)  return 'Ha 1 dia';
+  if (days < 30)   return `Ha ${days} dias`;
+  if (days < 365)  return `Ha ${Math.floor(days / 30)} mes(es)`;
+  return `Ha ${Math.floor(days / 365)} ano(s)`;
 }
 
 const BASE_GROUPS = [
   {
-    title: 'ConfiguraÃ§Ãµes',
+    title: 'Configuracoes',
     items: [
-      { id: 'pessoal',      icon: 'ðŸ‘¤', label: 'Dados Pessoais' },
-      { id: 'privacidade',  icon: 'ðŸ”’', label: 'Privacidade'    },
-      { id: 'notificacoes', icon: 'ðŸ””', label: 'NotificaÃ§Ãµes'   },
-      { id: 'seguranca',    icon: 'ðŸ›¡ï¸', label: 'SeguranÃ§a'      },
+      { id: 'pessoal',      icon: '', label: 'Dados Pessoais' },
+      { id: 'privacidade',  icon: '', label: 'Privacidade'    },
+      { id: 'notificacoes', icon: '', label: 'Notificacoes'   },
+      { id: 'seguranca',    icon: '', label: 'Seguranca'      },
     ],
   },
 ];
 
 const ADMIN_GROUP = {
-  title: 'AdministraÃ§Ã£o',
-  items: [{ id: 'admin', icon: 'ðŸ‘‘', label: 'Painel Admin' }],
+  title: 'Administracao',
+  items: [{ id: 'admin', icon: '', label: 'Painel Admin' }],
 };
 
 function Section({ title, desc, children }) {
@@ -74,7 +74,7 @@ function Row({ title, sub, children }) {
   );
 }
 
-/* â”€â”€ Accordion / Dropdown para Trocar Senha â”€â”€ */
+/*  Accordion / Dropdown para Trocar Senha  */
 function PasswordAccordion({ onSuccess }) {
   const { token } = useAuth();
   const { showToast } = useToast();
@@ -91,7 +91,7 @@ function PasswordAccordion({ onSuccess }) {
     setError('');
     if (!form.current)             { setError('Informe a senha atual.');                        return; }
     if (form.next.length < 6)      { setError('A nova senha deve ter pelo menos 6 caracteres.'); return; }
-    if (form.next !== form.confirm) { setError('As senhas nÃ£o coincidem.');                      return; }
+    if (form.next !== form.confirm) { setError('As senhas nao coincidem.');                      return; }
 
     setLoading(true);
     try {
@@ -105,7 +105,7 @@ function PasswordAccordion({ onSuccess }) {
       onSuccess?.(data.passwordChangedAt);
       setForm({ current: '', next: '', confirm: '' });
       setOpen(false);
-      showToast('Senha alterada com sucesso!', 'âœ…');
+      showToast('Senha alterada com sucesso!', 'OK');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -119,7 +119,7 @@ function PasswordAccordion({ onSuccess }) {
       onClick={() => setVisible(p => ({ ...p, [key]: !p[key] }))}
       style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, color: 'var(--text-muted)', padding: 0 }}
     >
-      {visible[key] ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+      {visible[key] ? '' : ''}
     </button>
   );
 
@@ -132,7 +132,7 @@ function PasswordAccordion({ onSuccess }) {
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>ðŸ”‘</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}></div>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>Trocar senha</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Clique para alterar sua senha</div>
@@ -157,9 +157,9 @@ function PasswordAccordion({ onSuccess }) {
           <div style={{ height: 16 }} />
 
           {[
-            { key: 'current', label: 'Senha atual',         placeholder: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' },
-            { key: 'next',    label: 'Nova senha',           placeholder: 'MÃ­nimo 6 caracteres' },
-            { key: 'confirm', label: 'Confirmar nova senha', placeholder: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' },
+            { key: 'current', label: 'Senha atual',         placeholder: '********' },
+            { key: 'next',    label: 'Nova senha',           placeholder: 'Minimo 6 caracteres' },
+            { key: 'confirm', label: 'Confirmar nova senha', placeholder: '********' },
           ].map(f => (
             <div key={f.key} style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</label>
@@ -183,7 +183,7 @@ function PasswordAccordion({ onSuccess }) {
 
           <div style={{ display: 'flex', gap: 8 }}>
             <Button onClick={handleSave} disabled={loading}>
-              {loading ? 'Salvandoâ€¦' : 'Salvar senha'}
+              {loading ? 'Salvando...' : 'Salvar senha'}
             </Button>
             <Button variant="secondary" onClick={() => { setOpen(false); setForm({ current: '', next: '', confirm: '' }); setError(''); }}>
               Cancelar
@@ -195,7 +195,7 @@ function PasswordAccordion({ onSuccess }) {
   );
 }
 
-/* â”€â”€ Main â”€â”€ */
+/*  Main  */
 export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
@@ -356,12 +356,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   async function handleSaveEdit() {
     setEditError('');
     if (editField === 'displayName') {
-      if (!editValue.trim())         { setEditError('O nome nÃ£o pode ser vazio.');                           return; }
+      if (!editValue.trim())         { setEditError('O nome nao pode ser vazio.');                           return; }
       if (editValue.trim().length < 2){ setEditError('O nome deve ter pelo menos 2 caracteres.');            return; }
     }
     if (editField === 'phone') {
       const digits = editValue.replace(/\D/g, '');
-      if (editValue && digits.length < 10) { setEditError('Telefone invÃ¡lido. Use ao menos 10 dÃ­gitos.'); return; }
+      if (editValue && digits.length < 10) { setEditError('Telefone invalido. Use ao menos 10 digitos.'); return; }
     }
     setEditLoading(true);
     try {
@@ -369,7 +369,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       const res  = await apiFetch(`/users/${user.username}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Erro ao salvar'); }
       updateUser(body);
-      showToast(editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!', 'âœ…');
+      showToast(editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!', 'OK');
       setEditField(null);
     } catch (err) {
       setEditError(err.message || 'Erro ao salvar. Tente novamente.');
@@ -500,13 +500,13 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
   return (
     <div className="page-scroll">
-      <Topbar title="ConfiguraÃ§Ãµes" />
+      <Topbar title="Configuracoes" />
       <div className="settings-shell">
 
         {/* Left nav */}
         <nav className="settings-sidenav">
           <div style={{ padding: '16px 16px 8px', fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            ConfiguraÃ§Ãµes
+            Configuracoes
           </div>
           {groups.map(g => (
             <div key={g.title} className="settings-nav-group" style={{ marginBottom: 8 }}>
@@ -600,8 +600,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           </>)}
 
           {section === 'seguranca' && (<>
-            <Section title="AutenticaÃ§Ã£o em Dois Fatores (2FA)" desc="">
-              <Row title="Ativar 2FA" sub="Camada extra de seguranÃ§a">
+            <Section title="Autenticacao em Dois Fatores (2FA)" desc="">
+              <Row title="Ativar 2FA" sub="Camada extra de segurana">
                 <Toggle checked={Boolean(user?.twoFactorEnabled || cfg.twoFactor)} onChange={() => user?.twoFactorEnabled ? disable2FA() : start2FA()} />
               </Row>
               {twoFactorSetup && (
@@ -613,18 +613,18 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 </div>
               )}
             </Section>
-            <Section title="SessÃµes Ativas" desc="">
+            <Section title="Sessoes Ativas" desc="">
               <Row title="Sessao atual" sub="Este aparelho">
                 <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
               </Row>
             </Section>
             <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
-              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>âš ï¸ Zona de Perigo</div>
-              {[{icon:'ðŸ“¥',label:'Baixar meus dados',desc:'CÃ³pia completa de todos os seus dados'},{icon:'ðŸ—‘ï¸',label:'Deletar conta e todos os dados',desc:'AÃ§Ã£o permanente e irreversÃ­vel'}].map(item=>(
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>Aviso Zona de Perigo</div>
+              {[{icon:'',label:'Baixar meus dados',desc:'Copia completa de todos os seus dados'},{icon:'',label:'Deletar conta e todos os dados',desc:'Acao permanente e irreversivel'}].map(item=>(
                 <div key={item.label} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:10, border:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.06)', marginBottom:10, cursor:'pointer' }}>
                   <span style={{ fontSize:20 }}>{item.icon}</span>
                   <div><div style={{ fontWeight:700, fontSize:14, color:'var(--danger)' }}>{item.label}</div><div style={{ fontSize:12, color:'rgba(239,68,68,0.7)' }}>{item.desc}</div></div>
-                  <span style={{ marginLeft:'auto', color:'var(--danger)' }}>â€º</span>
+                  <span style={{ marginLeft:'auto', color:'var(--danger)' }}>&gt;</span>
                 </div>
               ))}
             </div>
@@ -635,9 +635,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               <Row title="Email atual" sub={user?.email}>
                 <Button variant="secondary" size="sm" onClick={() => setEmailModal(true)}>Alterar</Button>
               </Row>
-              <Row title="Senha" sub={`Ãšltima alteraÃ§Ã£o: ${formatPasswordDate(passwordChangedAt)}`} />
+              <Row title="Senha" sub={`ltima alteracao: ${formatPasswordDate(passwordChangedAt)}`} />
 
-              {/* â”€â”€ Accordion de senha â”€â”€ */}
+              {/*  Accordion de senha  */}
               <div style={{ marginTop: 12 }}>
                 <PasswordAccordion onSuccess={(date) => setPasswordChangedAt(date)} />
               </div>
@@ -647,8 +647,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {section === 'privacidade' && (<>
             <Section title="Visibilidade do Perfil" desc="">
               {[
-                { val:'public',  label:'ðŸŒ PÃºblico',  desc:'Qualquer pessoa pode ver e acompanhar' },
-                { val:'private', label:'ðŸ”’ Privado', desc:'Apenas seguidores aprovados por vocÃª' },
+                { val:'public',  label:' Pblico',  desc:'Qualquer pessoa pode ver e acompanhar' },
+                { val:'private', label:' Privado', desc:'Apenas seguidores aprovados por voce' },
               ].map(opt => (
                 <div key={opt.val} onClick={() => {
                   const next = { ...cfg, profileVisibility: opt.val };
@@ -673,13 +673,13 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 <select className="form-input" style={{ width:'auto', padding:'6px 12px' }} value={cfg.whoCanMsg} onChange={e => setCfg(p=>({...p, whoCanMsg: e.target.value}))}>
                   <option value="everyone">Todos</option>
                   <option value="followers">Apenas quem sigo</option>
-                  <option value="none">NinguÃ©m</option>
+                  <option value="none">Ninguem</option>
                 </select>
               </Row>
               {[
-                ['Silenciar mensagens','NÃ£o receber notificaÃ§Ãµes','muteAllMsgs'],
-                ['Confirmar leitura','Mostrar quando vocÃª leu','readReceipts'],
-                ['Mostrar quando online','VisÃ­vel para outros usuÃ¡rios','showOnline'],
+                ['Silenciar mensagens','Nao receber notificaes','muteAllMsgs'],
+                ['Confirmar leitura','Mostrar quando voce leu','readReceipts'],
+                ['Mostrar quando online','Visvel para outros usuarios','showOnline'],
               ].map(([label,sub,key]) => (
                 <Row key={key} title={label} sub={sub}>
                   <Toggle checked={cfg[key] ?? (key!=='muteAllMsgs')} onChange={() => {
@@ -690,39 +690,39 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 </Row>
               ))}
             </Section>
-            {['UsuÃ¡rios Bloqueados','UsuÃ¡rios Silenciados'].map((title,ti) => (
+            {['Usuarios Bloqueados','Usuarios Silenciados'].map((title,ti) => (
               <Section key={title} title={title} desc="">
                 <div style={{ textAlign:'center', padding:'20px 0', color:'var(--text-muted)' }}>
-                  <div style={{ fontSize:32, marginBottom:8 }}>{ti===0?'ðŸš«':'ðŸ”‡'}</div>
-                  <div style={{ fontSize:14 }}>Nenhum usuÃ¡rio {ti===0?'bloqueado':'silenciado'}</div>
+                  <div style={{ fontSize:32, marginBottom:8 }}>{ti===0?'':''}</div>
+                  <div style={{ fontSize:14 }}>Nenhum usuario {ti===0?'bloqueado':'silenciado'}</div>
                 </div>
               </Section>
             ))}
           </>)}
 
           {section === 'dados' && (
-            <Section title="Seus Dados" desc="Gerencie e exporte todas suas informaÃ§Ãµes">
-              <Row title="Baixar seus dados" sub="Exportar posts, mensagens e informaÃ§Ãµes de perfil">
-                <Button variant="secondary" size="sm" onClick={() => showToast('VocÃª receberÃ¡ um email com o arquivo em breve.', 'ðŸ“¦')}>â¬‡ï¸ Exportar</Button>
+            <Section title="Seus Dados" desc="Gerencie e exporte todas suas informacoes">
+              <Row title="Baixar seus dados" sub="Exportar posts, mensagens e informacoes de perfil">
+                <Button variant="secondary" size="sm" onClick={() => showToast('Voce receber um email com o arquivo em breve.', '')}>Baixar Exportar</Button>
               </Row>
               <div className="settings-danger-zone">
-                <div className="settings-danger-zone-title">âš ï¸ Zona de perigo</div>
-                <div className="settings-danger-zone-desc">Estas aÃ§Ãµes sÃ£o permanentes e nÃ£o podem ser desfeitas.</div>
-                <Button variant="danger" size="sm" onClick={() => setDeleteModal(true)}>ðŸ—‘ï¸ Deletar conta permanentemente</Button>
+                <div className="settings-danger-zone-title">Aviso Zona de perigo</div>
+                <div className="settings-danger-zone-desc">Estas aes so permanentes e nao podem ser desfeitas.</div>
+                <Button variant="danger" size="sm" onClick={() => setDeleteModal(true)}> Deletar conta permanentemente</Button>
               </div>
             </Section>
           )}
 
           {section === 'notificacoes' && (<>
-            <Section title="NotificaÃ§Ãµes Push" desc="">
-              <Row title="Ativar notificaÃ§Ãµes push" sub="Receba notificaÃ§Ãµes em tempo real">
+            <Section title="Notificacoes Push" desc="">
+              <Row title="Ativar notificaes push" sub="Receba notificaes em tempo real">
                 <Toggle checked={cfg.pushNotif} onChange={() => toggle('pushNotif')} />
               </Row>
               {[
                 ['Curtidas',          'pushLikes'],
-                ['ComentÃ¡rios',       'pushComments'],
+                ['Comentarios',       'pushComments'],
                 ['Novos seguidores',  'pushFollows'],
-                ['MenÃ§Ãµes',           'pushMentions'],
+                ['Mencoes',           'pushMentions'],
                 ['Mensagens',         'pushMsgs'],
               ].map(([label, key]) => (
                 <Row key={key} title={label}>
@@ -730,12 +730,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 </Row>
               ))}
             </Section>
-            <Section title="NotificaÃ§Ãµes por E-mail" desc="">
+            <Section title="Notificacoes por E-mail" desc="">
               {[
-                ['E-mails de notificaÃ§Ã£o', 'Resumos de atividade',       'emailNotif'],
+                ['E-mails de notificacao', 'Resumos de atividade',       'emailNotif'],
                 ['Resumo semanal',         'Destaques toda segunda',       'emailWeekly'],
-                ['Alertas de seguranÃ§a',   'Login em novo dispositivo',    'emailSecurity'],
-                ['Marketing',              'Novidades e atualizaÃ§Ãµes',     'marketing'],
+                ['Alertas de segurana',   'Login em novo dispositivo',    'emailSecurity'],
+                ['Marketing',              'Novidades e atualizacoes',     'marketing'],
               ].map(([label, sub, key]) => (
                 <Row key={key} title={label} sub={sub}>
                   <Toggle checked={cfg[key] ?? (key !== 'marketing')} onChange={() => {
@@ -749,11 +749,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           </>)}
 
           {section === 'mensagens' && (
-            <Section title="Mensagens" desc="PreferÃªncias de mensagens diretas">
-              <Row title="Silenciar todas as mensagens" sub="NÃ£o receber notificaÃ§Ãµes de nenhuma conversa">
-                <Toggle checked={cfg.muteAllMsgs} onChange={() => { toggle('muteAllMsgs'); showToast(cfg.muteAllMsgs ? 'Mensagens ativadas' : 'Mensagens silenciadas', 'ðŸ’¬'); }} />
+            <Section title="Mensagens" desc="Preferncias de mensagens diretas">
+              <Row title="Silenciar todas as mensagens" sub="Nao receber notificaes de nenhuma conversa">
+                <Toggle checked={cfg.muteAllMsgs} onChange={() => { toggle('muteAllMsgs'); showToast(cfg.muteAllMsgs ? 'Mensagens ativadas' : 'Mensagens silenciadas', ''); }} />
               </Row>
-              <Row title="Confirmar leitura" sub="Mostrar quando vocÃª leu uma mensagem">
+              <Row title="Confirmar leitura" sub="Mostrar quando voce leu uma mensagem">
                 <Toggle checked={true} onChange={() => {}} />
               </Row>
             </Section>
@@ -849,7 +849,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           footer={
             <>
               <Button variant="secondary" onClick={() => setEditField(null)} disabled={editLoading}>Cancelar</Button>
-              <Button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Salvandoâ€¦' : 'Salvar'}</Button>
+              <Button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Salvando...' : 'Salvar'}</Button>
             </>
           }
         >
@@ -859,7 +859,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
             </FormField>
           )}
           {editField === 'phone' && (
-            <FormField label="NÃºmero de telefone">
+            <FormField label="Numero de telefone">
               <input className="form-input" value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="(44) 99999-9999" autoFocus maxLength={20} type="tel" />
             </FormField>
           )}
@@ -872,7 +872,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
         <Modal
           title="Alterar Email"
           onClose={() => setEmailModal(false)}
-          footer={<><Button variant="secondary" onClick={() => setEmailModal(false)}>Cancelar</Button><Button onClick={() => { setEmailModal(false); showToast('Email atualizado!', 'âœ…'); }}>Salvar</Button></>}
+          footer={<><Button variant="secondary" onClick={() => setEmailModal(false)}>Cancelar</Button><Button onClick={() => { setEmailModal(false); showToast('Email atualizado!', 'OK'); }}>Salvar</Button></>}
         >
           <FormField label="Email atual"><input className="form-input" defaultValue={user?.email} disabled /></FormField>
           <FormField label="Novo email"><input type="email" className="form-input" placeholder="novo@email.com" /></FormField>
@@ -883,23 +883,23 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       {/* Delete account modal */}
       {deleteModal && (
         <Modal
-          title="âš ï¸ Deletar Conta"
+          title="Aviso Deletar Conta"
           onClose={() => { if (!deleteLoading) { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); } }}
           footer={
             <>
               <Button variant="secondary" onClick={() => { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); }} disabled={deleteLoading}>Cancelar</Button>
-              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>{deleteLoading ? 'Deletandoâ€¦' : 'Confirmar exclusÃ£o'}</Button>
+              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>{deleteLoading ? 'Deletando...' : 'Confirmar exclusao'}</Button>
             </>
           }
         >
           <p style={{ marginBottom: 16, color: 'var(--text-2)', lineHeight: 1.6 }}>
-            Esta aÃ§Ã£o Ã© <strong>irreversÃ­vel</strong>. Todos os seus posts, mensagens e dados serÃ£o permanentemente excluÃ­dos.
+            Esta acao  <strong>irreversivel</strong>. Todos os seus posts, mensagens e dados serao permanentemente excludos.
           </p>
           <FormField label="Digite sua senha para confirmar">
             <div style={{ position: 'relative' }}>
-              <input className="form-input" type={showDeletePass ? 'text' : 'password'} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autoFocus value={deletePassword} onChange={e => setDeletePassword(e.target.value)} style={{ paddingRight: 40 }} />
+              <input className="form-input" type={showDeletePass ? 'text' : 'password'} placeholder="********" autoFocus value={deletePassword} onChange={e => setDeletePassword(e.target.value)} style={{ paddingRight: 40 }} />
               <button type="button" onClick={() => setShowDeletePass(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
-                {showDeletePass ? 'ðŸ™ˆ' : 'ðŸ‘ï¸'}
+                {showDeletePass ? '' : ''}
               </button>
             </div>
           </FormField>
@@ -909,4 +909,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     </div>
   );
 }
+
+
+
+
 

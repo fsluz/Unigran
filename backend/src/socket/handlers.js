@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+﻿import jwt from 'jsonwebtoken';
 import { jwtSecret } from '../config/jwt.js';
 
 const onlineUsers = new Map(); // userId -> socketId
@@ -8,12 +8,12 @@ export function setupSocket(io) {
   // Auth middleware for socket connections
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error('Não autenticado'));
+    if (!token) return next(new Error('Nao autenticado'));
     try {
       socket.user = jwt.verify(token, jwtSecret());
       next();
     } catch {
-      next(new Error('Token inválido'));
+      next(new Error('Token invalido'));
     }
   });
 
@@ -22,17 +22,17 @@ export function setupSocket(io) {
     onlineUsers.set(uid, socket.id);
     socket.broadcast.emit('user_online', { userId: uid });
 
-    /* ── Join conversation room ── */
+    /*  Join conversation room  */
     socket.on('join_conversation', ({ conversationId }) => {
       socket.join(`conv:${conversationId}`);
     });
 
-    /* ── Leave conversation room ── */
+    /*  Leave conversation room  */
     socket.on('leave_conversation', ({ conversationId }) => {
       socket.leave(`conv:${conversationId}`);
     });
 
-    /* ── Send message (real-time broadcast) ── */
+    /*  Send message (real-time broadcast)  */
     socket.on('send_message', ({ conversationId, content, mediaUrl, mediaType = 'text' }) => {
       const message = {
         id:        `rt-${Date.now()}`,
@@ -45,7 +45,7 @@ export function setupSocket(io) {
       io.to(`conv:${conversationId}`).emit('new_message', { conversationId, message });
     });
 
-    /* ── Typing indicator ── */
+    /*  Typing indicator  */
     socket.on('typing', ({ conversationId }) => {
       socket.to(`conv:${conversationId}`).emit('user_typing', { userId: uid, conversationId });
     });
@@ -54,12 +54,12 @@ export function setupSocket(io) {
       socket.to(`conv:${conversationId}`).emit('user_stop_typing', { userId: uid, conversationId });
     });
 
-    /* ── Mark as read ── */
+    /*  Mark as read  */
     socket.on('mark_read', ({ conversationId, messageId }) => {
       socket.to(`conv:${conversationId}`).emit('message_read', { userId: uid, messageId });
     });
 
-    /* ── Disconnect ── */
+    /*  Disconnect  */
     socket.on('disconnect', () => {
       onlineUsers.delete(uid);
       socket.broadcast.emit('user_offline', { userId: uid });
@@ -79,3 +79,5 @@ export function markUserOnline(userId) {
   if (!userId) return;
   heartbeatUsers.set(userId, Date.now() + 45_000);
 }
+
+
