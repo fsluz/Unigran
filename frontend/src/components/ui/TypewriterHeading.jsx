@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 
 const texts = [
   'Entre na sua conta para continuar',
   'Unigran',
-  'Onde o mundo acadêmico se encontra. :)'
+  'Onde o mundo academico se encontra. :)'
 ];
 
 export default function TypewriterHeading({ className = '' }) {
@@ -36,7 +36,7 @@ export default function TypewriterHeading({ className = '' }) {
           setChar(char - 1);
         }, 30);
       } else {
-        // Vai para o próximo texto (loop)
+        // Vai para o prximo texto (loop)
         setIsDeleting(false);
         setIndex((prev) => (prev + 1) % texts.length);
       }
@@ -52,3 +52,4 @@ export default function TypewriterHeading({ className = '' }) {
     </h1>
   );
 }
+

@@ -73,6 +73,15 @@ export async function startGroupConversation({ token, title, participants, pictu
   return data.conversation;
 }
 
+export async function addGroupParticipants({ token, conversationId, participants }) {
+  const res = await apiFetch(`/conversations/${conversationId}/participants`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ participants }),
+  });
+  return parseResponse(res, 'Erro ao adicionar pessoas');
+}
+
 export async function deleteMessage({ token, conversationId, messageId }) {
   const res = await apiFetch(`/conversations/${conversationId}/messages/${messageId}`, {
     method: 'DELETE',

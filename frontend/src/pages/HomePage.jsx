@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PostComposer from '../components/post/PostComposer';
@@ -6,7 +6,6 @@ import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
 import StoriesBar from '../components/stories/StoriesBar';
 import Topbar from '../components/layout/Topbar';
-import unigranCharacters from '../assets/unigran_characters.png';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 import { apiFetch, authHeaders } from '../utils/api';
 import { Avatar } from '../components/ui';
@@ -20,7 +19,7 @@ const TRENDING = [
   { tag: 'estudos', count: '0' },
   { tag: 'carreira', count: '0' },
 ];
-const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programação', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
+const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
 
 const SUGGESTED_COMMUNITIES = [
   { icon: 'IA', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
@@ -45,6 +44,8 @@ export default function HomePage({ onOpenProfile }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [serverTrends, setServerTrends] = useState([]);
+  const [trendTitle, setTrendTitle] = useState('');
   const loadMoreRef = useRef(null);
 
   const trending = useMemo(() => {
@@ -63,8 +64,8 @@ export default function HomePage({ onOpenProfile }) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([tag, count]) => ({ tag, count: String(count) }));
-    return dynamic.length ? dynamic : TRENDING;
-  }, [posts]);
+    return serverTrends.length ? serverTrends : (dynamic.length ? dynamic : TRENDING);
+  }, [posts, serverTrends]);
 
   useEffect(() => {
     let alive = true;
@@ -92,7 +93,24 @@ export default function HomePage({ onOpenProfile }) {
       .then(r => r.json())
       .then(data => setSuggestedCommunities((data.communities || []).filter(c => !c.joined).slice(0, 3)))
       .catch(() => setSuggestedCommunities([]));
+    apiFetch('/posts/trends', { headers: authHeaders(token) })
+      .then(r => r.json())
+      .then(data => setServerTrends(data.trends || []))
+      .catch(() => setServerTrends([]));
   }, [token]);
+
+  const openTrend = async (tag) => {
+    setTrendTitle(tag);
+    setLoadingPosts(true);
+    try {
+      const res = await apiFetch(`/posts/trends/${encodeURIComponent(tag)}`, { headers: authHeaders(token) });
+      const data = await res.json();
+      setPosts(data.posts || []);
+      setHasMore(false);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   const handleNewPost = async ({ content, file, postType }) => {
     const created = await createPost({ token, content, file, postType });
@@ -101,12 +119,12 @@ export default function HomePage({ onOpenProfile }) {
       return;
     }
     setPosts(prev => [created, ...prev]);
-    showToast('Post publicado', '✓');
+    showToast('Post publicado', 'OK');
   };
 
   const handleDelete = id => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excluido', '✓');
+    showToast('Post excluido', 'OK');
   };
 
   const handleEdit = (id, newText) => {
@@ -164,7 +182,7 @@ export default function HomePage({ onOpenProfile }) {
     setSuggestedCommunities(prev => prev.filter(c => c.id !== community.id));
     try {
       await joinCommunity({ token, id: community.id });
-      showToast('Entrou na comunidade', '✓');
+      showToast('Entrou na comunidade', 'OK');
     } catch {
       showToast('Erro ao entrar', '!');
     }
@@ -176,15 +194,6 @@ export default function HomePage({ onOpenProfile }) {
 
       <div className="page-layout">
         <main className="section-grid">
-          <section className="home-welcome-card">
-            <div className="home-welcome-copy">
-              <span className="home-welcome-kicker">UNIGRAN SOCIAL</span>
-              <h1>Bem-vindo a comunidade Unigran</h1>
-              <p>Conecte-se com colegas, professores e projetos da vida academica.</p>
-            </div>
-            <img src={unigranCharacters} alt="Personagens Unigran" className="home-welcome-image" />
-          </section>
-
           <StoriesBar onOpenProfile={onOpenProfile} />
 
           <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
@@ -210,6 +219,12 @@ export default function HomePage({ onOpenProfile }) {
           </div>
 
           <div className="section-grid">
+            {trendTitle && (
+              <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <strong>#{trendTitle}</strong>
+                <button className="btn btn-secondary" onClick={() => { setTrendTitle(''); setFeed('for-you'); }}>Voltar</button>
+              </div>
+            )}
             {loadingPosts && posts.length === 0 && [1, 2, 3].map(i => (
               <div key={i} className="card post-card-skeleton">
                 <div className="skeleton-line" style={{ width: '40%' }} />
@@ -245,8 +260,8 @@ export default function HomePage({ onOpenProfile }) {
             {trending.map((item, i) => (
               <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < trending.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{item.tag}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} mencoes</div>
+                  <button onClick={() => openTrend(item.tag)} style={{ border: 0, background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>#{item.tag}</button>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} posts - {item.lastHour || 0} ultima hora</div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10 }}>#{i + 1}</span>
               </div>
@@ -276,7 +291,7 @@ export default function HomePage({ onOpenProfile }) {
                 </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.displayName || person.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{person.username ? `@${person.username}` : `Amigo(a) de ${person.mutual}`}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{person.username ? `@${person.username}${person.mutualCount ? ` - ${person.mutualCount} amigos em comum` : ''}` : `Amigo(a) de ${person.mutual}`}</div>
                 </div>
                 <button onClick={() => toggleFollow(person)} style={{ padding: '5px 12px', borderRadius: 10, border: '1px solid var(--border)', background: person.following ? 'var(--accent-light)' : 'transparent', color: person.following ? 'var(--accent)' : 'var(--text-muted)', fontSize: 11, fontWeight: 700 }}>
                   {person.following ? 'Seguindo' : 'Seguir'}
@@ -291,3 +306,4 @@ export default function HomePage({ onOpenProfile }) {
     </div>
   );
 }
+

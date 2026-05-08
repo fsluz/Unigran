@@ -1,4 +1,4 @@
-import {
+﻿import {
   createCommentWithRules,
   createPostWithRules,
   deletePostWithRules,
@@ -14,6 +14,8 @@ import {
   unlikeComment,
   unlikePost,
 } from '../services/post.service.js';
+import { typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { listKeywordPosts, listTrends } from '../repositories/post.repository.js';
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
@@ -23,7 +25,7 @@ function cloudinaryAwareError(res, err, fallback) {
   if (message.toLowerCase().includes('unauthorized')) {
     return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
   }
-  if (message.toLowerCase().includes('cloudinary não configurado')) {
+  if (message.toLowerCase().includes('cloudinary nao configurado')) {
     return res.status(500).json({ error: message });
   }
   return res.status(500).json({ error: fallback });
@@ -44,6 +46,24 @@ export async function getFeedController(req, res) {
   }
 }
 
+export async function getTrendsController(_req, res) {
+  try {
+    res.json({ trends: await listTrends() });
+  } catch (err) {
+    console.error('[posts trends]', err);
+    res.status(500).json({ error: 'Erro ao carregar tendencias' });
+  }
+}
+
+export async function getTrendPostsController(req, res) {
+  try {
+    res.json({ posts: await listKeywordPosts({ viewerUsername: req.user.username, keyword: req.params.tag }) });
+  } catch (err) {
+    console.error('[posts trend]', err);
+    res.status(500).json({ error: 'Erro ao carregar tendencia' });
+  }
+}
+
 export async function createPostController(req, res) {
   try {
     const result = await createPostWithRules({ user: req.user, body: req.body, file: req.file });
@@ -61,7 +81,7 @@ export async function getCommentsController(req, res) {
     res.json({ comments });
   } catch (err) {
     console.error('[comments list]', err);
-    res.status(500).json({ error: 'Erro ao carregar comentários' });
+    res.status(500).json({ error: 'Erro ao carregar comentarios' });
   }
 }
 
@@ -86,7 +106,7 @@ export async function createCommentController(req, res) {
     res.status(result.status || 201).json(result.data);
   } catch (err) {
     console.error('[comments create]', err);
-    cloudinaryAwareError(res, err, 'Erro ao criar comentário');
+    cloudinaryAwareError(res, err, 'Erro ao criar comentario');
   }
 }
 
@@ -174,6 +194,29 @@ export async function sharePostController(req, res) {
   }
 }
 
-export async function reportPostController(_req, res) {
-  res.status(201).json({ reported: true });
+export async function reportPostController(req, res) {
+  const reason = String(req.body?.reason || 'Post denunciado').slice(0, 240);
+  const reportId = `report-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const createdAt = new Date().toISOString();
+
+  try {
+    await writeQuery(`
+      match
+        $reporter isa person, has username "${typeqlLiteral(req.user.username)}";
+        $post isa post, has post-id "${typeqlLiteral(req.params.id)}";
+        posting(post: $post, page: $reported_user);
+      insert
+        $report isa report,
+          has report-id "${reportId}",
+          has report-reason "${typeqlLiteral(reason)}",
+          has report-status "open",
+          has creation-timestamp "${createdAt}";
+        report-target(reporter: $reporter, reported-user: $reported_user, reported-post: $post, report: $report);
+    `);
+    res.status(201).json({ reported: true, reportId });
+  } catch (err) {
+    console.error('[posts report]', err);
+    res.status(500).json({ error: 'Schema de denuncia ausente ou denuncia falhou' });
+  }
 }
+

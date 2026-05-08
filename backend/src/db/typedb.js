@@ -1,4 +1,4 @@
-import { TypeDBHttpDriver } from '@typedb/driver-http';
+﻿import { TypeDBHttpDriver } from '@typedb/driver-http';
 
 export function typeqlLiteral(value) {
   return String(value)
@@ -25,14 +25,14 @@ const ADDRESS = process.env.TYPEDB_ADDRESS  || 'http://rp78xj-0.cluster.typedb.c
 const USER    = process.env.TYPEDB_USERNAME || 'admin';
 const PASS    = process.env.TYPEDB_PASSWORD || 'password';
 
-console.log('🔍 TypeDB config:', { DB, ADDRESS, USER });
+console.log(' TypeDB config:', { DB, ADDRESS, USER });
 
 let _driver = null;
 
 function getDriver() {
   if (!_driver) {
     _driver = new TypeDBHttpDriver({ addresses: [ADDRESS], username: USER, password: PASS });
-    console.log(`☁️  TypeDB HTTP → ${ADDRESS}`);
+    console.log(`  TypeDB HTTP  ${ADDRESS}`);
   }
   return _driver;
 }
@@ -62,3 +62,4 @@ export function val(row, varName) {
   if (typeof concept === 'string' || typeof concept === 'number' || typeof concept === 'boolean') return concept;
   return concept.iid ?? null;
 }
+

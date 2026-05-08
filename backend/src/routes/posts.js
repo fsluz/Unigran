@@ -9,6 +9,8 @@ import {
   editPostController,
   getCommentsController,
   getFeedController,
+  getTrendPostsController,
+  getTrendsController,
   likeCommentController,
   likePostController,
   reportPostController,
@@ -23,6 +25,8 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
 router.get('/', auth, getFeedController);
+router.get('/trends', auth, getTrendsController);
+router.get('/trends/:tag', auth, getTrendPostsController);
 router.get('/favorites', auth, favoritesController);
 router.post('/', auth, upload.single('file'), createPostController);
 router.patch('/:id', auth, editPostController);

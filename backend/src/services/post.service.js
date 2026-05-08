@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import {
   createComment,
   createPost,
@@ -15,7 +15,8 @@ import {
   unreactToPost,
   unsavePost,
 } from '../repositories/post.repository.js';
-import { uploadMediaBuffer } from './cloudinary.service.js';
+import { assertSafeMediaUrl, uploadMediaBuffer } from './cloudinary.service.js';
+import { readQuery, typeqlLiteral } from '../db/typedb.js';
 
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
@@ -29,6 +30,16 @@ const createCommentSchema = z.object({
   parentCommentId: z.string().optional(),
 });
 
+const ADULT_TERMS = [
+  'porn', 'porno', 'pornografia', 'nude', 'nudes', 'pelado', 'pelada',
+  'sexo explicito', 'xxx', 'onlyfans', 'nsfw', '+18',
+];
+
+function hasAdultText(text = '') {
+  const lower = String(text || '').toLowerCase();
+  return ADULT_TERMS.some(term => lower.includes(term));
+}
+
 function inferPostType(media) {
   if (!media) return 'text-post';
   if (media.resource_type === 'video') return 'video-post';
@@ -40,13 +51,35 @@ export async function getFeed({ user, limit = 20, offset = 0, feed = '' }) {
 }
 
 export async function createPostWithRules({ user, body, file }) {
+  const rows = await readQuery(`
+    match
+      $u isa person, has username "${typeqlLiteral(user.username)}";
+      try { $u has is-banned $banned; };
+      try { $u has can-publish $can_publish; };
+    fetch {
+      "banned": $banned,
+      "can_publish": $can_publish
+    };
+  `);
+  const account = rows[0] || {};
+  if (account.banned === true || String(account.banned).toLowerCase() === 'true') {
+    return { error: 'Conta banida', status: 403 };
+  }
+  if (account.can_publish === false || String(account.can_publish).toLowerCase() === 'false') {
+    return { error: 'Publicacao bloqueada pela moderacao', status: 403 };
+  }
+
   const parsed = createPostSchema.safeParse(body || {});
   if (!parsed.success) {
     return { error: parsed.error.flatten(), status: 400 };
   }
 
   const isZuni = parsed.data.postType === 'zuni-post';
-  const content = `${parsed.data.content.trim()}${isZuni ? ' #Zuni' : ''}`.trim();
+  const baseContent = String(parsed.data.content || '').replace(/^\s+|\s+$/g, '');
+  const content = `${baseContent}${isZuni ? ' #Zuni' : ''}`.replace(/^\s+|\s+$/g, '');
+  if (hasAdultText(content)) {
+    return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
+  }
   let media = null;
   if (file) {
     media = await uploadMediaBuffer(
@@ -55,6 +88,7 @@ export async function createPostWithRules({ user, body, file }) {
       parsed.data.postType === 'zuni-post' ? { maxVideoDurationSec: 90, maxVideoResolution: 720 } : {},
     );
   } else if (parsed.data.mediaUrl) {
+    await assertSafeMediaUrl(parsed.data.mediaUrl, parsed.data.mediaType || 'video');
     media = {
       url: parsed.data.mediaUrl,
       resource_type: parsed.data.mediaType || 'video',
@@ -66,7 +100,7 @@ export async function createPostWithRules({ user, body, file }) {
   }
 
   if (!content && !media) {
-    return { error: 'Texto ou mídia são obrigatórios', status: 400 };
+    return { error: 'Texto ou midia so obrigatrios', status: 400 };
   }
 
   const postType = isZuni ? 'video-post' : (parsed.data.postType || inferPostType(media));
@@ -109,6 +143,9 @@ export async function createCommentWithRules({ user, postId, body, file }) {
   if (!parsed.success) {
     return { error: parsed.error.flatten(), status: 400 };
   }
+  if (hasAdultText(parsed.data.content)) {
+    return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
+  }
 
   let media = null;
   if (file) media = await uploadMediaBuffer(file, 'unigran/comments');
@@ -117,14 +154,14 @@ export async function createCommentWithRules({ user, postId, body, file }) {
     authorUsername: user.username,
     parentPostId: postId,
     parentCommentId: parsed.data.parentCommentId,
-    content: parsed.data.content.trim(),
+    content: String(parsed.data.content || '').replace(/^\s+|\s+$/g, ''),
     media,
   });
 
   return {
     data: {
       id: created.id,
-      content: parsed.data.content.trim(),
+      content: String(parsed.data.content || '').replace(/^\s+|\s+$/g, ''),
       time: created.time,
       media,
       parentCommentId: parsed.data.parentCommentId || null,
@@ -139,7 +176,7 @@ export async function createCommentWithRules({ user, postId, body, file }) {
 }
 
 export async function editPostWithRules({ user, postId, body }) {
-  const content = String(body?.content || '').trim();
+  const content = String(body?.content || '').replace(/^\s+|\s+$/g, '');
   if (!content) return { error: 'Conteudo obrigatorio', status: 400 };
   const updated = await updatePostContent({ username: user.username, postId, content });
   return { data: updated, status: 200 };
@@ -185,3 +222,5 @@ export async function sharePostWithRules({ user, postId, body }) {
   const created = await sharePost({ username: user.username, postId, content: body?.content || '' });
   return { data: created, status: 201 };
 }
+
+

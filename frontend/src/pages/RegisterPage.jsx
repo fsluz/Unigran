@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -9,6 +9,8 @@ export default function RegisterPage({ onGoLogin }) {
   const [form, setForm] = useState({ name: '', username: '', phone: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleReady, setGoogleReady] = useState(false);
+  const googleButtonRef = useRef(null);
 
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -26,15 +28,64 @@ export default function RegisterPage({ onGoLogin }) {
     </button>
   );
 
+  async function finishGoogle(credential) {
+    const res = await apiFetch('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential }),
+    });
+    const data = await res.json();
+    if (!res.ok) setError(data.error || 'Google Auth falhou.');
+    else login(data.user, data.token);
+  }
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleReady(true);
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, []);
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleReady || !clientId || !window.google?.accounts?.id || !googleButtonRef.current) return;
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: ({ credential }) => finishGoogle(credential),
+    });
+    googleButtonRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: googleButtonRef.current.offsetWidth || 320,
+      text: 'signup_with',
+      shape: 'rectangular',
+    });
+  }, [googleReady]);
+
+  const handleGoogle = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.id) {
+      setError('Google Auth sem Client ID.');
+      return;
+    }
+    window.google.accounts.id.prompt();
+  };
+
   const handleSubmit = async () => {
     const { name, username, email, password, confirm } = form;
 
     if (!name || !username || !email || !password || !confirm) {
-      setError('Preencha todos os campos obrigatórios.');
+      setError('Preencha todos os campos obrigatrios.');
       return;
     }
     if (password !== confirm) {
-      setError('As senhas não coincidem.');
+      setError('As senhas nao coincidem.');
       return;
     }
     if (password.length < 6) {
@@ -42,7 +93,7 @@ export default function RegisterPage({ onGoLogin }) {
       return;
     }
     if (!username.match(/^[a-z0-9_]+$/i)) {
-      setError('O nome de usuário deve conter apenas letras, números e _.');
+      setError('O nome de usuario deve conter apenas letras, nmeros e _.');
       return;
     }
 
@@ -75,9 +126,9 @@ export default function RegisterPage({ onGoLogin }) {
         <div className="card">
           <AuthLogo />
           <h1 className="auth-heading">Criar Conta</h1>
-          <p className="auth-sub-text">Junte-se à nossa comunidade</p>
+          <p className="auth-sub-text">Junte-se  nossa comunidade</p>
 
-          <div className="auth-tabs" role="tablist" aria-label="Autenticação">
+          <div className="auth-tabs" role="tablist" aria-label="Autenticacao">
             <button type="button" className="auth-tab" onClick={onGoLogin}>Entrar</button>
             <button type="button" className="auth-tab active">Cadastro</button>
           </div>
@@ -90,7 +141,7 @@ export default function RegisterPage({ onGoLogin }) {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Nome de usuário *</label>
+            <label className="form-label">Nome de usuario *</label>
             <div className="form-input-prefix-wrap">
               <span className="form-input-prefix">@</span>
               <input className="form-input has-prefix" placeholder="seu_usuario" value={form.username} onChange={set('username')} />
@@ -147,11 +198,15 @@ export default function RegisterPage({ onGoLogin }) {
             {loading ? 'Criando conta...' : 'Criar Conta'}
           </button>
 
+          <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
+
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
-            Já tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faça login</a>
+            Ja tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faca login</a>
           </div>
         </div>
       </div>
     </AuthLayout>
   );
 }
+
+

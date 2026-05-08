@@ -1,4 +1,4 @@
-import Topbar from '../components/layout/Topbar';
+﻿import Topbar from '../components/layout/Topbar';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -8,16 +8,18 @@ import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchSavedPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
-import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPosts, updateUserProfile } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPosts, removeFollower, unfollowUser, updateUserProfile } from '../services/users';
+import ImageCropModal from '../components/media/ImageCropModal';
+import ImageLightbox from '../components/media/ImageLightbox';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicações', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
+const TABS = ['Publicaes', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
   { id: 'text',  label: 'Texto'      },
-  { id: 'media', label: 'Foto/Vídeo' },
+  { id: 'media', label: 'Foto/Vdeo' },
   { id: 'date',  label: 'Por data'   },
 ];
 
@@ -25,7 +27,7 @@ export default function ProfilePage({ onNavigate }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
-  const [tab, setTab]               = useState('Publicações');
+  const [tab, setTab]               = useState('Publicaes');
   const [postFilter, setPostFilter] = useState('all');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
@@ -45,6 +47,9 @@ export default function ProfilePage({ onNavigate }) {
   });
   const [profileFile, setProfileFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
+  const [cropTarget, setCropTarget] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
+  const [confirmPerson, setConfirmPerson] = useState(null);
   const [profilePreview, setProfilePreview] = useState(user.profilePicture || null);
   const [coverPreview, setCoverPreview] = useState(user.coverPicture || null);
 
@@ -131,20 +136,37 @@ export default function ProfilePage({ onNavigate }) {
         coverPicture: coverPicture?.url || coverPreview,
       });
       setEditOpen(false);
-      showToast('Perfil atualizado!', '✅');
+      showToast('Perfil atualizado!', 'OK');
     } catch {
-      showToast('Falha ao atualizar perfil', '⚠️');
+      showToast('Falha ao atualizar perfil', 'Aviso');
     }
   };
 
   const changeCoverNow = async (event) => {
     const next = event.target.files?.[0];
     if (!next) return;
-    const previewUrl = URL.createObjectURL(next);
-    if (!window.confirm('Usar esta imagem como capa?')) return;
+    setCropTarget({ type: 'cover-now', file: next });
+    event.target.value = '';
+  };
+
+  const applyCrop = async (cropped) => {
+    const type = cropTarget?.type;
+    setCropTarget(null);
+    const previewUrl = URL.createObjectURL(cropped);
+    if (type === 'profile') {
+      setProfileFile(cropped);
+      setProfilePreview(previewUrl);
+      return;
+    }
+    if (type === 'cover') {
+      setCoverFile(cropped);
+      setCoverPreview(previewUrl);
+      return;
+    }
+    if (type !== 'cover-now') return;
     setCoverPreview(previewUrl);
     try {
-      const coverPicture = await uploadMedia({ token, file: next });
+      const coverPicture = await uploadMedia({ token, file: cropped });
       await updateUserProfile({ token, username: user.username, data: { coverPicture } });
       updateUser({ coverPicture: coverPicture.url });
       showToast('Capa atualizada!', 'OK');
@@ -155,12 +177,18 @@ export default function ProfilePage({ onNavigate }) {
 
   const deletePost = id => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excluído', 'Excluído');
+    showToast('Post excludo', 'Excludo');
   };
+
+  const achievements = [
+    { title: 'Primeiro post', text: posts.length > 0 ? 'O comeco e aqui.' : 'O comeco e aqui - faca seu primeiro post.', done: posts.length > 0 },
+    { title: 'Perfil vivo', text: user.bio ? 'Bio pronta.' : 'Conte quem voce e.', done: Boolean(user.bio) },
+    { title: 'Rede aberta', text: (stats.following || 0) > 0 ? 'Voce ja seguiu alguem.' : 'Siga uma pessoa.', done: (stats.following || 0) > 0 },
+  ];
 
   const editPost = (id, newText) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, content: newText, edited: true } : p));
-    showToast('Post editado!', '✏️');
+    showToast('Post editado!', '');
   };
 
   const filteredPosts = posts.filter(p => {
@@ -183,7 +211,7 @@ export default function ProfilePage({ onNavigate }) {
       <Topbar />
       {/* Banner */}
       <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
-        <div className="profile-banner" style={coverPreview ? { backgroundImage: `url(${coverPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
+        <div className="profile-banner profile-banner-bleed" style={coverPreview ? { backgroundImage: `url(${coverPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
           <label className="profile-banner-btn">
             Editar Capa
             <input type="file" accept="image/*,.gif" style={{ display: 'none' }} onChange={changeCoverNow} />
@@ -193,7 +221,7 @@ export default function ProfilePage({ onNavigate }) {
         <div className="profile-info-wrap">
           <div className="profile-top-row">
             <div className="profile-avatar-pull">
-              <div className="profile-big-avatar" style={profilePreview ? { backgroundImage: `url(${profilePreview})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : {}}>
+              <div onClick={() => profilePreview && setLightbox(profilePreview)} className="profile-big-avatar" style={profilePreview ? { backgroundImage: `url(${profilePreview})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent', cursor: 'zoom-in' } : {}}>
                 {user.avatar}
               </div>
             </div>
@@ -212,7 +240,7 @@ export default function ProfilePage({ onNavigate }) {
           <div className="profile-stats">
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.posts || posts.length}</div>
-              <div className="profile-stat-label">Publicações</div>
+              <div className="profile-stat-label">Publicaes</div>
             </div>
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.followers || 0}</div>
@@ -226,10 +254,9 @@ export default function ProfilePage({ onNavigate }) {
 
           <div className="profile-achievements">
             <span className="profile-achievements-label">Conquistas:</span>
-            {(user.achievements || []).map((a, i) => (
-              <div key={i} className="achievement-circle" title={`Conquista ${i + 1}`}>{i + 1}</div>
+            {achievements.map((a, i) => (
+              <div key={a.title} className={`achievement-circle ${a.done ? 'done' : ''}`} title={`${a.title} - ${a.text}`}>{i + 1}</div>
             ))}
-            <span className="achievement-more">+3</span>
           </div>
         </div>
 
@@ -244,7 +271,7 @@ export default function ProfilePage({ onNavigate }) {
 
       {/* Tab content */}
       <div className="profile-tab-content">
-        {tab === 'Publicações' && (
+        {tab === 'Publicaes' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {/* Post filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -264,7 +291,7 @@ export default function ProfilePage({ onNavigate }) {
 
             {sortedPosts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                Nenhuma publicação ainda.
+                Nenhuma publicacao ainda.
               </div>
             ) : (
               sortedPosts.map(post => (
@@ -339,7 +366,7 @@ export default function ProfilePage({ onNavigate }) {
         {tab === 'Atividades' && (
           <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}></div>
-            <div style={{ fontSize: 15 }}>Histórico de atividades em breve.</div>
+            <div style={{ fontSize: 15 }}>Histrico de atividades em breve.</div>
           </div>
         )}
 
@@ -348,8 +375,8 @@ export default function ProfilePage({ onNavigate }) {
             {[
               ['', 'Email',       user.email],
               ['', 'Telefone',    user.phone],
-              ['', 'Instituição', user.institution.split('•')[1]?.trim() || 'UNIGRAN'],
-              ['', 'Função',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuário'],
+              ['', 'Instituio', user.institution.split('*')[1]?.trim() || 'UNIGRAN'],
+              ['', 'Funo',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuario'],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
@@ -371,14 +398,14 @@ export default function ProfilePage({ onNavigate }) {
           footer={
             <>
               <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancelar</Button>
-              <Button onClick={saveProfile}>Salvar alterações</Button>
+              <Button onClick={saveProfile}>Salvar alteraes</Button>
             </>
           }
         >
           <FormField label="Nome completo">
             <input className="form-input" value={editForm.displayName} onChange={e => setEditForm(p => ({ ...p, displayName: e.target.value }))} />
           </FormField>
-          <FormField label="Instituição">
+          <FormField label="Instituio">
             <input className="form-input" value={editForm.institution} onChange={e => setEditForm(p => ({ ...p, institution: e.target.value }))} />
           </FormField>
           <FormField label="Bio">
@@ -397,8 +424,8 @@ export default function ProfilePage({ onNavigate }) {
               onChange={(e) => {
                 const next = e.target.files?.[0];
                 if (!next) return;
-                setProfileFile(next);
-                setProfilePreview(URL.createObjectURL(next));
+                setCropTarget({ type: 'profile', file: next });
+                e.target.value = '';
               }}
             />
           </FormField>
@@ -410,8 +437,8 @@ export default function ProfilePage({ onNavigate }) {
               onChange={(e) => {
                 const next = e.target.files?.[0];
                 if (!next) return;
-                setCoverFile(next);
-                setCoverPreview(URL.createObjectURL(next));
+                setCropTarget({ type: 'cover', file: next });
+                e.target.value = '';
               }}
             />
           </FormField>
@@ -424,17 +451,47 @@ export default function ProfilePage({ onNavigate }) {
         <Modal title={peopleModal === 'followers' ? 'Seguidores' : 'Seguindo'} onClose={() => setPeopleModal(null)} maxWidth={420}>
           {people.length === 0 ? <div className="search-empty">Nada aqui.</div> : people.map(p => (
             <div key={p.username || p.id} className="search-result-row">
-              <div className="search-result-ava" style={p.profilePicture ? { backgroundImage: `url(${p.profilePicture})`, backgroundSize: 'cover', color: 'transparent' } : {}}>
+              <button className="search-result-ava" onClick={() => p.username && window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: p.username }))} style={p.profilePicture ? { backgroundImage: `url(${p.profilePicture})`, backgroundSize: 'cover', color: 'transparent', border: 0 } : { border: 0 }}>
                 {(p.displayName || p.name || p.username || p.id || '?').slice(0, 2).toUpperCase()}
-              </div>
-              <div className="search-result-info">
+              </button>
+              <button className="search-result-info" onClick={() => p.username && window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: p.username }))} style={{ border: 0, background: 'transparent', textAlign: 'left' }}>
                 <div className="search-result-name">{p.displayName || p.name || p.username || p.id}</div>
                 <div className="search-result-sub">{p.username ? `@${p.username}` : p.id}</div>
-              </div>
+              </button>
+              <button className="btn btn-secondary btn-xs" onClick={() => setConfirmPerson({ type: peopleModal, person: p })}>
+                {peopleModal === 'followers' ? 'Remover' : 'Seguindo'}
+              </button>
             </div>
           ))}
         </Modal>
       )}
+      {confirmPerson && (
+        <Modal title={confirmPerson.type === 'followers' ? 'Remover seguidor' : 'Parar de seguir'} onClose={() => setConfirmPerson(null)} maxWidth={360} footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmPerson(null)}>Nao</Button>
+            <Button variant="danger" onClick={async () => {
+              const target = confirmPerson.person.username || confirmPerson.person.id;
+              try {
+                if (confirmPerson.type === 'followers') await removeFollower({ token, username: user.username, followerUsername: target });
+                else await unfollowUser(token, target);
+                setPeople(list => list.filter(p => (p.username || p.id) !== target));
+                showToast('Acao feita', 'OK');
+              } catch (err) {
+                showToast(err.message || 'Erro', '!');
+              }
+              setConfirmPerson(null);
+            }}>Sim</Button>
+          </>
+        }>
+          {confirmPerson.type === 'followers'
+            ? `Remover seguidor ${confirmPerson.person.displayName || confirmPerson.person.username || confirmPerson.person.id}?`
+            : `Parar de seguir ${confirmPerson.person.displayName || confirmPerson.person.username || confirmPerson.person.id}?`}
+        </Modal>
+      )}
+      {cropTarget && <ImageCropModal file={cropTarget.file} shape={cropTarget.type === 'profile' ? 'avatar' : 'cover'} onCancel={() => setCropTarget(null)} onConfirm={applyCrop} />}
+      <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import multer from 'multer';
 import { auth } from '../middleware/auth.js';
 import { createCloudinaryUploadSignature, uploadMediaBuffer } from '../services/cloudinary.service.js';
@@ -24,7 +24,7 @@ router.get('/signature', auth, (req, res) => {
 
 router.post('/media', auth, upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Arquivo é obrigatório' });
+    if (!req.file) return res.status(400).json({ error: 'Arquivo  obrigatrio' });
     const media = await uploadMediaBuffer(req.file);
     res.status(201).json(media);
   } catch (err) {
@@ -35,8 +35,10 @@ router.post('/media', auth, upload.single('file'), async (req, res) => {
     if (String(err?.message || '').toLowerCase().includes('unauthorized')) {
       return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
     }
-    res.status(500).json({ error: err.message || 'Falha ao enviar mídia' });
+    res.status(500).json({ error: err.message || 'Falha ao enviar midia' });
   }
 });
 
 export default router;
+
+

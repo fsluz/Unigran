@@ -4,6 +4,9 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
+import { normalizeRole } from '../middleware/auth.js';
+import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
+import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
 
 const router = Router();
 
@@ -21,6 +24,11 @@ const LoginSchema = z.object({
     z.string().min(3).max(320).refine(s => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email invalido'),
   ),
   password: z.string().min(1),
+  twoFactorCode: z.string().optional(),
+});
+
+const GoogleSchema = z.object({
+  credential: z.string().min(20),
 });
 
 function sign(payload) {
@@ -31,6 +39,25 @@ function attrBoolTrue(v) {
   if (v === true) return true;
   if (typeof v === 'string') return v.toLowerCase() === 'true';
   return false;
+}
+
+async function readTwoFactorByUsername(username) {
+  try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(username)}";
+        try { $u has two-factor-enabled $enabled; };
+        try { $u has two-factor-secret $secret; };
+      fetch {
+        "enabled": $enabled,
+        "secret": $secret
+      };
+    `);
+    return rows[0] || { enabled: false, secret: '' };
+  } catch (err) {
+    if (String(err?.message || '').includes('two-factor')) return { enabled: false, secret: '' };
+    throw err;
+  }
 }
 
 router.post('/register', async (req, res) => {
@@ -59,6 +86,7 @@ router.post('/register', async (req, res) => {
           has is-active true,
           has is-banned false,
           has can-publish true,
+          has user-role "user",
           has page-visibility "public",
           has post-visibility "public";
     `);
@@ -88,6 +116,7 @@ router.post('/login', async (req, res) => {
         try { $u has name $name; };
         try { $u has is-banned $banned; };
         try { $u has phone $phone; };
+        try { $u has user-role $role; };
         try { $u has password-changed-at $changed; };
       fetch {
         "username": $username,
@@ -95,6 +124,7 @@ router.post('/login', async (req, res) => {
         "password_hash": $phash,
         "banned": $banned,
         "phone": $phone,
+        "role": $role,
         "password_changed_at": $changed
       };
     `);
@@ -104,14 +134,20 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
     if (!ok) return res.status(401).json({ error: 'Credenciais invalidas' });
     if (attrBoolTrue(row.banned)) return res.status(403).json({ error: 'Conta banida' });
-
     const username = row.username || email.split('@')[0] || 'user';
+    const twoFactor = await readTwoFactorByUsername(username);
+    if (attrBoolTrue(twoFactor.enabled)) {
+      if (!verifyTotp(twoFactor.secret, parsed.data.twoFactorCode)) {
+        return res.json({ requires2FA: true, email });
+      }
+    }
+
     const payload = {
       id: username,
       username,
       displayName: row.name || username,
       email,
-      role: 'user',
+      role: normalizeRole(row.role),
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
     };
@@ -119,6 +155,61 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[login]', err);
     res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/google', async (req, res) => {
+  const parsed = GoogleSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Token Google ausente' });
+  try {
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(parsed.data.credential)}`);
+    const google = await googleRes.json();
+    if (!googleRes.ok || google.email_verified !== 'true') {
+      return res.status(401).json({ error: 'Google Auth invalido' });
+    }
+    const email = String(google.email || '').toLowerCase();
+    const username = String(email.split('@')[0] || google.sub).replace(/[^a-zA-Z0-9_]/g, '_');
+    const name = google.name || username;
+    const existing = await readQuery(`
+      match
+        $u isa person, has email "${typeqlLiteral(email)}";
+        try { $u has username $username; };
+        try { $u has name $name; };
+        try { $u has user-role $role; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "role": $role
+      };
+    `);
+    if (!existing.length) {
+      await writeQuery(`
+        insert
+          $u isa person,
+            has username "${typeqlLiteral(username)}",
+            has name "${typeqlLiteral(name)}",
+            has email "${typeqlLiteral(email)}",
+            has password-hash "${encodeHash(`google:${google.sub}`)}",
+            has user-role "user",
+            has is-active true,
+            has is-banned false,
+            has can-publish true,
+            has page-visibility "public",
+            has post-visibility "public";
+      `);
+    }
+    const row = existing[0] || { username, name, role: 'user' };
+    const payload = {
+      id: row.username || username,
+      username: row.username || username,
+      displayName: row.name || name,
+      email,
+      role: normalizeRole(row.role),
+    };
+    res.json({ token: sign(payload), user: payload });
+  } catch (err) {
+    console.error('[google auth]', err);
+    res.status(500).json({ error: 'Erro Google Auth' });
   }
 });
 
@@ -134,6 +225,13 @@ router.get('/me', async (req, res) => {
         try { $u has phone $phone; };
         try { $u has profile-picture $profile_picture; };
         try { $u has cover-picture $cover_picture; };
+        try { $u has bio $bio; };
+        try { $u has badge $badge; };
+        try { $u has user-role $role; };
+        try { $u has page-visibility $visibility; };
+        try { $u has hide-online $hide_online; };
+        try { $u has hide-read-receipts $hide_read_receipts; };
+        try { $u has email-notifications-enabled $email_notifications; };
         try { $u has password-changed-at $changed; };
       fetch {
         "email": $email,
@@ -141,25 +239,121 @@ router.get('/me', async (req, res) => {
         "phone": $phone,
         "profile_picture": $profile_picture,
         "cover_picture": $cover_picture,
+        "bio": $bio,
+        "badge": $badge,
+        "role": $role,
+        "visibility": $visibility,
+        "hide_online": $hide_online,
+        "hide_read_receipts": $hide_read_receipts,
+        "email_notifications": $email_notifications,
         "password_changed_at": $changed
       };
     `);
     if (!rows.length) return res.status(401).json({ error: 'Usuario nao encontrado' });
 
     const row = rows[0];
+    const links = {};
+    const badge = String(row.badge || '');
+    if (badge.startsWith('links:')) {
+      for (const part of badge.slice(6).split('|')) {
+        const [key, ...rest] = part.split(':');
+        if (key && rest.length) links[key] = rest.join(':');
+      }
+    }
+    const twoFactor = await readTwoFactorByUsername(decoded.username);
     res.json({
       user: {
         ...decoded,
         displayName: row.name || decoded.displayName,
         email: row.email || decoded.email,
+        role: normalizeRole(row.role || decoded.role),
         phone: row.phone || null,
         profilePicture: row.profile_picture || decoded.profilePicture || null,
         coverPicture: row.cover_picture || decoded.coverPicture || null,
+        bio: row.bio || '',
+        links,
+        privacy: row.visibility || decoded.privacy || 'public',
+        hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
+        hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
+        emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
+        twoFactorEnabled: attrBoolTrue(twoFactor.enabled),
         passwordChangedAt: row.password_changed_at || null,
       },
     });
   } catch {
     res.status(401).json({ error: 'Token invalido' });
+  }
+});
+
+router.post('/2fa/setup', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  const secret = randomBase32();
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-secret "${secret}";
+    `);
+    res.json({ secret, otpauthUrl: otpauthUrl({ secret, email: decoded.email || decoded.username }) });
+  } catch (err) {
+    console.error('[2fa setup]', err);
+    res.status(500).json({ error: 'Erro ao criar 2FA' });
+  }
+});
+
+router.post('/2fa/enable', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}", has two-factor-secret $secret;
+      fetch { "secret": $secret };
+    `);
+    if (!rows.length || !verifyTotp(rows[0].secret, req.body?.code)) {
+      return res.status(400).json({ error: 'Codigo invalido' });
+    }
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-enabled true;
+    `);
+    res.json({ enabled: true });
+  } catch (err) {
+    console.error('[2fa enable]', err);
+    res.status(500).json({ error: 'Erro ao ativar 2FA' });
+  }
+});
+
+router.post('/2fa/disable', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-enabled false;
+    `);
+    res.json({ enabled: false });
+  } catch (err) {
+    console.error('[2fa disable]', err);
+    res.status(500).json({ error: 'Erro ao desativar 2FA' });
   }
 });
 
@@ -248,12 +442,23 @@ router.delete('/account', async (req, res) => {
     const rows = await readQuery(`
       match
         $u isa person, has username "${safeUsername}", has password-hash $ph;
-      fetch { "password_hash": $ph };
+        try { $u has profile-picture $profile_picture; };
+        try { $u has cover-picture $cover_picture; };
+      fetch {
+        "password_hash": $ph,
+        "profile_picture": $profile_picture,
+        "cover_picture": $cover_picture
+      };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
     const ok = await bcrypt.compare(password, decodeHash(rows[0].password_hash));
     if (!ok) return res.status(401).json({ error: 'Senha incorreta' });
+
+    await Promise.all([
+      destroyCloudinaryUrl(rows[0].profile_picture),
+      destroyCloudinaryUrl(rows[0].cover_picture),
+    ]);
 
     await writeQuery(`
       match

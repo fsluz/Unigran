@@ -1,9 +1,11 @@
-import { useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
+import { uploadMedia } from '../services/posts';
+import ImageCropModal from '../components/media/ImageCropModal';
 
 function SidebarToggle({ value, onChange }) {
   return (
@@ -25,30 +27,30 @@ function formatPasswordDate(iso) {
   if (!iso) return 'Nunca alterada';
   const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (diff < 60)    return 'Alterada agora mesmo';
-  if (diff < 3600)  return `Há ${Math.floor(diff / 60)} minuto(s)`;
-  if (diff < 86400) return `Há ${Math.floor(diff / 3600)} hora(s)`;
+  if (diff < 3600)  return `Ha ${Math.floor(diff / 60)} minuto(s)`;
+  if (diff < 86400) return `Ha ${Math.floor(diff / 3600)} hora(s)`;
   const days = Math.floor(diff / 86400);
-  if (days === 1)  return 'Há 1 dia';
-  if (days < 30)   return `Há ${days} dias`;
-  if (days < 365)  return `Há ${Math.floor(days / 30)} mês(es)`;
-  return `Há ${Math.floor(days / 365)} ano(s)`;
+  if (days === 1)  return 'Ha 1 dia';
+  if (days < 30)   return `Ha ${days} dias`;
+  if (days < 365)  return `Ha ${Math.floor(days / 30)} mes(es)`;
+  return `Ha ${Math.floor(days / 365)} ano(s)`;
 }
 
 const BASE_GROUPS = [
   {
-    title: 'Configurações',
+    title: 'Configuracoes',
     items: [
-      { id: 'pessoal',      icon: '👤', label: 'Dados Pessoais' },
-      { id: 'privacidade',  icon: '🔒', label: 'Privacidade'    },
-      { id: 'notificacoes', icon: '🔔', label: 'Notificações'   },
-      { id: 'seguranca',    icon: '🛡️', label: 'Segurança'      },
+      { id: 'pessoal',      icon: '', label: 'Dados Pessoais' },
+      { id: 'privacidade',  icon: '', label: 'Privacidade'    },
+      { id: 'notificacoes', icon: '', label: 'Notificacoes'   },
+      { id: 'seguranca',    icon: '', label: 'Seguranca'      },
     ],
   },
 ];
 
 const ADMIN_GROUP = {
-  title: 'Administração',
-  items: [{ id: 'admin', icon: '👑', label: 'Painel Admin' }],
+  title: 'Administracao',
+  items: [{ id: 'admin', icon: '', label: 'Painel Admin' }],
 };
 
 function Section({ title, desc, children }) {
@@ -73,7 +75,7 @@ function Row({ title, sub, children }) {
   );
 }
 
-/* ── Accordion / Dropdown para Trocar Senha ── */
+/*  Accordion / Dropdown para Trocar Senha  */
 function PasswordAccordion({ onSuccess }) {
   const { token } = useAuth();
   const { showToast } = useToast();
@@ -90,7 +92,7 @@ function PasswordAccordion({ onSuccess }) {
     setError('');
     if (!form.current)             { setError('Informe a senha atual.');                        return; }
     if (form.next.length < 6)      { setError('A nova senha deve ter pelo menos 6 caracteres.'); return; }
-    if (form.next !== form.confirm) { setError('As senhas não coincidem.');                      return; }
+    if (form.next !== form.confirm) { setError('As senhas nao coincidem.');                      return; }
 
     setLoading(true);
     try {
@@ -104,7 +106,7 @@ function PasswordAccordion({ onSuccess }) {
       onSuccess?.(data.passwordChangedAt);
       setForm({ current: '', next: '', confirm: '' });
       setOpen(false);
-      showToast('Senha alterada com sucesso!', '✅');
+      showToast('Senha alterada com sucesso!', 'OK');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -118,7 +120,7 @@ function PasswordAccordion({ onSuccess }) {
       onClick={() => setVisible(p => ({ ...p, [key]: !p[key] }))}
       style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 17, color: 'var(--text-muted)', padding: 0 }}
     >
-      {visible[key] ? '🙈' : '👁️'}
+      {visible[key] ? '' : ''}
     </button>
   );
 
@@ -131,7 +133,7 @@ function PasswordAccordion({ onSuccess }) {
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', transition: 'background 0.15s' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔑</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}></div>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>Trocar senha</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Clique para alterar sua senha</div>
@@ -156,9 +158,9 @@ function PasswordAccordion({ onSuccess }) {
           <div style={{ height: 16 }} />
 
           {[
-            { key: 'current', label: 'Senha atual',         placeholder: '••••••••' },
-            { key: 'next',    label: 'Nova senha',           placeholder: 'Mínimo 6 caracteres' },
-            { key: 'confirm', label: 'Confirmar nova senha', placeholder: '••••••••' },
+            { key: 'current', label: 'Senha atual',         placeholder: '********' },
+            { key: 'next',    label: 'Nova senha',           placeholder: 'Minimo 6 caracteres' },
+            { key: 'confirm', label: 'Confirmar nova senha', placeholder: '********' },
           ].map(f => (
             <div key={f.key} style={{ marginBottom: 14 }}>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</label>
@@ -182,7 +184,7 @@ function PasswordAccordion({ onSuccess }) {
 
           <div style={{ display: 'flex', gap: 8 }}>
             <Button onClick={handleSave} disabled={loading}>
-              {loading ? 'Salvando…' : 'Salvar senha'}
+              {loading ? 'Salvando...' : 'Salvar senha'}
             </Button>
             <Button variant="secondary" onClick={() => { setOpen(false); setForm({ current: '', next: '', confirm: '' }); setError(''); }}>
               Cancelar
@@ -194,22 +196,35 @@ function PasswordAccordion({ onSuccess }) {
   );
 }
 
-/* ── Main ── */
+/*  Main  */
 export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
 
   const [section, setSection] = useState('pessoal');
   const [cfg, setCfg] = useState({
-    profileVisibility: 'public',
+    profileVisibility: user?.privacy || 'public',
     whoCanMsg:         'everyone',
     showEmail:         false,
     twoFactor:         false,
     pushNotif:         true,
-    emailNotif:        true,
+    emailNotif:        user?.emailNotifications ?? true,
     marketing:         false,
     muteAllMsgs:       false,
+    readReceipts:      !(user?.hideReadReceipts),
+    showOnline:        !(user?.hideOnline),
   });
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const profileInputRef = useRef(null);
+  const [profileUploading, setProfileUploading] = useState(false);
+  const [profileCropFile, setProfileCropFile] = useState(null);
+  const [personalForm, setPersonalForm] = useState(() => ({
+    displayName: user?.displayName || '',
+    phone: user?.phone || '',
+    bio: user?.bio || '',
+    links: user?.links || {},
+  }));
 
   const [emailModal,  setEmailModal]  = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -227,6 +242,15 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
   const toggle = key => setCfg(p => ({ ...p, [key]: !p[key] }));
 
+  useEffect(() => {
+    setPersonalForm({
+      displayName: user?.displayName || '',
+      phone: user?.phone || '',
+      bio: user?.bio || '',
+      links: user?.links || {},
+    });
+  }, [user?.username]);
+
   async function handleDeleteAccount() {
     setDeleteError('');
     if (!deletePassword) { setDeleteError('Informe sua senha para confirmar.'); return; }
@@ -243,7 +267,87 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
-  const groups = [...BASE_GROUPS, ...(user?.role === 'admin' ? [ADMIN_GROUP] : [])];
+  const canSeeAdmin = ['admin', 'moderator'].includes(user?.role);
+  const groups = [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
+
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminReports, setAdminReports] = useState([]);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState('');
+
+  async function loadAdmin() {
+    if (!token || !canSeeAdmin) return;
+    setAdminLoading(true);
+    setAdminError('');
+    try {
+      const [usersRes, reportsRes] = await Promise.all([
+        apiFetch(`/admin/users?q=${encodeURIComponent(adminSearch)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        apiFetch('/admin/reports', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const usersData = await usersRes.json().catch(() => ({}));
+      const reportsData = await reportsRes.json().catch(() => ({}));
+      if (!usersRes.ok) throw new Error(usersData.error || 'Erro admin');
+      setAdminUsers(usersData.users || []);
+      setAdminReports(reportsData.reports || []);
+    } catch (err) {
+      setAdminError(err.message || 'Erro admin');
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (section === 'admin') loadAdmin();
+  }, [section, adminSearch, token, canSeeAdmin]);
+
+  async function saveRole(username, role) {
+    const res = await apiFetch(`/admin/users/${username}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ role }),
+    });
+    if (!res.ok) throw new Error('Cargo falhou');
+    setAdminUsers(list => list.map(u => u.username === username ? { ...u, role } : u));
+    showToast('Cargo salvo', 'OK');
+  }
+
+  async function toggleBan(username, banned) {
+    const res = await apiFetch(`/admin/users/${username}/ban`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ banned: !banned }),
+    });
+    if (!res.ok) throw new Error('Ban falhou');
+    setAdminUsers(list => list.map(u => u.username === username ? { ...u, banned: !banned } : u));
+    showToast(!banned ? 'Usuario banido' : 'Ban removido', 'OK');
+  }
+
+  async function togglePublish(username, canPublish) {
+    const res = await apiFetch(`/admin/users/${username}/restrictions`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ canPublish: !canPublish }),
+    });
+    if (!res.ok) throw new Error('Restricao falhou');
+    setAdminUsers(list => list.map(u => u.username === username ? { ...u, canPublish: !canPublish } : u));
+    showToast(!canPublish ? 'Pode publicar' : 'Publicacao bloqueada', 'OK');
+  }
+
+  async function saveReport(id, status) {
+    const res = await apiFetch(`/admin/reports/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error('Denuncia falhou');
+    setAdminReports(list => list.map(r => r.id === id ? { ...r, status } : r));
+    showToast('Denuncia salva', 'OK');
+  }
 
   function openEdit(field) {
     setEditField(field);
@@ -254,12 +358,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   async function handleSaveEdit() {
     setEditError('');
     if (editField === 'displayName') {
-      if (!editValue.trim())         { setEditError('O nome não pode ser vazio.');                           return; }
+      if (!editValue.trim())         { setEditError('O nome nao pode ser vazio.');                           return; }
       if (editValue.trim().length < 2){ setEditError('O nome deve ter pelo menos 2 caracteres.');            return; }
     }
     if (editField === 'phone') {
       const digits = editValue.replace(/\D/g, '');
-      if (editValue && digits.length < 10) { setEditError('Telefone inválido. Use ao menos 10 dígitos.'); return; }
+      if (editValue && digits.length < 10) { setEditError('Telefone invalido. Use ao menos 10 digitos.'); return; }
     }
     setEditLoading(true);
     try {
@@ -267,7 +371,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       const res  = await apiFetch(`/users/${user.username}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || 'Erro ao salvar'); }
       updateUser(body);
-      showToast(editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!', '✅');
+      showToast(editField === 'displayName' ? 'Nome atualizado!' : 'Telefone atualizado!', 'OK');
       setEditField(null);
     } catch (err) {
       setEditError(err.message || 'Erro ao salvar. Tente novamente.');
@@ -276,15 +380,140 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
+  async function savePrivacyPrefs(nextCfg = cfg) {
+    try {
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          privacy: nextCfg.profileVisibility,
+          hideOnline: !nextCfg.showOnline,
+          hideReadReceipts: !nextCfg.readReceipts,
+          emailNotifications: Boolean(nextCfg.emailNotif),
+        }),
+      });
+      if (!res.ok) throw new Error('Falha ao salvar');
+      updateUser({
+        privacy: nextCfg.profileVisibility,
+        hideOnline: !nextCfg.showOnline,
+        hideReadReceipts: !nextCfg.readReceipts,
+        emailNotifications: Boolean(nextCfg.emailNotif),
+      });
+      showToast('Config salva', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro', '!');
+    }
+  }
+
+  async function start2FA() {
+    const res = await apiFetch('/auth/2fa/setup', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Erro 2FA', '!');
+    setTwoFactorSetup(data);
+    showToast('Chave 2FA criada', 'OK');
+  }
+
+  async function enable2FA() {
+    const res = await apiFetch('/auth/2fa/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: twoFactorCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Codigo invalido', '!');
+    updateUser({ twoFactorEnabled: true });
+    setCfg(p => ({ ...p, twoFactor: true }));
+    setTwoFactorSetup(null);
+    setTwoFactorCode('');
+    showToast('2FA ativo', 'OK');
+  }
+
+  async function uploadProfilePhoto(file) {
+    if (!file) return;
+    setProfileUploading(true);
+    try {
+      const profilePicture = await uploadMedia({ token, file });
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profilePicture }),
+      });
+      if (!res.ok) throw new Error('Upload falhou');
+      updateUser({ profilePicture: profilePicture.url });
+      showToast('Foto salva', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro foto', '!');
+    } finally {
+      setProfileUploading(false);
+    }
+  }
+
+  function chooseProfilePhoto(file) {
+    if (!file) return;
+    setProfileCropFile(file);
+  }
+
+  async function removeProfilePhoto() {
+    setProfileUploading(true);
+    try {
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profilePicture: null }),
+      });
+      if (!res.ok) throw new Error('Remover falhou');
+      updateUser({ profilePicture: null });
+      showToast('Foto removida', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro foto', '!');
+    } finally {
+      setProfileUploading(false);
+    }
+  }
+
+  async function savePersonalInfo() {
+    try {
+      const payload = {
+        displayName: personalForm.displayName.trim(),
+        phone: personalForm.phone.trim(),
+        bio: personalForm.bio.trim(),
+        links: personalForm.links,
+      };
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Salvar falhou');
+      updateUser(payload);
+      showToast('Perfil salvo', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro perfil', '!');
+    }
+  }
+  async function disable2FA() {
+    const res = await apiFetch('/auth/2fa/disable', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return showToast('Erro 2FA', '!');
+    updateUser({ twoFactorEnabled: false });
+    setCfg(p => ({ ...p, twoFactor: false }));
+    showToast('2FA desligado', 'OK');
+  }
+
   return (
     <div className="page-scroll">
-      <Topbar title="Configurações" />
+      <Topbar title="Configuracoes" />
       <div className="settings-shell">
 
         {/* Left nav */}
         <nav className="settings-sidenav">
           <div style={{ padding: '16px 16px 8px', fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            Configurações
+            Configuracoes
           </div>
           {groups.map(g => (
             <div key={g.title} className="settings-nav-group" style={{ marginBottom: 8 }}>
@@ -303,11 +532,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {/* Appearance block matching screenshots */}
           <div style={{ padding: '16px 12px 0' }}>
             <div style={{ padding: '12px', background: 'var(--page-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>Aparência</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>Aparencia</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>{dark ? '🌙' : '☀️'}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{dark ? 'Escuro' : 'Claro'}</span>
+                  <span style={{ fontSize: 16 }}>{dark ? 'Escuro' : 'Claro'}</span>
                 </div>
                 <SidebarToggle value={dark} onChange={onToggleTheme} />
               </div>
@@ -316,7 +544,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
           <div className="settings-logout-area">
             <Button variant="danger" style={{ width: '100%', justifyContent: 'center' }} onClick={onLogout}>
-              🚪 Sair da conta
+              Sair da conta
             </Button>
           </div>
         </nav>
@@ -325,52 +553,50 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
         <div className="settings-content">
 
           {section === 'pessoal' && (<>
-            {/* Photo card */}
             <div className="settings-panel-card">
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Foto de Perfil</div>
               <div style={{ display:'flex', alignItems:'center', gap:20 }}>
-                <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
-                  {user?.avatar}
-                  <div style={{ position:'absolute', bottom:0, right:0, width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#00A8FF)', border:'2px solid var(--card)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>✏️</div>
+                <div style={{ width:72, height:72, borderRadius:'50%', background:user?.profilePicture ? `url(${user.profilePicture}) center/cover` : 'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
+                  {!user?.profilePicture && (user?.avatar || user?.displayName?.slice(0, 2) || user?.username?.slice(0, 2))}
                 </div>
                 <div>
                   <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4 }}>Alterar foto</div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF · Máx 5MB</div>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>Escolher</button>
-                    <button style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF. Max 5MB</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => { chooseProfilePhoto(e.target.files?.[0]); e.target.value = ''; }} />
+                    <button disabled={profileUploading} onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>{profileUploading ? 'Carregando...' : 'Escolher'}</button>
+                    <button disabled={profileUploading || !user?.profilePicture} onClick={removeProfilePhoto} style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Personal info card */}
             <div className="settings-panel-card">
-              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Informações Pessoais</div>
-              {[
-                { label:'Nome completo',    val: user?.displayName,     key:'displayName' },
-                { label:'Nome de usuário (@)', val: `@${user?.username}`, key:'username', disabled:true },
-                { label:'E-mail',           val: user?.email,           key:'email' },
-              ].map(f => (
-                <div key={f.key} style={{ marginBottom:16 }}>
-                  <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>{f.label}</label>
-                  <input
-                    className="form-input"
-                    defaultValue={f.val}
-                    disabled={f.disabled}
-                    style={{ width:'100%', opacity: f.disabled ? 0.7 : 1 }}
-                  />
-                </div>
-              ))}
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Informacoes Pessoais</div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Nome completo</label>
+                <input className="form-input" value={personalForm.displayName} onChange={e => setPersonalForm(p => ({ ...p, displayName: e.target.value }))} style={{ width:'100%' }} />
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Nome de usuario (@)</label>
+                <input className="form-input" value={`@${user?.username || ''}`} disabled style={{ width:'100%', opacity:0.7 }} />
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Telefone</label>
+                <input className="form-input" value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} style={{ width:'100%' }} />
+              </div>
               <div style={{ marginBottom:20 }}>
                 <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Sobre mim</label>
-                <textarea className="form-input" rows={4} style={{ width:'100%', resize:'vertical' }}
-                  defaultValue="🚀 Designer & Dev enthusiast. Curitiba, PR."
-                />
+                <textarea className="form-input" rows={4} value={personalForm.bio} onChange={e => setPersonalForm(p => ({ ...p, bio: e.target.value }))} style={{ width:'100%', resize:'vertical' }} />
               </div>
-              <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }}
-                onClick={() => showToast('Alterações salvas!', '✅')}>
-                Salvar alterações
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Links</label>
+                {['instagram', 'linkedin', 'facebook', 'outros'].map(key => (
+                  <input key={key} className="form-input" placeholder={key} value={personalForm.links?.[key] || ''} onChange={e => setPersonalForm(p => ({ ...p, links: { ...(p.links || {}), [key]: e.target.value } }))} style={{ width:'100%', marginBottom:8 }} />
+                ))}
+              </div>
+              <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }} onClick={savePersonalInfo}>
+                Salvar alteracoes
               </button>
             </div>
 
@@ -381,35 +607,31 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           </>)}
 
           {section === 'seguranca' && (<>
-            <Section title="Autenticação em Dois Fatores (2FA)" desc="">
-              <Row title="Ativar 2FA" sub="Camada extra de segurança">
-                <Toggle checked={cfg.twoFactor} onChange={() => toggle('twoFactor')} />
+            <Section title="Autenticacao em Dois Fatores (2FA)" desc="">
+              <Row title="Ativar 2FA" sub="Camada extra de segurana">
+                <Toggle checked={Boolean(user?.twoFactorEnabled || cfg.twoFactor)} onChange={() => user?.twoFactorEnabled ? disable2FA() : start2FA()} />
+              </Row>
+              {twoFactorSetup && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginTop: 10 }}>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Use app autenticador</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', wordBreak: 'break-all', marginBottom: 10 }}>{twoFactorSetup.otpauthUrl}</div>
+                  <input className="form-input" value={twoFactorCode} onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Codigo 6 digitos" />
+                  <Button style={{ marginTop: 10 }} onClick={enable2FA}>Confirmar 2FA</Button>
+                </div>
+              )}
+            </Section>
+            <Section title="Sessoes Ativas" desc="">
+              <Row title="Sessao atual" sub="Este aparelho">
+                <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
               </Row>
             </Section>
-            <Section title="Sessões Ativas" desc="">
-              {[
-                { device:'Chrome · Windows 11', loc:'Curitiba, PR', time:'Agora',        current:true  },
-                { device:'Safari · iPhone 15',  loc:'São Paulo, SP', time:'Ontem 18:42', current:false },
-                { device:'Firefox · macOS',      loc:'Rio de Janeiro, RJ', time:'3 dias atrás', current:false },
-              ].map((s,i) => (
-                <Row key={i} title={s.device} sub={`${s.loc} · ${s.time}`}>
-                  {s.current
-                    ? <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
-                    : <button style={{ fontSize:12, color:'var(--danger)', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Encerrar</button>
-                  }
-                </Row>
-              ))}
-              <button style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.08)', color:'var(--danger)', fontFamily:'var(--font-body)', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                🚪 Encerrar todas as outras sessões
-              </button>
-            </Section>
             <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
-              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>⚠️ Zona de Perigo</div>
-              {[{icon:'📥',label:'Baixar meus dados',desc:'Cópia completa de todos os seus dados'},{icon:'🗑️',label:'Deletar conta e todos os dados',desc:'Ação permanente e irreversível'}].map(item=>(
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>Aviso Zona de Perigo</div>
+              {[{icon:'',label:'Baixar meus dados',desc:'Copia completa de todos os seus dados'},{icon:'',label:'Deletar conta e todos os dados',desc:'Acao permanente e irreversivel'}].map(item=>(
                 <div key={item.label} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:10, border:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.06)', marginBottom:10, cursor:'pointer' }}>
                   <span style={{ fontSize:20 }}>{item.icon}</span>
                   <div><div style={{ fontWeight:700, fontSize:14, color:'var(--danger)' }}>{item.label}</div><div style={{ fontSize:12, color:'rgba(239,68,68,0.7)' }}>{item.desc}</div></div>
-                  <span style={{ marginLeft:'auto', color:'var(--danger)' }}>›</span>
+                  <span style={{ marginLeft:'auto', color:'var(--danger)' }}>&gt;</span>
                 </div>
               ))}
             </div>
@@ -420,9 +642,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               <Row title="Email atual" sub={user?.email}>
                 <Button variant="secondary" size="sm" onClick={() => setEmailModal(true)}>Alterar</Button>
               </Row>
-              <Row title="Senha" sub={`Última alteração: ${formatPasswordDate(passwordChangedAt)}`} />
+              <Row title="Senha" sub={`ltima alteracao: ${formatPasswordDate(passwordChangedAt)}`} />
 
-              {/* ── Accordion de senha ── */}
+              {/*  Accordion de senha  */}
               <div style={{ marginTop: 12 }}>
                 <PasswordAccordion onSuccess={(date) => setPasswordChangedAt(date)} />
               </div>
@@ -432,10 +654,14 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {section === 'privacidade' && (<>
             <Section title="Visibilidade do Perfil" desc="">
               {[
-                { val:'public',  label:'🌐 Público',  desc:'Qualquer pessoa pode ver e acompanhar' },
-                { val:'private', label:'🔒 Privado', desc:'Apenas seguidores aprovados por você' },
+                { val:'public',  label:' Pblico',  desc:'Qualquer pessoa pode ver e acompanhar' },
+                { val:'private', label:' Privado', desc:'Apenas seguidores aprovados por voce' },
               ].map(opt => (
-                <div key={opt.val} onClick={() => setCfg(p=>({...p, profileVisibility: opt.val}))}
+                <div key={opt.val} onClick={() => {
+                  const next = { ...cfg, profileVisibility: opt.val };
+                  setCfg(next);
+                  savePrivacyPrefs(next);
+                }}
                   style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:12,
                     border:`2px solid ${cfg.profileVisibility===opt.val ? 'var(--accent)' : 'var(--border)'}`,
                     marginBottom:8, cursor:'pointer', background: cfg.profileVisibility===opt.val ? 'var(--accent-light)' : 'transparent' }}>
@@ -454,52 +680,56 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 <select className="form-input" style={{ width:'auto', padding:'6px 12px' }} value={cfg.whoCanMsg} onChange={e => setCfg(p=>({...p, whoCanMsg: e.target.value}))}>
                   <option value="everyone">Todos</option>
                   <option value="followers">Apenas quem sigo</option>
-                  <option value="none">Ninguém</option>
+                  <option value="none">Ninguem</option>
                 </select>
               </Row>
               {[
-                ['Silenciar mensagens','Não receber notificações','muteAllMsgs'],
-                ['Confirmar leitura','Mostrar quando você leu','readReceipts'],
-                ['Mostrar quando online','Visível para outros usuários','showOnline'],
+                ['Silenciar mensagens','Nao receber notificaes','muteAllMsgs'],
+                ['Confirmar leitura','Mostrar quando voce leu','readReceipts'],
+                ['Mostrar quando online','Visvel para outros usuarios','showOnline'],
               ].map(([label,sub,key]) => (
                 <Row key={key} title={label} sub={sub}>
-                  <Toggle checked={cfg[key] ?? (key!=='muteAllMsgs')} onChange={() => setCfg(p=>({...p,[key]:!(p[key]??(key!=='muteAllMsgs'))}))} />
+                  <Toggle checked={cfg[key] ?? (key!=='muteAllMsgs')} onChange={() => {
+                    const next = { ...cfg, [key]: !(cfg[key] ?? (key !== 'muteAllMsgs')) };
+                    setCfg(next);
+                    if (key === 'readReceipts' || key === 'showOnline') savePrivacyPrefs(next);
+                  }} />
                 </Row>
               ))}
             </Section>
-            {['Usuários Bloqueados','Usuários Silenciados'].map((title,ti) => (
+            {['Usuarios Bloqueados','Usuarios Silenciados'].map((title,ti) => (
               <Section key={title} title={title} desc="">
                 <div style={{ textAlign:'center', padding:'20px 0', color:'var(--text-muted)' }}>
-                  <div style={{ fontSize:32, marginBottom:8 }}>{ti===0?'🚫':'🔇'}</div>
-                  <div style={{ fontSize:14 }}>Nenhum usuário {ti===0?'bloqueado':'silenciado'}</div>
+                  <div style={{ fontSize:32, marginBottom:8 }}>{ti===0?'':''}</div>
+                  <div style={{ fontSize:14 }}>Nenhum usuario {ti===0?'bloqueado':'silenciado'}</div>
                 </div>
               </Section>
             ))}
           </>)}
 
           {section === 'dados' && (
-            <Section title="Seus Dados" desc="Gerencie e exporte todas suas informações">
-              <Row title="Baixar seus dados" sub="Exportar posts, mensagens e informações de perfil">
-                <Button variant="secondary" size="sm" onClick={() => showToast('Você receberá um email com o arquivo em breve.', '📦')}>⬇️ Exportar</Button>
+            <Section title="Seus Dados" desc="Gerencie e exporte todas suas informacoes">
+              <Row title="Baixar seus dados" sub="Exportar posts, mensagens e informacoes de perfil">
+                <Button variant="secondary" size="sm" onClick={() => showToast('Voce receber um email com o arquivo em breve.', '')}>Baixar Exportar</Button>
               </Row>
               <div className="settings-danger-zone">
-                <div className="settings-danger-zone-title">⚠️ Zona de perigo</div>
-                <div className="settings-danger-zone-desc">Estas ações são permanentes e não podem ser desfeitas.</div>
-                <Button variant="danger" size="sm" onClick={() => setDeleteModal(true)}>🗑️ Deletar conta permanentemente</Button>
+                <div className="settings-danger-zone-title">Aviso Zona de perigo</div>
+                <div className="settings-danger-zone-desc">Estas aes so permanentes e nao podem ser desfeitas.</div>
+                <Button variant="danger" size="sm" onClick={() => setDeleteModal(true)}> Deletar conta permanentemente</Button>
               </div>
             </Section>
           )}
 
           {section === 'notificacoes' && (<>
-            <Section title="Notificações Push" desc="">
-              <Row title="Ativar notificações push" sub="Receba notificações em tempo real">
+            <Section title="Notificacoes Push" desc="">
+              <Row title="Ativar notificaes push" sub="Receba notificaes em tempo real">
                 <Toggle checked={cfg.pushNotif} onChange={() => toggle('pushNotif')} />
               </Row>
               {[
                 ['Curtidas',          'pushLikes'],
-                ['Comentários',       'pushComments'],
+                ['Comentarios',       'pushComments'],
                 ['Novos seguidores',  'pushFollows'],
-                ['Menções',           'pushMentions'],
+                ['Mencoes',           'pushMentions'],
                 ['Mensagens',         'pushMsgs'],
               ].map(([label, key]) => (
                 <Row key={key} title={label}>
@@ -507,46 +737,112 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 </Row>
               ))}
             </Section>
-            <Section title="Notificações por E-mail" desc="">
+            <Section title="Notificacoes por E-mail" desc="">
               {[
-                ['E-mails de notificação', 'Resumos de atividade',       'emailNotif'],
+                ['E-mails de notificacao', 'Resumos de atividade',       'emailNotif'],
                 ['Resumo semanal',         'Destaques toda segunda',       'emailWeekly'],
-                ['Alertas de segurança',   'Login em novo dispositivo',    'emailSecurity'],
-                ['Marketing',              'Novidades e atualizações',     'marketing'],
+                ['Alertas de segurana',   'Login em novo dispositivo',    'emailSecurity'],
+                ['Marketing',              'Novidades e atualizacoes',     'marketing'],
               ].map(([label, sub, key]) => (
                 <Row key={key} title={label} sub={sub}>
-                  <Toggle checked={cfg[key] ?? (key !== 'marketing')} onChange={() => setCfg(p => ({...p, [key]: !(p[key] ?? (key !== 'marketing'))}))} />
+                  <Toggle checked={cfg[key] ?? (key !== 'marketing')} onChange={() => {
+                    const next = { ...cfg, [key]: !(cfg[key] ?? (key !== 'marketing')) };
+                    setCfg(next);
+                    if (key === 'emailNotif') savePrivacyPrefs(next);
+                  }} />
                 </Row>
               ))}
             </Section>
           </>)}
 
           {section === 'mensagens' && (
-            <Section title="Mensagens" desc="Preferências de mensagens diretas">
-              <Row title="Silenciar todas as mensagens" sub="Não receber notificações de nenhuma conversa">
-                <Toggle checked={cfg.muteAllMsgs} onChange={() => { toggle('muteAllMsgs'); showToast(cfg.muteAllMsgs ? 'Mensagens ativadas' : 'Mensagens silenciadas', '💬'); }} />
+            <Section title="Mensagens" desc="Preferncias de mensagens diretas">
+              <Row title="Silenciar todas as mensagens" sub="Nao receber notificaes de nenhuma conversa">
+                <Toggle checked={cfg.muteAllMsgs} onChange={() => { toggle('muteAllMsgs'); showToast(cfg.muteAllMsgs ? 'Mensagens ativadas' : 'Mensagens silenciadas', ''); }} />
               </Row>
-              <Row title="Confirmar leitura" sub="Mostrar quando você leu uma mensagem">
+              <Row title="Confirmar leitura" sub="Mostrar quando voce leu uma mensagem">
                 <Toggle checked={true} onChange={() => {}} />
               </Row>
             </Section>
           )}
 
-          {section === 'admin' && user?.role === 'admin' && (
-            <Section title="Painel Administrativo" desc="Controles avançados da plataforma Unigran">
-              {[
-                ['👥', 'Gerenciar usuários',   '345 usuários ativos'],
-                ['🗑️', 'Posts reportados',     '12 pendentes de revisão'],
-                ['🏘️', 'Comunidades',          '28 comunidades na plataforma'],
-                ['🚫', 'Usuários banidos',     '5 banimentos ativos'],
-                ['📊', 'Analytics',             'Estatísticas gerais da plataforma'],
-                ['📣', 'Enviar comunicado',     'Notificar todos os usuários'],
-              ].map(([icon, label, sub]) => (
-                <Row key={label} title={`${icon} ${label}`} sub={sub}>
-                  <Button variant="secondary" size="sm" onClick={() => showToast(`Abrindo: ${label}`, '🔧')}>Acessar</Button>
-                </Row>
-              ))}
-            </Section>
+          {section === 'admin' && canSeeAdmin && (
+            <>
+              <Section title="Painel Admin" desc="Usuarios, cargos, bans e denuncias">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+                  {[
+                    ['Usuarios', adminUsers.length],
+                    ['Banidos', adminUsers.filter(u => u.banned).length],
+                    ['Restritos', adminUsers.filter(u => !u.canPublish).length],
+                    ['Denuncias', adminReports.filter(r => (r.status || 'open') === 'open').length],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ padding: 14, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--page-bg)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+                  <input
+                    className="form-input"
+                    value={adminSearch}
+                    onChange={e => setAdminSearch(e.target.value)}
+                    placeholder="Buscar usuario"
+                    style={{ maxWidth: 320 }}
+                  />
+                  <Button variant="secondary" onClick={loadAdmin} disabled={adminLoading}>
+                    {adminLoading ? 'Carregando...' : 'Atualizar'}
+                  </Button>
+                </div>
+                {adminError && <p style={{ color: 'var(--danger, #ef4444)', marginBottom: 12 }}>{adminError}</p>}
+                {adminUsers.map(u => (
+                  <Row key={u.username} title={u.name} sub={`@${u.username} ${u.banned ? 'Banido' : 'Ativo'}`}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {user?.role === 'admin' && (
+                        <select
+                          className="form-input"
+                          value={u.role}
+                          onChange={e => saveRole(u.username, e.target.value).catch(err => showToast(err.message, '!'))}
+                          style={{ width: 190 }}
+                        >
+                          <option value="admin">ADMIN</option>
+                          <option value="moderator">moderator</option>
+                          <option value="community_moderator">community_moderator</option>
+                          <option value="professor">professor</option>
+                          <option value="user">usuario</option>
+                        </select>
+                      )}
+                      <Button variant={u.banned ? 'secondary' : 'danger'} size="sm" onClick={() => toggleBan(u.username, u.banned).catch(err => showToast(err.message, '!'))}>
+                        {u.banned ? 'Remover ban' : 'Banir'}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => togglePublish(u.username, u.canPublish).catch(err => showToast(err.message, '!'))}>
+                        {u.canPublish ? 'Bloquear post' : 'Liberar post'}
+                      </Button>
+                    </div>
+                  </Row>
+                ))}
+                {!adminUsers.length && !adminLoading && <p style={{ color: 'var(--text-2)' }}>Nada aqui.</p>}
+              </Section>
+
+              <Section title="Denuncias" desc="Fila para admin e moderador">
+                {adminReports.map(r => (
+                  <Row key={r.id} title={r.reason || 'Denuncia'} sub={`${r.reporter || 'anon'} -> ${r.reported_user || r.post_id || 'alvo'} | ${r.status}`}>
+                    <select
+                      className="form-input"
+                      value={r.status || 'open'}
+                      onChange={e => saveReport(r.id, e.target.value).catch(err => showToast(err.message, '!'))}
+                      style={{ width: 150 }}
+                    >
+                      <option value="open">open</option>
+                      <option value="reviewing">reviewing</option>
+                      <option value="resolved">resolved</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                  </Row>
+                ))}
+                {!adminReports.length && <p style={{ color: 'var(--text-2)' }}>Sem denuncias.</p>}
+              </Section>
+            </>
           )}
 
         </div>
@@ -560,7 +856,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           footer={
             <>
               <Button variant="secondary" onClick={() => setEditField(null)} disabled={editLoading}>Cancelar</Button>
-              <Button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Salvando…' : 'Salvar'}</Button>
+              <Button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Salvando...' : 'Salvar'}</Button>
             </>
           }
         >
@@ -570,7 +866,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
             </FormField>
           )}
           {editField === 'phone' && (
-            <FormField label="Número de telefone">
+            <FormField label="Numero de telefone">
               <input className="form-input" value={editValue} onChange={e => setEditValue(e.target.value)} placeholder="(44) 99999-9999" autoFocus maxLength={20} type="tel" />
             </FormField>
           )}
@@ -583,7 +879,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
         <Modal
           title="Alterar Email"
           onClose={() => setEmailModal(false)}
-          footer={<><Button variant="secondary" onClick={() => setEmailModal(false)}>Cancelar</Button><Button onClick={() => { setEmailModal(false); showToast('Email atualizado!', '✅'); }}>Salvar</Button></>}
+          footer={<><Button variant="secondary" onClick={() => setEmailModal(false)}>Cancelar</Button><Button onClick={() => { setEmailModal(false); showToast('Email atualizado!', 'OK'); }}>Salvar</Button></>}
         >
           <FormField label="Email atual"><input className="form-input" defaultValue={user?.email} disabled /></FormField>
           <FormField label="Novo email"><input type="email" className="form-input" placeholder="novo@email.com" /></FormField>
@@ -594,29 +890,46 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       {/* Delete account modal */}
       {deleteModal && (
         <Modal
-          title="⚠️ Deletar Conta"
+          title="Aviso Deletar Conta"
           onClose={() => { if (!deleteLoading) { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); } }}
           footer={
             <>
               <Button variant="secondary" onClick={() => { setDeleteModal(false); setDeletePassword(''); setDeleteError(''); setShowDeletePass(false); }} disabled={deleteLoading}>Cancelar</Button>
-              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>{deleteLoading ? 'Deletando…' : 'Confirmar exclusão'}</Button>
+              <Button variant="danger" onClick={handleDeleteAccount} disabled={deleteLoading}>{deleteLoading ? 'Deletando...' : 'Confirmar exclusao'}</Button>
             </>
           }
         >
           <p style={{ marginBottom: 16, color: 'var(--text-2)', lineHeight: 1.6 }}>
-            Esta ação é <strong>irreversível</strong>. Todos os seus posts, mensagens e dados serão permanentemente excluídos.
+            Esta acao  <strong>irreversivel</strong>. Todos os seus posts, mensagens e dados serao permanentemente excludos.
           </p>
           <FormField label="Digite sua senha para confirmar">
             <div style={{ position: 'relative' }}>
-              <input className="form-input" type={showDeletePass ? 'text' : 'password'} placeholder="••••••••" autoFocus value={deletePassword} onChange={e => setDeletePassword(e.target.value)} style={{ paddingRight: 40 }} />
+              <input className="form-input" type={showDeletePass ? 'text' : 'password'} placeholder="********" autoFocus value={deletePassword} onChange={e => setDeletePassword(e.target.value)} style={{ paddingRight: 40 }} />
               <button type="button" onClick={() => setShowDeletePass(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--text-2)' }}>
-                {showDeletePass ? '🙈' : '👁️'}
+                {showDeletePass ? '' : ''}
               </button>
             </div>
           </FormField>
           {deleteError && <p style={{ color: 'var(--danger, #ef4444)', marginTop: 8, fontSize: 14 }}>{deleteError}</p>}
         </Modal>
       )}
+
+      {profileCropFile && (
+        <ImageCropModal
+          file={profileCropFile}
+          shape="avatar"
+          onCancel={() => setProfileCropFile(null)}
+          onConfirm={(cropped) => {
+            setProfileCropFile(null);
+            uploadProfilePhoto(cropped);
+          }}
+        />
+      )}
     </div>
   );
 }
+
+
+
+
+

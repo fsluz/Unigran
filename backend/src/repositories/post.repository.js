@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 const cache = new Map();
@@ -264,7 +264,8 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     if (isZuni) return false;
     if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
     if (feed === 'trending') return true;
-    return authorUsername === viewerUsername || visibility === 'public' || friendSet.has(authorUsername);
+    const viewerLikedSimilar = false;
+    return authorUsername === viewerUsername || followingSet.has(authorUsername) || viewerLikedSimilar;
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
     const postText = entry?.post_text || attrs['post-text'] || '';
@@ -287,7 +288,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       author: {
         id: authorProfile?.username || entry?.author?.username || 'unknown',
         username: authorProfile?.username || entry?.author?.username || 'unknown',
-        displayName: authorProfile?.name || entry?.author?.name || 'Usuário',
+        displayName: authorProfile?.name || entry?.author?.name || 'Usuario',
         profilePicture: authorProfile?.profile_picture || entry?.author?.profile_picture || null,
         coverPicture: authorProfile?.cover_picture || entry?.author?.cover_picture || null,
         role: 'user',
@@ -303,7 +304,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
           time: comment?.created_at || null,
           author: {
             username: commentAuthorProfile?.username || comment?.author?.username || null,
-            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuário',
+            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuario',
             profilePicture: commentAuthorProfile?.profile_picture || comment?.author?.profile_picture || null,
             coverPicture: commentAuthorProfile?.cover_picture || comment?.author?.cover_picture || null,
           },
@@ -335,6 +336,44 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
   setCached(key, posts);
   return posts;
+}
+
+export async function listTrends() {
+  const rows = await readQuery(`
+    match
+      $post isa post, has creation-timestamp $created_at;
+      try { $post has post-text $text; };
+    fetch {
+      "text": $text,
+      "created_at": $created_at
+    };
+  `);
+  const keywords = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
+  const now = Date.now();
+  const counts = new Map();
+  const hourCounts = new Map();
+  for (const row of rows) {
+    const text = String(row.text || '').toLowerCase();
+    const words = new Set([
+      ...(text.match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
+      ...keywords.filter(word => text.includes(word)),
+    ]);
+    const recent = now - new Date(row.created_at || 0).getTime() <= 60 * 60 * 1000;
+    for (const word of words) {
+      counts.set(word, (counts.get(word) || 0) + 1);
+      if (recent) hourCounts.set(word, (hourCounts.get(word) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([tag, count]) => ({ tag, count, lastHour: hourCounts.get(tag) || 0 }));
+}
+
+export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) {
+  const posts = await listFeed({ viewerUsername, limit: 200, offset: 0, feed: 'trending' });
+  const needle = String(keyword || '').toLowerCase().replace(/^#/, '');
+  return posts.filter(post => String(post.content || '').toLowerCase().includes(needle)).slice(0, limit);
 }
 
 export async function createPost({ authorUsername, postType, content, media, communityId }) {
@@ -825,3 +864,4 @@ export async function unreactToComment({ username, commentId }) {
   cache.clear();
   return { liked: false };
 }
+

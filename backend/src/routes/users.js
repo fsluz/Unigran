@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
-import { auth, requireRole } from '../middleware/auth.js';
+import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
@@ -70,12 +70,27 @@ router.get('/suggestions/list', auth, async (req, res) => {
         "profile_picture": $pic
       };
     `);
+    const mutualRows = await readQuery(`
+      match
+        $me isa person, has username "${safeMe}";
+        friendship(friend: $me, friend: $mutual);
+        $u isa person, has username $username;
+        friendship(friend: $u, friend: $mutual);
+        not { $u is $me; };
+      fetch { "username": $username };
+    `).catch(() => []);
+    const mutualCount = new Map();
+    for (const row of mutualRows) {
+      if (!row.username) continue;
+      mutualCount.set(row.username, (mutualCount.get(row.username) || 0) + 1);
+    }
     res.json({ users: rows.map(row => ({
       username: row.username,
       displayName: row.name || row.username,
       profilePicture: row.profile_picture || null,
       role: 'user',
-    })) });
+      mutualCount: mutualCount.get(row.username) || 0,
+    })).sort((a, b) => b.mutualCount - a.mutualCount) });
   } catch (err) {
     console.error('[suggestions]', err);
     res.status(500).json({ error: 'Erro interno' });
@@ -128,18 +143,55 @@ router.get('/:id', auth, async (req, res) => {
         try { $p has cover-picture $cover_pic; };
         try { $p has bio $bio; };
         try { $p has page-visibility $visibility; };
+        try { $p has user-role $role; };
+        try { $p has hide-online $hide_online; };
+        try { $p has hide-read-receipts $hide_read_receipts; };
+        try { $p has email-notifications-enabled $email_notifications; };
+        try { $p has badge $badge; };
       fetch {
         "username": $username,
         "name": $name,
         "profile_picture": $profile_pic,
         "cover_picture": $cover_pic,
         "bio": $bio,
-        "visibility": $visibility
+        "visibility": $visibility,
+        "role": $role,
+        "hide_online": $hide_online,
+        "hide_read_receipts": $hide_read_receipts,
+        "email_notifications": $email_notifications,
+        "badge": $badge
       };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
     const row = rows[0];
+    const links = {};
+    const badge = String(row.badge || '');
+    if (badge.startsWith('links:')) {
+      for (const part of badge.slice(6).split('|')) {
+        const [key, ...rest] = part.split(':');
+        if (key && rest.length) links[key] = rest.join(':');
+      }
+    }
     const stats = await getFollowStats(req.params.id, req.user.username);
+    const isOwner = req.user.username === req.params.id;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+    if ((row.visibility || 'public') === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
+      return res.json({
+        user: {
+          id: row.username,
+          username: row.username,
+          displayName: row.name,
+          profilePicture: row.profile_picture || null,
+          coverPicture: row.cover_picture || null,
+          bio: 'Perfil privado',
+          privacy: 'private',
+          role: row.role || 'user',
+          private: true,
+          following: false,
+          stats: { posts: 0, followers: stats.followers, following: 0 },
+        },
+      });
+    }
     res.json({
       user: {
         id: row.username,
@@ -149,7 +201,11 @@ router.get('/:id', auth, async (req, res) => {
         coverPicture: row.cover_picture || null,
         bio: row.bio || '',
         privacy: row.visibility || 'public',
-        role: 'user',
+        role: row.role || 'user',
+        hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
+        hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
+        emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
+        links,
         following: stats.viewerFollowing,
         stats: {
           posts: stats.posts,
@@ -169,7 +225,18 @@ router.put('/:id', auth, async (req, res) => {
     return res.status(403).json({ error: 'Sem permissao' });
   }
 
-  const { displayName, bio, phone, profilePicture, coverPicture, privacy, links } = req.body;
+  const {
+    displayName,
+    bio,
+    phone,
+    profilePicture,
+    coverPicture,
+    privacy,
+    links,
+    hideOnline,
+    hideReadReceipts,
+    emailNotifications,
+  } = req.body;
   const uid = typeqlLiteral(req.params.id);
 
   try {
@@ -240,6 +307,13 @@ router.put('/:id', auth, async (req, res) => {
         update
           $u has profile-picture "${typeqlLiteral(profilePicture.url)}";
       `);
+    } else if (profilePicture === null) {
+      await writeQuery(`
+        match
+          $u isa person, has username "${uid}", has profile-picture $old;
+        delete
+          has $old of $u;
+      `);
     }
 
     if (coverPicture?.url) {
@@ -248,6 +322,19 @@ router.put('/:id', auth, async (req, res) => {
           $u isa person, has username "${uid}";
         update
           $u has cover-picture "${typeqlLiteral(coverPicture.url)}";
+      `);
+    }
+
+    const prefUpdates = [];
+    if (typeof hideOnline === 'boolean') prefUpdates.push(`$u has hide-online ${hideOnline};`);
+    if (typeof hideReadReceipts === 'boolean') prefUpdates.push(`$u has hide-read-receipts ${hideReadReceipts};`);
+    if (typeof emailNotifications === 'boolean') prefUpdates.push(`$u has email-notifications-enabled ${emailNotifications};`);
+    if (prefUpdates.length) {
+      await writeQuery(`
+        match
+          $u isa person, has username "${uid}";
+        update
+          ${prefUpdates.join('\n          ')}
       `);
     }
 
@@ -339,18 +426,39 @@ router.get('/:id/following', auth, async (req, res) => {
     const rows = await readQuery(`
       match
         $user isa person, has username "${safeId}";
-        $page isa page, has page-id $pid, has name $name;
+        $page isa page, has page-id $pid, has username $username, has name $name;
         following(follower: $user, page: $page);
         try { $page has profile-picture $pic; };
       fetch {
         "id": $pid,
+        "username": $username,
         "name": $name,
         "profile_picture": $pic
       };
     `);
-    res.json({ following: rows.map(r => ({ id: r.id, displayName: r.name, profilePicture: r.profile_picture || null })) });
+    res.json({ following: rows.map(r => ({ id: r.id, username: r.username, displayName: r.name, profilePicture: r.profile_picture || null })) });
   } catch (err) {
     console.error('[following]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.delete('/:id/followers/:followerId', auth, async (req, res) => {
+  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Sem permissao' });
+  }
+  try {
+    await writeQuery(`
+      match
+        $target isa page, has username "${typeqlLiteral(req.params.id)}";
+        $follower isa person, has username "${typeqlLiteral(req.params.followerId)}";
+        $rel isa following, links (follower: $follower, page: $target);
+      delete
+        $rel;
+    `);
+    res.json({ removed: true });
+  } catch (err) {
+    console.error('[remove follower]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });

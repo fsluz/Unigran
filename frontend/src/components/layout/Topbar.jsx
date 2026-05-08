@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { fetchNotifications, markAllAsRead } from '../../services/notifications';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
+import unigranLogo from '../../assets/logo.png';
 
 function NotifDot({ children }) {
   return (
@@ -89,7 +90,12 @@ export default function Topbar({ title, left, right }) {
   return (
     <div className="topbar" style={{ justifyContent: 'center' }}>
       {left && <div style={{ marginRight: 12 }}>{left}</div>}
-      {title && <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, color: 'var(--text)', marginRight: 12, whiteSpace: 'nowrap' }}>{title}</div>}
+      {title && (
+        <div className="topbar-page-title">
+          <img src={unigranLogo} alt="Unigran" />
+          <span>{title}</span>
+        </div>
+      )}
 
       <div style={{ flex: 1, maxWidth: 440, position: 'relative' }}>
         <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
