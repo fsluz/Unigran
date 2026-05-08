@@ -225,6 +225,8 @@ router.get('/me', async (req, res) => {
         try { $u has phone $phone; };
         try { $u has profile-picture $profile_picture; };
         try { $u has cover-picture $cover_picture; };
+        try { $u has bio $bio; };
+        try { $u has badge $badge; };
         try { $u has user-role $role; };
         try { $u has page-visibility $visibility; };
         try { $u has hide-online $hide_online; };
@@ -237,6 +239,8 @@ router.get('/me', async (req, res) => {
         "phone": $phone,
         "profile_picture": $profile_picture,
         "cover_picture": $cover_picture,
+        "bio": $bio,
+        "badge": $badge,
         "role": $role,
         "visibility": $visibility,
         "hide_online": $hide_online,
@@ -248,6 +252,14 @@ router.get('/me', async (req, res) => {
     if (!rows.length) return res.status(401).json({ error: 'Usuario nao encontrado' });
 
     const row = rows[0];
+    const links = {};
+    const badge = String(row.badge || '');
+    if (badge.startsWith('links:')) {
+      for (const part of badge.slice(6).split('|')) {
+        const [key, ...rest] = part.split(':');
+        if (key && rest.length) links[key] = rest.join(':');
+      }
+    }
     const twoFactor = await readTwoFactorByUsername(decoded.username);
     res.json({
       user: {
@@ -258,6 +270,8 @@ router.get('/me', async (req, res) => {
         phone: row.phone || null,
         profilePicture: row.profile_picture || decoded.profilePicture || null,
         coverPicture: row.cover_picture || decoded.coverPicture || null,
+        bio: row.bio || '',
+        links,
         privacy: row.visibility || decoded.privacy || 'public',
         hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
         hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',

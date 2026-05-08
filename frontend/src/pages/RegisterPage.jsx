@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -9,6 +9,8 @@ export default function RegisterPage({ onGoLogin }) {
   const [form, setForm] = useState({ name: '', username: '', phone: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleReady, setGoogleReady] = useState(false);
+  const googleButtonRef = useRef(null);
 
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,6 +27,55 @@ export default function RegisterPage({ onGoLogin }) {
       {visible ? 'Ocultar' : 'Ver'}
     </button>
   );
+
+  async function finishGoogle(credential) {
+    const res = await apiFetch('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential }),
+    });
+    const data = await res.json();
+    if (!res.ok) setError(data.error || 'Google Auth falhou.');
+    else login(data.user, data.token);
+  }
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleReady(true);
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, []);
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleReady || !clientId || !window.google?.accounts?.id || !googleButtonRef.current) return;
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: ({ credential }) => finishGoogle(credential),
+    });
+    googleButtonRef.current.innerHTML = '';
+    window.google.accounts.id.renderButton(googleButtonRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: googleButtonRef.current.offsetWidth || 320,
+      text: 'signup_with',
+      shape: 'rectangular',
+    });
+  }, [googleReady]);
+
+  const handleGoogle = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.id) {
+      setError('Google Auth sem Client ID.');
+      return;
+    }
+    window.google.accounts.id.prompt();
+  };
 
   const handleSubmit = async () => {
     const { name, username, email, password, confirm } = form;
@@ -146,6 +197,15 @@ export default function RegisterPage({ onGoLogin }) {
           >
             {loading ? 'Criando conta...' : 'Criar Conta'}
           </button>
+
+          <button
+            className="btn btn-secondary"
+            style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
+            onClick={handleGoogle}
+          >
+            Cadastrar com Google
+          </button>
+          <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
             Já tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faça login</a>

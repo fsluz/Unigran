@@ -334,7 +334,6 @@ export default function LoginPage({ onGoRegister }) {
             className="btn btn-secondary"
             style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
             onClick={handleGoogle}
-            disabled={!googleReady && Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)}
           >
             Entrar com Google
           </button>

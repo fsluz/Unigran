@@ -217,6 +217,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const profileInputRef = useRef(null);
   const [profileUploading, setProfileUploading] = useState(false);
+  const [personalForm, setPersonalForm] = useState(() => ({
+    displayName: user?.displayName || '',
+    phone: user?.phone || '',
+    bio: user?.bio || '',
+    links: user?.links || {},
+  }));
 
   const [emailModal,  setEmailModal]  = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -233,6 +239,15 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [editError,   setEditError]   = useState('');
 
   const toggle = key => setCfg(p => ({ ...p, [key]: !p[key] }));
+
+  useEffect(() => {
+    setPersonalForm({
+      displayName: user?.displayName || '',
+      phone: user?.phone || '',
+      bio: user?.bio || '',
+      links: user?.links || {},
+    });
+  }, [user?.username]);
 
   async function handleDeleteAccount() {
     setDeleteError('');
@@ -451,6 +466,27 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       setProfileUploading(false);
     }
   }
+
+  async function savePersonalInfo() {
+    try {
+      const payload = {
+        displayName: personalForm.displayName.trim(),
+        phone: personalForm.phone.trim(),
+        bio: personalForm.bio.trim(),
+        links: personalForm.links,
+      };
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Salvar falhou');
+      updateUser(payload);
+      showToast('Perfil salvo', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro perfil', '!');
+    }
+  }
   async function disable2FA() {
     const res = await apiFetch('/auth/2fa/disable', {
       method: 'POST',
@@ -489,11 +525,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {/* Appearance block matching screenshots */}
           <div style={{ padding: '16px 12px 0' }}>
             <div style={{ padding: '12px', background: 'var(--page-bg)', borderRadius: 12, border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>AparÃªncia</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 10 }}>Aparencia</div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>{dark ? 'ðŸŒ™' : 'â˜€ï¸'}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{dark ? 'Escuro' : 'Claro'}</span>
+                  <span style={{ fontSize: 16 }}>{dark ? 'Escuro' : 'Claro'}</span>
                 </div>
                 <SidebarToggle value={dark} onChange={onToggleTheme} />
               </div>
@@ -502,7 +537,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
           <div className="settings-logout-area">
             <Button variant="danger" style={{ width: '100%', justifyContent: 'center' }} onClick={onLogout}>
-              ðŸšª Sair da conta
+              Sair da conta
             </Button>
           </div>
         </nav>
@@ -511,18 +546,16 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
         <div className="settings-content">
 
           {section === 'pessoal' && (<>
-            {/* Photo card */}
             <div className="settings-panel-card">
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Foto de Perfil</div>
               <div style={{ display:'flex', alignItems:'center', gap:20 }}>
                 <div style={{ width:72, height:72, borderRadius:'50%', background:user?.profilePicture ? `url(${user.profilePicture}) center/cover` : 'linear-gradient(135deg,#6A00F4,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-head)', fontWeight:800, fontSize:26, color:'#fff', flexShrink:0, position:'relative' }}>
                   {!user?.profilePicture && (user?.avatar || user?.displayName?.slice(0, 2) || user?.username?.slice(0, 2))}
-                  <div style={{ position:'absolute', bottom:0, right:0, width:22, height:22, borderRadius:'50%', background:'linear-gradient(135deg,#6A00F4,#00A8FF)', border:'2px solid var(--card)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>âœï¸</div>
                 </div>
                 <div>
                   <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4 }}>Alterar foto</div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF Â· MÃ¡x 5MB</div>
-                  <div style={{ display:'flex', gap:8 }}>
+                  <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF. Max 5MB</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                     <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => uploadProfilePhoto(e.target.files?.[0])} />
                     <button disabled={profileUploading} onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>{profileUploading ? 'Carregando...' : 'Escolher'}</button>
                     <button disabled={profileUploading || !user?.profilePicture} onClick={removeProfilePhoto} style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
@@ -531,33 +564,32 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               </div>
             </div>
 
-            {/* Personal info card */}
             <div className="settings-panel-card">
-              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>InformaÃ§Ãµes Pessoais</div>
-              {[
-                { label:'Nome completo',    val: user?.displayName,     key:'displayName' },
-                { label:'Nome de usuÃ¡rio (@)', val: `@${user?.username}`, key:'username', disabled:true },
-                { label:'E-mail',           val: user?.email,           key:'email' },
-              ].map(f => (
-                <div key={f.key} style={{ marginBottom:16 }}>
-                  <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>{f.label}</label>
-                  <input
-                    className="form-input"
-                    defaultValue={f.val}
-                    disabled={f.disabled}
-                    style={{ width:'100%', opacity: f.disabled ? 0.7 : 1 }}
-                  />
-                </div>
-              ))}
+              <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Informacoes Pessoais</div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Nome completo</label>
+                <input className="form-input" value={personalForm.displayName} onChange={e => setPersonalForm(p => ({ ...p, displayName: e.target.value }))} style={{ width:'100%' }} />
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Nome de usuario (@)</label>
+                <input className="form-input" value={`@${user?.username || ''}`} disabled style={{ width:'100%', opacity:0.7 }} />
+              </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Telefone</label>
+                <input className="form-input" value={personalForm.phone} onChange={e => setPersonalForm(p => ({ ...p, phone: e.target.value }))} style={{ width:'100%' }} />
+              </div>
               <div style={{ marginBottom:20 }}>
                 <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Sobre mim</label>
-                <textarea className="form-input" rows={4} style={{ width:'100%', resize:'vertical' }}
-                  defaultValue="ðŸš€ Designer & Dev enthusiast. Curitiba, PR."
-                />
+                <textarea className="form-input" rows={4} value={personalForm.bio} onChange={e => setPersonalForm(p => ({ ...p, bio: e.target.value }))} style={{ width:'100%', resize:'vertical' }} />
               </div>
-              <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }}
-                onClick={() => showToast('AlteraÃ§Ãµes salvas!', 'âœ…')}>
-                Salvar alteraÃ§Ãµes
+              <div style={{ marginBottom:20 }}>
+                <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Links</label>
+                {['instagram', 'linkedin', 'facebook', 'outros'].map(key => (
+                  <input key={key} className="form-input" placeholder={key} value={personalForm.links?.[key] || ''} onChange={e => setPersonalForm(p => ({ ...p, links: { ...(p.links || {}), [key]: e.target.value } }))} style={{ width:'100%', marginBottom:8 }} />
+                ))}
+              </div>
+              <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }} onClick={savePersonalInfo}>
+                Salvar alteracoes
               </button>
             </div>
 
