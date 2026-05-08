@@ -85,6 +85,13 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   }
 
   const isMe = profile.username === user?.username;
+  const linkIcon = (key = '', url = '') => {
+    const value = `${key} ${url}`.toLowerCase();
+    if (value.includes('instagram')) return '📷';
+    if (value.includes('linkedin')) return '💼';
+    if (value.includes('facebook')) return 'f';
+    return '🔗';
+  };
 
   return (
     <div className="page-scroll">
@@ -110,6 +117,15 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
           <div className="profile-name">{profile.displayName || profile.username}</div>
           <div className="profile-inst">@{profile.username}</div>
           <div className="profile-bio">{profile.bio || 'Sem bio.'}</div>
+          {profile.links && Object.keys(profile.links).length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              {Object.entries(profile.links).map(([key, url]) => (
+                <a key={key} href={String(url).startsWith('http') ? url : `https://${url}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: 12 }}>
+                  {linkIcon(key, url)} {key}
+                </a>
+              ))}
+            </div>
+          )}
           <div className="profile-stats">
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{profile.stats?.posts || posts.length}</div>

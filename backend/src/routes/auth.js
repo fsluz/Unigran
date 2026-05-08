@@ -6,6 +6,7 @@ import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
 import { normalizeRole } from '../middleware/auth.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
+import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
 
 const router = Router();
 
@@ -23,6 +24,11 @@ const LoginSchema = z.object({
     z.string().min(3).max(320).refine(s => /^[^\s@]+@[^\s@]+(\.[^\s@]+)+$/.test(s), 'Email invalido'),
   ),
   password: z.string().min(1),
+  twoFactorCode: z.string().optional(),
+});
+
+const GoogleSchema = z.object({
+  credential: z.string().min(20),
 });
 
 function sign(payload) {
@@ -92,6 +98,8 @@ router.post('/login', async (req, res) => {
         try { $u has is-banned $banned; };
         try { $u has phone $phone; };
         try { $u has user-role $role; };
+        try { $u has two-factor-enabled $two_factor_enabled; };
+        try { $u has two-factor-secret $two_factor_secret; };
         try { $u has password-changed-at $changed; };
       fetch {
         "username": $username,
@@ -100,6 +108,8 @@ router.post('/login', async (req, res) => {
         "banned": $banned,
         "phone": $phone,
         "role": $role,
+        "two_factor_enabled": $two_factor_enabled,
+        "two_factor_secret": $two_factor_secret,
         "password_changed_at": $changed
       };
     `);
@@ -109,6 +119,11 @@ router.post('/login', async (req, res) => {
     const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
     if (!ok) return res.status(401).json({ error: 'Credenciais invalidas' });
     if (attrBoolTrue(row.banned)) return res.status(403).json({ error: 'Conta banida' });
+    if (attrBoolTrue(row.two_factor_enabled)) {
+      if (!verifyTotp(row.two_factor_secret, parsed.data.twoFactorCode)) {
+        return res.json({ requires2FA: true, email });
+      }
+    }
 
     const username = row.username || email.split('@')[0] || 'user';
     const payload = {
@@ -124,6 +139,61 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('[login]', err);
     res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/google', async (req, res) => {
+  const parsed = GoogleSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Token Google ausente' });
+  try {
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(parsed.data.credential)}`);
+    const google = await googleRes.json();
+    if (!googleRes.ok || google.email_verified !== 'true') {
+      return res.status(401).json({ error: 'Google Auth invalido' });
+    }
+    const email = String(google.email || '').toLowerCase();
+    const username = String(email.split('@')[0] || google.sub).replace(/[^a-zA-Z0-9_]/g, '_');
+    const name = google.name || username;
+    const existing = await readQuery(`
+      match
+        $u isa person, has email "${typeqlLiteral(email)}";
+        try { $u has username $username; };
+        try { $u has name $name; };
+        try { $u has user-role $role; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "role": $role
+      };
+    `);
+    if (!existing.length) {
+      await writeQuery(`
+        insert
+          $u isa person,
+            has username "${typeqlLiteral(username)}",
+            has name "${typeqlLiteral(name)}",
+            has email "${typeqlLiteral(email)}",
+            has password-hash "${encodeHash(`google:${google.sub}`)}",
+            has user-role "user",
+            has is-active true,
+            has is-banned false,
+            has can-publish true,
+            has page-visibility "public",
+            has post-visibility "public";
+      `);
+    }
+    const row = existing[0] || { username, name, role: 'user' };
+    const payload = {
+      id: row.username || username,
+      username: row.username || username,
+      displayName: row.name || name,
+      email,
+      role: normalizeRole(row.role),
+    };
+    res.json({ token: sign(payload), user: payload });
+  } catch (err) {
+    console.error('[google auth]', err);
+    res.status(500).json({ error: 'Erro Google Auth' });
   }
 });
 
@@ -144,6 +214,7 @@ router.get('/me', async (req, res) => {
         try { $u has hide-online $hide_online; };
         try { $u has hide-read-receipts $hide_read_receipts; };
         try { $u has email-notifications-enabled $email_notifications; };
+        try { $u has two-factor-enabled $two_factor_enabled; };
         try { $u has password-changed-at $changed; };
       fetch {
         "email": $email,
@@ -156,6 +227,7 @@ router.get('/me', async (req, res) => {
         "hide_online": $hide_online,
         "hide_read_receipts": $hide_read_receipts,
         "email_notifications": $email_notifications,
+        "two_factor_enabled": $two_factor_enabled,
         "password_changed_at": $changed
       };
     `);
@@ -175,11 +247,84 @@ router.get('/me', async (req, res) => {
         hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
         hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
         emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
+        twoFactorEnabled: row.two_factor_enabled === true || String(row.two_factor_enabled).toLowerCase() === 'true',
         passwordChangedAt: row.password_changed_at || null,
       },
     });
   } catch {
     res.status(401).json({ error: 'Token invalido' });
+  }
+});
+
+router.post('/2fa/setup', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  const secret = randomBase32();
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-secret "${secret}";
+    `);
+    res.json({ secret, otpauthUrl: otpauthUrl({ secret, email: decoded.email || decoded.username }) });
+  } catch (err) {
+    console.error('[2fa setup]', err);
+    res.status(500).json({ error: 'Erro ao criar 2FA' });
+  }
+});
+
+router.post('/2fa/enable', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}", has two-factor-secret $secret;
+      fetch { "secret": $secret };
+    `);
+    if (!rows.length || !verifyTotp(rows[0].secret, req.body?.code)) {
+      return res.status(400).json({ error: 'Codigo invalido' });
+    }
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-enabled true;
+    `);
+    res.json({ enabled: true });
+  } catch (err) {
+    console.error('[2fa enable]', err);
+    res.status(500).json({ error: 'Erro ao ativar 2FA' });
+  }
+});
+
+router.post('/2fa/disable', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      update
+        $u has two-factor-enabled false;
+    `);
+    res.json({ enabled: false });
+  } catch (err) {
+    console.error('[2fa disable]', err);
+    res.status(500).json({ error: 'Erro ao desativar 2FA' });
   }
 });
 

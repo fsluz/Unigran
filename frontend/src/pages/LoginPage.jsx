@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch, formatApiError } from '../utils/api';
 import AuthLayout from '../components/layout/AuthLayout';
@@ -9,10 +9,13 @@ export default function LoginPage({ onGoRegister }) {
   const [view, setView] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [needs2FA, setNeeds2FA] = useState(false);
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [googleReady, setGoogleReady] = useState(false);
 
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -33,6 +36,40 @@ export default function LoginPage({ onGoRegister }) {
     </button>
   );
 
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleReady(true);
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, []);
+
+  const handleGoogle = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId || !window.google?.accounts?.id) {
+      setError('Google Auth sem Client ID.');
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async ({ credential }) => {
+        const res = await apiFetch('/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential }),
+        });
+        const data = await res.json();
+        if (!res.ok) setError(data.error || 'Google Auth falhou.');
+        else login(data.user, data.token);
+      },
+    });
+    window.google.accounts.id.prompt();
+  };
+
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Preencha todos os campos.');
@@ -46,12 +83,15 @@ export default function LoginPage({ onGoRegister }) {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, twoFactorCode: needs2FA ? twoFactorCode : undefined }),
       });
       const data = await res.json();
 
       if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
-      else login(data.user, data.token);
+      else if (data.requires2FA) {
+        setNeeds2FA(true);
+        setError('Informe codigo 2FA.');
+      } else login(data.user, data.token);
     } catch {
       setError('Erro ao conectar com o servidor.');
     } finally {
@@ -208,6 +248,21 @@ export default function LoginPage({ onGoRegister }) {
             />
           </div>
 
+          {needs2FA && (
+            <div className="form-group">
+              <label className="form-label">Codigo 2FA</label>
+              <input
+                className="form-input"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={twoFactorCode}
+                onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+            </div>
+          )}
+
           <div className="form-group">
             <div className="auth-row">
               <label className="form-label" style={{ margin: 0 }}>Senha</label>
@@ -246,6 +301,15 @@ export default function LoginPage({ onGoRegister }) {
             disabled={loading}
           >
             {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
+            onClick={handleGoogle}
+            disabled={!googleReady && Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)}
+          >
+            Entrar com Google
           </button>
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>

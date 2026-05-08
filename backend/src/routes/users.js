@@ -70,12 +70,27 @@ router.get('/suggestions/list', auth, async (req, res) => {
         "profile_picture": $pic
       };
     `);
+    const mutualRows = await readQuery(`
+      match
+        $me isa person, has username "${safeMe}";
+        friendship(friend: $me, friend: $mutual);
+        $u isa person, has username $username;
+        friendship(friend: $u, friend: $mutual);
+        not { $u is $me; };
+      fetch { "username": $username };
+    `).catch(() => []);
+    const mutualCount = new Map();
+    for (const row of mutualRows) {
+      if (!row.username) continue;
+      mutualCount.set(row.username, (mutualCount.get(row.username) || 0) + 1);
+    }
     res.json({ users: rows.map(row => ({
       username: row.username,
       displayName: row.name || row.username,
       profilePicture: row.profile_picture || null,
       role: 'user',
-    })) });
+      mutualCount: mutualCount.get(row.username) || 0,
+    })).sort((a, b) => b.mutualCount - a.mutualCount) });
   } catch (err) {
     console.error('[suggestions]', err);
     res.status(500).json({ error: 'Erro interno' });
@@ -132,6 +147,7 @@ router.get('/:id', auth, async (req, res) => {
         try { $p has hide-online $hide_online; };
         try { $p has hide-read-receipts $hide_read_receipts; };
         try { $p has email-notifications-enabled $email_notifications; };
+        try { $p has badge $badge; };
       fetch {
         "username": $username,
         "name": $name,
@@ -142,12 +158,40 @@ router.get('/:id', auth, async (req, res) => {
         "role": $role,
         "hide_online": $hide_online,
         "hide_read_receipts": $hide_read_receipts,
-        "email_notifications": $email_notifications
+        "email_notifications": $email_notifications,
+        "badge": $badge
       };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
     const row = rows[0];
+    const links = {};
+    const badge = String(row.badge || '');
+    if (badge.startsWith('links:')) {
+      for (const part of badge.slice(6).split('|')) {
+        const [key, ...rest] = part.split(':');
+        if (key && rest.length) links[key] = rest.join(':');
+      }
+    }
     const stats = await getFollowStats(req.params.id, req.user.username);
+    const isOwner = req.user.username === req.params.id;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+    if ((row.visibility || 'public') === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
+      return res.json({
+        user: {
+          id: row.username,
+          username: row.username,
+          displayName: row.name,
+          profilePicture: row.profile_picture || null,
+          coverPicture: row.cover_picture || null,
+          bio: 'Perfil privado',
+          privacy: 'private',
+          role: row.role || 'user',
+          private: true,
+          following: false,
+          stats: { posts: 0, followers: stats.followers, following: 0 },
+        },
+      });
+    }
     res.json({
       user: {
         id: row.username,
@@ -161,6 +205,7 @@ router.get('/:id', auth, async (req, res) => {
         hideOnline: row.hide_online === true || String(row.hide_online).toLowerCase() === 'true',
         hideReadReceipts: row.hide_read_receipts === true || String(row.hide_read_receipts).toLowerCase() === 'true',
         emailNotifications: row.email_notifications !== false && String(row.email_notifications).toLowerCase() !== 'false',
+        links,
         following: stats.viewerFollowing,
         stats: {
           posts: stats.posts,

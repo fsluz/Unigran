@@ -15,6 +15,7 @@ import {
   unlikePost,
 } from '../services/post.service.js';
 import { typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { listKeywordPosts, listTrends } from '../repositories/post.repository.js';
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
@@ -42,6 +43,24 @@ export async function getFeedController(req, res) {
   } catch (err) {
     console.error('[posts feed]', err);
     res.status(500).json({ error: 'Erro ao carregar posts' });
+  }
+}
+
+export async function getTrendsController(_req, res) {
+  try {
+    res.json({ trends: await listTrends() });
+  } catch (err) {
+    console.error('[posts trends]', err);
+    res.status(500).json({ error: 'Erro ao carregar tendencias' });
+  }
+}
+
+export async function getTrendPostsController(req, res) {
+  try {
+    res.json({ posts: await listKeywordPosts({ viewerUsername: req.user.username, keyword: req.params.tag }) });
+  } catch (err) {
+    console.error('[posts trend]', err);
+    res.status(500).json({ error: 'Erro ao carregar tendencia' });
   }
 }
 

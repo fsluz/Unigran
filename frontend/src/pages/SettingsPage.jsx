@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Toggle, Button, Modal, FormField } from '../components/ui';
 import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
+import { uploadMedia } from '../services/posts';
 
 function SidebarToggle({ value, onChange }) {
   return (
@@ -212,6 +213,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     readReceipts:      !(user?.hideReadReceipts),
     showOnline:        !(user?.hideOnline),
   });
+  const [twoFactorSetup, setTwoFactorSetup] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const profileInputRef = useRef(null);
 
   const [emailModal,  setEmailModal]  = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -383,6 +387,59 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
+  async function start2FA() {
+    const res = await apiFetch('/auth/2fa/setup', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Erro 2FA', '!');
+    setTwoFactorSetup(data);
+    showToast('Chave 2FA criada', 'OK');
+  }
+
+  async function enable2FA() {
+    const res = await apiFetch('/auth/2fa/enable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: twoFactorCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast(data.error || 'Codigo invalido', '!');
+    updateUser({ twoFactorEnabled: true });
+    setCfg(p => ({ ...p, twoFactor: true }));
+    setTwoFactorSetup(null);
+    setTwoFactorCode('');
+    showToast('2FA ativo', 'OK');
+  }
+
+  async function uploadProfilePhoto(file) {
+    if (!file) return;
+    try {
+      const profilePicture = await uploadMedia({ token, file });
+      const res = await apiFetch(`/users/${user.username}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ profilePicture }),
+      });
+      if (!res.ok) throw new Error('Upload falhou');
+      updateUser({ profilePicture: profilePicture.url });
+      showToast('Foto salva', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro foto', '!');
+    }
+  }
+  async function disable2FA() {
+    const res = await apiFetch('/auth/2fa/disable', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return showToast('Erro 2FA', '!');
+    updateUser({ twoFactorEnabled: false });
+    setCfg(p => ({ ...p, twoFactor: false }));
+    showToast('2FA desligado', 'OK');
+  }
+
   return (
     <div className="page-scroll">
       <Topbar title="ConfiguraÃ§Ãµes" />
@@ -444,7 +501,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   <div style={{ fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4 }}>Alterar foto</div>
                   <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:12 }}>JPG, PNG ou GIF Â· MÃ¡x 5MB</div>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>Escolher</button>
+                    <input ref={profileInputRef} type="file" accept="image/*" hidden onChange={e => uploadProfilePhoto(e.target.files?.[0])} />
+                    <button onClick={() => profileInputRef.current?.click()} style={{ padding:'7px 16px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:12, cursor:'pointer' }}>Escolher</button>
                     <button style={{ padding:'7px 16px', borderRadius:8, background:'rgba(239,68,68,0.08)', color:'var(--danger)', border:'1px solid rgba(239,68,68,0.3)', fontWeight:600, fontSize:12, cursor:'pointer' }}>Remover</button>
                   </div>
                 </div>
@@ -490,25 +548,21 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {section === 'seguranca' && (<>
             <Section title="AutenticaÃ§Ã£o em Dois Fatores (2FA)" desc="">
               <Row title="Ativar 2FA" sub="Camada extra de seguranÃ§a">
-                <Toggle checked={cfg.twoFactor} onChange={() => toggle('twoFactor')} />
+                <Toggle checked={Boolean(user?.twoFactorEnabled || cfg.twoFactor)} onChange={() => user?.twoFactorEnabled ? disable2FA() : start2FA()} />
               </Row>
+              {twoFactorSetup && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginTop: 10 }}>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Use app autenticador</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', wordBreak: 'break-all', marginBottom: 10 }}>{twoFactorSetup.otpauthUrl}</div>
+                  <input className="form-input" value={twoFactorCode} onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Codigo 6 digitos" />
+                  <Button style={{ marginTop: 10 }} onClick={enable2FA}>Confirmar 2FA</Button>
+                </div>
+              )}
             </Section>
             <Section title="SessÃµes Ativas" desc="">
-              {[
-                { device:'Chrome Â· Windows 11', loc:'Curitiba, PR', time:'Agora',        current:true  },
-                { device:'Safari Â· iPhone 15',  loc:'SÃ£o Paulo, SP', time:'Ontem 18:42', current:false },
-                { device:'Firefox Â· macOS',      loc:'Rio de Janeiro, RJ', time:'3 dias atrÃ¡s', current:false },
-              ].map((s,i) => (
-                <Row key={i} title={s.device} sub={`${s.loc} Â· ${s.time}`}>
-                  {s.current
-                    ? <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
-                    : <button style={{ fontSize:12, color:'var(--danger)', background:'none', border:'none', cursor:'pointer', fontWeight:700 }}>Encerrar</button>
-                  }
-                </Row>
-              ))}
-              <button style={{ marginTop:12, width:'100%', padding:'10px', borderRadius:10, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.08)', color:'var(--danger)', fontFamily:'var(--font-body)', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                ðŸšª Encerrar todas as outras sessÃµes
-              </button>
+              <Row title="Sessao atual" sub="Este aparelho">
+                <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
+              </Row>
             </Section>
             <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>âš ï¸ Zona de Perigo</div>
@@ -654,6 +708,19 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {section === 'admin' && canSeeAdmin && (
             <>
               <Section title="Painel Admin" desc="Usuarios, cargos, bans e denuncias">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+                  {[
+                    ['Usuarios', adminUsers.length],
+                    ['Banidos', adminUsers.filter(u => u.banned).length],
+                    ['Restritos', adminUsers.filter(u => !u.canPublish).length],
+                    ['Denuncias', adminReports.filter(r => (r.status || 'open') === 'open').length],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ padding: 14, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--page-bg)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
                   <input
                     className="form-input"
@@ -788,3 +855,4 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     </div>
   );
 }
+

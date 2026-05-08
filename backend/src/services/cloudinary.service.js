@@ -89,6 +89,7 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
         use_filename: true,
         unique_filename: true,
         overwrite: false,
+        moderation: process.env.CLOUDINARY_MODERATION || undefined,
         transformation: resourceType === 'image'
           ? [{ width: 1920, height: 1080, crop: 'limit', quality: 'auto:good' }]
           : [{ width: 1280, height: 720, crop: 'limit', quality: 'auto:good' }],
@@ -115,6 +116,15 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
       err.statusCode = 400;
       throw err;
     }
+  }
+
+  const moderation = Array.isArray(result.moderation) ? result.moderation : [];
+  const rejected = moderation.some(item => String(item.status || '').toLowerCase() === 'rejected');
+  if (rejected) {
+    await safeDestroy(result.public_id, resourceType);
+    const err = new Error('Conteudo +18 proibido na plataforma.');
+    err.statusCode = 400;
+    throw err;
   }
 
   return {

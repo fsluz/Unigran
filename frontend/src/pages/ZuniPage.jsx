@@ -123,6 +123,11 @@ export default function ZuniPage({ onOpenProfile }) {
     await fn({ token, postId: post.id }).catch(() => setLiked(prev => ({ ...prev, [post.id]: isLiked })));
   };
 
+  const likeOnce = (post) => {
+    if (liked[post.id] ?? post.liked) return;
+    toggleLike(post);
+  };
+
   const toggleActivePlayback = () => {
     const video = videoRefs.current.get(activePostId);
     if (!video) return;
@@ -196,7 +201,7 @@ export default function ZuniPage({ onOpenProfile }) {
 
           {posts.map(post => (
             <article key={post.id} className="zuni-reel" data-post-id={post.id}>
-              <div className="zuni-video-stage">
+              <div className="zuni-video-stage" onDoubleClick={() => likeOnce(post)}>
                 {post.media?.url ? (
                   <video
                     ref={(node) => {

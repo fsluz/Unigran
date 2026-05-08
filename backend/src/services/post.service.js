@@ -30,6 +30,16 @@ const createCommentSchema = z.object({
   parentCommentId: z.string().optional(),
 });
 
+const ADULT_TERMS = [
+  'porn', 'porno', 'pornografia', 'nude', 'nudes', 'pelado', 'pelada',
+  'sexo explicito', 'xxx', 'onlyfans', 'nsfw', '+18',
+];
+
+function hasAdultText(text = '') {
+  const lower = String(text || '').toLowerCase();
+  return ADULT_TERMS.some(term => lower.includes(term));
+}
+
 function inferPostType(media) {
   if (!media) return 'text-post';
   if (media.resource_type === 'video') return 'video-post';
@@ -66,6 +76,9 @@ export async function createPostWithRules({ user, body, file }) {
 
   const isZuni = parsed.data.postType === 'zuni-post';
   const content = `${parsed.data.content.trim()}${isZuni ? ' #Zuni' : ''}`.trim();
+  if (hasAdultText(content)) {
+    return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
+  }
   let media = null;
   if (file) {
     media = await uploadMediaBuffer(
@@ -127,6 +140,9 @@ export async function createCommentWithRules({ user, postId, body, file }) {
   const parsed = createCommentSchema.safeParse(body || {});
   if (!parsed.success) {
     return { error: parsed.error.flatten(), status: 400 };
+  }
+  if (hasAdultText(parsed.data.content)) {
+    return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
   }
 
   let media = null;

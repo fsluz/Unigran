@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
 import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
+import { apiFetch, authHeaders } from '../../utils/api';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -40,7 +41,7 @@ function DotMenu({ items }) {
       <button
         onClick={() => setOpen(p => !p)}
         style={{ background: open ? 'var(--accent-light)' : 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, transition: 'background 0.15s' }}
-      >⋯</button>
+      >â‹¯</button>
       {open && (
         <div style={{ position: 'absolute', right: 0, top: 36, width: 165, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', zIndex: 60, overflow: 'hidden', animation: 'fadeInMenu 0.15s ease' }}>
           {items.map((item, i) =>
@@ -152,7 +153,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       await updatePost({ token, postId: post.id, content: next });
       setIsEdited(true);
       setEditing(false);
-      showToast('Post editado!', '✓');
+      showToast('Post editado!', 'âœ“');
     } catch (err) {
       onEdit?.(post.id, previous);
       setEditText(previous);
@@ -179,9 +180,9 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       setComments(prev => [...prev, c]);
       setCommentsCount(v => v + 1);
       setNewComment('');
-      showToast('Comentário adicionado!', '💬');
+      showToast('ComentÃ¡rio adicionado!', 'ðŸ’¬');
     } catch (err) {
-      showToast(err.message || 'Erro ao comentar', '⚠️');
+      showToast(err.message || 'Erro ao comentar', 'âš ï¸');
     }
   };
 
@@ -221,16 +222,27 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
     }
   };
 
+  const banAuthor = async () => {
+    if (!post.author?.username) return;
+    const res = await apiFetch(`/admin/users/${post.author.username}/ban`, {
+      method: 'PATCH',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ banned: true, reason: 'Banido pelo post' }),
+    });
+    if (!res.ok) throw new Error('Ban falhou');
+    showToast('Usuario banido', 'x');
+  };
+
   const menuItems = [
-    ...(isOwner && onEdit ? [{ icon: '✏️', label: 'Editar post', onClick: () => setEditing(true) }] : []),
+    ...(isOwner && onEdit ? [{ icon: 'âœï¸', label: 'Editar post', onClick: () => setEditing(true) }] : []),
     ...(canDelete ? [{ icon: 'x', label: 'Excluir post', danger: true, onClick: deleteCurrentPost }] : []),
-    ...(user?.role === 'admin' && !isOwner ? [{ icon: '🚫', label: 'Banir usuário', danger: true, onClick: () => showToast('Usuário banido', '🚫') }] : []),
+    ...(user?.role === 'admin' && !isOwner ? [{ icon: 'x', label: 'Banir usuario', danger: true, onClick: () => banAuthor().catch(err => showToast(err.message, '!')) }] : []),
     'sep',
-    { icon: '🚩', label: 'Reportar', onClick: async () => { await reportPost({ token, postId: post.id }).catch(() => null); showToast('Post reportado', '🚩'); } },
+    { icon: 'ðŸš©', label: 'Reportar', onClick: async () => { await reportPost({ token, postId: post.id }).catch(() => null); showToast('Post reportado', 'ðŸš©'); } },
   ];
 
   return (
-    <div className="card post-card" style={{ overflow: 'visible' }}>
+    <div className="card post-card" style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
       {/* Header */}
       <div className="post-head">
         <button
@@ -259,7 +271,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             </span>
           )}
           <div className="post-author-sub">
-            @{post.author.username} · {relativeTime(post.time)}
+            @{post.author.username} Â· {relativeTime(post.time)}
             {isEdited && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>(editado)</span>}
           </div>
         </div>
@@ -323,7 +335,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       {/* Actions */}
       <div className="post-footer">
         <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike}>
-          <span>{liked ? '❤️' : '🤍'}</span>
+          <span>{liked ? 'â¤ï¸' : 'ðŸ¤'}</span>
           <span>{Number(likes || 0)} Curtidas</span>
         </button>
         <button
@@ -346,7 +358,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         </button>
         <button className="post-action-btn" onClick={async () => {
           await sharePost({ token, postId: post.id }).catch(() => null);
-          showToast('Post compartilhado!', '✓');
+          showToast('Post compartilhado!', 'âœ“');
         }}>
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           <span>Compartilhar</span>
@@ -357,7 +369,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             setSaved(v => !v);
             const fn = saved ? unsavePost : savePost;
             await fn({ token, postId: post.id }).catch(() => null);
-            showToast(saved ? 'Removido dos favoritos' : 'Post salvo', '✓');
+            showToast(saved ? 'Removido dos favoritos' : 'Post salvo', 'âœ“');
           }}
         >
           <span>{saved ? 'Salvo' : 'Salvar'}</span>
@@ -370,7 +382,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           {/* Existing comments */}
           {comments.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '8px 0 12px' }}>
-              Nenhum comentário ainda. Seja o primeiro! 💬
+              Nenhum comentÃ¡rio ainda. Seja o primeiro! ðŸ’¬
             </p>
           ) : (
             comments.map(c => <CommentItem key={c.id} comment={c} onReply={addReply} onToggleLike={toggleCommentLike} />)
@@ -389,7 +401,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addComment()}
-              placeholder="Escreva um comentário..."
+              placeholder="Escreva um comentÃ¡rio..."
               style={{ flex: 1, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)', outline: 'none', background: 'var(--input-bg)', transition: 'border-color 0.2s' }}
             />
             <button
@@ -404,3 +416,4 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
     </div>
   );
 }
+
