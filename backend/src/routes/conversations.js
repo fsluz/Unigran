@@ -218,15 +218,36 @@ router.get('/:id/messages', auth, async (req, res) => {
         "created_at": $ts
       };
     `);
+    const peopleRows = await readQuery(`
+      match
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        conversation-participant(participant: $p, conversation: $conv);
+        $p isa person, has username $username, has name $name;
+        try { $p has profile-picture $picture; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "picture": $picture
+      };
+    `).catch(() => []);
+    const peopleByUsername = new Map(peopleRows.map(person => [person.username, person]));
     res.json({ messages: rows.map(row => {
       const payload = unpackMessageText(row.text);
+      const person = payload.author?.id ? peopleByUsername.get(payload.author.id) : null;
       return {
         id: row.message_id,
         content: payload.content,
         media: payload.media || null,
         readBy: payload.readBy || [],
         time: row.created_at,
-        author: payload.author || { id: null, displayName: 'Usuario' },
+        author: payload.author?.id
+          ? {
+              ...payload.author,
+              displayName: person?.name || payload.author.displayName || payload.author.id,
+              username: payload.author.id,
+              profilePicture: person?.picture || payload.author.profilePicture || null,
+            }
+          : { id: null, displayName: 'Usuario' },
       };
     }) });
   } catch (err) {

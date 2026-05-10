@@ -290,7 +290,10 @@ export default function MessagesPage() {
     : `@${conv?.participant?.username || 'usuario'} - ${conv?.participant?.online ? 'Online agora' : 'Offline'}`;
   const authorForMessage = (msg) => {
     if (msg.author?.id === user?.username || msg.author?.id === user?.id) return { ...msg.author, displayName: user?.displayName, profilePicture: user?.profilePicture };
-    return active?.participants?.find(p => p.username === msg.author?.id) || activeParticipant || msg.author || {};
+    const participant = active?.participants?.find(p => p.username === msg.author?.id);
+    if (participant) return participant;
+    if (active?.type === 'group') return msg.author || {};
+    return activeParticipant || msg.author || {};
   };
 
   return (
