@@ -286,8 +286,12 @@ export default function MessagesPage() {
     ? conv.title
     : (conv?.participant?.displayName || conv?.title);
   const conversationSub = (conv) => conv?.type === 'group'
-    ? 'Grupo'
+    ? `${Number(conv.participants?.length || 1) + 1} pessoas`
     : `@${conv?.participant?.username || 'usuario'} - ${conv?.participant?.online ? 'Online agora' : 'Offline'}`;
+  const authorForMessage = (msg) => {
+    if (msg.author?.id === user?.username || msg.author?.id === user?.id) return { ...msg.author, displayName: user?.displayName, profilePicture: user?.profilePicture };
+    return active?.participants?.find(p => p.username === msg.author?.id) || activeParticipant || msg.author || {};
+  };
 
   return (
     <div className="page-scroll">
@@ -388,18 +392,20 @@ export default function MessagesPage() {
             <div className="chat-messages">
               {activeMessages.map(msg => {
                 const mine = msg.author?.id === user?.username || msg.author?.id === user?.id;
+                const msgAuthor = authorForMessage(msg);
                 return (
                   <div key={msg.id} className={`msg-row ${mine ? 'me' : ''}`}>
                     {!mine && (
                       <Avatar
                         size={30}
-                        src={activeParticipant?.profilePicture || null}
-                        name={activeParticipant?.displayName || active.title}
-                        initials={(activeParticipant?.displayName || active.title || '?').slice(0, 2)}
+                        src={msgAuthor?.profilePicture || null}
+                        name={msgAuthor?.displayName || msgAuthor?.username || active.title}
+                        initials={(msgAuthor?.displayName || msgAuthor?.username || active.title || '?').slice(0, 2)}
                       />
                     )}
                     <div className="msg-stack">
                       <div className={`msg-bubble ${mine ? 'me' : ''}`}>
+                        {!mine && active.type === 'group' && <strong className="msg-author-name">{msgAuthor?.displayName || msgAuthor?.username || 'Usuario'}</strong>}
                         {msg.content && <div>{msg.content}</div>}
                         {renderMedia(msg.media)}
                       </div>

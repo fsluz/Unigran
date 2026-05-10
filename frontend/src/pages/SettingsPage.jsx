@@ -480,7 +480,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
         displayName: personalForm.displayName.trim(),
         phone: personalForm.phone.trim(),
         bio: personalForm.bio.trim(),
-        links: personalForm.links,
+        links: cleanLinks(personalForm.links),
       };
       const res = await apiFetch(`/users/${user.username}`, {
         method: 'PUT',
@@ -494,6 +494,21 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       showToast(err.message || 'Erro perfil', '!');
     }
   }
+
+  const cleanLinks = (links) => Object.fromEntries(
+    Object.entries(links || {}).filter(([, value]) => String(value || '').trim())
+  );
+
+  const renameLinkKey = (from, to) => {
+    const nextKey = String(to || '').trim().toLowerCase();
+    if (!nextKey || nextKey === from) return;
+    setPersonalForm(prev => {
+      const next = { ...(prev.links || {}) };
+      next[nextKey] = next[from] || '';
+      delete next[from];
+      return { ...prev, links: next };
+    });
+  };
   async function disable2FA() {
     const res = await apiFetch('/auth/2fa/disable', {
       method: 'POST',
@@ -591,9 +606,20 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               </div>
               <div style={{ marginBottom:20 }}>
                 <label style={{ display:'block', fontSize:13, fontWeight:600, color:'var(--text-2)', marginBottom:6 }}>Links</label>
-                {['instagram', 'linkedin', 'facebook', 'outros'].map(key => (
-                  <input key={key} className="form-input" placeholder={key} value={personalForm.links?.[key] || ''} onChange={e => setPersonalForm(p => ({ ...p, links: { ...(p.links || {}), [key]: e.target.value } }))} style={{ width:'100%', marginBottom:8 }} />
+                {Object.keys({ instagram: '', linkedin: '', facebook: '', ...(personalForm.links || {}) }).map(key => (
+                  <div key={key} style={{ display:'grid', gridTemplateColumns:'130px 1fr auto', gap:8, marginBottom:8 }}>
+                    <input className="form-input" placeholder="nome" defaultValue={key} onBlur={e => renameLinkKey(key, e.target.value)} />
+                    <input className="form-input" placeholder="https://..." value={personalForm.links?.[key] || ''} onChange={e => setPersonalForm(p => ({ ...p, links: { ...(p.links || {}), [key]: e.target.value } }))} />
+                    <button className="btn btn-secondary btn-sm" onClick={() => setPersonalForm(p => {
+                      const next = { ...(p.links || {}) };
+                      delete next[key];
+                      return { ...p, links: next };
+                    })}>x</button>
+                  </div>
                 ))}
+                <button className="btn btn-secondary btn-sm" onClick={() => setPersonalForm(p => ({ ...p, links: { ...(p.links || {}), [`link-${Date.now()}`]: '' } }))}>
+                  Adicionar outros links
+                </button>
               </div>
               <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }} onClick={savePersonalInfo}>
                 Salvar alteracoes

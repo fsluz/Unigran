@@ -347,8 +347,41 @@ router.put('/:id', auth, async (req, res) => {
 
 router.post('/:id/follow', auth, async (req, res) => {
   try {
+    const targetRows = await readQuery(`
+      match
+        $b isa page, has username "${typeqlLiteral(req.params.id)}";
+        try { $b has page-visibility $visibility; };
+      fetch { "visibility": $visibility };
+    `);
+    const targetVisibility = targetRows[0]?.visibility || 'public';
+    const alreadyRows = await readQuery(`
+      match
+        $a isa person, has username "${typeqlLiteral(req.user.username)}", has username $viewer_username;
+        $b isa page, has username "${typeqlLiteral(req.params.id)}";
+        following(follower: $a, page: $b);
+      fetch { "username": $viewer_username };
+    `).catch(() => []);
+    if (alreadyRows.length) return res.json({ following: true });
+
     const notificationId = uuid();
     const now = typeqlDatetime();
+    if (targetVisibility === 'private') {
+      await writeQuery(`
+        match
+          $actor isa person, has username "${typeqlLiteral(req.user.username)}";
+          $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
+          not { $recipient is $actor; };
+        insert
+          $notification isa notification,
+            has notification-id "${notificationId}",
+            has notification-text "${typeqlLiteral(`${req.user.username} pediu para seguir`)}",
+            has notification-type "follow-request",
+            has creation-timestamp ${now};
+          $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+      `).catch(() => null);
+      return res.json({ following: false, requested: true });
+    }
+
     // FIXED: removed the space between relation labels and role-player lists inside the negated match pattern and insert stage.
     await writeQuery(`
       match
@@ -362,7 +395,7 @@ router.post('/:id/follow', auth, async (req, res) => {
     await writeQuery(`
       match
         $actor isa person, has username "${typeqlLiteral(req.user.username)}";
-        $recipient has username "${typeqlLiteral(req.params.id)}";
+        $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
         not { $recipient is $actor; };
       insert
         $notification isa notification,
@@ -375,6 +408,56 @@ router.post('/:id/follow', auth, async (req, res) => {
     res.json({ following: true });
   } catch (err) {
     console.error('[follow]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.post('/:id/follow-requests/:requester/accept', auth, async (req, res) => {
+  try {
+    if (req.user.username !== req.params.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Sem permissao' });
+    await writeQuery(`
+      match
+        $requester isa person, has username "${typeqlLiteral(req.params.requester)}";
+        $target isa page, has username "${typeqlLiteral(req.params.id)}";
+        not { following(follower: $requester, page: $target); };
+      insert
+        following(follower: $requester, page: $target);
+    `);
+    await writeQuery(`
+      match
+        $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
+        $notification isa notification,
+          has notification-text "${typeqlLiteral(`${req.params.requester} pediu para seguir`)}",
+          has notification-type "follow-request";
+        $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+      delete
+        $delivery;
+        $notification;
+    `).catch(() => null);
+    res.json({ accepted: true });
+  } catch (err) {
+    console.error('[follow request accept]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.delete('/:id/follow-requests/:requester', auth, async (req, res) => {
+  try {
+    if (req.user.username !== req.params.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Sem permissao' });
+    await writeQuery(`
+      match
+        $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
+        $notification isa notification,
+          has notification-text "${typeqlLiteral(`${req.params.requester} pediu para seguir`)}",
+          has notification-type "follow-request";
+        $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
+      delete
+        $delivery;
+        $notification;
+    `);
+    res.json({ rejected: true });
+  } catch (err) {
+    console.error('[follow request reject]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });

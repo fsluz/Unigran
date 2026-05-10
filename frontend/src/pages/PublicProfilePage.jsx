@@ -17,6 +17,7 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const [people, setPeople] = useState([]);
   const [confirmPerson, setConfirmPerson] = useState(null);
   const [lightbox, setLightbox] = useState(null);
+  const [followRequested, setFollowRequested] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -30,6 +31,7 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         if (!alive) return;
         setProfile(profileData.user);
         setPosts(postData);
+        setFollowRequested(false);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar perfil', '!'))
       .finally(() => alive && setLoading(false));
@@ -38,10 +40,18 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
 
   const toggleFollow = async () => {
     const before = profile;
-    setProfile(prev => ({ ...prev, following: !prev.following }));
+    if (!before.following && before.private && followRequested) return;
+    setProfile(prev => ({ ...prev, following: before.following ? false : !before.private }));
     try {
       if (before.following) await unfollowUser(token, username);
-      else await followUser(token, username);
+      else {
+        const result = await followUser(token, username);
+        if (result?.requested) {
+          setFollowRequested(true);
+          showToast('Pedido enviado', 'OK');
+          return;
+        }
+      }
       setProfile(prev => ({
         ...prev,
         stats: {
@@ -112,7 +122,7 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
             <div style={{ display: 'flex', gap: 8, paddingTop: 12 }}>
               {!isMe && (
                 <Button variant={profile.following ? 'secondary' : 'primary'} onClick={toggleFollow}>
-                  {profile.following ? 'Seguindo' : 'Seguir'}
+                  {profile.following ? 'Seguindo' : followRequested ? 'Solicitado' : profile.private ? 'Pedir para seguir' : 'Seguir'}
                 </Button>
               )}
             </div>
@@ -155,13 +165,17 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         </div>
       </div>
       <div className="profile-tab-content">
-        <div className="section-grid" style={{ maxWidth: 640, margin: '0 auto' }}>
-          {posts.length === 0 ? (
-            <div className="search-empty">Nenhuma publicacao publica.</div>
-          ) : posts.map(post => (
-            <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
-          ))}
-        </div>
+        {profile.private && !profile.following && !isMe ? (
+          <div className="search-empty">Este perfil e privado. Peca para seguir.</div>
+        ) : (
+          <div className="section-grid" style={{ maxWidth: 640, margin: '0 auto' }}>
+            {posts.length === 0 ? (
+              <div className="search-empty">Nenhuma publicacao publica.</div>
+            ) : posts.map(post => (
+              <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
+            ))}
+          </div>
+        )}
       </div>
 
       {peopleModal && (

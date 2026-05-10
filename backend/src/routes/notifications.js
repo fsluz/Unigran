@@ -24,17 +24,36 @@ router.get('/', auth, async (req, res) => {
         "time": $ts
       };
     `);
+    const people = await readQuery(`
+      match
+        $p isa person, has username $username, has name $name;
+        try { $p has profile-picture $pic; };
+      fetch {
+        "username": $username,
+        "name": $name,
+        "profile_picture": $pic
+      };
+    `).catch(() => []);
 
     res.json({
       notifications: rows
-        .map(row => ({
-          id: row.id,
-          text: row.text,
-          type: row.type,
-          time: row.time,
-          actorName: '',
-          read: false,
-        }))
+        .map(row => {
+          const text = String(row.text || '');
+          const actor = people.find(person =>
+            text.startsWith(person.username || '__none__') ||
+            text.startsWith(person.name || '__none__')
+          );
+          return {
+            id: row.id,
+            text,
+            type: row.type,
+            time: row.time,
+            actor: actor?.username || '',
+            actorName: actor?.name || '',
+            actorPicture: actor?.profile_picture || null,
+            read: false,
+          };
+        })
         .sort((a, b) => String(b.time || '').localeCompare(String(a.time || ''))),
     });
   } catch (err) {

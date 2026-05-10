@@ -27,6 +27,22 @@ export async function unfollowUser(token, username) {
   return parseResponse(res, 'Erro ao deixar de seguir');
 }
 
+export async function acceptFollowRequest({ token, username, requester }) {
+  const res = await apiFetch(`/users/${username}/follow-requests/${requester}/accept`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao aceitar pedido');
+}
+
+export async function rejectFollowRequest({ token, username, requester }) {
+  const res = await apiFetch(`/users/${username}/follow-requests/${requester}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao recusar pedido');
+}
+
 export async function fetchLikedPosts({ token, username }) {
   const res = await apiFetch(`/users/${username}/liked-posts`, { headers: authHeaders(token) });
   const data = await parseResponse(res, 'Erro ao carregar curtidas');

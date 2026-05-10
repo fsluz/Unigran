@@ -15,7 +15,9 @@ export default function StoriesBar({ onOpenProfile }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [comment, setComment] = useState('');
+  const [mineMenuOpen, setMineMenuOpen] = useState(false);
   const fileRef = useRef(null);
+  const activeVideoRef = useRef(null);
 
   const myStory = useMemo(() => stories.find(item => item.author?.username === user?.username), [stories, user?.username]);
   const activeStory = activeIndex == null ? null : stories[activeIndex];
@@ -26,6 +28,12 @@ export default function StoriesBar({ onOpenProfile }) {
   };
 
   useEffect(reload, [token]);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const timer = setInterval(reload, 8000);
+    return () => clearInterval(timer);
+  }, [token]);
 
   useEffect(() => {
     if (!activeStory?.id) return;
@@ -42,6 +50,15 @@ export default function StoriesBar({ onOpenProfile }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [activeIndex, stories.length]);
+
+  useEffect(() => {
+    if (!activeStory) return undefined;
+    if (activeStory.video) return undefined;
+    const timer = setTimeout(() => {
+      setActiveIndex(i => (i == null || i >= stories.length - 1 ? null : i + 1));
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [activeStory?.id, activeStory?.video, stories.length]);
 
   const pick = (event) => {
     const next = event.target.files?.[0];
@@ -66,7 +83,7 @@ export default function StoriesBar({ onOpenProfile }) {
   };
 
   const openMine = () => {
-    if (myStory) setActiveIndex(stories.findIndex(item => item.id === myStory.id));
+    if (myStory) setMineMenuOpen(true);
     else setCreateOpen(true);
   };
 
@@ -122,9 +139,20 @@ export default function StoriesBar({ onOpenProfile }) {
         </Modal>
       )}
 
+      {mineMenuOpen && (
+        <Modal title="Seu story" onClose={() => setMineMenuOpen(false)} maxWidth={360} footer={
+          <>
+            <Button variant="secondary" onClick={() => { setMineMenuOpen(false); setCreateOpen(true); }}>Adicionar novo</Button>
+            <Button onClick={() => { setMineMenuOpen(false); setActiveIndex(stories.findIndex(item => item.id === myStory.id)); }}>Ver stories</Button>
+          </>
+        }>
+          Escolha acao.
+        </Modal>
+      )}
+
       {activeStory && (
         <div className="story-viewer" onClick={(event) => {
-          if (event.target === event.currentTarget) setActiveIndex(i => Math.min(stories.length - 1, i + 1));
+          if (event.target === event.currentTarget) setActiveIndex(null);
         }}>
           <button className="story-close" onClick={() => setActiveIndex(null)}>x</button>
           <button className="story-nav prev" onClick={() => setActiveIndex(i => Math.max(0, i - 1))}></button>
@@ -140,7 +168,7 @@ export default function StoriesBar({ onOpenProfile }) {
             </div>
             <div className="story-media">
               {activeStory.video
-                ? <video src={activeStory.video} controls autoPlay />
+                ? <video ref={activeVideoRef} src={activeStory.video} controls autoPlay onEnded={() => setActiveIndex(i => (i == null || i >= stories.length - 1 ? null : i + 1))} />
                 : activeStory.image
                   ? <img src={activeStory.image} alt="story" />
                   : <div className="story-text-only">{activeStory.text}</div>}

@@ -89,7 +89,17 @@ router.get('/', auth, async (req, res) => {
         "other_profile_picture": $pp
       };
     `);
-    const conversations = await Promise.all(rows.map(async row => {
+    const byId = new Map();
+    for (const row of rows) {
+      if (!byId.has(row.conversation_id)) byId.set(row.conversation_id, { ...row, participants: [] });
+      byId.get(row.conversation_id).participants.push({
+        username: row.other_username,
+        displayName: row.other_name || row.other_username,
+        profilePicture: row.other_profile_picture || null,
+        online: online.has(row.other_username),
+      });
+    }
+    const conversations = await Promise.all([...byId.values()].map(async row => {
       const messageRows = await readQuery(`
         match
           $conv isa conversation, has conversation-id "${typeqlLiteral(row.conversation_id)}";
@@ -109,19 +119,16 @@ router.get('/', auth, async (req, res) => {
         return fromOther && !(payload.readBy || []).includes(req.user.username) ? count + 1 : count;
       }, 0);
       const packedName = unpackConversationName(row.title);
+      const firstParticipant = row.participants[0] || null;
       return {
       id: row.conversation_id,
-      title: packedName.title || row.other_name || row.other_username,
+      title: packedName.title || firstParticipant?.displayName || firstParticipant?.username,
       type: packedName.type || (packedName.picture ? 'group' : 'direct'),
       groupPicture: packedName.picture || null,
+      participants: row.participants,
       sentUnreadCount,
       receivedUnreadCount,
-      participant: {
-        username: row.other_username,
-        displayName: row.other_name || row.other_username,
-        profilePicture: row.other_profile_picture || null,
-        online: online.has(row.other_username),
-      },
+      participant: firstParticipant,
     };
     }));
     res.json({ conversations });

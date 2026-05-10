@@ -1,9 +1,10 @@
 ﻿import { useEffect, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
-import { Button } from '../components/ui';
+import { Avatar, Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { fetchNotifications, markAllAsRead, markAsRead } from '../services/notifications';
+import { acceptFollowRequest, rejectFollowRequest } from '../services/users';
 import { relativeTime } from '../utils/time';
 
 function iconFor(type) {
@@ -15,7 +16,7 @@ function iconFor(type) {
 }
 
 export default function NotificationsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { showToast } = useToast();
   const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,19 @@ export default function NotificationsPage() {
     }
   };
 
+  const answerFollowRequest = async (event, notification, accept) => {
+    event.stopPropagation();
+    if (!notification.actor) return;
+    try {
+      if (accept) await acceptFollowRequest({ token, username: user.username, requester: notification.actor });
+      else await rejectFollowRequest({ token, username: user.username, requester: notification.actor });
+      setNotifs(prev => prev.filter(item => item.id !== notification.id));
+      showToast(accept ? 'Pedido aceito' : 'Pedido recusado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro no pedido', '!');
+    }
+  };
+
   return (
     <div className="page-scroll">
       <Topbar
@@ -79,15 +93,22 @@ export default function NotificationsPage() {
               <button
                 key={n.id}
                 className={`notif-item ${n.read ? '' : 'unread'}`}
-                onClick={() => !n.read && readOne(n.id)}
+                onClick={() => {
+                  if (!n.read) readOne(n.id);
+                  if (n.actor) window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: n.actor }));
+                }}
                 style={{ width: '100%', textAlign: 'left', background: n.read ? 'transparent' : 'var(--accent-light)', border: 'none' }}
               >
                 <span className="notif-icon">{iconFor(n.type)}</span>
-                <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 12, flexShrink: 0 }}>
-                  {(n.actorName || n.actor || 'UN').slice(0, 2).toUpperCase()}
-                </div>
+                <Avatar size={36} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigran'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
                 <div className="notif-text">
                   {n.actorName || n.actor ? <strong>{n.actorName || n.actor}</strong> : null} {n.text}
+                  {n.type === 'follow-request' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <Button size="sm" onClick={(event) => answerFollowRequest(event, n, true)}>Aceitar</Button>
+                      <Button size="sm" variant="secondary" onClick={(event) => answerFollowRequest(event, n, false)}>Recusar</Button>
+                    </div>
+                  )}
                 </div>
                 <span className="notif-time">{relativeTime(n.time)}</span>
               </button>

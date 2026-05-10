@@ -279,8 +279,8 @@
   border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
   cursor: pointer; transition: all 0.18s; border: none; white-space: nowrap;
 } 
-.btn-primary   { background: linear-gradient(135deg, #6A00F4 0%, #36F 60%, #00A8FF 100%); color: #fff; transition: 20s; }
-.btn-primary:hover:not(:disabled) {  background: linear-gradient(135deg, #00A8FF 0%, #36F 60%, #6A00F4 100%); transition: 10s; box-shadow: 0 4px 12px var(--accent-glow); transform: translateY(-1px); }
+.btn-primary   { background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff); color: #fff; transition: 0.18s; }
+.btn-primary:hover:not(:disabled) {  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4); box-shadow: 0 4px 12px var(--accent-glow); transform: translateY(-1px); }
 .btn-secondary { background: rgba(255,255,255,0.04); border: 1px solid rgba(148,163,184,0.10); color: var(--text-2); }
 .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.08); border-color: rgba(148,163,184,0.16); }
 .btn-danger    { background: var(--red-light); border: 1px solid rgba(239,68,68,0.25); color: var(--red); }
@@ -533,8 +533,8 @@
 .profile-hover-actions button { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 7px; background: var(--page-bg); color: var(--text); font-size: 12px; font-weight: 800; }
 .zuni-shell { background: var(--page-bg); }
 .zuni-page { width: 100%; height: calc(100vh - 64px); display: flex; justify-content: center; padding: 0; overflow: hidden; background: var(--page-bg); }
-.zuni-feed { width: min(100%, 560px); height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; display: grid; gap: 0; padding: 0; background: var(--page-bg); }
-.zuni-reel { position: relative; height: calc(100vh - 64px); min-height: 560px; display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: stretch; overflow: hidden; scroll-snap-align: start; background: var(--page-bg); }
+.zuni-feed { width: min(100%, 560px); height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; display: grid; gap: 0; padding: 0; background: var(--page-bg); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.zuni-reel { position: relative; height: calc(100vh - 64px); min-height: 560px; display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: stretch; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; background: var(--page-bg); }
 .zuni-video-stage { position: relative; min-width: 0; height: 100%; overflow: hidden; background: #000; }
 .zuni-video-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; border: 0 solid transparent; }
 .zuni-reel.liked-pulse .zuni-video-stage::after { animation: zuniLikeBorder .68s ease; }
@@ -855,7 +855,8 @@
 .msg-stack { max-width: min(68%, 560px); display: flex; flex-direction: column; }
 .msg-row.me .msg-stack { align-items: flex-end; }
 .msg-bubble  { max-width: 100%; padding: 10px 14px; font-size: 14px; line-height: 1.5; background: var(--card); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
-.msg-bubble.me { background: var(--accent); border-color: var(--accent); color: #000000; border-radius: 14px 4px 14px 14px; }
+.msg-bubble.me { background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff); border-color: transparent; color: #fff; border-radius: 14px 4px 14px 14px; }
+.msg-author-name { display: block; margin-bottom: 4px; color: var(--accent); font-size: 12px; }
 .msg-time { font-size: 10px; color: var(--text-light); margin-top: 3px; }
 .msg-time.me { text-align: right; }
 .msg-read { margin-top: 2px; color: var(--accent); font-size: 10px; text-align: right; font-weight: 700; }
