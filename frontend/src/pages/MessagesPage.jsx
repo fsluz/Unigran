@@ -32,10 +32,16 @@ export default function MessagesPage() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [call, setCall] = useState(null);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
+  const recorderRef = useRef(null);
+  const recordChunksRef = useRef([]);
+  const recordStreamRef = useRef(null);
+  const callVideoRef = useRef(null);
 
   const activeParticipant = active?.participant;
   const activeMessages = useMemo(() => messages[active?.id] || [], [messages, active]);
@@ -117,6 +123,11 @@ export default function MessagesPage() {
     const timer = setInterval(() => setClock(v => v + 1), 30000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => () => {
+    recordStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    call?.stream?.getTracks?.().forEach(track => track.stop());
+  }, [call]);
 
   useEffect(() => {
     const q = targetUsername.trim();
@@ -300,6 +311,70 @@ export default function MessagesPage() {
     return activeParticipant || msg.author || {};
   };
 
+  const startRecording = async () => {
+    if (recording || !active?.id) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordStreamRef.current = stream;
+      recordChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = event => {
+        if (event.data?.size) recordChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(recordChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([blob], `audio-${Date.now()}.webm`, { type: 'audio/webm' });
+        recordStreamRef.current?.getTracks?.().forEach(track => track.stop());
+        recordStreamRef.current = null;
+        if (!blob.size) return;
+        setSendingMedia(true);
+        try {
+          const media = await uploadMedia({ token, file: audioFile });
+          const created = await sendMessage({
+            token,
+            conversationId: active.id,
+            content: '',
+            mediaUrl: media?.url || '',
+            mediaType: 'audio',
+          });
+          setMessages(prev => ({ ...prev, [active.id]: [...(prev[active.id] || []), created] }));
+        } catch (err) {
+          showToast(err.message || 'Erro ao enviar audio', '!');
+        } finally {
+          setSendingMedia(false);
+        }
+      };
+      recorder.start();
+      setRecording(true);
+    } catch {
+      showToast('Microfone negado', '!');
+    }
+  };
+
+  const stopRecording = () => {
+    if (!recording) return;
+    setRecording(false);
+    recorderRef.current?.stop();
+  };
+
+  const startCall = async (kind) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: kind === 'video' });
+      setCall({ kind, stream });
+      setTimeout(() => {
+        if (callVideoRef.current) callVideoRef.current.srcObject = stream;
+      }, 0);
+    } catch {
+      showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
+    }
+  };
+
+  const endCall = () => {
+    call?.stream?.getTracks?.().forEach(track => track.stop());
+    setCall(null);
+  };
+
   const openGroupSettings = async () => {
     if (!active?.id || active.type !== 'group') return;
     try {
@@ -470,7 +545,8 @@ export default function MessagesPage() {
                     Opcoes
                   </button>
                 )}
-                <button className="btn btn-secondary btn-sm" onClick={removeActiveConversation}>Excluir conversa</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => startCall('audio')}>Audio</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => startCall('video')}>Video</button>
               </div>
             </div>
 
@@ -516,6 +592,9 @@ export default function MessagesPage() {
               />
               <button className="chat-input-icon" onClick={() => fileInputRef.current?.click()} title="Foto, video ou audio">
                 +
+              </button>
+              <button className={`chat-input-icon ${recording ? 'recording' : ''}`} onClick={recording ? stopRecording : startRecording} title={recording ? 'Parar audio' : 'Gravar audio'}>
+                {recording ? '■' : '●'}
               </button>
               <input
                 className="chat-input"
@@ -666,6 +745,28 @@ export default function MessagesPage() {
                   ))}
                 </div>
               </section>
+            </div>
+          </div>
+        </div>
+      )}
+      {call && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && endCall()}>
+          <div className="modal-box call-box">
+            <div className="modal-header">
+              <span className="modal-title">{call.kind === 'video' ? 'Chamada de video' : 'Chamada de audio'}</span>
+              <button className="modal-close" onClick={endCall}>x</button>
+            </div>
+            <div className="call-body">
+              {call.kind === 'video' ? (
+                <video ref={callVideoRef} autoPlay muted playsInline />
+              ) : (
+                <div className="call-audio-avatar">
+                  <Avatar size={92} src={active.groupPicture || activeParticipant?.profilePicture || null} name={conversationTitle(active)} initials={(conversationTitle(active) || '?').slice(0, 2)} />
+                </div>
+              )}
+              <p>{conversationTitle(active)}</p>
+              <span>Chamada local iniciada. Sinalizacao real precisa servidor WebRTC.</span>
+              <button className="call-end-btn" onClick={endCall}>Encerrar</button>
             </div>
           </div>
         </div>
