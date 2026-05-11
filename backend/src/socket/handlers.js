@@ -59,6 +59,38 @@ export function setupSocket(io) {
       socket.to(`conv:${conversationId}`).emit('message_read', { userId: uid, messageId });
     });
 
+    socket.on('call_offer', ({ conversationId, kind, offer }) => {
+      socket.to(`conv:${conversationId}`).emit('call_offer', {
+        conversationId,
+        kind,
+        offer,
+        from: { id: uid, displayName: socket.user.displayName || uid },
+      });
+    });
+
+    socket.on('call_answer', ({ conversationId, answer }) => {
+      socket.to(`conv:${conversationId}`).emit('call_answer', {
+        conversationId,
+        answer,
+        from: { id: uid, displayName: socket.user.displayName || uid },
+      });
+    });
+
+    socket.on('call_ice', ({ conversationId, candidate }) => {
+      socket.to(`conv:${conversationId}`).emit('call_ice', {
+        conversationId,
+        candidate,
+        from: { id: uid, displayName: socket.user.displayName || uid },
+      });
+    });
+
+    socket.on('call_end', ({ conversationId }) => {
+      socket.to(`conv:${conversationId}`).emit('call_end', {
+        conversationId,
+        from: { id: uid, displayName: socket.user.displayName || uid },
+      });
+    });
+
     /*  Disconnect  */
     socket.on('disconnect', () => {
       onlineUsers.delete(uid);

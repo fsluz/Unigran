@@ -2,7 +2,7 @@
 
 // Detecta ambiente Vercel ou local
 const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   (import.meta.env.MODE === 'development' || isLocalHost
     ? ''

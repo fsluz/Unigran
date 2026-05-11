@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
+import { getSocket } from '../services/socket';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 
@@ -34,6 +35,7 @@ export default function MessagesPage() {
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
   const [call, setCall] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -42,6 +44,11 @@ export default function MessagesPage() {
   const recordChunksRef = useRef([]);
   const recordStreamRef = useRef(null);
   const callVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const pcRef = useRef(null);
+  const socketRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
 
   const activeParticipant = active?.participant;
   const activeMessages = useMemo(() => messages[active?.id] || [], [messages, active]);
@@ -126,7 +133,49 @@ export default function MessagesPage() {
 
   useEffect(() => () => {
     recordStreamRef.current?.getTracks?.().forEach(track => track.stop());
-    call?.stream?.getTracks?.().forEach(track => track.stop());
+    localStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    remoteStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    pcRef.current?.close?.();
+  }, []);
+
+  useEffect(() => {
+    if (!token) return undefined;
+    const socket = getSocket(token);
+    socketRef.current = socket;
+    const onOffer = (payload) => {
+      if (payload.from?.id === user?.username) return;
+      setIncomingCall(payload);
+    };
+    const onAnswer = async ({ answer }) => {
+      if (!pcRef.current || !answer) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+    };
+    const onIce = async ({ candidate }) => {
+      if (!pcRef.current || !candidate) return;
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+    };
+    const onEnd = () => endCall(false);
+    socket.on('call_offer', onOffer);
+    socket.on('call_answer', onAnswer);
+    socket.on('call_ice', onIce);
+    socket.on('call_end', onEnd);
+    return () => {
+      socket.off('call_offer', onOffer);
+      socket.off('call_answer', onAnswer);
+      socket.off('call_ice', onIce);
+      socket.off('call_end', onEnd);
+    };
+  }, [token, user?.username]);
+
+  useEffect(() => {
+    if (!active?.id || !socketRef.current) return undefined;
+    socketRef.current.emit('join_conversation', { conversationId: active.id });
+    return () => socketRef.current?.emit('leave_conversation', { conversationId: active.id });
+  }, [active?.id]);
+
+  useEffect(() => {
+    if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
+    if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
   }, [call]);
 
   useEffect(() => {
@@ -314,6 +363,7 @@ export default function MessagesPage() {
   const startRecording = async () => {
     if (recording || !active?.id) return;
     try {
+      if (!window.confirm('Permitir microfone para gravar audio?')) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordStreamRef.current = stream;
       recordChunksRef.current = [];
@@ -358,21 +408,83 @@ export default function MessagesPage() {
     recorderRef.current?.stop();
   };
 
+  const makePeer = (conversationId) => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+    pc.onicecandidate = event => {
+      if (event.candidate) socketRef.current?.emit('call_ice', { conversationId, candidate: event.candidate });
+    };
+    pc.ontrack = event => {
+      if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
+      remoteStreamRef.current.addTrack(event.track);
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    };
+    pcRef.current = pc;
+    return pc;
+  };
+
+  const requestCallStream = async (kind) => {
+    const ok = window.confirm(kind === 'video'
+      ? 'Permitir camera e microfone para chamada?'
+      : 'Permitir microfone para chamada?');
+    if (!ok) return null;
+    return navigator.mediaDevices.getUserMedia({ audio: true, video: kind === 'video' });
+  };
+
   const startCall = async (kind) => {
+    if (!active?.id || !socketRef.current) return;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: kind === 'video' });
-      setCall({ kind, stream });
-      setTimeout(() => {
-        if (callVideoRef.current) callVideoRef.current.srcObject = stream;
-      }, 0);
+      const stream = await requestCallStream(kind);
+      if (!stream) return;
+      localStreamRef.current = stream;
+      remoteStreamRef.current = new MediaStream();
+      const pc = makePeer(active.id);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socketRef.current.emit('call_offer', { conversationId: active.id, kind, offer });
+      setCall({ kind, status: 'Chamando...', conversationId: active.id });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
     }
   };
 
-  const endCall = () => {
-    call?.stream?.getTracks?.().forEach(track => track.stop());
+  const acceptCall = async () => {
+    if (!incomingCall || !socketRef.current) return;
+    try {
+      const stream = await requestCallStream(incomingCall.kind);
+      if (!stream) return;
+      localStreamRef.current = stream;
+      remoteStreamRef.current = new MediaStream();
+      const pc = makePeer(incomingCall.conversationId);
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+      await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socketRef.current.emit('call_answer', { conversationId: incomingCall.conversationId, answer });
+      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId });
+      setIncomingCall(null);
+    } catch {
+      showToast('Falha na chamada', '!');
+    }
+  };
+
+  const rejectCall = () => {
+    if (incomingCall?.conversationId) socketRef.current?.emit('call_end', { conversationId: incomingCall.conversationId });
+    setIncomingCall(null);
+  };
+
+  const endCall = (emit = true) => {
+    if (emit && call?.conversationId) socketRef.current?.emit('call_end', { conversationId: call.conversationId });
+    pcRef.current?.close?.();
+    pcRef.current = null;
+    localStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    remoteStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    localStreamRef.current = null;
+    remoteStreamRef.current = null;
     setCall(null);
+    setIncomingCall(null);
   };
 
   const openGroupSettings = async () => {
@@ -758,15 +870,39 @@ export default function MessagesPage() {
             </div>
             <div className="call-body">
               {call.kind === 'video' ? (
-                <video ref={callVideoRef} autoPlay muted playsInline />
+                <div className="call-video-grid">
+                  <video ref={remoteVideoRef} autoPlay playsInline />
+                  <video ref={callVideoRef} autoPlay muted playsInline />
+                </div>
               ) : (
                 <div className="call-audio-avatar">
                   <Avatar size={92} src={active.groupPicture || activeParticipant?.profilePicture || null} name={conversationTitle(active)} initials={(conversationTitle(active) || '?').slice(0, 2)} />
                 </div>
               )}
               <p>{conversationTitle(active)}</p>
-              <span>Chamada local iniciada. Sinalizacao real precisa servidor WebRTC.</span>
+              <span>{call.status || 'Conectado'}</span>
               <button className="call-end-btn" onClick={endCall}>Encerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {incomingCall && (
+        <div className="modal-backdrop">
+          <div className="modal-box call-box">
+            <div className="modal-header">
+              <span className="modal-title">Chamada chegando</span>
+              <button className="modal-close" onClick={rejectCall}>x</button>
+            </div>
+            <div className="call-body">
+              <div className="call-audio-avatar">
+                <Avatar size={92} name={incomingCall.from?.displayName || incomingCall.from?.id || 'Usuario'} initials={(incomingCall.from?.displayName || incomingCall.from?.id || '?').slice(0, 2)} />
+              </div>
+              <p>{incomingCall.from?.displayName || incomingCall.from?.id} chama por {incomingCall.kind === 'video' ? 'video' : 'audio'}</p>
+              <span>Ao aceitar, navegador vai pedir permissao de {incomingCall.kind === 'video' ? 'camera e microfone' : 'microfone'}.</span>
+              <div className="call-actions">
+                <button className="call-end-btn" onClick={rejectCall}>Recusar</button>
+                <button className="messages-group-btn" onClick={acceptCall}>Aceitar</button>
+              </div>
             </div>
           </div>
         </div>
