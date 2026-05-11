@@ -246,10 +246,12 @@ router.post('/direct/:username', auth, async (req, res) => {
         $c isa conversation, has conversation-id $cid;
         conversation-participant(participant: $me, conversation: $c);
         conversation-participant(participant: $to, conversation: $c);
-      fetch { "conversation_id": $cid, "to_name": $to_name };
+        $c has name $title;
+      fetch { "conversation_id": $cid, "to_name": $to_name, "title": $title };
     `);
-    if (existing.length) {
-      return res.json({ conversation: { id: existing[0].conversation_id, title: existing[0].to_name, type: 'direct' } });
+    const directExisting = existing.find(row => unpackConversationName(row.title).type !== 'group');
+    if (directExisting) {
+      return res.json({ conversation: { id: directExisting.conversation_id, title: directExisting.to_name, type: 'direct' } });
     }
 
     const targetRows = await readQuery(`
@@ -269,7 +271,7 @@ router.post('/direct/:username', auth, async (req, res) => {
       insert
         $c isa conversation,
           has conversation-id "${cid}",
-          has name "${typeqlLiteral(title)}",
+          has name "${typeqlLiteral(packConversationName({ title, type: 'direct' }))}",
           has creation-timestamp ${now};
         conversation-participant(participant: $me, conversation: $c);
         conversation-participant(participant: $to, conversation: $c);
