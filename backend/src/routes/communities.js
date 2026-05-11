@@ -30,11 +30,13 @@ router.get('/', auth, async (req, res) => {
       match
         $g isa group, has group-id $gid, has name $t, has page-visibility $v;
         try { $g has bio $desc; };
+        try { $g has profile-picture $picture; };
       fetch {
         "id": $gid,
         "name": $t,
         "type": $v,
-        "description": $desc
+        "description": $desc,
+        "picture": $picture
       };
     `);
     // FIXED: moved member lookup into a separate TypeQL 3.x pipeline and uses `links` for role inference.
@@ -61,11 +63,69 @@ router.get('/', auth, async (req, res) => {
       name: r.name,
       description: r.description || '',
       type: r.type,
+      picture: r.picture || null,
       members: (membersByGroup.get(r.id) || []).length,
       joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username),
       role: (membersByGroup.get(r.id) || []).find(m => m.username === req.user.username)?.rank || '',
     }))});
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
+});
+
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $g isa group, has group-id $gid, has group-id "${typeqlLiteral(req.params.id)}", has name $name, has page-visibility $visibility;
+        try { $g has bio $description; };
+        try { $g has profile-picture $picture; };
+      fetch {
+        "id": $gid,
+        "name": $name,
+        "type": $visibility,
+        "description": $description,
+        "picture": $picture
+      };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Comunidade nao encontrada' });
+    const members = await communityMembers(req.params.id);
+    const role = members.find(m => m.username === req.user.username)?.rank || '';
+    res.json({ community: { ...rows[0], members: members.length, joined: Boolean(role), role } });
+  } catch (err) {
+    console.error('[community GET]', err);
+    res.status(500).json({ error: 'Erro ao carregar comunidade' });
+  }
+});
+
+async function communityMembers(id) {
+  const rows = await readQuery(`
+    match
+      $g isa group, has group-id "${typeqlLiteral(id)}";
+      $membership isa group-membership, links (group: $g, member: $member);
+      $member isa person, has username $username, has name $name;
+      try { $member has profile-picture $picture; };
+      try { $membership has rank $rank; };
+    fetch {
+      "username": $username,
+      "name": $name,
+      "picture": $picture,
+      "rank": $rank
+    };
+  `);
+  return rows.map(row => ({
+    username: row.username,
+    displayName: row.name || row.username,
+    profilePicture: row.picture || null,
+    rank: row.rank || 'member',
+  }));
+}
+
+router.get('/:id/members', auth, async (req, res) => {
+  try {
+    res.json({ members: await communityMembers(req.params.id) });
+  } catch (err) {
+    console.error('[community members]', err);
+    res.status(500).json({ error: 'Erro ao carregar membros' });
+  }
 });
 
 router.get('/:id/posts', auth, async (req, res) => {
@@ -121,6 +181,50 @@ router.post('/:id/join', auth, async (req, res) => {
     `);
     res.json({ joined: true });
   } catch (err) { console.error('[join]', err); res.status(500).json({ error: 'Erro ao entrar' }); }
+});
+
+router.patch('/:id', auth, async (req, res) => {
+  const { description, picture } = req.body || {};
+  const updates = [];
+  if (typeof description === 'string') updates.push(`$g has bio "${typeqlLiteral(description.slice(0, 500))}";`);
+  if (typeof picture === 'string') updates.push(`$g has profile-picture "${typeqlLiteral(picture)}";`);
+  if (!updates.length) return res.status(400).json({ error: 'Nada para salvar' });
+  try {
+    const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
+    if (!rankAllowsModeration(myRank, req.user.role)) return res.status(403).json({ error: 'Sem permissao' });
+    await writeQuery(`
+      match
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+      update
+        ${updates.join('\n        ')}
+    `);
+    res.json({ updated: true });
+  } catch (err) {
+    console.error('[community PATCH]', err);
+    res.status(500).json({ error: 'Erro ao salvar comunidade' });
+  }
+});
+
+router.post('/:id/members/:uid', auth, async (req, res) => {
+  const now = typeqlDatetime();
+  try {
+    const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
+    if (!rankAllowsModeration(myRank, req.user.role)) return res.status(403).json({ error: 'Sem permissao' });
+    await writeQuery(`
+      match
+        $member isa person, has username "${typeqlLiteral(req.params.uid)}";
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+        not { $old isa group-membership, links (member: $member, group: $g); };
+      insert
+        $m isa group-membership, links (member: $member, group: $g),
+          has rank "member",
+          has start-timestamp ${now};
+    `);
+    res.json({ added: true });
+  } catch (err) {
+    console.error('[community member add]', err);
+    res.status(500).json({ error: 'Erro ao adicionar membro' });
+  }
 });
 
 /* DELETE /api/communities/:id/join */

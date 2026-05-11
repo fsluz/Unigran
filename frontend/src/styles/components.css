@@ -1674,6 +1674,61 @@
 .group-photo-picker img { width: 100%; height: 100%; object-fit: cover; }
 .group-selected-users { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; }
 .group-selected-users button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 800; cursor: pointer; }
+
+.community-page { background: var(--page-bg); }
+.community-profile-shell { width: min(1180px, calc(100% - 32px)); margin: 18px auto 40px; }
+.community-hero-card { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: var(--shadow-sm); }
+.community-cover { height: 240px; background: radial-gradient(circle at 20% 20%, rgba(0,168,255,.4), transparent 30%), radial-gradient(circle at 85% 10%, rgba(106,0,244,.35), transparent 32%), linear-gradient(135deg,#10233f,#2849a8 48%,#00a8ff); }
+.community-hero-body { position: relative; min-height: 146px; display: grid; grid-template-columns: 1fr 1.3fr 1fr; align-items: center; gap: 16px; padding: 20px 28px 24px; }
+.community-avatar-ring { position: absolute; top: -62px; left: 50%; transform: translateX(-50%); padding: 8px; border-radius: 28px; background: var(--card); box-shadow: var(--shadow); }
+.community-avatar-ring .avatar { border-radius: 22px; }
+.community-stats { display: flex; gap: 10px; }
+.community-stats button { min-width: 86px; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--text); text-align: center; cursor: pointer; }
+.community-stats strong { display: block; font-size: 20px; color: var(--text); font-weight: 900; }
+.community-stats span { display: block; margin-top: 4px; font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+.community-title-button { border: 0; background: transparent; text-align: center; color: var(--text); cursor: pointer; padding-top: 44px; min-width: 0; }
+.community-title-button h1 { margin: 0; font-family: var(--font-head); font-size: 26px; color: var(--text); }
+.community-title-button span { display: block; margin-top: 6px; color: var(--text-muted); font-size: 13px; overflow-wrap: anywhere; }
+.community-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.community-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 18px 0; border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow: hidden; }
+.community-tabs button { height: 58px; border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--text-muted); font-weight: 800; cursor: pointer; }
+.community-tabs button.active { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+.community-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+.community-box { border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 18px; margin-bottom: 16px; }
+.community-box h3,.community-modal-title { margin: 0 0 12px; color: var(--text); font-family: var(--font-head); font-size: 16px; }
+.community-box p { margin: 0; color: var(--text-muted); line-height: 1.6; font-size: 13px; }
+.community-feed { display: grid; gap: 14px; min-width: 0; }
+.community-member-list { display: grid; gap: 8px; max-height: 420px; overflow: auto; padding-right: 4px; }
+.community-member-list.small button,.community-member-row button:first-child { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; padding: 6px 0; }
+.community-member-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); padding: 6px 0; }
+.community-member-row strong { display: block; color: var(--text); font-size: 13px; }
+.community-member-row small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+.community-manage-grid { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 22px; align-items: start; }
+.community-picture-picker { width: 118px; height: 118px; border-radius: 24px; margin-bottom: 12px; }
+.community-manage-grid textarea { width: 100%; margin-bottom: 10px; }
+.community-add-member { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 12px; }
+.community-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.community-list-card p { color: var(--text-muted); min-height: 42px; }
+.community-list-head { width: 100%; border: 0; background: transparent; display: flex; align-items: center; gap: 12px; text-align: left; padding: 0; margin-bottom: 14px; cursor: pointer; color: var(--text); }
+.community-list-head strong { display: block; color: var(--text); font-size: 16px; }
+.community-list-head small { display: block; color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.community-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.community-card-actions { display: flex; gap: 8px; }
+
+@media (max-width: 980px) {
+  .community-hero-body { grid-template-columns: 1fr; text-align: center; padding-top: 64px; }
+  .community-stats,.community-actions { justify-content: center; }
+  .community-layout { grid-template-columns: 1fr; }
+  .community-side.right { order: 3; }
+}
+
+@media (max-width: 620px) {
+  .community-profile-shell { width: min(100% - 16px, 1180px); }
+  .community-cover { height: 160px; }
+  .community-stats { flex-wrap: wrap; }
+  .community-stats button { flex: 1; min-width: 90px; }
+  .community-manage-grid { grid-template-columns: 1fr; }
+}
 .msg-delete { align-self: flex-end; border: 0; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 2px 4px; }
 .msg-delete:hover { color: var(--danger); }
 

@@ -36,3 +36,40 @@ export async function fetchCommunityPosts({ token, id }) {
   const data = await parseResponse(res, 'Erro ao carregar posts da comunidade');
   return data.posts || [];
 }
+
+export async function fetchCommunity({ token, id }) {
+  const res = await apiFetch(`/communities/${id}`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar comunidade');
+  return data.community;
+}
+
+export async function fetchCommunityMembers({ token, id }) {
+  const res = await apiFetch(`/communities/${id}/members`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar membros');
+  return data.members || [];
+}
+
+export async function updateCommunity({ token, id, data }) {
+  const res = await apiFetch(`/communities/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(data),
+  });
+  return parseResponse(res, 'Erro ao salvar comunidade');
+}
+
+export async function addCommunityMember({ token, id, username }) {
+  const res = await apiFetch(`/communities/${id}/members/${username}`, {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao adicionar membro');
+}
+
+export async function removeCommunityMember({ token, id, username }) {
+  const res = await apiFetch(`/communities/${id}/members/${username}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao remover membro');
+}
