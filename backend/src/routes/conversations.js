@@ -15,8 +15,8 @@ function packMessageText({ content, author, media = null, readBy = [] }) {
   return JSON.stringify({ v: 2, content, author, media, readBy });
 }
 
-function packConversationName({ title, picture = null, type = 'direct' }) {
-  return JSON.stringify({ v: 1, title, picture, type });
+function packConversationName({ title, picture = null, type = 'direct', description = '' }) {
+  return JSON.stringify({ v: 1, title, picture, type, description });
 }
 
 function unpackConversationName(raw) {
@@ -24,7 +24,29 @@ function unpackConversationName(raw) {
     const parsed = JSON.parse(raw);
     if (parsed?.v === 1) return parsed;
   } catch (_) {}
-  return { title: raw, picture: null, type: 'direct' };
+  return { title: raw, picture: null, type: 'direct', description: '' };
+}
+
+async function conversationParticipants(conversationId) {
+  const online = new Set(getOnlineUsers());
+  const rows = await readQuery(`
+    match
+      $conv isa conversation, has conversation-id "${typeqlLiteral(conversationId)}";
+      conversation-participant(participant: $p, conversation: $conv);
+      $p isa person, has username $username, has name $name;
+      try { $p has profile-picture $picture; };
+    fetch {
+      "username": $username,
+      "name": $name,
+      "picture": $picture
+    };
+  `);
+  return rows.map(row => ({
+    username: row.username,
+    displayName: row.name || row.username,
+    profilePicture: row.picture || null,
+    online: online.has(row.username),
+  }));
 }
 
 function unpackMessageText(raw) {
@@ -125,6 +147,7 @@ router.get('/', auth, async (req, res) => {
       title: packedName.title || firstParticipant?.displayName || firstParticipant?.username,
       type: packedName.type || (packedName.picture ? 'group' : 'direct'),
       groupPicture: packedName.picture || null,
+      description: packedName.description || '',
       participants: row.participants,
       sentUnreadCount,
       receivedUnreadCount,
@@ -145,6 +168,67 @@ router.get('/online', auth, (_req, res) => {
 router.post('/online/heartbeat', auth, (req, res) => {
   markUserOnline(req.user.username || req.user.id);
   res.json({ online: true });
+});
+
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}", has name $title;
+        conversation-participant(participant: $user, conversation: $conv);
+      fetch { "title": $title };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Conversa nao encontrada' });
+    const packed = unpackConversationName(rows[0].title);
+    const participants = await conversationParticipants(req.params.id);
+    res.json({
+      conversation: {
+        id: req.params.id,
+        title: packed.title,
+        type: packed.type || 'direct',
+        groupPicture: packed.picture || null,
+        description: packed.description || '',
+        participants: participants.filter(item => item.username !== req.user.username),
+        allParticipants: participants,
+      },
+    });
+  } catch (err) {
+    console.error('[conversation GET]', err);
+    res.status(500).json({ error: 'Erro ao carregar conversa' });
+  }
+});
+
+router.patch('/:id', auth, async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}", has name $title;
+        conversation-participant(participant: $user, conversation: $conv);
+      fetch { "title": $title };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Conversa nao encontrada' });
+    const current = unpackConversationName(rows[0].title);
+    if ((current.type || 'direct') !== 'group') return res.status(400).json({ error: 'Nao e grupo' });
+    const next = {
+      ...current,
+      type: 'group',
+      title: String(req.body?.title || current.title || 'Grupo').trim().slice(0, 80),
+      picture: typeof req.body?.picture === 'string' ? req.body.picture : current.picture,
+      description: typeof req.body?.description === 'string' ? req.body.description.slice(0, 300) : current.description || '',
+    };
+    await writeQuery(`
+      match
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+      update
+        $conv has name "${typeqlLiteral(packConversationName(next))}";
+    `);
+    res.json({ conversation: { id: req.params.id, title: next.title, groupPicture: next.picture || null, description: next.description, type: 'group' } });
+  } catch (err) {
+    console.error('[conversation PATCH]', err);
+    res.status(500).json({ error: 'Erro ao salvar grupo' });
+  }
 });
 
 router.post('/direct/:username', auth, async (req, res) => {
@@ -355,6 +439,32 @@ router.patch('/:id/participants', auth, async (req, res) => {
   } catch (err) {
     console.error('[group participants PATCH]', err);
     res.status(500).json({ error: 'Erro ao adicionar pessoas' });
+  }
+});
+
+router.delete('/:id/participants/:username', auth, async (req, res) => {
+  try {
+    const isMember = await readQuery(`
+      match
+        $me isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        conversation-participant(participant: $me, conversation: $conv);
+      select $me, $conv;
+    `);
+    if (!isMember.length) return res.status(403).json({ error: 'Sem permissao' });
+    const target = req.params.username === 'me' ? req.user.username : req.params.username;
+    await writeQuery(`
+      match
+        $member isa person, has username "${typeqlLiteral(target)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        $p isa conversation-participant, links (participant: $member, conversation: $conv);
+      delete
+        $p;
+    `);
+    res.json({ removed: true });
+  } catch (err) {
+    console.error('[group participant DELETE]', err);
+    res.status(500).json({ error: 'Erro ao remover pessoa' });
   }
 });
 

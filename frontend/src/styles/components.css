@@ -1674,6 +1674,19 @@
 .group-photo-picker img { width: 100%; height: 100%; object-fit: cover; }
 .group-selected-users { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; }
 .group-selected-users button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 800; cursor: pointer; }
+.chat-head-name-button { display: block; border: 0; background: transparent; padding: 0; color: var(--text); cursor: pointer; text-align: left; }
+.group-settings-popout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.group-settings-main { display: grid; gap: 10px; }
+.group-settings-photo { width: 112px; height: 112px; border-radius: 26px; }
+.group-settings-main textarea { resize: vertical; min-height: 96px; }
+.group-settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.group-settings-members { display: grid; gap: 10px; min-width: 0; }
+.group-settings-title { font-weight: 900; color: var(--text); font-family: var(--font-head); }
+.group-members-list { display: grid; gap: 8px; max-height: 340px; overflow: auto; padding-right: 4px; }
+.group-member-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 8px; background: var(--page-bg); }
+.group-member-row > button:first-child { min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.group-member-row strong { display: block; color: var(--text); font-size: 13px; }
+.group-member-row small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 
 .community-page { background: var(--page-bg); }
 .community-profile-shell { width: min(1180px, calc(100% - 32px)); margin: 18px auto 40px; }
@@ -1728,6 +1741,7 @@
   .community-stats { flex-wrap: wrap; }
   .community-stats button { flex: 1; min-width: 90px; }
   .community-manage-grid { grid-template-columns: 1fr; }
+  .group-settings-popout { grid-template-columns: 1fr; }
 }
 .msg-delete { align-self: flex-end; border: 0; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 2px 4px; }
 .msg-delete:hover { color: var(--danger); }

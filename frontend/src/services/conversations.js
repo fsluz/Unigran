@@ -22,6 +22,21 @@ export async function fetchMessages({ token, conversationId }) {
   return data.messages || [];
 }
 
+export async function fetchConversationDetails({ token, conversationId }) {
+  const res = await apiFetch(`/conversations/${conversationId}`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar grupo');
+  return data.conversation;
+}
+
+export async function updateConversation({ token, conversationId, data }) {
+  const res = await apiFetch(`/conversations/${conversationId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(data),
+  });
+  return parseResponse(res, 'Erro ao salvar grupo');
+}
+
 export async function sendMessage({ token, conversationId, content, mediaUrl = '', mediaType = '' }) {
   const res = await apiFetch(`/conversations/${conversationId}/messages`, {
     method: 'POST',
@@ -80,6 +95,14 @@ export async function addGroupParticipants({ token, conversationId, participants
     body: JSON.stringify({ participants }),
   });
   return parseResponse(res, 'Erro ao adicionar pessoas');
+}
+
+export async function removeGroupParticipant({ token, conversationId, username }) {
+  const res = await apiFetch(`/conversations/${conversationId}/participants/${username}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao remover pessoa');
 }
 
 export async function deleteMessage({ token, conversationId, messageId }) {

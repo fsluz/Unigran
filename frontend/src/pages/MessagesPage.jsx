@@ -3,7 +3,7 @@ import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
-import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation } from '../services/conversations';
+import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
@@ -26,6 +26,9 @@ export default function MessagesPage() {
   const [conversationSearch, setConversationSearch] = useState('');
   const [groupOpen, setGroupOpen] = useState(false);
   const [addPeopleOpen, setAddPeopleOpen] = useState(false);
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
+  const [groupSettings, setGroupSettings] = useState({ title: '', description: '', picture: '' });
+  const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
@@ -200,6 +203,7 @@ export default function MessagesPage() {
       setGroupSearch('');
       setGroupResults([]);
       setAddPeopleOpen(false);
+      if (groupSettingsOpen) await openGroupSettings();
       showToast('Pessoas adicionadas', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao adicionar pessoas', '!');
@@ -296,6 +300,84 @@ export default function MessagesPage() {
     return activeParticipant || msg.author || {};
   };
 
+  const openGroupSettings = async () => {
+    if (!active?.id || active.type !== 'group') return;
+    try {
+      const details = await fetchConversationDetails({ token, conversationId: active.id });
+      const next = { ...active, ...details };
+      setActive(next);
+      setConversations(prev => prev.map(item => item.id === active.id ? { ...item, ...next } : item));
+      setGroupSettings({
+        title: next.title || '',
+        description: next.description || '',
+        picture: next.groupPicture || '',
+      });
+      setGroupMembers(next.allParticipants || [
+        { username: user?.username, displayName: user?.displayName, profilePicture: user?.profilePicture },
+        ...(next.participants || []),
+      ]);
+      setGroupSettingsOpen(true);
+    } catch (err) {
+      showToast(err.message || 'Erro ao abrir grupo', '!');
+    }
+  };
+
+  const saveGroupSettings = async () => {
+    if (!active?.id) return;
+    setLoading(true);
+    try {
+      const saved = await updateConversation({
+        token,
+        conversationId: active.id,
+        data: {
+          title: groupSettings.title,
+          description: groupSettings.description,
+          picture: groupSettings.picture,
+        },
+      });
+      const next = { ...active, ...saved.conversation };
+      setActive(next);
+      setConversations(prev => prev.map(item => item.id === active.id ? { ...item, ...next } : item));
+      showToast('Grupo salvo', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao salvar grupo', '!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickGroupSettingsPicture = async (event) => {
+    const chosen = event.target.files?.[0];
+    if (!chosen) return;
+    setLoading(true);
+    try {
+      const media = await uploadMedia({ token, file: chosen });
+      setGroupSettings(prev => ({ ...prev, picture: media?.url || '' }));
+    } catch (err) {
+      showToast(err.message || 'Erro ao enviar foto', '!');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeMemberFromGroup = async (username) => {
+    if (!active?.id || !username) return;
+    try {
+      await removeGroupParticipant({ token, conversationId: active.id, username });
+      setGroupMembers(prev => prev.filter(item => item.username !== username));
+      setConversations(prev => prev.map(item => item.id === active.id
+        ? { ...item, participants: (item.participants || []).filter(person => person.username !== username) }
+        : item));
+      showToast(username === user?.username ? 'Voce saiu do grupo' : 'Pessoa removida', 'OK');
+      if (username === user?.username) {
+        setGroupSettingsOpen(false);
+        setActive(null);
+      }
+    } catch (err) {
+      showToast(err.message || 'Erro ao remover', '!');
+    }
+  };
+
   return (
     <div className="page-scroll">
       <Topbar title="Mensagens" />
@@ -377,15 +459,15 @@ export default function MessagesPage() {
                 initials={(conversationTitle(active) || '?').slice(0, 2)}
               />
               <div>
-                <div className="chat-head-name">{conversationTitle(active)}</div>
+                <button className="chat-head-name chat-head-name-button" onClick={active.type === 'group' ? openGroupSettings : undefined}>{conversationTitle(active)}</button>
                 <div className="chat-head-sub" style={{ color: active.type !== 'group' && activeParticipant?.online ? '#22C55E' : 'var(--text-muted)' }}>
                   {conversationSub(active)}
                 </div>
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {active.type === 'group' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => { setSelectedGroupUsers([]); setGroupSearch(''); setGroupResults([]); setAddPeopleOpen(true); }}>
-                    Adicionar pessoas
+                  <button className="btn btn-primary btn-sm" onClick={openGroupSettings}>
+                    Opcoes
                   </button>
                 )}
                 <button className="btn btn-secondary btn-sm" onClick={removeActiveConversation}>Excluir conversa</button>
@@ -521,6 +603,69 @@ export default function MessagesPage() {
                 )}
               </div>
               <button className="messages-group-btn" onClick={addPeopleToGroup} disabled={loading || selectedGroupUsers.length === 0}>Adicionar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {groupSettingsOpen && active?.type === 'group' && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setGroupSettingsOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 720 }}>
+            <div className="modal-header">
+              <span className="modal-title">Opcoes do grupo</span>
+              <button className="modal-close" onClick={() => setGroupSettingsOpen(false)}>x</button>
+            </div>
+            <div className="modal-body group-settings-popout">
+              <section className="group-settings-main">
+                <label className="group-photo-picker group-settings-photo">
+                  {groupSettings.picture ? <img src={groupSettings.picture} alt="grupo" /> : <span>Foto</span>}
+                  <input type="file" accept="image/*" onChange={pickGroupSettingsPicture} />
+                </label>
+                <input className="messages-search-input" placeholder="Nome do grupo" value={groupSettings.title} onChange={e => setGroupSettings(prev => ({ ...prev, title: e.target.value }))} />
+                <textarea className="messages-search-input" rows={4} placeholder="Descricao do grupo" value={groupSettings.description} onChange={e => setGroupSettings(prev => ({ ...prev, description: e.target.value }))} />
+                <div className="group-settings-actions">
+                  <button className="messages-group-btn" onClick={saveGroupSettings} disabled={loading}>Salvar</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => removeMemberFromGroup(user.username)}>Sair do grupo</button>
+                  <button className="btn btn-secondary btn-sm" onClick={removeActiveConversation}>Excluir conversa</button>
+                </div>
+              </section>
+
+              <section className="group-settings-members">
+                <div className="group-settings-title">Membros</div>
+                <div className="group-selected-users">
+                  {selectedGroupUsers.map(person => (
+                    <button key={person.username} onClick={() => setSelectedGroupUsers(prev => prev.filter(item => item.username !== person.username))}>
+                      @{person.username} x
+                    </button>
+                  ))}
+                </div>
+                <div className="messages-user-search">
+                  <input placeholder="Adicionar por nome ou @username" value={groupSearch} onChange={e => setGroupSearch(e.target.value)} />
+                  {groupResults.length > 0 && (
+                    <div className="messages-search-popout in-modal">
+                      {groupResults.map(person => (
+                        <button key={person.username} onClick={() => addGroupUser(person)}>
+                          <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                          <span>{person.displayName || person.username}<small>@{person.username}</small></span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button className="messages-group-btn" onClick={addPeopleToGroup} disabled={loading || selectedGroupUsers.length === 0}>Adicionar</button>
+                <div className="group-members-list">
+                  {groupMembers.map(member => (
+                    <div key={member.username} className="group-member-row">
+                      <button onClick={() => member.username && window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: member.username }))}>
+                        <Avatar size={34} src={member.profilePicture || null} name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
+                        <span><strong>{member.displayName || member.username}</strong><small>@{member.username}</small></span>
+                      </button>
+                      <button className="btn btn-secondary btn-xs" onClick={() => removeMemberFromGroup(member.username)}>
+                        {member.username === user?.username ? 'Sair' : 'Remover'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
         </div>
