@@ -49,6 +49,12 @@ export default function MessagesPage() {
   const callChannelRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
+  const deviceIdRef = useRef(localStorage.getItem('unigran_device_id') || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const callIdRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('unigran_device_id', deviceIdRef.current);
+  }, []);
 
   const activeParticipant = active?.participant;
   const activeMessages = useMemo(() => messages[active?.id] || [], [messages, active]);
@@ -144,30 +150,44 @@ export default function MessagesPage() {
     callChannelRef.current = channel;
     const onOffer = ({ data: payload }) => {
       if (payload.from?.id === user?.username) return;
+      if (payload.toDeviceId && payload.toDeviceId !== deviceIdRef.current) return;
       setIncomingCall(payload);
     };
     const onAnswer = async ({ data }) => {
-      const { answer } = data || {};
+      const { answer, callId } = data || {};
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
       if (!pcRef.current || !answer) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
     };
     const onIce = async ({ data }) => {
-      const { candidate } = data || {};
+      const { candidate, callId, toDeviceId } = data || {};
+      if (toDeviceId && toDeviceId !== deviceIdRef.current) return;
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
       if (!pcRef.current || !candidate) return;
       await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
     };
-    const onEnd = () => endCall(false);
+    const onAccepted = ({ data }) => {
+      if (!incomingCall) return;
+      if (data?.callId === incomingCall.callId && data?.deviceId !== deviceIdRef.current) setIncomingCall(null);
+    };
+    const onEnd = ({ data }) => {
+      if (data?.toDeviceId && data.toDeviceId !== deviceIdRef.current) return;
+      if (data?.callId && callIdRef.current && data.callId !== callIdRef.current) return;
+      endCall(false);
+    };
     channel.subscribe('call_offer', onOffer);
     channel.subscribe('call_answer', onAnswer);
     channel.subscribe('call_ice', onIce);
+    channel.subscribe('call_accepted', onAccepted);
     channel.subscribe('call_end', onEnd);
     return () => {
       channel.unsubscribe('call_offer', onOffer);
       channel.unsubscribe('call_answer', onAnswer);
       channel.unsubscribe('call_ice', onIce);
+      channel.unsubscribe('call_accepted', onAccepted);
       channel.unsubscribe('call_end', onEnd);
     };
-  }, [token, active?.id, user?.username]);
+  }, [token, active?.id, user?.username, incomingCall]);
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
@@ -411,8 +431,11 @@ export default function MessagesPage() {
     pc.onicecandidate = event => {
       if (event.candidate) callChannelRef.current?.publish('call_ice', {
         conversationId,
+        callId: callIdRef.current,
         candidate: event.candidate,
+        toDeviceId: incomingCall?.fromDeviceId || call?.remoteDeviceId || null,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
+        fromDeviceId: deviceIdRef.current,
       });
     };
     pc.ontrack = event => {
@@ -437,6 +460,8 @@ export default function MessagesPage() {
     try {
       const stream = await requestCallStream(kind);
       if (!stream) return;
+      const callId = `call-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      callIdRef.current = callId;
       localStreamRef.current = stream;
       remoteStreamRef.current = new MediaStream();
       const pc = makePeer(active.id);
@@ -445,11 +470,13 @@ export default function MessagesPage() {
       await pc.setLocalDescription(offer);
       await callChannelRef.current.publish('call_offer', {
         conversationId: active.id,
+        callId,
         kind,
         offer,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
+        fromDeviceId: deviceIdRef.current,
       });
-      setCall({ kind, status: 'Chamando...', conversationId: active.id });
+      setCall({ kind, status: 'Chamando...', conversationId: active.id, callId });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
     }
@@ -460,6 +487,7 @@ export default function MessagesPage() {
     try {
       const stream = await requestCallStream(incomingCall.kind);
       if (!stream) return;
+      callIdRef.current = incomingCall.callId;
       localStreamRef.current = stream;
       remoteStreamRef.current = new MediaStream();
       const pc = makePeer(incomingCall.conversationId);
@@ -467,12 +495,21 @@ export default function MessagesPage() {
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
+      await callChannelRef.current.publish('call_accepted', {
+        conversationId: incomingCall.conversationId,
+        callId: incomingCall.callId,
+        deviceId: deviceIdRef.current,
+        by: { id: user?.username, displayName: user?.displayName || user?.username },
+      });
       await callChannelRef.current.publish('call_answer', {
         conversationId: incomingCall.conversationId,
+        callId: incomingCall.callId,
         answer,
+        toDeviceId: incomingCall.fromDeviceId,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
+        fromDeviceId: deviceIdRef.current,
       });
-      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId });
+      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId });
       setIncomingCall(null);
     } catch {
       showToast('Falha na chamada', '!');
@@ -482,7 +519,10 @@ export default function MessagesPage() {
   const rejectCall = () => {
     if (incomingCall?.conversationId) callChannelRef.current?.publish('call_end', {
       conversationId: incomingCall.conversationId,
+      callId: incomingCall.callId,
+      toDeviceId: incomingCall.fromDeviceId,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
+      fromDeviceId: deviceIdRef.current,
     });
     setIncomingCall(null);
   };
@@ -490,7 +530,10 @@ export default function MessagesPage() {
   const endCall = (emit = true) => {
     if (emit && call?.conversationId) callChannelRef.current?.publish('call_end', {
       conversationId: call.conversationId,
+      callId: call.callId,
+      toDeviceId: call.remoteDeviceId || null,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
+      fromDeviceId: deviceIdRef.current,
     });
     pcRef.current?.close?.();
     pcRef.current = null;
@@ -498,6 +541,7 @@ export default function MessagesPage() {
     remoteStreamRef.current?.getTracks?.().forEach(track => track.stop());
     localStreamRef.current = null;
     remoteStreamRef.current = null;
+    callIdRef.current = null;
     setCall(null);
     setIncomingCall(null);
   };
