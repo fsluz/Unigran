@@ -8,6 +8,7 @@ import { uploadMedia } from '../services/posts';
 import { getCallChannel } from '../services/realtime';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
+import callRingtone from '../assets/call-ringtone.mp3';
 
 export default function MessagesPage() {
   const { token, user } = useAuth();
@@ -51,6 +52,7 @@ export default function MessagesPage() {
   const remoteStreamRef = useRef(null);
   const deviceIdRef = useRef(localStorage.getItem('unigran_device_id') || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const callIdRef = useRef(null);
+  const ringtoneRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('unigran_device_id', deviceIdRef.current);
@@ -193,6 +195,18 @@ export default function MessagesPage() {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
     if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
   }, [call]);
+
+  useEffect(() => {
+    const audio = ringtoneRef.current;
+    if (!audio) return;
+    if (incomingCall) {
+      audio.currentTime = 0;
+      audio.play().catch(() => null);
+    } else {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, [incomingCall]);
 
   useEffect(() => {
     const q = targetUsername.trim();
@@ -626,6 +640,7 @@ export default function MessagesPage() {
 
   return (
     <div className="page-scroll">
+      <audio ref={ringtoneRef} src={callRingtone} loop preload="auto" />
       <Topbar title="Mensagens" />
       <div className="messages-shell">
         <div className="conv-list">
