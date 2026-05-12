@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@typedb/driver-http": "^3.8.1",
+    "ably": "^2.21.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",

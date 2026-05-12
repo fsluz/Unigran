@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
-import { getSocket } from '../services/socket';
+import { getCallChannel } from '../services/realtime';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 
@@ -46,7 +46,7 @@ export default function MessagesPage() {
   const callVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const pcRef = useRef(null);
-  const socketRef = useRef(null);
+  const callChannelRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
 
@@ -139,39 +139,35 @@ export default function MessagesPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) return undefined;
-    const socket = getSocket(token);
-    socketRef.current = socket;
-    const onOffer = (payload) => {
+    if (!token || !active?.id) return undefined;
+    const channel = getCallChannel(token, active.id);
+    callChannelRef.current = channel;
+    const onOffer = ({ data: payload }) => {
       if (payload.from?.id === user?.username) return;
       setIncomingCall(payload);
     };
-    const onAnswer = async ({ answer }) => {
+    const onAnswer = async ({ data }) => {
+      const { answer } = data || {};
       if (!pcRef.current || !answer) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
     };
-    const onIce = async ({ candidate }) => {
+    const onIce = async ({ data }) => {
+      const { candidate } = data || {};
       if (!pcRef.current || !candidate) return;
       await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
     };
     const onEnd = () => endCall(false);
-    socket.on('call_offer', onOffer);
-    socket.on('call_answer', onAnswer);
-    socket.on('call_ice', onIce);
-    socket.on('call_end', onEnd);
+    channel.subscribe('call_offer', onOffer);
+    channel.subscribe('call_answer', onAnswer);
+    channel.subscribe('call_ice', onIce);
+    channel.subscribe('call_end', onEnd);
     return () => {
-      socket.off('call_offer', onOffer);
-      socket.off('call_answer', onAnswer);
-      socket.off('call_ice', onIce);
-      socket.off('call_end', onEnd);
+      channel.unsubscribe('call_offer', onOffer);
+      channel.unsubscribe('call_answer', onAnswer);
+      channel.unsubscribe('call_ice', onIce);
+      channel.unsubscribe('call_end', onEnd);
     };
-  }, [token, user?.username]);
-
-  useEffect(() => {
-    if (!active?.id || !socketRef.current) return undefined;
-    socketRef.current.emit('join_conversation', { conversationId: active.id });
-    return () => socketRef.current?.emit('leave_conversation', { conversationId: active.id });
-  }, [active?.id]);
+  }, [token, active?.id, user?.username]);
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
@@ -413,7 +409,11 @@ export default function MessagesPage() {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     pc.onicecandidate = event => {
-      if (event.candidate) socketRef.current?.emit('call_ice', { conversationId, candidate: event.candidate });
+      if (event.candidate) callChannelRef.current?.publish('call_ice', {
+        conversationId,
+        candidate: event.candidate,
+        from: { id: user?.username, displayName: user?.displayName || user?.username },
+      });
     };
     pc.ontrack = event => {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
@@ -433,7 +433,7 @@ export default function MessagesPage() {
   };
 
   const startCall = async (kind) => {
-    if (!active?.id || !socketRef.current) return;
+    if (!active?.id || !callChannelRef.current) return;
     try {
       const stream = await requestCallStream(kind);
       if (!stream) return;
@@ -443,7 +443,12 @@ export default function MessagesPage() {
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      socketRef.current.emit('call_offer', { conversationId: active.id, kind, offer });
+      await callChannelRef.current.publish('call_offer', {
+        conversationId: active.id,
+        kind,
+        offer,
+        from: { id: user?.username, displayName: user?.displayName || user?.username },
+      });
       setCall({ kind, status: 'Chamando...', conversationId: active.id });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
@@ -451,7 +456,7 @@ export default function MessagesPage() {
   };
 
   const acceptCall = async () => {
-    if (!incomingCall || !socketRef.current) return;
+    if (!incomingCall || !callChannelRef.current) return;
     try {
       const stream = await requestCallStream(incomingCall.kind);
       if (!stream) return;
@@ -462,7 +467,11 @@ export default function MessagesPage() {
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      socketRef.current.emit('call_answer', { conversationId: incomingCall.conversationId, answer });
+      await callChannelRef.current.publish('call_answer', {
+        conversationId: incomingCall.conversationId,
+        answer,
+        from: { id: user?.username, displayName: user?.displayName || user?.username },
+      });
       setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId });
       setIncomingCall(null);
     } catch {
@@ -471,12 +480,18 @@ export default function MessagesPage() {
   };
 
   const rejectCall = () => {
-    if (incomingCall?.conversationId) socketRef.current?.emit('call_end', { conversationId: incomingCall.conversationId });
+    if (incomingCall?.conversationId) callChannelRef.current?.publish('call_end', {
+      conversationId: incomingCall.conversationId,
+      from: { id: user?.username, displayName: user?.displayName || user?.username },
+    });
     setIncomingCall(null);
   };
 
   const endCall = (emit = true) => {
-    if (emit && call?.conversationId) socketRef.current?.emit('call_end', { conversationId: call.conversationId });
+    if (emit && call?.conversationId) callChannelRef.current?.publish('call_end', {
+      conversationId: call.conversationId,
+      from: { id: user?.username, displayName: user?.displayName || user?.username },
+    });
     pcRef.current?.close?.();
     pcRef.current = null;
     localStreamRef.current?.getTracks?.().forEach(track => track.stop());
