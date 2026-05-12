@@ -164,6 +164,7 @@ export default function MessagesPage() {
       if (callIdRef.current && callId && callIdRef.current !== callId) return;
       if (!pcRef.current || !answer) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+      setCall(prev => prev ? { ...prev, status: 'Conectado', remoteDeviceId: data?.fromDeviceId || prev.remoteDeviceId } : prev);
     };
     const onIce = async ({ data }) => {
       const { candidate, callId, toDeviceId } = data || {};
