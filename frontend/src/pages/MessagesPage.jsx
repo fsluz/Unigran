@@ -37,6 +37,7 @@ export default function MessagesPage() {
   const [recording, setRecording] = useState(false);
   const [call, setCall] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [callChatOpen, setCallChatOpen] = useState(false);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -46,6 +47,8 @@ export default function MessagesPage() {
   const recordStreamRef = useRef(null);
   const callVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const screenStreamRef = useRef(null);
   const pcRef = useRef(null);
   const callChannelRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -143,6 +146,7 @@ export default function MessagesPage() {
     recordStreamRef.current?.getTracks?.().forEach(track => track.stop());
     localStreamRef.current?.getTracks?.().forEach(track => track.stop());
     remoteStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    screenStreamRef.current?.getTracks?.().forEach(track => track.stop());
     pcRef.current?.close?.();
   }, []);
 
@@ -194,7 +198,31 @@ export default function MessagesPage() {
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
     if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    if (remoteAudioRef.current && remoteStreamRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current;
   }, [call]);
+
+  useEffect(() => {
+    const unlock = () => {
+      const audio = ringtoneRef.current;
+      if (!audio) return;
+      audio.muted = true;
+      audio.play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+        })
+        .catch(() => {
+          audio.muted = false;
+        });
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+  }, []);
 
   useEffect(() => {
     const audio = ringtoneRef.current;
@@ -456,6 +484,10 @@ export default function MessagesPage() {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
       remoteStreamRef.current.addTrack(event.track);
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStreamRef.current;
+        remoteAudioRef.current.play().catch(() => null);
+      }
     };
     pcRef.current = pc;
     return pc;
@@ -466,7 +498,53 @@ export default function MessagesPage() {
       ? 'Permitir camera e microfone para chamada?'
       : 'Permitir microfone para chamada?');
     if (!ok) return null;
-    return navigator.mediaDevices.getUserMedia({ audio: true, video: kind === 'video' });
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: true, video: kind === 'video' });
+    } catch (err) {
+      if (kind === 'video') {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } catch (_) {}
+      }
+      showToast('Sem microfone. Entrando sem audio.', '!');
+      return new MediaStream();
+    }
+  };
+
+  const toggleMic = () => {
+    const nextMuted = !call?.micMuted;
+    localStreamRef.current?.getAudioTracks?.().forEach(track => { track.enabled = !nextMuted; });
+    setCall(prev => prev ? { ...prev, micMuted: nextMuted } : prev);
+  };
+
+  const toggleCamera = () => {
+    const nextOff = !call?.cameraOff;
+    localStreamRef.current?.getVideoTracks?.().forEach(track => { track.enabled = !nextOff; });
+    setCall(prev => prev ? { ...prev, cameraOff: nextOff } : prev);
+  };
+
+  const toggleRemoteSound = () => {
+    const nextMuted = !call?.soundMuted;
+    if (remoteAudioRef.current) remoteAudioRef.current.muted = nextMuted;
+    if (remoteVideoRef.current) remoteVideoRef.current.muted = nextMuted;
+    setCall(prev => prev ? { ...prev, soundMuted: nextMuted } : prev);
+  };
+
+  const shareScreen = async () => {
+    if (!pcRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const screenTrack = stream.getVideoTracks()[0];
+      const sender = pcRef.current.getSenders().find(item => item.track?.kind === 'video');
+      if (sender && screenTrack) await sender.replaceTrack(screenTrack);
+      screenStreamRef.current = stream;
+      screenTrack.onended = () => {
+        const cameraTrack = localStreamRef.current?.getVideoTracks?.()[0];
+        if (sender && cameraTrack) sender.replaceTrack(cameraTrack);
+      };
+    } catch {
+      showToast('Compartilhar tela cancelado', '!');
+    }
   };
 
   const startCall = async (kind) => {
@@ -553,8 +631,10 @@ export default function MessagesPage() {
     pcRef.current = null;
     localStreamRef.current?.getTracks?.().forEach(track => track.stop());
     remoteStreamRef.current?.getTracks?.().forEach(track => track.stop());
+    screenStreamRef.current?.getTracks?.().forEach(track => track.stop());
     localStreamRef.current = null;
     remoteStreamRef.current = null;
+    screenStreamRef.current = null;
     callIdRef.current = null;
     setCall(null);
     setIncomingCall(null);
@@ -936,13 +1016,14 @@ export default function MessagesPage() {
         </div>
       )}
       {call && (
-        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && endCall()}>
-          <div className="modal-box call-box">
-            <div className="modal-header">
-              <span className="modal-title">{call.kind === 'video' ? 'Chamada de video' : 'Chamada de audio'}</span>
-              <button className="modal-close" onClick={endCall}>x</button>
+        <div className="call-screen">
+          <div className="call-window">
+            <div className="call-top">
+              <span>{call.kind === 'video' ? 'Chamada de video' : 'Chamada de audio'}</span>
+              <strong>{conversationTitle(active)}</strong>
+              <small>{call.status || 'Conectado'}</small>
             </div>
-            <div className="call-body">
+            <div className="call-stage">
               {call.kind === 'video' ? (
                 <div className="call-video-grid">
                   <video ref={remoteVideoRef} autoPlay playsInline />
@@ -953,9 +1034,28 @@ export default function MessagesPage() {
                   <Avatar size={92} src={active.groupPicture || activeParticipant?.profilePicture || null} name={conversationTitle(active)} initials={(conversationTitle(active) || '?').slice(0, 2)} />
                 </div>
               )}
-              <p>{conversationTitle(active)}</p>
-              <span>{call.status || 'Conectado'}</span>
-              <button className="call-end-btn" onClick={endCall}>Encerrar</button>
+              <audio ref={remoteAudioRef} autoPlay playsInline />
+            </div>
+            {callChatOpen && (
+              <aside className="call-chatroom">
+                <strong>Chatroom</strong>
+                <div className="call-chat-list">
+                  {activeMessages.slice(-4).map(msg => (
+                    <div key={msg.id} className="call-chat-msg">
+                      <span>{msg.author?.displayName || msg.author?.username || 'Usuario'}</span>
+                      <p>{msg.content || (msg.media ? 'Midia enviada' : '')}</p>
+                    </div>
+                  ))}
+                </div>
+              </aside>
+            )}
+            <div className="call-controls">
+              <button onClick={toggleRemoteSound} title="Som">{call.soundMuted ? '🔇' : '🔊'}</button>
+              <button onClick={toggleMic} title="Microfone">{call.micMuted ? '🎙️' : '🎤'}</button>
+              <button onClick={() => endCall()} className="danger" title="Encerrar">☎</button>
+              <button onClick={toggleCamera} title="Camera">{call.cameraOff ? '📷' : '🎥'}</button>
+              <button onClick={shareScreen} title="Compartilhar tela">▣</button>
+              <button onClick={() => setCallChatOpen(v => !v)} title="Chat">💬</button>
             </div>
           </div>
         </div>

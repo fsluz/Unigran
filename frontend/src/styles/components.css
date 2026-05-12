@@ -1690,14 +1690,30 @@
 .group-member-row small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 2px; }
 .call-box { max-width: 420px; }
 .call-body { display: grid; gap: 12px; place-items: center; text-align: center; color: var(--text); }
-.call-video-grid { position: relative; width: 100%; min-height: 320px; border-radius: 14px; overflow: hidden; background: #000; }
-.call-video-grid video:first-child { width: 100%; height: 360px; object-fit: cover; background: #000; }
-.call-video-grid video:last-child { position: absolute; right: 12px; bottom: 12px; width: 120px; height: 88px; border-radius: 10px; object-fit: cover; border: 2px solid rgba(255,255,255,.7); background: #111; }
+.call-screen { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 15% 0%, rgba(0,168,255,.38), transparent 32%), radial-gradient(circle at 85% 100%, rgba(106,0,244,.42), transparent 34%), rgba(4,8,20,.92); }
+.call-window { position: relative; width: min(1080px, 100%); min-height: min(680px, calc(100vh - 48px)); display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto 1fr auto; gap: 14px; padding: 18px; border: 1px solid rgba(255,255,255,.14); border-radius: 24px; background: rgba(16,24,44,.88); box-shadow: 0 30px 90px rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(18px); }
+.call-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; min-height: 34px; }
+.call-top span { font-size: 12px; color: rgba(255,255,255,.7); }
+.call-top strong { font-family: var(--font-head); font-size: 16px; }
+.call-top small { margin-left: auto; color: rgba(255,255,255,.62); }
+.call-stage { min-width: 0; display: grid; place-items: center; border-radius: 20px; overflow: hidden; background: rgba(0,0,0,.28); }
+.call-video-grid { position: relative; width: 100%; height: 100%; min-height: 430px; border-radius: 20px; overflow: hidden; background: #000; }
+.call-video-grid video:first-child { width: 100%; height: 100%; object-fit: cover; background: #000; }
+.call-video-grid video:last-child { position: absolute; left: 18px; bottom: 18px; width: 190px; height: 128px; border-radius: 18px; object-fit: cover; border: 2px solid rgba(255,255,255,.65); background: #111; }
 .call-body p { margin: 0; font-weight: 900; font-family: var(--font-head); }
 .call-body span { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
 .call-audio-avatar { width: 148px; height: 148px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff); box-shadow: 0 18px 45px rgba(54,51,255,.25); }
 .call-end-btn { border: 0; border-radius: 999px; padding: 11px 22px; background: #ef4444; color: #fff; font-weight: 900; cursor: pointer; }
 .call-actions { display: flex; gap: 10px; align-items: center; justify-content: center; }
+.call-chatroom { grid-row: 2 / 3; border-radius: 18px; padding: 16px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); overflow: hidden; }
+.call-chatroom strong { display: block; margin-bottom: 12px; font-family: var(--font-head); }
+.call-chat-list { display: grid; gap: 10px; max-height: 460px; overflow: auto; }
+.call-chat-msg { padding: 10px; border-radius: 12px; background: rgba(255,255,255,.08); }
+.call-chat-msg span { display: block; font-size: 11px; color: rgba(255,255,255,.62); margin-bottom: 4px; }
+.call-chat-msg p { margin: 0; font-size: 12px; line-height: 1.45; color: #fff; }
+.call-controls { grid-column: 1 / -1; display: flex; justify-content: center; gap: 12px; padding-top: 2px; }
+.call-controls button { width: 46px; height: 46px; border-radius: 50%; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.12); color: #fff; font-size: 17px; cursor: pointer; }
+.call-controls button.danger { width: 64px; border-radius: 18px; background: #ef4444; border-color: #ef4444; }
 @keyframes recordPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.25); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
 
 .community-page { background: var(--page-bg); }
@@ -1754,6 +1770,16 @@
   .community-stats button { flex: 1; min-width: 90px; }
   .community-manage-grid { grid-template-columns: 1fr; }
   .group-settings-popout { grid-template-columns: 1fr; }
+  .call-screen { padding: 0; align-items: stretch; background: #0b1220; }
+  .call-window { width: 100%; min-height: 100vh; grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; border: 0; border-radius: 0; padding: 10px; background: #101828; }
+  .call-top { padding: 4px 2px; }
+  .call-stage { border-radius: 18px; }
+  .call-video-grid { min-height: 0; height: calc(100vh - 178px); border-radius: 18px; }
+  .call-video-grid video:last-child { left: 12px; bottom: 12px; width: 82px; height: 112px; border-radius: 14px; }
+  .call-chatroom { position: absolute; left: 10px; right: 10px; bottom: 76px; max-height: 220px; z-index: 3; }
+  .call-controls { position: sticky; bottom: 0; padding: 10px 0 4px; gap: 9px; }
+  .call-controls button { width: 42px; height: 42px; font-size: 15px; }
+  .call-controls button.danger { width: 58px; }
 }
 .msg-delete { align-self: flex-end; border: 0; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 2px 4px; }
 .msg-delete:hover { color: var(--danger); }
