@@ -74,6 +74,27 @@ async function loadFollowingSet(username) {
   return new Set(rows.map(row => row.followed_username).filter(Boolean));
 }
 
+async function loadLikedKeywords(username) {
+  if (!username) return new Set();
+  const safeUsername = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $user isa person, has username "${safeUsername}";
+      $post isa post;
+      reaction(author: $user, parent: $post);
+      try { $post has post-text $text; };
+    fetch { "text": $text };
+  `).catch(() => []);
+  const keywords = ['tecnologia', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
+  const liked = new Set();
+  for (const row of rows) {
+    const text = String(row.text || '').toLowerCase();
+    for (const tag of text.match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []) liked.add(tag.slice(1).toLowerCase());
+    for (const word of keywords) if (text.includes(word)) liked.add(word);
+  }
+  return liked;
+}
+
 async function loadPostMetrics(viewerUsername) {
   const [reactionRows, commentRows] = await Promise.all([
     // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
@@ -248,8 +269,8 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     };
   `);
   const profilesMap = await loadAllProfilesMap();
-  const friendSet = await loadFriendSet(viewerUsername);
   const followingSet = await loadFollowingSet(viewerUsername);
+  const likedKeywords = await loadLikedKeywords(viewerUsername);
   const metrics = await loadPostMetrics(viewerUsername);
   const commentsMap = await loadCommentsMap();
   const repostOriginalMap = await loadRepostOriginalMap();
@@ -264,7 +285,11 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     if (isZuni) return false;
     if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
     if (feed === 'trending') return true;
-    const viewerLikedSimilar = false;
+    const textWords = new Set([
+      ...(String(postText).toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
+      ...String(postText).toLowerCase().split(/[^a-z0-9\u00c0-\u017f]+/).filter(Boolean),
+    ]);
+    const viewerLikedSimilar = [...likedKeywords].some(word => textWords.has(word));
     return authorUsername === viewerUsername || followingSet.has(authorUsername) || viewerLikedSimilar;
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
@@ -325,7 +350,18 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
   const posts = normalized
     .sort((a, b) => {
-      if (feed === 'trending') return (Number(b.likes || 0) + Number(b.comments || 0)) - (Number(a.likes || 0) + Number(a.comments || 0)) || String(b.time || '').localeCompare(String(a.time || ''));
+      if (feed === 'trending') {
+        const score = post => {
+          const words = new Set([
+            ...(String(post.content || '').toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
+            ...String(post.content || '').toLowerCase().split(/[^a-z0-9\u00c0-\u017f]+/).filter(Boolean),
+          ]);
+          const interest = [...likedKeywords].some(word => words.has(word)) ? 8 : 0;
+          const follow = followingSet.has(post.author?.username) ? 6 : 0;
+          return Number(post.likes || 0) * 2 + Number(post.comments || 0) + interest + follow;
+        };
+        return score(b) - score(a) || String(b.time || '').localeCompare(String(a.time || ''));
+      }
       return String(b.time || '').localeCompare(String(a.time || ''));
     })
     .slice(offset, offset + limit);
@@ -338,7 +374,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   return posts;
 }
 
-export async function listTrends() {
+export async function listTrends(viewerUsername = '') {
   const rows = await readQuery(`
     match
       $post isa post, has creation-timestamp $created_at;
@@ -349,6 +385,7 @@ export async function listTrends() {
     };
   `);
   const keywords = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
+  const likedKeywords = await loadLikedKeywords(viewerUsername);
   const now = Date.now();
   const counts = new Map();
   const hourCounts = new Map();
@@ -365,9 +402,9 @@ export async function listTrends() {
     }
   }
   return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => (b[1] + (likedKeywords.has(b[0]) ? 10 : 0)) - (a[1] + (likedKeywords.has(a[0]) ? 10 : 0)))
     .slice(0, 12)
-    .map(([tag, count]) => ({ tag, count, lastHour: hourCounts.get(tag) || 0 }));
+    .map(([tag, count]) => ({ tag, count, lastHour: hourCounts.get(tag) || 0, recommended: likedKeywords.has(tag) }));
 }
 
 export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) {
@@ -488,8 +525,61 @@ export async function deletePostById({ username, postId, canModerate = false }) 
 }
 
 export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
-  const posts = await listFeed({ viewerUsername, limit: 200, offset: 0 });
-  return posts.filter(post => post.author?.username === username).slice(0, limit);
+  const safeUser = typeqlLiteral(username);
+  const rows = await readQuery(`
+    match
+      $author isa person, has username "${safeUser}", has name $user_name;
+      $post isa post, has post-id $post_id, has creation-timestamp $post_ts;
+      posting(post: $post, page: $author);
+      try { $author has profile-picture $user_profile_pic; };
+      try { $author has cover-picture $user_cover_pic; };
+      try { $post has post-text $post_text; };
+      try { $post has post-image $post_image; };
+      try { $post has post-video $post_video; };
+    fetch {
+      "post_id": $post_id,
+      "created_at": $post_ts,
+      "post_text": $post_text,
+      "post_image": $post_image,
+      "post_video": $post_video,
+      "author_name": $user_name,
+      "author_profile_picture": $user_profile_pic,
+      "author_cover_picture": $user_cover_pic,
+      "post_all_attributes": { $post.* }
+    };
+  `);
+  const metrics = await loadPostMetrics(viewerUsername);
+  const commentsMap = await loadCommentsMap();
+  return rows.map(entry => {
+    const attrs = entry?.post_all_attributes || {};
+    const postText = entry?.post_text || attrs['post-text'] || '';
+    const imageUrl = entry?.post_image || attrs['post-image'] || null;
+    const videoUrl = entry?.post_video || attrs['post-video'] || null;
+    const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const comments = commentsMap.get(postId) || [];
+    const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
+    return {
+      id: postId,
+      content: postText,
+      time: entry?.created_at || attrs['creation-timestamp'] || null,
+      media: (imageUrl || videoUrl) ? { url: imageUrl || videoUrl, resource_type: videoUrl ? 'video' : 'image' } : null,
+      author: {
+        id: username,
+        username,
+        displayName: entry?.author_name || username,
+        profilePicture: entry?.author_profile_picture || null,
+        coverPicture: entry?.author_cover_picture || null,
+        role: 'user',
+      },
+      likes: metric.likes,
+      liked: metric.liked,
+      comments: metric.comments || comments.length,
+      _comments: comments,
+    };
+  })
+    .filter(post => !String(post.content || '').toLowerCase().includes('#zuni'))
+    .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
+    .slice(0, limit);
 }
 
 export async function listLikedPosts(username) {

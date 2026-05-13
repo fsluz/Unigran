@@ -46,9 +46,9 @@ export async function getFeedController(req, res) {
   }
 }
 
-export async function getTrendsController(_req, res) {
+export async function getTrendsController(req, res) {
   try {
-    res.json({ trends: await listTrends() });
+    res.json({ trends: await listTrends(req.user.username) });
   } catch (err) {
     console.error('[posts trends]', err);
     res.status(500).json({ error: 'Erro ao carregar tendencias' });
