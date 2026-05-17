@@ -19,8 +19,11 @@ export default function LoginPage({ onGoRegister }) {
   const googleButtonRef = useRef(null);
 
   const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // reset steps: 'email' | 'code' | 'password'
+  const [resetStep, setResetStep] = useState('email');
 
   const [showPass, setShowPass] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -126,79 +129,157 @@ export default function LoginPage({ onGoRegister }) {
     }
   };
 
-  const handleReset = async () => {
-    if (!resetEmail.trim()) {
-      setError('Informe o email.');
-      return;
-    }
-    if (!newPassword.trim()) {
-      setError('Informe a nova senha.');
-      return;
-    }
-    if (newPassword.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('As senhas nao coincidem.');
-      return;
-    }
+  // Passo 1: solicitar código
+  const handleResetRequest = async () => {
+    if (!resetEmail.trim()) { setError('Informe o email.'); return; }
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await apiFetch('/auth/reset-password/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(formatApiError(data.error, 'Erro ao enviar email.')); return; }
+      setSuccess('Código enviado! Verifique seu e-mail.');
+      setResetStep('code');
+    } catch { setError('Erro ao conectar com o servidor.'); }
+    finally { setLoading(false); }
+  };
 
-    setLoading(true);
-    setError('');
-    setSuccess('');
+  // Passo 2: verificar código de 6 dígitos
+  const handleResetVerify = async () => {
+    if (resetCode.length !== 6) { setError('Digite o código de 6 dígitos.'); return; }
+    setLoading(true); setError(''); setSuccess('');
+    try {
+      const res = await apiFetch('/auth/reset-password/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, code: resetCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(formatApiError(data.error, 'Código inválido ou expirado.')); return; }
+      setSuccess('Código confirmado! Defina sua nova senha.');
+      setResetStep('password');
+    } catch { setError('Erro ao conectar com o servidor.'); }
+    finally { setLoading(false); }
+  };
 
+  // Passo 3: definir nova senha
+  const handleResetPassword = async () => {
+    if (!newPassword.trim()) { setError('Informe a nova senha.'); return; }
+    if (newPassword.length < 6) { setError('A senha deve ter pelo menos 6 caracteres.'); return; }
+    if (newPassword !== confirmPassword) { setError('As senhas não coincidem.'); return; }
+    setLoading(true); setError(''); setSuccess('');
     try {
       const res = await apiFetch('/auth/reset-password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail, newPassword }),
+        body: JSON.stringify({ email: resetEmail, code: resetCode, newPassword }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        setError(formatApiError(data.error, 'Erro ao redefinir senha.'));
-      } else {
-        setSuccess('Senha redefinida com sucesso! Faca login.');
-        setTimeout(() => {
-          setView('login');
-          setEmail(resetEmail);
-          setSuccess('');
-          setResetEmail('');
-          setNewPassword('');
-          setConfirmPassword('');
-        }, 2000);
-      }
-    } catch {
-      setError('Erro ao conectar com o servidor.');
-    } finally {
-      setLoading(false);
-    }
+      if (!res.ok) { setError(formatApiError(data.error, 'Erro ao redefinir senha.')); return; }
+      setSuccess('Senha redefinida com sucesso! Faça login.');
+      setTimeout(() => {
+        setView('login'); setEmail(resetEmail); setSuccess('');
+        setResetEmail(''); setResetCode(''); setNewPassword(''); setConfirmPassword('');
+        setResetStep('email');
+      }, 2000);
+    } catch { setError('Erro ao conectar com o servidor.'); }
+    finally { setLoading(false); }
   };
 
   if (view === 'reset') {
-    return (
+    // ── Passo 1: digitar e-mail ──────────────────────────────────────────────
+    if (resetStep === 'email') return (
       <AuthLayout>
         <div className="auth-card" style={{ margin: '0 auto' }}>
           <div className="card">
             <AuthLogo />
-            <h1 className="auth-heading">Redefinir senha</h1>
-            <p className="auth-sub-text">Informe seu email e a nova senha</p>
-
-            {error && <div className="auth-alert">{error}</div>}
+            <h1 className="auth-heading">Esqueci a senha</h1>
+            <p className="auth-sub-text">Informe seu e-mail institucional e enviaremos um código de verificação</p>
+            {error   && <div className="auth-alert">{error}</div>}
             {success && <div className="auth-alert auth-success">{success}</div>}
-
             <div className="form-group">
-              <label className="form-label">Email institucional</label>
+              <label className="form-label">E-mail institucional</label>
               <input
                 className="form-input"
                 type="email"
                 placeholder="seu@unigran.com.br"
                 value={resetEmail}
                 onChange={e => setResetEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResetRequest()}
               />
             </div>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
+              onClick={handleResetRequest}
+              disabled={loading}
+            >
+              {loading ? 'Enviando...' : 'Enviar código'}
+            </button>
+            <div className="auth-footer">
+              <a onClick={() => { setView('login'); setError(''); setResetStep('email'); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
+            </div>
+          </div>
+        </div>
+      </AuthLayout>
+    );
 
+    // ── Passo 2: inserir código de 6 dígitos ────────────────────────────────
+    if (resetStep === 'code') return (
+      <AuthLayout>
+        <div className="auth-card" style={{ margin: '0 auto' }}>
+          <div className="card">
+            <AuthLogo />
+            <h1 className="auth-heading">Verificar código</h1>
+            <p className="auth-sub-text">
+              Enviamos um código de 6 dígitos para <strong>{resetEmail}</strong>.<br/>
+              Verifique sua caixa de entrada (e o spam).
+            </p>
+            {error   && <div className="auth-alert">{error}</div>}
+            {success && <div className="auth-alert auth-success">{success}</div>}
+            <div className="form-group">
+              <label className="form-label">Código de verificação</label>
+              <input
+                className="form-input"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={resetCode}
+                onChange={e => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && handleResetVerify()}
+                style={{ letterSpacing: 8, fontSize: 22, textAlign: 'center' }}
+              />
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
+              onClick={handleResetVerify}
+              disabled={loading}
+            >
+              {loading ? 'Verificando...' : 'Confirmar código'}
+            </button>
+            <div className="auth-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <a onClick={() => { setResetStep('email'); setError(''); setSuccess(''); setResetCode(''); }} style={{ cursor: 'pointer' }}>Usar outro e-mail</a>
+              <a onClick={() => { handleResetRequest(); setResetCode(''); }} style={{ cursor: 'pointer' }}>Reenviar código</a>
+            </div>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+
+    // ── Passo 3: nova senha ──────────────────────────────────────────────────
+    return (
+      <AuthLayout>
+        <div className="auth-card" style={{ margin: '0 auto' }}>
+          <div className="card">
+            <AuthLogo />
+            <h1 className="auth-heading">Nova senha</h1>
+            <p className="auth-sub-text">Escolha uma senha segura para sua conta</p>
+            {error   && <div className="auth-alert">{error}</div>}
+            {success && <div className="auth-alert auth-success">{success}</div>}
             <div className="form-group">
               <label className="form-label">Nova senha</label>
               <div style={{ position: 'relative' }}>
@@ -213,7 +294,6 @@ export default function LoginPage({ onGoRegister }) {
                 {eyeBtn(showNew, () => setShowNew(v => !v))}
               </div>
             </div>
-
             <div className="form-group">
               <label className="form-label">Confirmar nova senha</label>
               <div style={{ position: 'relative' }}>
@@ -223,24 +303,22 @@ export default function LoginPage({ onGoRegister }) {
                   placeholder="********"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleReset()}
+                  onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
                   style={{ paddingRight: 64 }}
                 />
                 {eyeBtn(showConfirm, () => setShowConfirm(v => !v))}
               </div>
             </div>
-
             <button
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', marginTop: 20, padding: '11px 0' }}
-              onClick={handleReset}
+              onClick={handleResetPassword}
               disabled={loading}
             >
-              {loading ? 'Redefinindo...' : 'Redefinir senha'}
+              {loading ? 'Redefinindo...' : 'Salvar nova senha'}
             </button>
-
             <div className="auth-footer">
-              <a onClick={() => { setView('login'); setError(''); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
+              <a onClick={() => { setView('login'); setError(''); setResetStep('email'); }} style={{ cursor: 'pointer' }}>Voltar ao login</a>
             </div>
           </div>
         </div>

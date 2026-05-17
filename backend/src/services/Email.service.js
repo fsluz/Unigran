@@ -1,0 +1,47 @@
+import nodemailer from 'nodemailer';
+
+function createTransporter() {
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS, //senha de app do Google, não a senha normal do email
+        },
+    });
+}
+
+export async function sendPasswordResetCode(toEmail, code) {
+    const transporter = createTransporter();
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">
+      <div style="background: #4f46e5; padding: 32px 24px; text-align: center;">
+        <h1 style="color: #fff; margin: 0; font-size: 24px; letter-spacing: 1px;">UNIGRAN</h1>
+        <p style="color: #c7d2fe; margin: 6px 0 0; font-size: 14px;">Rede Social Universitária</p>
+      </div>
+      <div style="padding: 32px 24px;">
+        <h2 style="color: #1e1b4b; margin: 0 0 12px;">Redefinição de senha</h2>
+        <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          Recebemos uma solicitação para redefinir a senha da sua conta.<br/>
+          Use o código abaixo para continuar. Ele expira em <strong>10 minutos</strong>.
+        </p>
+        <div style="background: #ede9fe; border-radius: 10px; padding: 24px; text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 42px; font-weight: 700; letter-spacing: 10px; color: #4f46e5;">${code}</span>
+        </div>
+        <p style="color: #9ca3af; font-size: 13px; margin: 0;">
+          Se você não solicitou a redefinição, ignore este e-mail. Sua senha permanece a mesma.
+        </p>
+      </div>
+      <div style="background: #f3f4f6; padding: 16px 24px; text-align: center;">
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} Unigran. Todos os direitos reservados.</p>
+      </div>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"Unigram" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: `${code} - Seu Código de redefinição de senha · Unigram`,
+    html,
+  });
+}

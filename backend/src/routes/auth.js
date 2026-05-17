@@ -7,6 +7,8 @@ import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '..
 import { normalizeRole } from '../middleware/auth.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
+import { sendPasswordResetCode } from '../services/email.service.js';
+import { generateCode, saveCode, verifyCode, deleteCode } from '../services/resetCode.service.js';
 
 const router = Router();
 
@@ -357,27 +359,73 @@ router.post('/2fa/disable', async (req, res) => {
   }
 });
 
-router.put('/reset-password', async (req, res) => {
-  const { email, newPassword } = req.body;
-  if (!email || !newPassword) return res.status(400).json({ error: 'Email e nova senha obrigatorios' });
-  if (newPassword.length < 6) return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+// PASSO 1 — solicitar código por email
+router.post('/reset-password/request', async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'Informe o email' });
 
   try {
-    const safeEmail = typeqlLiteral(String(email).trim().toLowerCase());
+    const safeEmail = typeqlLiteral(email);
     const rows = await readQuery(`
-      match
-        $u isa person, has email "${safeEmail}", has password-hash $ph;
+      match $u isa person, has email "${safeEmail}", has email $e;
+      fetch { "email": $e };
+    `);
+    // Retorna sucesso mesmo se email não existir (evita enumeração de usuários)
+    if (!rows.length) return res.json({ ok: true });
+
+    const code = generateCode();
+    saveCode(email, code);
+    await sendPasswordResetCode(email, code);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[reset-password/request]', err);
+    res.status(500).json({ error: 'Erro ao enviar email' });
+  }
+});
+
+// PASSO 2 — verificar código de 6 dígitos
+router.post('/reset-password/verify', (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const code  = String(req.body?.code  || '').trim();
+  if (!email || !code) return res.status(400).json({ error: 'Email e codigo obrigatorios' });
+
+  if (!verifyCode(email, code)) {
+    return res.status(400).json({ error: 'Codigo invalido ou expirado' });
+  }
+  res.json({ ok: true });
+});
+
+// PASSO 3 — definir nova senha (exige código válido ainda na memória)
+router.put('/reset-password', async (req, res) => {
+  const email       = String(req.body?.email       || '').trim().toLowerCase();
+  const code        = String(req.body?.code        || '').trim();
+  const newPassword = String(req.body?.newPassword || '');
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, codigo e nova senha sao obrigatorios' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' });
+  }
+  if (!verifyCode(email, code)) {
+    return res.status(400).json({ error: 'Codigo invalido ou expirado' });
+  }
+
+  try {
+    const safeEmail = typeqlLiteral(email);
+    const rows = await readQuery(`
+      match $u isa person, has email "${safeEmail}", has password-hash $ph;
       fetch { "password_hash": $ph };
     `);
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
     const newHash = encodeHash(await bcrypt.hash(newPassword, 12));
     await writeQuery(`
-      match
-        $u isa person, has email "${safeEmail}";
-      update
-        $u has password-hash "${newHash}";
+      match $u isa person, has email "${safeEmail}";
+      update $u has password-hash "${newHash}";
     `);
+
+    deleteCode(email); // invalida o código após uso
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password]', err);
