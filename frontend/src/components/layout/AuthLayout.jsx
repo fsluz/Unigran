@@ -59,8 +59,10 @@ function AuthLayout({ children }) {
               </div>
 
               <div className="auth-visual-copy">
-                <h2>Bem-vindo a Unigran</h2>
-                <p>Comunidade que impulsiona</p>
+                <span>UNIGRAN SOCIAL</span>
+                <h2>Bem-vindo de volta</h2>
+                <p>Entre, veja sua turma, posts, mensagens e comunidades.</p>
+                <div className="auth-visual-arrow" aria-hidden="true" />
               </div>
             </div>
           </div>

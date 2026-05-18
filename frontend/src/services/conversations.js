@@ -113,6 +113,15 @@ export async function deleteMessage({ token, conversationId, messageId }) {
   return parseResponse(res, 'Erro ao excluir mensagem');
 }
 
+export async function updateMessage({ token, conversationId, messageId, content }) {
+  const res = await apiFetch(`/conversations/${conversationId}/messages/${messageId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, 'Erro ao editar mensagem');
+}
+
 export async function deleteConversation({ token, conversationId }) {
   const res = await apiFetch(`/conversations/${conversationId}`, {
     method: 'DELETE',

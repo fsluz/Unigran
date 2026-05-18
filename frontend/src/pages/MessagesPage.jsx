@@ -3,7 +3,7 @@ import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
-import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation } from '../services/conversations';
+import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { getCallChannel } from '../services/realtime';
 import { apiFetch, authHeaders } from '../utils/api';
@@ -31,6 +31,11 @@ export default function MessagesPage() {
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [newConversationOpen, setNewConversationOpen] = useState(false);
+  const [messageMenuOpen, setMessageMenuOpen] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [unreadMarkerByConv, setUnreadMarkerByConv] = useState({});
   const [groupSettings, setGroupSettings] = useState({ title: '', description: '', picture: '' });
   const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -60,6 +65,7 @@ export default function MessagesPage() {
   const ringtoneRef = useRef(null);
   const chatMenuRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const unreadMarkerRef = useRef(null);
 
   function ChatIcon({ name, size = 20 }) {
     const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
@@ -78,6 +84,8 @@ export default function MessagesPage() {
       screen: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8" /><path d="M12 16v4" /></>,
       chat: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></>,
       end: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" /></>,
+      edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
+      trash: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>,
     };
     return <svg {...common}>{paths[name]}</svg>;
   }
@@ -88,6 +96,11 @@ export default function MessagesPage() {
 
   const activeParticipant = active?.participant;
   const activeMessages = useMemo(() => messages[active?.id] || [], [messages, active]);
+  const unreadMarkerId = active?.id ? unreadMarkerByConv[active.id] : null;
+  const firstUnreadId = (list = []) => {
+    const ownIds = new Set([user?.username, user?.id].filter(Boolean));
+    return list.find(msg => msg?.author?.id && !ownIds.has(msg.author.id) && !(msg.readBy || []).includes(user?.username))?.id || null;
+  };
   const filteredConversations = useMemo(() => {
     const q = conversationSearch.trim().toLowerCase();
     if (!q) return conversations;
@@ -124,6 +137,8 @@ export default function MessagesPage() {
     if (!active?.id) return;
     fetchMessages({ token, conversationId: active.id })
       .then(loaded => {
+        const markerId = firstUnreadId(loaded);
+        setUnreadMarkerByConv(prev => ({ ...prev, [active.id]: markerId }));
         setMessages(prev => ({ ...prev, [active.id]: loaded }));
         setConversations(prev => prev.map(conv => conv.id === active.id ? { ...conv, receivedUnreadCount: 0 } : conv));
         return markConversationRead({ token, conversationId: active.id }).catch(() => null);
@@ -155,9 +170,9 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!active?.id) return;
     requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ block: 'end' });
+      (unreadMarkerId ? unreadMarkerRef.current : messagesEndRef.current)?.scrollIntoView({ block: unreadMarkerId ? 'center' : 'end' });
     });
-  }, [active?.id, activeMessages.length]);
+  }, [active?.id, activeMessages.length, unreadMarkerId]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -321,6 +336,9 @@ export default function MessagesPage() {
       });
       setActive(conversation);
       setTargetUsername('');
+      setConversationSearch('');
+      setNewConversationOpen(false);
+      setUserResults([]);
     } catch (err) {
       showToast(err.message || 'Sem permissao para enviar mensagem', '');
     } finally {
@@ -395,6 +413,29 @@ export default function MessagesPage() {
     if (!active?.id || !window.confirm('Excluir mensagem?')) return;
     await deleteMessage({ token, conversationId: active.id, messageId }).catch(err => showToast(err.message || 'Erro ao excluir mensagem', ''));
     setMessages(prev => ({ ...prev, [active.id]: (prev[active.id] || []).filter(msg => msg.id !== messageId) }));
+    setMessageMenuOpen(null);
+  };
+
+  const startEditMessage = (msg) => {
+    setEditingMessage(msg);
+    setEditText(msg.content || '');
+    setMessageMenuOpen(null);
+  };
+
+  const saveEditedMessage = async () => {
+    if (!active?.id || !editingMessage?.id || !editText.trim()) return;
+    try {
+      const saved = await updateMessage({ token, conversationId: active.id, messageId: editingMessage.id, content: editText.trim() });
+      setMessages(prev => ({
+        ...prev,
+        [active.id]: (prev[active.id] || []).map(msg => msg.id === editingMessage.id ? { ...msg, ...saved, edited: true } : msg),
+      }));
+      setEditingMessage(null);
+      setEditText('');
+      showToast('Mensagem editada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao editar mensagem', '!');
+    }
   };
 
   const send = async () => {
@@ -780,7 +821,7 @@ export default function MessagesPage() {
     <div className="page-scroll">
       <audio ref={ringtoneRef} src={callRingtone} loop preload="auto" />
       <Topbar title="Mensagens" />
-      <div className="messages-shell">
+      <div className={`messages-shell ${active ? 'has-active' : ''}`}>
         <div className="conv-list">
           <div className="conv-list-head">
             <div className="messages-title-row">
@@ -790,7 +831,7 @@ export default function MessagesPage() {
               )}
             </div>
             <div className="messages-quick-actions">
-              <button className="messages-new-btn" onClick={beginConversation} disabled={loading || !targetUsername.trim()}><ChatIcon name="plus" size={15} /> Nova</button>
+              <button className="messages-new-btn" onClick={() => setNewConversationOpen(true)}><ChatIcon name="plus" size={15} /> Nova</button>
               <button className="messages-outline-btn" onClick={() => setGroupOpen(true)}>Grupo</button>
             </div>
             <div className="messages-search-row">
@@ -849,6 +890,7 @@ export default function MessagesPage() {
         {active ? (
           <div className="chat-area">
             <div className="chat-head">
+              <button className="chat-back-btn" onClick={() => setActive(null)}>{'<'}</button>
               <Avatar
                 size={40}
                 src={conversationPhoto(active)}
@@ -883,26 +925,44 @@ export default function MessagesPage() {
                 const mine = msg.author?.id === user?.username || msg.author?.id === user?.id;
                 const msgAuthor = authorForMessage(msg);
                 return (
-                  <div key={msg.id} className={`msg-row ${mine ? 'me' : ''}`}>
-                    {!mine && (
-                      <Avatar
-                        size={30}
-                        src={msgAuthor?.profilePicture || null}
-                        name={msgAuthor?.displayName || msgAuthor?.username || active.title}
-                        initials={(msgAuthor?.displayName || msgAuthor?.username || active.title || '?').slice(0, 2)}
-                      />
+                  <div key={msg.id} className="msg-block">
+                    {unreadMarkerId === msg.id && (
+                      <div ref={unreadMarkerRef} className="unread-divider"><span>Mensagens nao lidas</span></div>
                     )}
-                    <div className="msg-stack">
-                      <div className={`msg-bubble ${mine ? 'me' : ''}`}>
-                        {!mine && active.type === 'group' && <strong className="msg-author-name">{msgAuthor?.displayName || msgAuthor?.username || 'Usuario'}</strong>}
-                        {msg.content && <div>{msg.content}</div>}
-                        {renderMedia(msg.media)}
-                      </div>
-                      {mine && <button className="msg-delete" onClick={() => removeMessage(msg.id)}>Excluir</button>}
-                      <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
-                      {mine && activeParticipant?.username && msg.readBy?.includes(activeParticipant.username) && (
-                        <div className="msg-read">Lido</div>
+                    <div className={`msg-row ${mine ? 'me' : ''}`}>
+                      {!mine && (
+                        <Avatar
+                          size={30}
+                          src={msgAuthor?.profilePicture || null}
+                          name={msgAuthor?.displayName || msgAuthor?.username || active.title}
+                          initials={(msgAuthor?.displayName || msgAuthor?.username || active.title || '?').slice(0, 2)}
+                        />
                       )}
+                      <div className="msg-stack">
+                        <div className={`msg-bubble ${mine ? 'me' : ''}`}>
+                          {!mine && active.type === 'group' && <strong className="msg-author-name">{msgAuthor?.displayName || msgAuthor?.username || 'Usuario'}</strong>}
+                          {msg.content && <div>{msg.content}</div>}
+                          {msg.edited && <small className="msg-edited">editada</small>}
+                          {renderMedia(msg.media)}
+                        </div>
+                        <div className={`msg-meta-line ${mine ? 'me' : ''}`}>
+                          <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
+                          {mine && (
+                            <div className="msg-menu-wrap">
+                              <button className="msg-more-btn" onClick={() => setMessageMenuOpen(messageMenuOpen === msg.id ? null : msg.id)}><ChatIcon name="more" size={15} /></button>
+                              {messageMenuOpen === msg.id && (
+                                <div className="msg-menu">
+                                  <button onClick={() => startEditMessage(msg)}><ChatIcon name="edit" size={14} /> Editar mensagem</button>
+                                  <button className="danger" onClick={() => removeMessage(msg.id)}><ChatIcon name="trash" size={14} /> Excluir mensagem</button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {mine && activeParticipant?.username && msg.readBy?.includes(activeParticipant.username) && (
+                          <div className="msg-read">Lido</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1001,6 +1061,55 @@ export default function MessagesPage() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {newConversationOpen && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setNewConversationOpen(false)}>
+          <div className="modal-box new-chat-modal">
+            <div className="modal-header">
+              <span className="modal-title">Nova conversa</span>
+              <button className="modal-close" onClick={() => setNewConversationOpen(false)}>x</button>
+            </div>
+            <div className="modal-body new-chat-body">
+              <div className="messages-user-search">
+                <input
+                  className="messages-search-input"
+                  autoFocus
+                  placeholder="Buscar pessoa por nome ou @username"
+                  value={targetUsername}
+                  onChange={e => setTargetUsername(e.target.value.replace(/^@/, ''))}
+                  onKeyDown={e => e.key === 'Enter' && beginConversation()}
+                />
+                {userResults.length > 0 && (
+                  <div className="messages-search-popout in-modal">
+                    {userResults.map(person => (
+                      <button key={person.username} onClick={() => { setTargetUsername(person.username); setUserResults([]); }}>
+                        <Avatar size={34} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <span>{person.displayName || person.username}<small>@{person.username}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button className="messages-group-btn" onClick={beginConversation} disabled={loading || !targetUsername.trim()}>
+                Criar conversa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingMessage && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setEditingMessage(null)}>
+          <div className="modal-box new-chat-modal">
+            <div className="modal-header">
+              <span className="modal-title">Editar mensagem</span>
+              <button className="modal-close" onClick={() => setEditingMessage(null)}>x</button>
+            </div>
+            <div className="modal-body new-chat-body">
+              <textarea className="messages-search-input edit-message-input" value={editText} onChange={e => setEditText(e.target.value)} autoFocus />
+              <button className="messages-group-btn" onClick={saveEditedMessage} disabled={!editText.trim()}>Salvar</button>
             </div>
           </div>
         </div>

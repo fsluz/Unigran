@@ -1,6 +1,10 @@
 export function relativeTime(value) {
   if (!value) return 'agora';
-  const date = new Date(value);
+  const raw = String(value);
+  const normalized = /^\d{4}-\d{2}-\d{2}T/.test(raw) && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)
+    ? `${raw}Z`
+    : raw;
+  const date = new Date(normalized);
   const time = date.getTime();
   if (Number.isNaN(time)) return 'agora';
 

@@ -341,6 +341,13 @@ export default function LoginPage({ onGoRegister }) {
 
           {error && <div className="auth-alert">{error}</div>}
 
+          <button type="button" className="auth-google-custom" onClick={handleGoogle}>
+            <span className="auth-google-mark">G</span>
+            Continuar com Google
+          </button>
+
+          <div className="auth-divider"><span>ou entre com email</span></div>
+
           <div className="form-group">
             <label className="form-label">Email institucional</label>
             <input
@@ -408,7 +415,7 @@ export default function LoginPage({ onGoRegister }) {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 
-          <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
+          <div ref={googleButtonRef} style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
             Nao tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoRegister}>Cadastre-se gratuitamente</a>

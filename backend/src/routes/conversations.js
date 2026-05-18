@@ -539,6 +539,47 @@ router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
   }
 });
 
+router.patch('/:convId/messages/:msgId', auth, async (req, res) => {
+  try {
+    const content = String(req.body?.content || '').trim();
+    if (!content) return res.status(400).json({ error: 'Mensagem vazia' });
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.convId)}";
+        conversation-participant(participant: $user, conversation: $conv);
+        message-delivery(conversation: $conv, message: $m);
+        $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}", has message-text $text, has creation-timestamp $ts;
+      fetch {
+        "text": $text,
+        "created_at": $ts
+      };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Mensagem nao encontrada' });
+    const payload = unpackMessageText(rows[0].text);
+    if (payload.author?.id !== req.user.username) return res.status(403).json({ error: 'Sem permissao' });
+    const nextPayload = JSON.stringify({ ...payload, v: 2, content, edited: true });
+    await writeQuery(`
+      match
+        $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}";
+      update
+        $m has message-text "${typeqlLiteral(nextPayload)}";
+    `);
+    res.json({
+      id: req.params.msgId,
+      content,
+      media: payload.media || null,
+      readBy: payload.readBy || [],
+      edited: true,
+      time: rows[0].created_at,
+      author: payload.author || { id: req.user.username, displayName: req.user.displayName },
+    });
+  } catch (err) {
+    console.error('[messages PATCH]', err);
+    res.status(500).json({ error: 'Erro ao editar' });
+  }
+});
+
 router.delete('/:id', auth, async (req, res) => {
   try {
     await writeQuery(`
