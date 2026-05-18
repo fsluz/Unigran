@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { auth, normalizeRole, requireAtLeast } from '../middleware/auth.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { auditLog } from '../services/audit.service.js';
+
+function getIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+}
 
 const router = Router();
 
@@ -81,6 +86,7 @@ router.patch('/users/:username/role', requireAtLeast('admin'), async (req, res) 
       update
         $u has user-role "${role}";
     `);
+    auditLog({ action: 'USER_ROLE_CHANGED', category: 'ADMIN', actor: req.user?.username, target: req.params.username, ip: getIp(req), meta: { newRole: role } });
     res.json({ username: req.params.username, role });
   } catch (err) {
     console.error('[admin role]', err);
@@ -102,6 +108,15 @@ router.patch('/users/:username/ban', async (req, res) => {
         $u has is-banned ${parsed.data.banned};
         ${reason}
     `);
+    auditLog({
+      action: parsed.data.banned ? 'USER_BANNED' : 'USER_UNBANNED',
+      category: 'ADMIN',
+      actor: req.user?.username,
+      target: req.params.username,
+      ip: getIp(req),
+      meta: { reason: parsed.data.reason || null },
+      level: 'ALERT',
+    });
     res.json({ username: req.params.username, banned: parsed.data.banned });
   } catch (err) {
     console.error('[admin ban]', err);
@@ -174,6 +189,34 @@ router.patch('/reports/:id', async (req, res) => {
   } catch (err) {
     console.error('[admin report status]', err);
     res.status(500).json({ error: 'Erro ao salvar denuncia' });
+  }
+});
+
+import { readAuditLogs } from '../services/audit.service.js';
+
+// GET /api/admin/audit-logs — apenas admins
+router.get('/audit-logs', requireAtLeast('admin'), (req, res) => {
+  try {
+    let logs = readAuditLogs();
+
+    // Filtros opcionais via query string
+    const { category, action, actor, level, from, to, limit } = req.query;
+    if (category) logs = logs.filter(l => l.category === category.toUpperCase());
+    if (action)   logs = logs.filter(l => l.action?.toLowerCase().includes(action.toLowerCase()));
+    if (actor)    logs = logs.filter(l => l.actor?.toLowerCase().includes(actor.toLowerCase()));
+    if (level)    logs = logs.filter(l => l.level === level.toUpperCase());
+    if (from)     logs = logs.filter(l => l.timestamp >= from);
+    if (to)       logs = logs.filter(l => l.timestamp <= to);
+
+    // Mais recentes primeiro
+    logs = logs.reverse();
+    if (limit) logs = logs.slice(0, parseInt(limit) || 100);
+
+    auditLog({ action: 'AUDIT_LOGS_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
+    res.json({ logs, total: logs.length });
+  } catch (err) {
+    console.error('[audit-logs]', err);
+    res.status(500).json({ error: 'Erro ao ler logs' });
   }
 });
 

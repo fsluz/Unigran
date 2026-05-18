@@ -9,6 +9,11 @@ import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
 import { sendPasswordResetCode } from '../services/email.service.js';
 import { generateCode, saveCode, verifyCode, deleteCode } from '../services/resetCode.service.js';
+import { auditLog } from '../services/audit.service.js';
+
+function getIp(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+}
 
 const router = Router();
 
@@ -93,6 +98,7 @@ router.post('/register', async (req, res) => {
           has post-visibility "public";
     `);
     const payload = { id: username, username, email, role: 'user', displayName: name, phone: phone || null };
+    auditLog({ action: 'REGISTER', category: 'AUTH', actor: username, target: username, ip: getIp(req), meta: { email } });
     res.status(201).json({ token: sign(payload), user: payload });
   } catch (err) {
     if (err.message?.includes('unique') || err.message?.includes('key')) {
@@ -130,12 +136,21 @@ router.post('/login', async (req, res) => {
         "password_changed_at": $changed
       };
     `);
-    if (!rows.length || !rows[0].password_hash) return res.status(401).json({ error: 'Credenciais invalidas' });
+    if (!rows.length || !rows[0].password_hash) {
+      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip: getIp(req), meta: { email, reason: 'user_not_found' }, level: 'WARN' });
+      return res.status(401).json({ error: 'Credenciais invalidas' });
+    }
 
     const row = rows[0];
     const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
-    if (!ok) return res.status(401).json({ error: 'Credenciais invalidas' });
-    if (attrBoolTrue(row.banned)) return res.status(403).json({ error: 'Conta banida' });
+    if (!ok) {
+      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip: getIp(req), meta: { email, reason: 'wrong_password' }, level: 'WARN' });
+      return res.status(401).json({ error: 'Credenciais invalidas' });
+    }
+    if (attrBoolTrue(row.banned)) {
+      auditLog({ action: 'LOGIN_BLOCKED', category: 'AUTH', actor: row.username || email, ip: getIp(req), meta: { email, reason: 'banned' }, level: 'ALERT' });
+      return res.status(403).json({ error: 'Conta banida' });
+    }
     const username = row.username || email.split('@')[0] || 'user';
     const twoFactor = await readTwoFactorByUsername(username);
     if (attrBoolTrue(twoFactor.enabled)) {
@@ -153,6 +168,7 @@ router.post('/login', async (req, res) => {
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
     };
+    auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip: getIp(req), meta: { email, role: payload.role } });
     res.json({ token: sign(payload), user: payload });
   } catch (err) {
     console.error('[login]', err);
@@ -263,6 +279,7 @@ router.get('/me', async (req, res) => {
       }
     }
     const twoFactor = await readTwoFactorByUsername(decoded.username);
+    auditLog({ action: 'SESSION_VALIDATED', category: 'AUTH', actor: decoded.username, ip: getIp(req), meta: { role: normalizeRole(row.role || decoded.role) } });
     res.json({
       user: {
         ...decoded,
@@ -376,6 +393,7 @@ router.post('/reset-password/request', async (req, res) => {
     const code = generateCode();
     saveCode(email, code);
     await sendPasswordResetCode(email, code);
+    auditLog({ action: 'PASSWORD_RESET_REQUESTED', category: 'AUTH', actor: 'anonymous', target: email, ip: getIp(req), meta: { email } });
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password/request]', err);
@@ -390,8 +408,10 @@ router.post('/reset-password/verify', (req, res) => {
   if (!email || !code) return res.status(400).json({ error: 'Email e codigo obrigatorios' });
 
   if (!verifyCode(email, code)) {
+    auditLog({ action: 'PASSWORD_RESET_CODE_INVALID', category: 'AUTH', actor: 'anonymous', target: email, ip: getIp(req), level: 'WARN' });
     return res.status(400).json({ error: 'Codigo invalido ou expirado' });
   }
+  auditLog({ action: 'PASSWORD_RESET_CODE_VERIFIED', category: 'AUTH', actor: 'anonymous', target: email, ip: getIp(req) });
   res.json({ ok: true });
 });
 
@@ -425,7 +445,8 @@ router.put('/reset-password', async (req, res) => {
       update $u has password-hash "${newHash}";
     `);
 
-    deleteCode(email); // invalida o código após uso
+    deleteCode(email);
+    auditLog({ action: 'PASSWORD_RESET_COMPLETED', category: 'AUTH', actor: 'anonymous', target: email, ip: getIp(req), meta: { email } });
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password]', err);
@@ -456,7 +477,10 @@ router.put('/change-password', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
 
     const ok = await bcrypt.compare(currentPassword, decodeHash(rows[0].password_hash));
-    if (!ok) return res.status(401).json({ error: 'Senha atual incorreta' });
+    if (!ok) {
+      auditLog({ action: 'PASSWORD_CHANGE_FAILED', category: 'AUTH', actor: decoded.username, ip: getIp(req), meta: { reason: 'wrong_current_password' }, level: 'WARN' });
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
 
     const newHash = encodeHash(await bcrypt.hash(newPassword, 12));
     const changedAt = new Date().toISOString();
@@ -467,6 +491,7 @@ router.put('/change-password', async (req, res) => {
         $u has password-hash "${newHash}";
         $u has password-changed-at "${changedAt}";
     `);
+    auditLog({ action: 'PASSWORD_CHANGED', category: 'AUTH', actor: decoded.username, ip: getIp(req) });
     res.json({ ok: true, passwordChangedAt: changedAt });
   } catch (err) {
     console.error('[change-password]', err);
@@ -514,6 +539,7 @@ router.delete('/account', async (req, res) => {
       delete
         $u;
     `);
+    auditLog({ action: 'ACCOUNT_DELETED', category: 'DATA', actor: decoded.username, target: decoded.username, ip: getIp(req), meta: { email: decoded.email }, level: 'ALERT' });
     res.json({ deleted: true });
   } catch (err) {
     console.error('[delete account]', err);

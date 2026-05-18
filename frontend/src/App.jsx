@@ -16,6 +16,7 @@ import SettingsPage       from './pages/SettingsPage';
 import PublicProfilePage  from './pages/PublicProfilePage';
 import FavoritesPage      from './pages/FavoritesPage';
 import ZuniPage           from './pages/ZuniPage';
+import AuditLogsPage       from './pages/AuditLogsPage';
 
 function AppShell() {
   const { user, logout } = useAuth();
@@ -79,6 +80,7 @@ function AppShell() {
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
+    auditLogs: user?.role === 'admin' ? <AuditLogsPage /> : <HomePage />,
   };
 
   return (
