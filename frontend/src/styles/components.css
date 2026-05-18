@@ -869,7 +869,7 @@
   padding: 9px 16px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.18s;
   font-family: var(--font-body);
 }
-.chat-input:focus { border-color: var(--accent); background: #fff; }
+.chat-input:focus { border-color: var(--accent); background: var(--card); }
 .chat-input::placeholder { color: var(--text-light); }
 .chat-input-icon { width: 32px; height: 32px; border-radius: 50%; background: none; border: none; color: var(--text-muted); font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.15s; }
 .chat-input-icon:hover { color: var(--accent); }
@@ -1658,7 +1658,15 @@
 .messages-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .messages-title-row h3 { font-family: var(--font-head); font-weight: 800; font-size: 20px; color: var(--text); margin: 0; }
 .messages-title-badge { min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px; display: grid; place-items: center; background: var(--red); color: #fff; font-size: 12px; font-weight: 900; }
-.messages-search-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: center; }
+.messages-title-icon { width: 16px; height: 16px; display: inline-block; border: 2px solid currentColor; border-radius: 50%; margin-right: 8px; vertical-align: -2px; }
+.messages-quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.messages-new-btn,.messages-outline-btn { height: 38px; border-radius: 8px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.messages-new-btn { border: 0; background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff); color: #fff; }
+.messages-new-btn:hover { background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4); }
+.messages-new-btn:disabled { opacity: .55; cursor: not-allowed; }
+.messages-outline-btn { border: 1px solid var(--border); background: var(--card); color: var(--text); }
+.messages-outline-btn:hover { border-color: var(--accent); color: var(--accent); }
+.messages-search-row { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; align-items: center; }
 .messages-search-input,.group-popout input { min-width: 0; width: 100%; background: var(--page-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13px; outline: none; color: var(--text); }
 .messages-group-btn { border: 0; border-radius: 12px; padding: 10px 14px; background: linear-gradient(135deg,#6A00F4,#00A8FF); color: #fff; font-weight: 900; cursor: pointer; white-space: nowrap; }
 .messages-group-btn:disabled { opacity: .55; cursor: not-allowed; }
@@ -1676,6 +1684,30 @@
 .group-selected-users { display: flex; gap: 6px; flex-wrap: wrap; min-height: 28px; }
 .group-selected-users button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 800; cursor: pointer; }
 .chat-head-name-button { display: block; border: 0; background: transparent; padding: 0; color: var(--text); cursor: pointer; text-align: left; }
+.chat-head-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.chat-head-icon { width: 36px; height: 36px; border-radius: 50%; border: 0; background: transparent; color: var(--text); display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s, transform .15s; }
+.chat-head-icon:hover { background: var(--accent-light); color: var(--accent); transform: translateY(-1px); }
+.chat-menu-wrap { position: relative; }
+.chat-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 100; width: 176px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); box-shadow: var(--shadow); }
+.chat-menu button { width: 100%; border: 0; background: transparent; color: var(--text); text-align: left; padding: 9px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+.chat-menu button:hover { background: var(--page-bg); }
+.chat-menu button.danger { color: var(--red); }
+.chat-about-modal { max-width: 520px; overflow: hidden; padding: 0; }
+.chat-about-hero { position: relative; text-align: center; padding: 82px 22px 20px; border-bottom: 1px solid var(--border); }
+.chat-about-cover { position: absolute; inset: 0 0 auto; height: 118px; background: radial-gradient(circle at 20% 0%, rgba(0,168,255,.34), transparent 34%), radial-gradient(circle at 80% 0%, rgba(106,0,244,.34), transparent 34%), linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff); opacity: .95; }
+.chat-about-avatar { position: relative; width: 96px; height: 96px; margin: 0 auto 10px; border-radius: 50%; display: grid; place-items: center; background: var(--card); box-shadow: var(--shadow); }
+.chat-about-close { position: absolute; right: 14px; top: 14px; z-index: 2; }
+.chat-about-hero h3 { position: relative; margin: 0; color: var(--text); font-family: var(--font-head); font-size: 22px; }
+.chat-about-hero p { position: relative; margin: 6px 0 0; color: var(--text-muted); font-size: 13px; }
+.chat-about-body { display: grid; gap: 12px; padding: 18px; }
+.chat-about-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--page-bg); display: grid; gap: 6px; }
+.chat-about-card strong { color: var(--text); font-family: var(--font-head); font-size: 13px; }
+.chat-about-card span { color: var(--text-muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.chat-about-members { display: grid; gap: 8px; max-height: 210px; overflow: auto; }
+.chat-about-member { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chat-about-member span { display: grid; color: var(--text); font-weight: 800; }
+.chat-about-member small { color: var(--text-muted); font-weight: 500; }
+.chat-about-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .group-settings-popout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
 .group-settings-main { display: grid; gap: 10px; }
 .group-settings-photo { width: 112px; height: 112px; border-radius: 26px; }

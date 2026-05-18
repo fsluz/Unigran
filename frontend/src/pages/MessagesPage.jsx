@@ -29,6 +29,8 @@ export default function MessagesPage() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [addPeopleOpen, setAddPeopleOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [groupSettings, setGroupSettings] = useState({ title: '', description: '', picture: '' });
   const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -56,6 +58,29 @@ export default function MessagesPage() {
   const deviceIdRef = useRef(localStorage.getItem('unigran_device_id') || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const callIdRef = useRef(null);
   const ringtoneRef = useRef(null);
+  const chatMenuRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  function ChatIcon({ name, size = 20 }) {
+    const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
+    const paths = {
+      phone: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" /></>,
+      video: <><path d="M15 10 21 6v12l-6-4V10Z" /><rect x="3" y="6" width="12" height="12" rx="2" /></>,
+      more: <><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></>,
+      plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+      send: <><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></>,
+      mic: <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></>,
+      stop: <><rect x="6" y="6" width="12" height="12" rx="2" /></>,
+      volume: <><path d="M11 5 6 9H3v6h3l5 4V5Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></>,
+      muted: <><path d="M11 5 6 9H3v6h3l5 4V5Z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></>,
+      micOff: <><path d="m2 2 20 20" /><path d="M18.9 13A7 7 0 0 1 5 12v-2" /><path d="M9 9v3a3 3 0 0 0 5.1 2.1" /><path d="M15 9.3V5a3 3 0 0 0-5.1-2.1" /><path d="M12 19v3" /></>,
+      cameraOff: <><path d="m2 2 20 20" /><path d="M15 10 21 6v11" /><path d="M10.7 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.7" /></>,
+      screen: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8" /><path d="M12 16v4" /></>,
+      chat: <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /></>,
+      end: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" /></>,
+    };
+    return <svg {...common}>{paths[name]}</svg>;
+  }
 
   useEffect(() => {
     localStorage.setItem('unigran_device_id', deviceIdRef.current);
@@ -126,6 +151,13 @@ export default function MessagesPage() {
 
     return () => clearInterval(interval);
   }, [active?.id, token]);
+
+  useEffect(() => {
+    if (!active?.id) return;
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ block: 'end' });
+    });
+  }, [active?.id, activeMessages.length]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -236,6 +268,14 @@ export default function MessagesPage() {
       audio.currentTime = 0;
     }
   }, [incomingCall]);
+
+  useEffect(() => {
+    const close = (event) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(event.target)) setChatMenuOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   useEffect(() => {
     const q = targetUsername.trim();
@@ -411,6 +451,7 @@ export default function MessagesPage() {
   const conversationSub = (conv) => conv?.type === 'group'
     ? `${Number(conv.participants?.length || 1) + 1} pessoas`
     : `@${conv?.participant?.username || 'usuario'} - ${conv?.participant?.online ? 'Online agora' : 'Offline'}`;
+  const conversationPhoto = (conv) => conv?.groupPicture || conv?.participant?.profilePicture || null;
   const authorForMessage = (msg) => {
     if (msg.author?.id === user?.username || msg.author?.id === user?.id) return { ...msg.author, displayName: user?.displayName, profilePicture: user?.profilePicture };
     const participant = active?.participants?.find(p => p.username === msg.author?.id);
@@ -663,6 +704,22 @@ export default function MessagesPage() {
     }
   };
 
+  const openAbout = async () => {
+    setChatMenuOpen(false);
+    if (active?.type === 'group') {
+      await openGroupSettings();
+      setGroupSettingsOpen(false);
+    }
+    setAboutOpen(true);
+  };
+
+  const openProfileFromChat = () => {
+    setChatMenuOpen(false);
+    const username = active?.participant?.username;
+    if (username) window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: username }));
+    setAboutOpen(false);
+  };
+
   const saveGroupSettings = async () => {
     if (!active?.id) return;
     setLoading(true);
@@ -727,16 +784,20 @@ export default function MessagesPage() {
         <div className="conv-list">
           <div className="conv-list-head">
             <div className="messages-title-row">
-              <h3>Mensagens</h3>
+              <h3><span className="messages-title-icon" /> Mensagens</h3>
               {conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
                 <span className="messages-title-badge">{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
               )}
+            </div>
+            <div className="messages-quick-actions">
+              <button className="messages-new-btn" onClick={beginConversation} disabled={loading || !targetUsername.trim()}><ChatIcon name="plus" size={15} /> Nova</button>
+              <button className="messages-outline-btn" onClick={() => setGroupOpen(true)}>Grupo</button>
             </div>
             <div className="messages-search-row">
               <div className="messages-user-search">
                 <input
                   className="messages-search-input"
-                  placeholder="Buscar ou iniciar por @username"
+                  placeholder="Buscar..."
                   value={targetUsername}
                   onChange={e => {
                     const value = e.target.value.replace(/^@/, '');
@@ -756,12 +817,6 @@ export default function MessagesPage() {
                   </div>
                 )}
               </div>
-              <button className="btn btn-primary btn-sm" onClick={beginConversation} disabled={loading || !targetUsername.trim()}>
-                Nova
-              </button>
-              <button className="messages-group-btn" onClick={() => setGroupOpen(true)}>
-                Criar grupo
-              </button>
             </div>
           </div>
 
@@ -796,24 +851,30 @@ export default function MessagesPage() {
             <div className="chat-head">
               <Avatar
                 size={40}
-                src={active.groupPicture || activeParticipant?.profilePicture || null}
+                src={conversationPhoto(active)}
                 name={conversationTitle(active)}
                 initials={(conversationTitle(active) || '?').slice(0, 2)}
               />
               <div>
-                <button className="chat-head-name chat-head-name-button" onClick={active.type === 'group' ? openGroupSettings : undefined}>{conversationTitle(active)}</button>
+                <button className="chat-head-name chat-head-name-button" onClick={openAbout}>{conversationTitle(active)}</button>
                 <div className="chat-head-sub" style={{ color: active.type !== 'group' && activeParticipant?.online ? '#22C55E' : 'var(--text-muted)' }}>
                   {conversationSub(active)}
                 </div>
               </div>
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {active.type === 'group' && (
-                  <button className="btn btn-primary btn-sm" onClick={openGroupSettings}>
-                    Opcoes
-                  </button>
-                )}
-                <button className="btn btn-secondary btn-sm" onClick={() => startCall('audio')}>Audio</button>
-                <button className="btn btn-secondary btn-sm" onClick={() => startCall('video')}>Video</button>
+              <div className="chat-head-actions">
+                <button className="chat-head-icon" onClick={() => startCall('audio')} title="Ligacao de audio" aria-label="Ligacao de audio"><ChatIcon name="phone" size={18} /></button>
+                <button className="chat-head-icon" onClick={() => startCall('video')} title="Ligacao de video" aria-label="Ligacao de video"><ChatIcon name="video" size={19} /></button>
+                <div className="chat-menu-wrap" ref={chatMenuRef}>
+                  <button className="chat-head-icon" onClick={() => setChatMenuOpen(v => !v)} title="Mais" aria-label="Mais opcoes"><ChatIcon name="more" size={19} /></button>
+                  {chatMenuOpen && (
+                    <div className="chat-menu">
+                      <button onClick={openAbout}>{active.type === 'group' ? 'Ver grupo' : 'Ver Perfil'}</button>
+                      <button onClick={() => { setChatMenuOpen(false); showToast('Notificacoes silenciadas', 'OK'); }}>Silenciar Notificacoes</button>
+                      <button onClick={() => { setMessages(prev => ({ ...prev, [active.id]: [] })); setChatMenuOpen(false); }}>Limpar Chat</button>
+                      <button className="danger" onClick={() => { setChatMenuOpen(false); showToast('Usuario bloqueado', 'OK'); }}>Bloquear</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -847,6 +908,7 @@ export default function MessagesPage() {
                 );
               })}
               {typingUsers.length > 0 && <div className="typing-dot">{typingUsers.join(', ')} digitando...</div>}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="chat-input-bar">
@@ -858,10 +920,10 @@ export default function MessagesPage() {
                 onChange={e => setFile(e.target.files?.[0] || null)}
               />
               <button className="chat-input-icon" onClick={() => fileInputRef.current?.click()} title="Foto, video ou audio">
-                +
+                <ChatIcon name="plus" size={18} />
               </button>
               <button className={`chat-input-icon ${recording ? 'recording' : ''}`} onClick={recording ? stopRecording : startRecording} title={recording ? 'Parar audio' : 'Gravar audio'}>
-                {recording ? '■' : '●'}
+                <ChatIcon name={recording ? 'stop' : 'mic'} size={17} />
               </button>
               <input
                 className="chat-input"
@@ -872,7 +934,7 @@ export default function MessagesPage() {
               />
               {file && <button className="chat-input-icon" onClick={() => setFile(null)} title="Remover arquivo">x</button>}
               <button className="chat-send-btn" onClick={send} disabled={(!text.trim() && !file) || sendingMedia}>
-                Enviar
+                <ChatIcon name="send" size={18} />
               </button>
             </div>
           </div>
@@ -882,6 +944,67 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+      {aboutOpen && active && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setAboutOpen(false)}>
+          <div className="modal-box chat-about-modal">
+            <div className="chat-about-hero">
+              <button className="modal-close chat-about-close" onClick={() => setAboutOpen(false)}>x</button>
+              <div className="chat-about-cover" />
+              <div className="chat-about-avatar">
+                <Avatar
+                  size={82}
+                  src={conversationPhoto(active)}
+                  name={conversationTitle(active)}
+                  initials={(conversationTitle(active) || '?').slice(0, 2)}
+                />
+              </div>
+              <h3>{conversationTitle(active)}</h3>
+              <p>{conversationSub(active)}</p>
+            </div>
+            <div className="chat-about-body">
+              {active.type === 'group' ? (
+                <>
+                  <div className="chat-about-card">
+                    <strong>Descricao</strong>
+                    <span>{active.description || groupSettings.description || 'Sem descricao ainda.'}</span>
+                  </div>
+                  <div className="chat-about-card">
+                    <strong>Membros</strong>
+                    <div className="chat-about-members">
+                      {(groupMembers.length ? groupMembers : [{ username: user?.username, displayName: user?.displayName, profilePicture: user?.profilePicture }, ...(active.participants || [])]).map(member => (
+                        <div key={member.username} className="chat-about-member">
+                          <Avatar size={32} src={member.profilePicture || null} name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
+                          <span>{member.displayName || member.username}<small>@{member.username}</small></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="chat-about-actions">
+                    <button className="messages-group-btn" onClick={() => { setAboutOpen(false); openGroupSettings(); }}>Editar grupo</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setAboutOpen(false); setAddPeopleOpen(true); }}>Adicionar pessoas</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="chat-about-card">
+                    <strong>Perfil</strong>
+                    <span>@{activeParticipant?.username || 'usuario'}</span>
+                  </div>
+                  <div className="chat-about-card">
+                    <strong>Status</strong>
+                    <span>{activeParticipant?.online ? 'Online agora' : 'Offline'}</span>
+                  </div>
+                  <div className="chat-about-actions">
+                    <button className="messages-group-btn" onClick={openProfileFromChat}>Ver perfil</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => startCall('audio')}>Ligar audio</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => startCall('video')}>Ligar video</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {groupOpen && (
         <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setGroupOpen(false)}>
           <div className="modal-box" style={{ maxWidth: 430 }}>
@@ -1051,12 +1174,12 @@ export default function MessagesPage() {
               </aside>
             )}
             <div className="call-controls">
-              <button onClick={toggleRemoteSound} title="Som">{call.soundMuted ? '🔇' : '🔊'}</button>
-              <button onClick={toggleMic} title="Microfone">{call.micMuted ? '🎙️' : '🎤'}</button>
-              <button onClick={() => endCall()} className="danger" title="Encerrar">☎</button>
-              <button onClick={toggleCamera} title="Camera">{call.cameraOff ? '📷' : '🎥'}</button>
-              <button onClick={shareScreen} title="Compartilhar tela">▣</button>
-              <button onClick={() => setCallChatOpen(v => !v)} title="Chat">💬</button>
+              <button onClick={toggleRemoteSound} title="Som"><ChatIcon name={call.soundMuted ? 'muted' : 'volume'} size={19} /></button>
+              <button onClick={toggleMic} title="Microfone"><ChatIcon name={call.micMuted ? 'micOff' : 'mic'} size={19} /></button>
+              <button onClick={() => endCall()} className="danger" title="Encerrar"><ChatIcon name="end" size={20} /></button>
+              <button onClick={toggleCamera} title="Camera"><ChatIcon name={call.cameraOff ? 'cameraOff' : 'video'} size={19} /></button>
+              <button onClick={shareScreen} title="Compartilhar tela"><ChatIcon name="screen" size={19} /></button>
+              <button onClick={() => setCallChatOpen(v => !v)} title="Chat"><ChatIcon name="chat" size={19} /></button>
             </div>
           </div>
         </div>
@@ -1085,3 +1208,4 @@ export default function MessagesPage() {
     </div>
   );
 }
+
