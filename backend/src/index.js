@@ -15,6 +15,7 @@ import searchRouter        from './routes/search.js';
 import uploadsRouter       from './routes/uploads.js';
 import storiesRouter       from './routes/stories.js';
 import realtimeRouter      from './routes/realtime.js';
+import dataExportRouter    from './routes/dataExport.js';
 import { setupSocket }     from './socket/handlers.js';
 
 const app    = express();
@@ -51,6 +52,7 @@ app.use('/api/search',        searchRouter);
 app.use('/api/uploads',       uploadsRouter);
 app.use('/api/stories',       storiesRouter);
 app.use('/api/realtime',      realtimeRouter);
+app.use('/api/data-export',   dataExportRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
 

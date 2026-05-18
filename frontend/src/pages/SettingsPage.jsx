@@ -44,6 +44,7 @@ const BASE_GROUPS = [
       { id: 'privacidade',  icon: '', label: 'Privacidade'    },
       { id: 'notificacoes', icon: '', label: 'Notificacoes'   },
       { id: 'seguranca',    icon: '', label: 'Seguranca'      },
+      { id: 'dados',        icon: '', label: 'Seus Dados'     },
     ],
   },
 ];
@@ -239,6 +240,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [editValue,   setEditValue]   = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [editError,   setEditError]   = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   const toggle = key => setCfg(p => ({ ...p, [key]: !p[key] }));
 
@@ -509,6 +511,34 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       return { ...prev, links: next };
     });
   };
+
+  async function downloadMyData() {
+    if (!token) return;
+    setExportLoading(true);
+    try {
+      const res = await apiFetch('/data-export/me.csv', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Exportar falhou');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `unigran-${user?.username || 'meus-dados'}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('CSV baixado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro exportar', '!');
+    } finally {
+      setExportLoading(false);
+    }
+  }
   async function disable2FA() {
     const res = await apiFetch('/auth/2fa/disable', {
       method: 'POST',
@@ -653,10 +683,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
             </Section>
             <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>Aviso Zona de Perigo</div>
-              {[{icon:'',label:'Baixar meus dados',desc:'Copia completa de todos os seus dados'},{icon:'',label:'Deletar conta e todos os dados',desc:'Acao permanente e irreversivel'}].map(item=>(
-                <div key={item.label} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:10, border:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.06)', marginBottom:10, cursor:'pointer' }}>
+              {[{icon:'',label:'Baixar meus dados',desc:'Copia completa de todos os seus dados', action: downloadMyData},{icon:'',label:'Deletar conta e todos os dados',desc:'Acao permanente e irreversivel', action: () => setDeleteModal(true)}].map(item=>(
+                <div key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:10, border:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.06)', marginBottom:10, cursor:'pointer' }}>
                   <span style={{ fontSize:20 }}>{item.icon}</span>
-                  <div><div style={{ fontWeight:700, fontSize:14, color:'var(--danger)' }}>{item.label}</div><div style={{ fontSize:12, color:'rgba(239,68,68,0.7)' }}>{item.desc}</div></div>
+                  <div><div style={{ fontWeight:700, fontSize:14, color:'var(--danger)' }}>{exportLoading && item.label === 'Baixar meus dados' ? 'Gerando CSV...' : item.label}</div><div style={{ fontSize:12, color:'rgba(239,68,68,0.7)' }}>{item.desc}</div></div>
                   <span style={{ marginLeft:'auto', color:'var(--danger)' }}>&gt;</span>
                 </div>
               ))}
@@ -736,7 +766,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
           {section === 'dados' && (
             <Section title="Seus Dados" desc="Gerencie e exporte todas suas informacoes">
               <Row title="Baixar seus dados" sub="Exportar posts, mensagens e informacoes de perfil">
-                <Button variant="secondary" size="sm" onClick={() => showToast('Voce receber um email com o arquivo em breve.', '')}>Baixar Exportar</Button>
+                <Button variant="secondary" size="sm" onClick={downloadMyData} disabled={exportLoading}>
+                  {exportLoading ? 'Gerando...' : 'Baixar CSV'}
+                </Button>
               </Row>
               <div className="settings-danger-zone">
                 <div className="settings-danger-zone-title">Aviso Zona de perigo</div>
