@@ -99,6 +99,10 @@
   border-radius: 8px;
   filter: drop-shadow(0 6px 14px var(--accent-glow));
 }
+.topbar-logo-svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 14px var(--accent-glow));
+}
 
 /*  MAIN SCROLL  */
 .page-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; background: transparent; }

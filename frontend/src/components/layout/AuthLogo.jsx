@@ -1,13 +1,17 @@
 import * as React from 'react';
 import '../../assets/bg-gradient.css';
-import logo from '../../assets/logo.png';;
+import UnigranLogo from './UnigranLogo';
 
 
 
 function AuthLogo() {
     return (
         <div className="auth-logo-row">
-            <img src={logo} alt="Logo" id='auth-logo-image' />
+            <UnigranLogo size={52} className="auth-logo-svg" />
+            <div>
+                <div className="auth-logo-title">UNIGRAN</div>
+                <div className="auth-logo-caption">Rede Social Academica</div>
+            </div>
         </div>
     );
 }

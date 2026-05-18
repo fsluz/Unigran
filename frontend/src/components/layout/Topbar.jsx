@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { fetchNotifications, markAllAsRead } from '../../services/notifications';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
-import unigranLogo from '../../assets/logo.png';
+import UnigranLogo from './UnigranLogo';
 
 function NotifDot({ children }) {
   return (
@@ -92,7 +92,7 @@ export default function Topbar({ title, left, right }) {
       {left && <div style={{ marginRight: 12 }}>{left}</div>}
       {title && (
         <div className="topbar-page-title">
-          <img src={unigranLogo} alt="Unigran" />
+          <UnigranLogo size={30} className="topbar-logo-svg" />
           <span>{title}</span>
         </div>
       )}

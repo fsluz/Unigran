@@ -45,6 +45,7 @@ export default function MessagesPage() {
   const [call, setCall] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [callChatOpen, setCallChatOpen] = useState(false);
+  const [ringtoneSrc, setRingtoneSrc] = useState(() => localStorage.getItem('unigran_call_ringtone') || callRingtone);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -92,6 +93,16 @@ export default function MessagesPage() {
 
   useEffect(() => {
     localStorage.setItem('unigran_device_id', deviceIdRef.current);
+  }, []);
+
+  useEffect(() => {
+    const updateRingtone = () => setRingtoneSrc(localStorage.getItem('unigran_call_ringtone') || callRingtone);
+    window.addEventListener('storage', updateRingtone);
+    window.addEventListener('unigran:ringtone-changed', updateRingtone);
+    return () => {
+      window.removeEventListener('storage', updateRingtone);
+      window.removeEventListener('unigran:ringtone-changed', updateRingtone);
+    };
   }, []);
 
   const activeParticipant = active?.participant;
@@ -819,7 +830,7 @@ export default function MessagesPage() {
 
   return (
     <div className="page-scroll">
-      <audio ref={ringtoneRef} src={callRingtone} loop preload="auto" />
+      <audio ref={ringtoneRef} src={ringtoneSrc} loop preload="auto" />
       <Topbar title="Mensagens" />
       <div className={`messages-shell ${active ? 'has-active' : ''}`}>
         <div className="conv-list">

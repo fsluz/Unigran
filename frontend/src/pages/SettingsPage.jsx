@@ -43,6 +43,7 @@ const BASE_GROUPS = [
       { id: 'pessoal',      icon: '', label: 'Dados Pessoais' },
       { id: 'privacidade',  icon: '', label: 'Privacidade'    },
       { id: 'notificacoes', icon: '', label: 'Notificacoes'   },
+      { id: 'mensagens',    icon: '', label: 'Mensagens'      },
       { id: 'seguranca',    icon: '', label: 'Seguranca'      },
       { id: 'dados',        icon: '', label: 'Seus Dados'     },
     ],
@@ -218,8 +219,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const profileInputRef = useRef(null);
+  const ringtoneInputRef = useRef(null);
   const [profileUploading, setProfileUploading] = useState(false);
   const [profileCropFile, setProfileCropFile] = useState(null);
+  const [ringtoneName, setRingtoneName] = useState(() => localStorage.getItem('unigran_call_ringtone_name') || 'Toque padrao');
   const [personalForm, setPersonalForm] = useState(() => ({
     displayName: user?.displayName || '',
     phone: user?.phone || '',
@@ -511,6 +514,36 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
       return { ...prev, links: next };
     });
   };
+
+  function chooseCallRingtone(file) {
+    if (!file) return;
+    if (!file.type?.startsWith('audio/')) {
+      showToast('Escolha audio', '!');
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      showToast('Audio maximo 3MB', '!');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      localStorage.setItem('unigran_call_ringtone', String(reader.result || ''));
+      localStorage.setItem('unigran_call_ringtone_name', file.name);
+      setRingtoneName(file.name);
+      window.dispatchEvent(new Event('unigran:ringtone-changed'));
+      showToast('Toque salvo', 'OK');
+    };
+    reader.onerror = () => showToast('Erro no audio', '!');
+    reader.readAsDataURL(file);
+  }
+
+  function resetCallRingtone() {
+    localStorage.removeItem('unigran_call_ringtone');
+    localStorage.removeItem('unigran_call_ringtone_name');
+    setRingtoneName('Toque padrao');
+    window.dispatchEvent(new Event('unigran:ringtone-changed'));
+    showToast('Toque padrao ativo', 'OK');
+  }
 
   async function downloadMyData() {
     if (!token) return;
@@ -815,6 +848,23 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
           {section === 'mensagens' && (
             <Section title="Mensagens" desc="Preferncias de mensagens diretas">
+              <Row title="Som de chamada" sub={ringtoneName}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <input
+                    ref={ringtoneInputRef}
+                    type="file"
+                    accept="audio/*"
+                    hidden
+                    onChange={e => { chooseCallRingtone(e.target.files?.[0]); e.target.value = ''; }}
+                  />
+                  <Button variant="secondary" size="sm" onClick={() => ringtoneInputRef.current?.click()}>
+                    Escolher som
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={resetCallRingtone}>
+                    Padrao
+                  </Button>
+                </div>
+              </Row>
               <Row title="Silenciar todas as mensagens" sub="Nao receber notificaes de nenhuma conversa">
                 <Toggle checked={cfg.muteAllMsgs} onChange={() => { toggle('muteAllMsgs'); showToast(cfg.muteAllMsgs ? 'Mensagens ativadas' : 'Mensagens silenciadas', ''); }} />
               </Row>

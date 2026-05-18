@@ -79,10 +79,10 @@
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 30px;
   background:
-    radial-gradient(circle at 14% 12%, rgba(0,168,255,.54), transparent 28%),
-    radial-gradient(circle at 18% 88%, rgba(180,0,255,.60), transparent 30%),
-    radial-gradient(circle at 78% 82%, rgba(255,190,230,.74), transparent 34%),
-    linear-gradient(135deg,#385cff 0%,#00a8ff 40%,#ffbedb 100%);
+    radial-gradient(circle at 14% 12%, rgba(0,168,255,.34), transparent 28%),
+    radial-gradient(circle at 18% 88%, rgba(106,0,244,.46), transparent 30%),
+    radial-gradient(circle at 78% 82%, rgba(124,58,237,.34), transparent 34%),
+    linear-gradient(135deg,#10134a 0%,#1230a8 42%,#6a00f4 100%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 24px 70px rgba(0,168,255,.16);
 }
 
@@ -100,15 +100,30 @@
 .auth-gradient-bg::before {
   left: -82px;
   top: -70px;
-  background: rgba(6, 8, 24, 0.34);
+  background: rgba(6, 8, 24, 0.52);
   transform: rotate(18deg);
+}
+
+.auth-gradient-bg {
+  isolation: isolate;
+}
+
+.auth-gradient-bg .auth-visual-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(3,4,18,.10), rgba(3,4,18,.34)),
+    radial-gradient(circle at 50% 50%, transparent 40%, rgba(3,4,18,.28) 100%);
+  pointer-events: none;
 }
 
 .auth-gradient-bg::after {
   right: -74px;
   top: 36px;
   bottom: auto;
-  background: rgba(0, 168, 255, 0.38);
+  background: rgba(0, 168, 255, 0.24);
   transform: rotate(-18deg);
 }
 
@@ -129,6 +144,7 @@
   align-self: center;
   aspect-ratio: 1;
   animation: carouselPhotoIn 0.65s ease-out;
+  filter: saturate(.95) brightness(.86) contrast(1.05);
 }
 
 .auth-carousel {
@@ -215,7 +231,7 @@
 
 .auth-visual-copy p {
   max-width: 360px;
-  color: rgba(255,255,255,.88);
+  color: rgba(238,232,255,.86);
   font-size: 15px;
   line-height: 1.6;
 }
@@ -303,6 +319,30 @@
 #auth-card-id #auth-logo-image {
   width: 138px;
   margin: 0;
+}
+
+.auth-logo-row {
+  gap: 12px;
+}
+
+.auth-logo-svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 10px 20px rgba(0,168,255,.22));
+}
+
+.auth-logo-title {
+  color: #fff;
+  font-family: var(--font-head);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.auth-logo-caption {
+  margin-top: 4px;
+  color: rgba(216,200,255,.76);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .auth-heading {
