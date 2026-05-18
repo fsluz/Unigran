@@ -144,9 +144,9 @@ export default function AuditLogsPage() {
       ) : logs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Nenhum log encontrado.</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
+        <div style={tableScrollStyle}>
+          <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
               <tr style={{ background: 'var(--card-bg, #f9fafb)', borderBottom: '2px solid var(--border, #e5e7eb)' }}>
                 {['Data/Hora', 'Nível', 'Categoria', 'Ação', 'Ator', 'Alvo', 'IP', 'Detalhes'].map(h => (
                   <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>{h}</th>
@@ -195,6 +195,15 @@ const selectStyle = {
 const inputStyle = {
   padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db',
   background: 'var(--card-bg, #fff)', color: 'var(--text, #111)', fontSize: 13, minWidth: 180,
+};
+
+const tableScrollStyle = {
+  overflow: 'auto',
+  maxHeight: 'calc(100vh - 300px)',
+  minHeight: 280,
+  border: '1px solid var(--border, #e5e7eb)',
+  borderRadius: 10,
+  background: 'var(--card-bg, #fff)',
 };
 
 const tdStyle = {
