@@ -322,10 +322,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   }
 
   async function toggleBan(username, banned) {
+    const reason = !banned ? window.prompt(`Motivo do ban para @${username}`, 'Violacao das regras') : '';
     const res = await apiFetch(`/admin/users/${username}/ban`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ banned: !banned }),
+      body: JSON.stringify({ banned: !banned, reason }),
     });
     if (!res.ok) throw new Error('Ban falhou');
     setAdminUsers(list => list.map(u => u.username === username ? { ...u, banned: !banned } : u));
@@ -876,7 +877,20 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
           {section === 'admin' && canSeeAdmin && (
             <>
-              <Section title="Painel Admin" desc="Usuarios, cargos, bans e denuncias">
+              <Section title="Painel Admin" desc="Usuarios, cargos, banimentos e denuncias">
+                <div style={{
+                  padding: 18,
+                  borderRadius: 18,
+                  marginBottom: 18,
+                  color: '#fff',
+                  background: 'linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff)',
+                  boxShadow: '0 18px 45px rgba(54, 102, 255, 0.28)',
+                }}>
+                  <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 4 }}>Centro de controle</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>Moderacao Unigran</div>
+                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>Controle usuarios. Veja riscos. Aja rapido.</div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
                   {[
                     ['Usuarios', adminUsers.length],
@@ -884,7 +898,13 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                     ['Restritos', adminUsers.filter(u => !u.canPublish).length],
                     ['Denuncias', adminReports.filter(r => (r.status || 'open') === 'open').length],
                   ].map(([label, value]) => (
-                    <div key={label} style={{ padding: 14, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--page-bg)' }}>
+                    <div key={label} style={{
+                      padding: 16,
+                      border: '1px solid var(--border)',
+                      borderRadius: 16,
+                      background: 'var(--card-bg)',
+                      boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
+                    }}>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
                       <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{value}</div>
                     </div>
@@ -903,9 +923,45 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   </Button>
                 </div>
                 {adminError && <p style={{ color: 'var(--danger, #ef4444)', marginBottom: 12 }}>{adminError}</p>}
-                {adminUsers.map(u => (
-                  <Row key={u.username} title={u.name} sub={`@${u.username} ${u.banned ? 'Banido' : 'Ativo'}`}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {adminUsers.map(u => (
+                    <div key={u.username} style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(190px, 1fr) auto',
+                      gap: 12,
+                      alignItems: 'center',
+                      padding: 14,
+                      borderRadius: 16,
+                      border: '1px solid var(--border)',
+                      background: u.banned ? 'rgba(239, 68, 68, 0.08)' : 'var(--card-bg)',
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <strong style={{ color: 'var(--text)' }}>{u.name}</strong>
+                          <span style={{
+                            padding: '3px 9px',
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: u.banned ? '#991b1b' : '#166534',
+                            background: u.banned ? '#fee2e2' : '#dcfce7',
+                          }}>
+                            {u.banned ? 'BANIDO' : 'ATIVO'}
+                          </span>
+                          <span style={{
+                            padding: '3px 9px',
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: '#1d4ed8',
+                            background: '#dbeafe',
+                          }}>
+                            {u.role || 'user'}
+                          </span>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>@{u.username} {u.email ? `| ${u.email}` : ''}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {user?.role === 'admin' && (
                         <select
                           className="form-input"
@@ -926,9 +982,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                       <Button variant="secondary" size="sm" onClick={() => togglePublish(u.username, u.canPublish).catch(err => showToast(err.message, '!'))}>
                         {u.canPublish ? 'Bloquear post' : 'Liberar post'}
                       </Button>
+                      </div>
                     </div>
-                  </Row>
-                ))}
+                  ))}
+                </div>
                 {!adminUsers.length && !adminLoading && <p style={{ color: 'var(--text-2)' }}>Nada aqui.</p>}
               </Section>
 

@@ -17,6 +17,7 @@ import storiesRouter       from './routes/stories.js';
 import realtimeRouter      from './routes/realtime.js';
 import dataExportRouter    from './routes/dataExport.js';
 import { setupSocket }     from './socket/handlers.js';
+import { auditRequests }    from './middleware/audit.js';
 
 const app    = express();
 const server = createServer(app);
@@ -36,6 +37,7 @@ app.get('/api/hello', (_req, res) => res.json({ message: 'Hello, world!' }));
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
+app.use(auditRequests);
 
 // Handle preflight requests
 app.options('*', cors({ origin: corsOrigin, credentials: true }));

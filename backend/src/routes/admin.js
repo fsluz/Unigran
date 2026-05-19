@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { auth, normalizeRole, requireAtLeast } from '../middleware/auth.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
-import { auditLog } from '../services/audit.service.js';
+import { auditLog, readAuditLogs } from '../services/audit.service.js';
 
 function getIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -192,24 +192,20 @@ router.patch('/reports/:id', async (req, res) => {
   }
 });
 
-import { readAuditLogs } from '../services/audit.service.js';
-
 // GET /api/admin/audit-logs — apenas admins
-router.get('/audit-logs', requireAtLeast('admin'), (req, res) => {
+router.get('/audit-logs', requireAtLeast('admin'), async (req, res) => {
   try {
-    let logs = readAuditLogs();
+    let logs = await readAuditLogs();
 
     // Filtros opcionais via query string
     const { category, action, actor, level, from, to, limit } = req.query;
-    if (category) logs = logs.filter(l => l.category === category.toUpperCase());
+    if (category) logs = logs.filter(l => l.category?.toUpperCase() === category.toUpperCase());
     if (action)   logs = logs.filter(l => l.action?.toLowerCase().includes(action.toLowerCase()));
     if (actor)    logs = logs.filter(l => l.actor?.toLowerCase().includes(actor.toLowerCase()));
-    if (level)    logs = logs.filter(l => l.level === level.toUpperCase());
+    if (level)    logs = logs.filter(l => l.level?.toUpperCase() === level.toUpperCase());
     if (from)     logs = logs.filter(l => l.timestamp >= from);
     if (to)       logs = logs.filter(l => l.timestamp <= to);
 
-    // Mais recentes primeiro
-    logs = logs.reverse();
     if (limit) logs = logs.slice(0, parseInt(limit) || 100);
 
     auditLog({ action: 'AUDIT_LOGS_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
