@@ -187,3 +187,50 @@ select $attr;
 | POST   | /api/conversations/:id/messages               | Enviar mensagem                |
 | DELETE | /api/conversations/:cid/messages/:mid         | Excluir mensagem               |
 | GET    | /api/search?q=&type=users\|communities\|posts | Busca global                   |
+
+---
+
+## Machine Learning do TCC
+
+A camada de Machine Learning fica em `backend/project_ml` e utiliza os artefatos ja treinados em `backend/models`.
+Ela atende a especificacao do sistema de predicao sem exigir novo treinamento durante a demonstracao.
+
+Artefatos principais:
+
+- `backend/models/modelo_clusterizacao.pkl`
+- `backend/models/tfidf_vectorizer.pkl`
+- `backend/models/svd_reducer.pkl`
+- `backend/models/nomes_clusters.pkl`
+- `backend/models/ranking_compatibilidade.json`
+
+Outputs de analise e avaliacao:
+
+- `backend/outputs/metricas_clusterizacao.csv`
+- `backend/outputs/explicacao_clusters.csv`
+- `backend/outputs/recomendacoes_vagas_por_postagem.csv`
+- `backend/outputs/skills_recomendadas_por_postagem.csv`
+- `backend/outputs/relatorio_tcc_ml.txt`
+
+Executar a API Python:
+
+```bash
+cd backend
+pip install -r requirements-ml.txt
+uvicorn project_ml.api.app:app --reload --port 8000
+```
+
+Endpoint principal:
+
+```http
+POST http://localhost:8000/predict
+```
+
+Exemplo de entrada:
+
+```json
+{
+  "texto": "Desenvolvi um dashboard em Power BI usando SQL, indicadores e analise de dados."
+}
+```
+
+Mais detalhes estao em `backend/project_ml/README.md`.

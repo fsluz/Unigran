@@ -1,0 +1,151 @@
+id_usuario,nome,titulo_postagem,skill_recomendada,frequencia
+1,Ana,Dashboard de vendas em Power BI,Power BI,10
+1,Ana,Dashboard de vendas em Power BI,SQL,7
+1,Ana,Dashboard de vendas em Power BI,DAX,4
+1,Ana,Dashboard de vendas em Power BI,Data Visualization,3
+1,Ana,Dashboard de vendas em Power BI,Data visualization,3
+1,Ana,Dashboard de vendas em Power BI,Dashboarding,2
+1,Ana,Dashboard de vendas em Power BI,Communication skills,2
+1,Ana,Dashboard de vendas em Power BI,Data modeling,2
+1,Ana,Dashboard de vendas em Power BI,Interpersonal skills,2
+1,Ana,Dashboard de vendas em Power BI,Analytical skills,2
+1,Ana,Dashboard de vendas em Power BI,Data analysis,2
+1,Ana,Dashboard de vendas em Power BI,ETL processes,2
+1,Ana,Dashboard de vendas em Power BI,Data cleansing,2
+1,Ana,Dashboard de vendas em Power BI,Communication,2
+1,Ana,Dashboard de vendas em Power BI,Collaboration,2
+2,Bruno,API REST para controle de tarefas,Java,3
+2,Bruno,API REST para controle de tarefas,REST API,3
+2,Bruno,API REST para controle de tarefas,JavaScript,2
+2,Bruno,API REST para controle de tarefas,Spring,2
+2,Bruno,API REST para controle de tarefas,Big Data,1
+2,Bruno,API REST para controle de tarefas,REST,1
+2,Bruno,API REST para controle de tarefas,API development,1
+2,Bruno,API REST para controle de tarefas,Automated API tests,1
+2,Bruno,API REST para controle de tarefas,API functionality testing,1
+2,Bruno,API REST para controle de tarefas,API reliability testing,1
+2,Bruno,API REST para controle de tarefas,API performance testing,1
+2,Bruno,API REST para controle de tarefas,Manual testing,1
+2,Bruno,API REST para controle de tarefas,production management,1
+2,Bruno,API REST para controle de tarefas,team leadership,1
+2,Bruno,API REST para controle de tarefas,productivity monitoring,1
+3,Carla,Plano de marketing para pequena empresa,Digital Marketing,4
+3,Carla,Plano de marketing para pequena empresa,PPC,3
+3,Carla,Plano de marketing para pequena empresa,SEO,3
+3,Carla,Plano de marketing para pequena empresa,Google Analytics,2
+3,Carla,Plano de marketing para pequena empresa,CRM,2
+3,Carla,Plano de marketing para pequena empresa,Copywriting,2
+3,Carla,Plano de marketing para pequena empresa,Microsoft Office,2
+3,Carla,Plano de marketing para pequena empresa,Marketing Strategy,2
+3,Carla,Plano de marketing para pequena empresa,Visual concept development,1
+3,Carla,Plano de marketing para pequena empresa,Materials production,1
+3,Carla,Plano de marketing para pequena empresa,Interdisciplinary collaboration,1
+3,Carla,Plano de marketing para pequena empresa,Time management,1
+3,Carla,Plano de marketing para pequena empresa,Continuous improvement,1
+3,Carla,Plano de marketing para pequena empresa,Creativity,1
+3,Carla,Plano de marketing para pequena empresa,Technical knowledge,1
+4,Diego,Modelo de machine learning para previsão de notas,Python,6
+4,Diego,Modelo de machine learning para previsão de notas,Communication,3
+4,Diego,Modelo de machine learning para previsão de notas,TensorFlow,3
+4,Diego,Modelo de machine learning para previsão de notas,PyTorch,3
+4,Diego,Modelo de machine learning para previsão de notas,Deep Learning,3
+4,Diego,Modelo de machine learning para previsão de notas,Feature Engineering,3
+4,Diego,Modelo de machine learning para previsão de notas,Deployment,3
+4,Diego,Modelo de machine learning para previsão de notas,Artificial Intelligence,2
+4,Diego,Modelo de machine learning para previsão de notas,Critical Thinking,2
+4,Diego,Modelo de machine learning para previsão de notas,Data Preparation,2
+4,Diego,Modelo de machine learning para previsão de notas,Algorithm Selection,2
+4,Diego,Modelo de machine learning para previsão de notas,Model Evaluation,2
+4,Diego,Modelo de machine learning para previsão de notas,Monitoring and Maintenance,2
+4,Diego,Modelo de machine learning para previsão de notas,Data Manipulation,2
+4,Diego,Modelo de machine learning para previsão de notas,Model Deployment,2
+5,Elisa,Protótipo de aplicativo educacional,Figma,6
+5,Elisa,Protótipo de aplicativo educacional,Sketch,5
+5,Elisa,Protótipo de aplicativo educacional,Prototyping,5
+5,Elisa,Protótipo de aplicativo educacional,UX Design,4
+5,Elisa,Protótipo de aplicativo educacional,Adobe XD,3
+5,Elisa,Protótipo de aplicativo educacional,Collaboration,3
+5,Elisa,Protótipo de aplicativo educacional,Wireframing,3
+5,Elisa,Protótipo de aplicativo educacional,Teamwork,3
+5,Elisa,Protótipo de aplicativo educacional,Visual Design,3
+5,Elisa,Protótipo de aplicativo educacional,HTML,2
+5,Elisa,Protótipo de aplicativo educacional,InVision,2
+5,Elisa,Protótipo de aplicativo educacional,UX design,2
+5,Elisa,Protótipo de aplicativo educacional,UI design,2
+5,Elisa,Protótipo de aplicativo educacional,Communication,2
+5,Elisa,Protótipo de aplicativo educacional,UI Design,2
+6,Felipe,Sistema CRUD em Java,Java,9
+6,Felipe,Sistema CRUD em Java,Maven,3
+6,Felipe,Sistema CRUD em Java,Swing,2
+6,Felipe,Sistema CRUD em Java,Microservices,2
+6,Felipe,Sistema CRUD em Java,Angular,2
+6,Felipe,Sistema CRUD em Java,JavaScript,2
+6,Felipe,Sistema CRUD em Java,CSS,2
+6,Felipe,Sistema CRUD em Java,Spring,2
+6,Felipe,Sistema CRUD em Java,Hibernate,2
+6,Felipe,Sistema CRUD em Java,Agile,2
+6,Felipe,Sistema CRUD em Java,Spring Framework,2
+6,Felipe,Sistema CRUD em Java,Big Data,1
+6,Felipe,Sistema CRUD em Java,REST,1
+6,Felipe,Sistema CRUD em Java,API development,1
+6,Felipe,Sistema CRUD em Java,C#,1
+7,Gabriela,Análise exploratória de dados públicos,Python,10
+7,Gabriela,Análise exploratória de dados públicos,Automation,3
+7,Gabriela,Análise exploratória de dados públicos,Bash scripting,2
+7,Gabriela,Análise exploratória de dados públicos,Data manipulation,2
+7,Gabriela,Análise exploratória de dados públicos,Test scripting,2
+7,Gabriela,Análise exploratória de dados públicos,Linux environments,2
+7,Gabriela,Análise exploratória de dados públicos,CI,2
+7,Gabriela,Análise exploratória de dados públicos,Data structures,2
+7,Gabriela,Análise exploratória de dados públicos,Cloud Security,1
+7,Gabriela,Análise exploratória de dados públicos,Terraform,1
+7,Gabriela,Análise exploratória de dados públicos,Git,1
+7,Gabriela,Análise exploratória de dados públicos,Go,1
+7,Gabriela,Análise exploratória de dados públicos,NextGen PaC,1
+7,Gabriela,Análise exploratória de dados públicos,Metabolic network modeling,1
+7,Gabriela,Análise exploratória de dados públicos,Metabolic pathway analysis,1
+8,Henrique,Landing page responsiva,HTML,9
+8,Henrique,Landing page responsiva,React,3
+8,Henrique,Landing page responsiva,REST,3
+8,Henrique,Landing page responsiva,jQuery,3
+8,Henrique,Landing page responsiva,MongoDB,2
+8,Henrique,Landing page responsiva,Backend development,2
+8,Henrique,Landing page responsiva,Troubleshooting,2
+8,Henrique,Landing page responsiva,Debugging,2
+8,Henrique,Landing page responsiva,Agile,2
+8,Henrique,Landing page responsiva,React JS,2
+8,Henrique,Landing page responsiva,Git,2
+8,Henrique,Landing page responsiva,C#,2
+8,Henrique,Landing page responsiva,Computer Science,2
+8,Henrique,Landing page responsiva,HTML5,2
+8,Henrique,Landing page responsiva,SOAP,2
+9,Isabela,Plano de aula com metodologias ativas,Sales,3
+9,Isabela,Plano de aula com metodologias ativas,Negotiation,2
+9,Isabela,Plano de aula com metodologias ativas,Customer service,2
+9,Isabela,Plano de aula com metodologias ativas,Senior Physician Recruiter,1
+9,Isabela,Plano de aula com metodologias ativas,Communication skills,1
+9,Isabela,Plano de aula com metodologias ativas,Team work,1
+9,Isabela,Plano de aula com metodologias ativas,Sales skills,1
+9,Isabela,Plano de aula com metodologias ativas,Experience in sales,1
+9,Isabela,Plano de aula com metodologias ativas,Bachelor's degree,1
+9,Isabela,Plano de aula com metodologias ativas,Consar certification,1
+9,Isabela,Plano de aula com metodologias ativas,Financial services industry,1
+9,Isabela,Plano de aula com metodologias ativas,Sales department,1
+9,Isabela,Plano de aula com metodologias ativas,Job posting,1
+9,Isabela,Plano de aula com metodologias ativas,Talenteca.com,1
+9,Isabela,Plano de aula com metodologias ativas,Closing sales,1
+10,João,Deploy de aplicação com Docker,Docker,9
+10,João,Deploy de aplicação com Docker,Terraform,6
+10,João,Deploy de aplicação com Docker,Kubernetes,5
+10,João,Deploy de aplicação com Docker,Ansible,4
+10,João,Deploy de aplicação com Docker,Python,3
+10,João,Deploy de aplicação com Docker,CI,2
+10,João,Deploy de aplicação com Docker,Jenkins,2
+10,João,Deploy de aplicação com Docker,GitHub,2
+10,João,Deploy de aplicação com Docker,SQL,2
+10,João,Deploy de aplicação com Docker,Java,2
+10,João,Deploy de aplicação com Docker,Security,2
+10,João,Deploy de aplicação com Docker,Containers,2
+10,João,Deploy de aplicação com Docker,CloudFormation,2
+10,João,Deploy de aplicação com Docker,AWS,2
+10,João,Deploy de aplicação com Docker,Redis,2

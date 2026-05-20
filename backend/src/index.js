@@ -16,6 +16,7 @@ import uploadsRouter       from './routes/uploads.js';
 import storiesRouter       from './routes/stories.js';
 import realtimeRouter      from './routes/realtime.js';
 import dataExportRouter    from './routes/dataExport.js';
+import platformRouter      from './modules/index.js';
 import { setupSocket }     from './socket/handlers.js';
 import { auditRequests }    from './middleware/audit.js';
 
@@ -55,6 +56,7 @@ app.use('/api/uploads',       uploadsRouter);
 app.use('/api/stories',       storiesRouter);
 app.use('/api/realtime',      realtimeRouter);
 app.use('/api/data-export',   dataExportRouter);
+app.use('/api/platform',      platformRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
 

@@ -1,5 +1,9 @@
 node_modules
 package-lock.json
 schema.tql
+__pycache__/
+*.pyc
 backend/.env
 frontend/.env
+backend/data/
+backend/models/base_vagas_processada.pkl
