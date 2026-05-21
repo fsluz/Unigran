@@ -1,12 +1,21 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createPost } from '../../repositories/post.repository.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORE_PATH = path.resolve(__dirname, '../../../data/ava-store.json');
 
 const seedStore = {
   version: 1,
+  institutions: [
+    {
+      id: 'unigran',
+      name: 'UNIGRAN',
+      campus: ['Dourados', 'Online', 'Pos-graduacao'],
+      avaEnabled: true,
+    },
+  ],
   courses: [
     {
       id: 'eng-software',
@@ -14,6 +23,7 @@ const seedStore = {
       code: 'ESW-301',
       professor: 'Prof. Marcos Santos',
       period: '2026.1',
+      institutionId: 'unigran',
       color: '#2563eb',
       description: 'Arquitetura, requisitos, qualidade, entrega continua e colaboracao em projetos reais.',
       grade: 8.7,
@@ -62,6 +72,7 @@ const seedStore = {
       code: 'BDA-204',
       professor: 'Profa. Renata Lima',
       period: '2026.1',
+      institutionId: 'unigran',
       color: '#0891b2',
       description: 'Modelagem relacional, consultas SQL, normalizacao, transacoes e introducao a bancos modernos.',
       grade: 7.9,
@@ -91,6 +102,7 @@ const seedStore = {
       code: 'IAP-410',
       professor: 'Prof. Fabio Henrique',
       period: '2026.1',
+      institutionId: 'unigran',
       color: '#16a34a',
       description: 'Uso pratico de IA generativa, embeddings, avaliacao, etica e automacoes academicas.',
       grade: 9.1,
@@ -129,7 +141,14 @@ async function ensureStore() {
 async function readStore() {
   await ensureStore();
   const raw = await fs.readFile(STORE_PATH, 'utf8');
-  return JSON.parse(raw);
+  const store = JSON.parse(raw);
+  if (!Array.isArray(store.institutions)) store.institutions = seedStore.institutions;
+  store.courses = (store.courses || []).map(course => ({
+    ...course,
+    institutionId: course.institutionId || 'unigran',
+  }));
+  store.users = store.users || {};
+  return store;
 }
 
 async function writeStore(store) {
@@ -163,8 +182,12 @@ function ensureUserState(store, user) {
           read: false,
         },
       ],
+      institutionId: 'unigran',
+      portfolio: [],
     };
   }
+  if (!store.users[username].institutionId) store.users[username].institutionId = user?.institutionId || user?.facultyId || 'unigran';
+  if (!Array.isArray(store.users[username].portfolio)) store.users[username].portfolio = [];
   return store.users[username];
 }
 
@@ -242,12 +265,24 @@ function buildSummary(courses, userState) {
 export async function getAvaState(user) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
-  const courses = store.courses.map(course => buildCourse(course, userState));
+  const institutionId = userState.institutionId || user?.institutionId || user?.facultyId || null;
+  const institution = (store.institutions || []).find(item => item.id === institutionId) || null;
+  const linkedCourses = store.courses.filter(course => !institutionId || course.institutionId === institutionId);
+  const courses = linkedCourses.map(course => buildCourse(course, userState));
   userState.level = Math.max(1, Math.floor(userState.xp / 700) + 1);
   await writeStore(store);
 
   return {
     generatedAt: new Date().toISOString(),
+    institution: institution ? {
+      ...institution,
+      linked: Boolean(institution?.avaEnabled),
+    } : {
+      id: institutionId,
+      name: institutionId ? 'Instituicao vinculada' : '',
+      linked: false,
+      avaEnabled: false,
+    },
     student: {
       username: usernameOf(user),
       displayName: displayNameOf(user),
@@ -256,6 +291,7 @@ export async function getAvaState(user) {
     summary: buildSummary(courses, userState),
     courses,
     notifications: userState.notifications.slice().reverse(),
+    portfolio: userState.portfolio.slice().reverse(),
   };
 }
 
@@ -292,7 +328,13 @@ export async function submitActivity(user, activityId, payload) {
     activityTitle: activity.title,
     author: displayNameOf(user),
     content: payload.content,
-    attachmentUrl: payload.attachmentUrl || '',
+    attachmentUrl: payload.documentUrl || payload.attachmentUrl || '',
+    externalUrl: payload.attachmentUrl || '',
+    externalKind: payload.attachmentKind || (payload.attachmentUrl ? 'other' : ''),
+    externalLabel: payload.attachmentLabel || '',
+    documentUrl: payload.documentUrl || '',
+    documentName: payload.documentName || '',
+    documentStorage: payload.documentStorage || (payload.documentUrl ? 'supabase' : 'external'),
     status: previous?.status === 'graded' ? 'resubmitted' : 'submitted',
     score: previous?.score ?? null,
     feedback: previous?.feedback || 'Entrega recebida. O professor ainda nao publicou feedback.',
@@ -315,8 +357,79 @@ export async function submitActivity(user, activityId, payload) {
     });
   }
 
+  if (payload.publishToPortfolio) {
+    const portfolioTitle = payload.portfolioTitle || activity.title;
+    const portfolioItem = {
+      id: previous?.portfolioItemId || `portfolio-${activityId}-${usernameOf(user)}-${Date.now()}`,
+      title: portfolioTitle,
+      summary: payload.portfolioSummary || payload.content.slice(0, 280),
+      courseId: course.id,
+      courseName: course.name,
+      activityId,
+      activityTitle: activity.title,
+      documentUrl: submission.documentUrl || submission.attachmentUrl,
+      documentName: submission.documentName || 'Entrega academica',
+      externalUrl: payload.attachmentUrl || '',
+      externalKind: payload.attachmentKind || (payload.attachmentUrl ? 'other' : ''),
+      externalLabel: payload.attachmentLabel || '',
+      createdAt: previous?.createdAt || now,
+      updatedAt: now,
+      shareUrl: `/api/portfolio/${usernameOf(user)}/${activityId}`,
+      postId: previous?.portfolioPostId || null,
+    };
+
+    if (!portfolioItem.postId) {
+      try {
+        const createdPost = await createPost({
+          authorUsername: usernameOf(user),
+          postType: 'text-post',
+          content: `Novo trabalho no portfolio academico: ${portfolioTitle}\n\n${portfolioItem.summary}\n\n${portfolioItem.shareUrl} #PortfolioAcademico`,
+          media: null,
+          communityId: null,
+        });
+        portfolioItem.postId = createdPost.id;
+      } catch (err) {
+        portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
+      }
+    }
+
+    const itemIndex = userState.portfolio.findIndex(item => item.activityId === activityId);
+    if (itemIndex >= 0) userState.portfolio[itemIndex] = { ...userState.portfolio[itemIndex], ...portfolioItem };
+    else userState.portfolio.push(portfolioItem);
+    submission.portfolioItemId = portfolioItem.id;
+    submission.portfolioPostId = portfolioItem.postId;
+    submission.portfolioShareUrl = portfolioItem.shareUrl;
+  }
+
   await writeStore(store);
   return getAvaState(user);
+}
+
+export async function getPublicPortfolioItem(username, activityId) {
+  const store = await readStore();
+  const userState = store.users?.[username];
+  const item = userState?.portfolio?.find(entry => entry.activityId === activityId);
+  if (!item) return null;
+  return {
+    ...item,
+    authorUsername: username,
+    institution: (store.institutions || []).find(entry => entry.id === userState.institutionId) || null,
+  };
+}
+
+export async function listPublicPortfolioItems(username) {
+  const store = await readStore();
+  const userState = store.users?.[username];
+  if (!userState?.portfolio?.length) return [];
+  const institution = (store.institutions || []).find(entry => entry.id === userState.institutionId) || null;
+  return userState.portfolio
+    .slice()
+    .reverse()
+    .map(item => ({
+      ...item,
+      authorUsername: username,
+      institution,
+    }));
 }
 
 export async function createForumPost(user, courseId, content) {

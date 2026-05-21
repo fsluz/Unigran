@@ -1,14 +1,17 @@
 const now = new Date().toISOString();
 
 export const platformModules = [
-  { id: 'academic', name: 'AVA Academico', version: '1.0.0', status: 'active', path: '/modules/academic' },
-  { id: 'social', name: 'Rede Social Academica', version: '1.0.0', status: 'active', path: '/modules/social' },
-  { id: 'chat', name: 'Chat e Comunidades', version: '1.0.0', status: 'active', path: '/modules/chat' },
-  { id: 'library', name: 'Biblioteca', version: '0.1.0', status: 'preview', path: '/modules/library' },
-  { id: 'secretary', name: 'Secretaria Digital', version: '0.1.0', status: 'preview', path: '/modules/secretary' },
-  { id: 'analytics', name: 'Analytics Institucional', version: '0.1.0', status: 'preview', path: '/modules/analytics' },
-  { id: 'ai', name: 'RAi Assistente', version: '0.1.0', status: 'preview', path: '/modules/ai' },
-  { id: 'notifications', name: 'Notificacoes', version: '0.1.0', status: 'preview', path: '/modules/notifications' },
+  { id: 'super-admin', name: 'Super Admin', version: '0.2.0', status: 'preview', permission: 'rbac.manage', path: '/modules/super-admin' },
+  { id: 'institution', name: 'Gestao Institucional', version: '0.2.0', status: 'preview', permission: 'institution.manage', path: '/modules/institution' },
+  { id: 'coordination', name: 'Coordenacao', version: '0.2.0', status: 'preview', permission: 'academic.coordination.read', path: '/modules/coordination' },
+  { id: 'academic', name: 'AVA Academico', version: '1.1.0', status: 'active', permission: 'platform.read', path: '/modules/academic' },
+  { id: 'teacher', name: 'Professor', version: '1.1.0', status: 'active', permission: 'academic.teacher.manage', path: '/modules/teacher' },
+  { id: 'student', name: 'Aluno', version: '1.1.0', status: 'active', permission: 'academic.student.read', path: '/modules/student' },
+  { id: 'administrative', name: 'Administrativo', version: '0.2.0', status: 'preview', permission: 'secretary.manage', path: '/modules/administrative' },
+  { id: 'secretary', name: 'Secretaria Digital', version: '0.2.0', status: 'preview', permission: 'secretary.manage', path: '/modules/secretary' },
+  { id: 'library', name: 'Biblioteca Digital', version: '0.2.0', status: 'preview', permission: 'library.manage', path: '/modules/library' },
+  { id: 'social', name: 'Rede Social Academica', version: '1.0.0', status: 'active', permission: 'platform.read', path: '/modules/social' },
+  { id: 'ai', name: 'RAi Assistente', version: '0.2.0', status: 'preview', permission: 'ai.use', path: '/modules/ai' },
 ];
 
 export const dashboards = {

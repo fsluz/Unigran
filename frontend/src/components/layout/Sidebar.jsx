@@ -23,7 +23,7 @@ const NAV_TOP = [
       <polygon points="10 8 16 12 10 16 10 8"/>
     </svg>
   )},
-  { id: 'campus',        label: 'Campus',        icon: () => (
+  { id: 'campus',        label: 'Portal',        icon: () => (
     <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 10l9-6 9 6-9 6-9-6z"/>
       <path d="M5 12v5c2 2 12 2 14 0v-5"/>

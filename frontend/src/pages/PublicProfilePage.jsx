@@ -4,14 +4,37 @@ import PostCard from '../components/post/PostCard';
 import { Avatar, Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { fetchFollowers, fetchFollowing, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchUserPortfolio, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
 import ImageLightbox from '../components/media/ImageLightbox';
+
+function portfolioShareUrl(item) {
+  const path = item.shareUrl || `/api/portfolio/${item.authorUsername}/${item.activityId}`;
+  if (path.startsWith('http')) return path;
+  return `${window.location.origin}${path}`;
+}
+
+function portfolioProfileUrl(username) {
+  return `${window.location.origin}/api/portfolio/${username}`;
+}
+
+function externalKindLabel(kind) {
+  const labels = {
+    web_app: 'Aplicacao web',
+    repository: 'Repositorio',
+    prototype: 'Prototipo',
+    drive: 'Drive',
+    article: 'Artigo',
+    other: 'Link externo',
+  };
+  return labels[kind] || 'Link externo';
+}
 
 export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
+  const [portfolioItems, setPortfolioItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
@@ -26,11 +49,13 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
     Promise.all([
       fetchUserProfile({ token, username }),
       fetchUserPosts({ token, username }),
+      fetchUserPortfolio({ token, username }),
     ])
-      .then(([profileData, postData]) => {
+      .then(([profileData, postData, portfolioData]) => {
         if (!alive) return;
         setProfile(profileData.user);
         setPosts(postData);
+        setPortfolioItems(portfolioData);
         setFollowRequested(false);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar perfil', '!'))
@@ -73,6 +98,16 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
       setPeople(await loader({ token, username }));
     } catch {
       showToast('Erro ao carregar lista', '!');
+    }
+  };
+
+  const copyPortfolioLink = async (url) => {
+    try {
+      if (!navigator.clipboard) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(url);
+      showToast('Link do portfolio copiado', 'OK');
+    } catch {
+      showToast('Nao foi possivel copiar o link', '!');
     }
   };
 
@@ -152,6 +187,10 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{profile.stats?.following || 0}</div>
               <div className="profile-stat-label">Seguindo</div>
             </div>
+            <div className="profile-stat">
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{portfolioItems.length}</div>
+              <div className="profile-stat-label">Portfolio</div>
+            </div>
           </div>
           <div className="profile-achievements">
             <span className="profile-achievements-label">Conquistas:</span>
@@ -168,12 +207,69 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         {profile.private && !profile.following && !isMe ? (
           <div className="search-empty">Este perfil e privado. Peca para seguir.</div>
         ) : (
-          <div className="section-grid" style={{ maxWidth: 640, margin: '0 auto' }}>
-            {posts.length === 0 ? (
-              <div className="search-empty">Nenhuma publicacao publica.</div>
-            ) : posts.map(post => (
-              <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
-            ))}
+          <div className="profile-public-stack">
+            {portfolioItems.length > 0 && (
+              <section className="profile-portfolio-panel public">
+                <div className="profile-portfolio-hero">
+                  <div>
+                    <span className="profile-portfolio-kicker">Portfolio academico</span>
+                    <h2>Trabalhos compartilhaveis</h2>
+                    <p>Projetos publicados pelo AVA com links prontos para compartilhar.</p>
+                  </div>
+                  <div className="profile-portfolio-count">
+                    <strong>{portfolioItems.length}</strong>
+                    <span>itens</span>
+                  </div>
+                </div>
+                <div className="profile-portfolio-master-share">
+                  <div>
+                    <strong>Vitrine profissional publica</strong>
+                    <span>Link ideal para empresas, coordenadores e networking academico.</span>
+                  </div>
+                  <div className="profile-share-field">
+                    <input value={portfolioProfileUrl(profile.username)} readOnly aria-label="Link publico do portfolio academico" />
+                    <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(profile.username))}>Copiar</button>
+                  </div>
+                </div>
+                <div className="profile-portfolio-grid">
+                  {portfolioItems.map(item => {
+                    const shareUrl = portfolioShareUrl(item);
+                    const externalUrl = item.externalUrl || (item.documentStorage === 'external' ? item.documentUrl : '');
+                    return (
+                      <article key={item.id || item.activityId} className="profile-portfolio-card">
+                        <div className="profile-portfolio-card-glow" />
+                        <div className="profile-portfolio-card-head">
+                          <div>
+                            <span className="profile-portfolio-kicker">{item.courseName || 'Portfolio'}</span>
+                            <h3>{item.title || item.activityTitle}</h3>
+                          </div>
+                          <span className="profile-portfolio-status">Publico</span>
+                        </div>
+                        <p>{item.summary || 'Trabalho academico publicado no portfolio.'}</p>
+                        {externalUrl && (
+                          <a className="profile-portfolio-preview-link" href={externalUrl} target="_blank" rel="noreferrer">
+                            <strong>{item.externalLabel || externalKindLabel(item.externalKind)}</strong>
+                            <span>{externalKindLabel(item.externalKind)} para recrutadores abrirem</span>
+                          </a>
+                        )}
+                        <div className="profile-share-field">
+                          <input value={shareUrl} readOnly aria-label="Link compartilhavel do portfolio" />
+                          <button type="button" onClick={() => copyPortfolioLink(shareUrl)}>Copiar</button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            <div className="section-grid" style={{ maxWidth: 640, margin: '0 auto' }}>
+              {posts.length === 0 ? (
+                <div className="search-empty">Nenhuma publicacao publica.</div>
+              ) : posts.map(post => (
+                <PostCard key={post.id} post={post} onOpenProfile={onOpenProfile} />
+              ))}
+            </div>
           </div>
         )}
       </div>

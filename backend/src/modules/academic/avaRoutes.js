@@ -22,6 +22,14 @@ const TextSchema = z.object({
 const SubmissionSchema = z.object({
   content: z.string().trim().min(10).max(12000),
   attachmentUrl: z.string().trim().url().optional().or(z.literal('')),
+  attachmentKind: z.enum(['web_app', 'repository', 'prototype', 'drive', 'article', 'other']).optional(),
+  attachmentLabel: z.string().trim().max(80).optional().or(z.literal('')),
+  documentUrl: z.string().trim().url().optional().or(z.literal('')),
+  documentName: z.string().trim().max(180).optional().or(z.literal('')),
+  documentStorage: z.enum(['supabase', 'external']).optional(),
+  publishToPortfolio: z.boolean().optional(),
+  portfolioTitle: z.string().trim().max(180).optional().or(z.literal('')),
+  portfolioSummary: z.string().trim().max(1000).optional().or(z.literal('')),
 });
 
 const MaterialSchema = z.object({

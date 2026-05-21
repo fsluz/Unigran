@@ -61,6 +61,12 @@ export async function fetchUserPosts({ token, username }) {
   return data.posts || [];
 }
 
+export async function fetchUserPortfolio({ token, username }) {
+  const res = await apiFetch(`/users/${username}/portfolio`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar portfolio');
+  return data.portfolio || [];
+}
+
 export async function updateUserProfile({ token, username, data }) {
   const res = await apiFetch(`/users/${username}`, {
     method: 'PUT',

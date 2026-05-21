@@ -27,6 +27,7 @@ export const ROLE_RANK = {
 
 export const PERMISSIONS = {
   'platform.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
+  'academic.student.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'management', 'admin', 'super_admin'],
   'academic.teacher.manage': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
   'academic.coordination.read': ['coordination', 'management', 'admin', 'super_admin'],
   'institution.manage': ['management', 'admin', 'super_admin'],
@@ -34,6 +35,7 @@ export const PERMISSIONS = {
   'library.manage': ['library', 'management', 'admin', 'super_admin'],
   'analytics.read': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
   'ai.use': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
+  'rbac.manage': ['admin', 'super_admin'],
 };
 
 export function normalizeRole(role) {

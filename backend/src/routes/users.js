@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
+import { listPublicPortfolioItems } from '../modules/academic/avaStore.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
@@ -128,6 +129,32 @@ router.get('/:id/reposts', auth, async (req, res) => {
     res.json({ posts: await listReposts(req.params.id) });
   } catch (err) {
     console.error('[reposts]', err);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+router.get('/:id/portfolio', auth, async (req, res) => {
+  try {
+    const safeId = typeqlLiteral(req.params.id);
+    const rows = await readQuery(`
+      match
+        $p isa person, has username "${safeId}";
+        try { $p has page-visibility $visibility; };
+      fetch { "visibility": $visibility };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario nao encontrado' });
+
+    const stats = await getFollowStats(req.params.id, req.user.username);
+    const isOwner = req.user.username === req.params.id;
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+    const visibility = rows[0]?.visibility || 'public';
+    if (visibility === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
+      return res.json({ portfolio: [], private: true });
+    }
+
+    res.json({ portfolio: await listPublicPortfolioItems(req.params.id) });
+  } catch (err) {
+    console.error('[user portfolio]', err);
     res.status(500).json({ error: 'Erro interno' });
   }
 });

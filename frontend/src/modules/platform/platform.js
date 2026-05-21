@@ -61,6 +61,17 @@ export async function submitAvaActivity(token, activityId, payload) {
   return readJson(res, 'Erro ao enviar atividade');
 }
 
+export async function uploadAvaDocument(token, file) {
+  const body = new FormData();
+  body.append('file', file);
+  const res = await apiFetch('/uploads/documents', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body,
+  });
+  return readJson(res, 'Erro ao enviar documento');
+}
+
 export async function createForumPost(token, courseId, content) {
   const res = await apiFetch(`/platform/v1/ava/courses/${courseId}/forum`, {
     method: 'POST',
@@ -95,4 +106,20 @@ export async function createTeacherActivity(token, courseId, payload) {
     body: JSON.stringify(payload),
   });
   return readJson(res, 'Erro ao criar atividade');
+}
+
+export async function fetchTeacherSubmissions(token) {
+  const res = await apiFetch('/platform/v1/ava/teacher/submissions', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar entregas');
+}
+
+export async function gradeTeacherSubmission(token, submissionId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/submissions/${submissionId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao corrigir entrega');
 }
