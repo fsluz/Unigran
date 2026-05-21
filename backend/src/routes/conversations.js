@@ -11,8 +11,8 @@ function roleCanMessage(role) {
   return ['admin', 'moderator', 'professor', 'recruiter'].includes(role);
 }
 
-function packMessageText({ content, author, media = null, readBy = [] }) {
-  return JSON.stringify({ v: 2, content, author, media, readBy });
+function packMessageText({ content, author, media = null, readBy = [], edited = false }) {
+  return JSON.stringify({ v: 2, content, author, media, readBy, edited });
 }
 
 function packConversationName({ title, picture = null, type = 'direct', description = '' }) {
@@ -56,6 +56,14 @@ function unpackMessageText(raw) {
     if (parsed?.v === 2) return parsed;
   } catch (_) {}
   return { content: raw, author: null, media: null, readBy: [] };
+}
+
+function looksEncrypted(raw = '') {
+  try {
+    return JSON.parse(raw)?.e2ee === 1;
+  } catch (_) {
+    return false;
+  }
 }
 
 async function canMessage({ fromUser, toUsername }) {
@@ -126,9 +134,14 @@ router.get('/', auth, async (req, res) => {
         match
           $conv isa conversation, has conversation-id "${typeqlLiteral(row.conversation_id)}";
           message-delivery(conversation: $conv, message: $m);
-          $m isa message, has message-text $text;
-        fetch { "text": $text };
+          $m isa message, has message-text $text, has creation-timestamp $ts;
+        sort $ts desc;
+        fetch { "text": $text, "created_at": $ts };
       `).catch(() => []);
+      const lastMessage = messageRows[0] ? unpackMessageText(messageRows[0].text) : null;
+      const lastPreview = looksEncrypted(lastMessage?.content)
+        ? 'Mensagem criptografada'
+        : (lastMessage?.content || (lastMessage?.media ? 'Midia enviada' : ''));
       const sentUnreadCount = messageRows.reduce((count, msgRow) => {
         const payload = unpackMessageText(msgRow.text);
         const mine = payload.author?.id === req.user.username;
@@ -151,6 +164,8 @@ router.get('/', auth, async (req, res) => {
       participants: row.participants,
       sentUnreadCount,
       receivedUnreadCount,
+      lastMessageAt: messageRows[0]?.created_at || null,
+      lastMessage: lastPreview,
       participant: firstParticipant,
     };
     }));
@@ -325,6 +340,7 @@ router.get('/:id/messages', auth, async (req, res) => {
         content: payload.content,
         media: payload.media || null,
         readBy: payload.readBy || [],
+        edited: Boolean(payload.edited),
         time: row.created_at,
         author: payload.author?.id
           ? {
@@ -486,7 +502,7 @@ router.patch('/:id/read', auth, async (req, res) => {
     `);
     await Promise.all(rows.map(async (row) => {
       const payload = unpackMessageText(row.text);
-      if (payload.author?.id === req.user.username) return;
+      if (payload.author?.id === req.user.username || req.user.hideReadReceipts === true) return;
       const readBy = new Set(payload.readBy || []);
       if (readBy.has(req.user.username)) return;
       readBy.add(req.user.username);
@@ -524,6 +540,18 @@ router.get('/:id/typing', auth, (req, res) => {
 
 router.delete('/:convId/messages/:msgId', auth, async (req, res) => {
   try {
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.convId)}";
+        conversation-participant(participant: $user, conversation: $conv);
+        message-delivery(conversation: $conv, message: $m);
+        $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}", has message-text $text;
+      fetch { "text": $text };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Mensagem nao encontrada' });
+    const payload = unpackMessageText(rows[0].text);
+    if (payload.author?.id !== req.user.username) return res.status(403).json({ error: 'Sem permissao' });
     await writeQuery(`
       match
         $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}";

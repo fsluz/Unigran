@@ -12,6 +12,8 @@ router.get('/ably-token', auth, async (req, res) => {
       clientId: req.user.username || req.user.id,
       capability: JSON.stringify({
         'call:*': ['publish', 'subscribe', 'presence'],
+        'conversation:*': ['publish', 'subscribe', 'presence'],
+        'presence:*': ['publish', 'subscribe', 'presence'],
       }),
       ttl: 60 * 60 * 1000,
     });

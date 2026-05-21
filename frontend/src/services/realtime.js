@@ -27,6 +27,14 @@ export function getCallChannel(token, conversationId) {
   return getRealtime(token).channels.get(`call:${conversationId}`);
 }
 
+export function getConversationChannel(token, conversationId) {
+  return getRealtime(token).channels.get(`conversation:${conversationId}`);
+}
+
+export function getPresenceChannel(token) {
+  return getRealtime(token).channels.get('presence:users');
+}
+
 export function closeRealtime() {
   if (client) client.close();
   client = null;
