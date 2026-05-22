@@ -14,7 +14,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [portfolioLink, setPortfolioLink] = useState('');
   const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
   const [submitting, setSubmitting] = useState(false);
-  const [fileAccept, setFileAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
+  const [pickerAccept, setPickerAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
   const isPortfolioMode = !forcedPostType && postMode === 'portfolio';
 
@@ -98,7 +98,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   };
 
   const openPicker = (accept = fileAccept) => {
-    setFileAccept(accept);
+    setPickerAccept(accept);
     setTimeout(() => fileInputRef.current?.click(), 0);
   };
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
@@ -195,7 +195,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
         <input
           ref={fileInputRef}
           type="file"
-          accept={fileAccept}
+          accept={pickerAccept || fileAccept}
           style={{ display: 'none' }}
           onChange={onPick}
         />
