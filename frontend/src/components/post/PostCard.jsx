@@ -114,6 +114,31 @@ function portfolioLinkMeta(url = '', fallback = '') {
   };
 }
 
+function PortfolioLinkPreview({ meta, url }) {
+  if (!meta) return null;
+  const tone = meta.tone || 'generic';
+  return (
+    <div className={`portfolio-live-preview is-${tone}`}>
+      <div className="portfolio-window-dots"><span /><span /><span /></div>
+      <div className="portfolio-live-panel">
+        <div className="portfolio-live-logo">{meta.label?.slice(0, 1) || 'L'}</div>
+        <div>
+          <strong>{meta.title}</strong>
+          <span>{meta.subtitle || String(url).replace(/^https?:\/\//, '')}</span>
+        </div>
+      </div>
+      <div className="portfolio-live-lines">
+        <i />
+        <i />
+        <div><b /><b /></div>
+        <em />
+        <em />
+      </div>
+      <span className="portfolio-live-badge">{meta.label}</span>
+    </div>
+  );
+}
+
 function AutoPauseVideo(props) {
   const ref = useRef(null);
   useEffect(() => {
@@ -429,6 +454,8 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
                   <img src={portfolio.mediaUrl} alt="" className="portfolio-preview-image" />
                 ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
                   <AutoPauseVideo src={portfolio.mediaUrl} className="portfolio-preview-image" muted playsInline controls />
+                ) : portfolioLink ? (
+                  <PortfolioLinkPreview meta={portfolioLink} url={portfolio.link} />
                 ) : (
                   <>
                     <div className="portfolio-window-dots"><span /><span /><span /></div>

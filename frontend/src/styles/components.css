@@ -610,6 +610,101 @@
   object-fit: cover;
   background: #050816;
 }
+.portfolio-live-preview {
+  position: absolute;
+  inset: 0;
+  padding: 38px 18px 18px;
+  background:
+    radial-gradient(circle at 18% 32%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 24%),
+    linear-gradient(135deg, rgba(22,28,56,.96), rgba(10,18,38,.96));
+}
+.portfolio-live-preview.is-figma {
+  background:
+    radial-gradient(circle at 18% 36%, rgba(168,85,247,.36), transparent 24%),
+    linear-gradient(135deg, rgba(30,20,70,.98), rgba(8,18,42,.96));
+}
+.portfolio-live-preview.is-instagram {
+  background:
+    radial-gradient(circle at 22% 34%, rgba(236,72,153,.34), transparent 24%),
+    linear-gradient(135deg, rgba(57,18,72,.98), rgba(10,18,38,.96));
+}
+.portfolio-live-preview.is-linkedin {
+  background:
+    radial-gradient(circle at 20% 34%, rgba(10,102,194,.36), transparent 24%),
+    linear-gradient(135deg, rgba(12,35,68,.98), rgba(10,18,38,.96));
+}
+.portfolio-live-preview.is-youtube {
+  background:
+    radial-gradient(circle at 20% 34%, rgba(255,0,51,.32), transparent 24%),
+    linear-gradient(135deg, rgba(60,15,25,.98), rgba(10,18,38,.96));
+}
+.portfolio-live-panel {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  max-width: 72%;
+}
+.portfolio-live-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 950;
+  background: linear-gradient(135deg, #6a00f4, #36f 60%, #00a8ff);
+  box-shadow: 0 14px 32px rgba(0,0,0,.25);
+}
+.portfolio-live-panel strong,
+.portfolio-live-panel span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.portfolio-live-panel strong {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 950;
+}
+.portfolio-live-panel span {
+  margin-top: 4px;
+  color: rgba(255,255,255,.68);
+  font-size: 12px;
+}
+.portfolio-live-lines {
+  position: absolute;
+  left: 38%;
+  right: 18px;
+  top: 52px;
+  bottom: 24px;
+  display: grid;
+  gap: 10px;
+}
+.portfolio-live-lines i,
+.portfolio-live-lines em,
+.portfolio-live-lines b {
+  display: block;
+  border-radius: 7px;
+  background: rgba(148,163,184,.30);
+}
+.portfolio-live-lines i:first-child { width: 82%; height: 13px; }
+.portfolio-live-lines i:nth-child(2) { width: 56%; height: 11px; }
+.portfolio-live-lines div { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.portfolio-live-lines b { height: 46px; background: rgba(106,0,244,.34); }
+.portfolio-live-lines em { height: 11px; width: 96%; }
+.portfolio-live-badge {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 950;
+}
 .portfolio-window-dots {
   position: absolute;
   top: 14px;
