@@ -1,0 +1,18 @@
+
+> unigran-backend@1.0.0 start
+> node src/index.js
+
+ TypeDB config: {
+  DB: 'unigran_db',
+  ADDRESS: 'https://rp78xj-0.cluster.typedb.com:80',
+  USER: 'admin'
+}
+
+  Unigran backend  http://localhost:3001
+  Socket.io pronto
+   TypeDB: https://rp78xj-0.cluster.typedb.com:80 / unigran_db
+
+  TypeDB HTTP  https://rp78xj-0.cluster.typedb.com:80
+[AUDIT] 2026-05-22T03:12:47.938Z | AUTH:SESSION_VALIDATED | actor=vinacerqueira
+[AUDIT] 2026-05-22T03:12:48.254Z | AUTH:SESSION_VALIDATED | actor=vinacerqueira
+[AUDIT] 2026-05-22T03:12:58.281Z | DATA:POST_UPLOADS_RESUME | actor=vinacerqueira

@@ -1,0 +1,315 @@
+{
+  "version": 1,
+  "courses": [
+    {
+      "id": "eng-software",
+      "name": "Engenharia de Software",
+      "code": "ESW-301",
+      "professor": "Prof. Marcos Santos",
+      "period": "2026.1",
+      "color": "#2563eb",
+      "description": "Arquitetura, requisitos, qualidade, entrega continua e colaboracao em projetos reais.",
+      "grade": 8.7,
+      "attendance": 94,
+      "recordedClasses": 18,
+      "tags": [
+        "Projetos",
+        "Scrum",
+        "Qualidade"
+      ],
+      "materials": [
+        {
+          "id": "mat-esw-1",
+          "title": "Aula 01 - Visao geral do ciclo de vida",
+          "type": "video",
+          "duration": "34 min",
+          "required": true
+        },
+        {
+          "id": "mat-esw-2",
+          "title": "Leitura - User stories e criterios de aceite",
+          "type": "pdf",
+          "duration": "18 min",
+          "required": true
+        },
+        {
+          "id": "mat-esw-3",
+          "title": "Checklist de revisao de sprint",
+          "type": "template",
+          "duration": "8 min",
+          "required": false
+        }
+      ],
+      "activities": [
+        {
+          "id": "act-esw-1",
+          "title": "Mapa de requisitos do projeto integrador",
+          "due": "2026-05-24T23:59:00.000Z",
+          "points": 10,
+          "xp": 220,
+          "description": "Entregue um resumo com atores, casos de uso, riscos e criterios de aceite."
+        },
+        {
+          "id": "act-esw-2",
+          "title": "Quiz de qualidade de software",
+          "due": "2026-05-28T23:59:00.000Z",
+          "points": 5,
+          "xp": 120,
+          "description": "Responda as questoes de fixacao sobre testes, code review e metricas."
+        }
+      ],
+      "forum": [
+        {
+          "id": "forum-esw-1",
+          "author": "Prof. Marcos Santos",
+          "role": "professor",
+          "content": "Compartilhem aqui duvidas sobre o mapa de requisitos. Vale anexar links e exemplos.",
+          "createdAt": "2026-05-18T14:20:00.000Z",
+          "comments": [
+            {
+              "id": "comment-esw-1",
+              "author": "Ana Paula",
+              "content": "Professor, posso usar BPMN junto com casos de uso?",
+              "createdAt": "2026-05-18T15:04:00.000Z"
+            },
+            {
+              "id": "comment-forum-esw-1-1779329067346",
+              "author": "Vinicia Cerqueira",
+              "role": "admin",
+              "content": "Teste",
+              "createdAt": "2026-05-21T02:04:27.346Z"
+            }
+          ]
+        }
+      ],
+      "institutionId": "unigran"
+    },
+    {
+      "id": "banco-dados",
+      "name": "Banco de Dados",
+      "code": "BDA-204",
+      "professor": "Profa. Renata Lima",
+      "period": "2026.1",
+      "color": "#0891b2",
+      "description": "Modelagem relacional, consultas SQL, normalizacao, transacoes e introducao a bancos modernos.",
+      "grade": 7.9,
+      "attendance": 89,
+      "recordedClasses": 15,
+      "tags": [
+        "SQL",
+        "Modelagem",
+        "Transacoes"
+      ],
+      "materials": [
+        {
+          "id": "mat-bda-1",
+          "title": "DER: entidades, atributos e relacionamentos",
+          "type": "video",
+          "duration": "41 min",
+          "required": true
+        },
+        {
+          "id": "mat-bda-2",
+          "title": "Lista comentada de SELECT e JOIN",
+          "type": "pdf",
+          "duration": "22 min",
+          "required": true
+        },
+        {
+          "id": "mat-bda-3",
+          "title": "Laboratorio SQL online",
+          "type": "link",
+          "duration": "45 min",
+          "required": false
+        }
+      ],
+      "activities": [
+        {
+          "id": "act-bda-1",
+          "title": "Modelo logico normalizado",
+          "due": "2026-05-26T23:59:00.000Z",
+          "points": 10,
+          "xp": 200,
+          "description": "Envie o modelo logico com justificativa das formas normais aplicadas."
+        }
+      ],
+      "forum": [],
+      "institutionId": "unigran"
+    },
+    {
+      "id": "ia-aplicada",
+      "name": "IA Aplicada",
+      "code": "IAP-410",
+      "professor": "Prof. Fabio Henrique",
+      "period": "2026.1",
+      "color": "#16a34a",
+      "description": "Uso pratico de IA generativa, embeddings, avaliacao, etica e automacoes academicas.",
+      "grade": 9.1,
+      "attendance": 96,
+      "recordedClasses": 12,
+      "tags": [
+        "OpenAI",
+        "Embeddings",
+        "Automacao"
+      ],
+      "materials": [
+        {
+          "id": "mat-iap-1",
+          "title": "Prompt engineering para estudo orientado",
+          "type": "video",
+          "duration": "29 min",
+          "required": true
+        },
+        {
+          "id": "mat-iap-2",
+          "title": "Guia de embeddings e recuperacao contextual",
+          "type": "pdf",
+          "duration": "25 min",
+          "required": true
+        }
+      ],
+      "activities": [
+        {
+          "id": "act-iap-1",
+          "title": "Criar plano de estudos com IA",
+          "due": "2026-05-30T23:59:00.000Z",
+          "points": 10,
+          "xp": 260,
+          "description": "Monte um plano de estudos personalizado e explique como a IA foi usada."
+        }
+      ],
+      "forum": [],
+      "institutionId": "unigran"
+    }
+  ],
+  "users": {
+    "rai": {
+      "xp": 1015,
+      "level": 2,
+      "completedMaterials": [
+        "mat-bda-1"
+      ],
+      "awardedActivities": [],
+      "submissions": [],
+      "notifications": [
+        {
+          "id": "welcome-rai",
+          "title": "Bem-vindo ao novo AVA",
+          "body": "Seu campus academico agora centraliza disciplinas, materiais, atividades e forum.",
+          "createdAt": "2026-05-20T03:58:31.514Z",
+          "read": false
+        }
+      ]
+    },
+    "dev": {
+      "xp": 860,
+      "level": 2,
+      "completedMaterials": [],
+      "awardedActivities": [],
+      "submissions": [],
+      "notifications": [
+        {
+          "id": "welcome-dev",
+          "title": "Bem-vindo ao novo AVA",
+          "body": "Seu campus academico agora centraliza disciplinas, materiais, atividades e forum.",
+          "createdAt": "2026-05-20T04:06:20.487Z",
+          "read": false
+        }
+      ]
+    },
+    "vinacerqueira": {
+      "xp": 930,
+      "level": 2,
+      "completedMaterials": [],
+      "awardedActivities": [],
+      "submissions": [],
+      "notifications": [
+        {
+          "id": "welcome-vinacerqueira",
+          "title": "Bem-vindo ao novo AVA",
+          "body": "Seu campus academico agora centraliza disciplinas, materiais, atividades e forum.",
+          "createdAt": "2026-05-21T01:52:16.959Z",
+          "read": false
+        }
+      ],
+      "institutionId": "unigran",
+      "portfolio": [],
+      "resume": {
+        "originalName": "Curriculo_Vinicius (2).pdf",
+        "extractedText": "#,òNI\bá'U¤\"©÷LzõÙ$~«\u0014ÝRã½Igk\\ó\u001c*ÖäÐ\u0001 ²\u0002¦fÀHW|ÇHC\u0010AEÜÌá\u001c·CB8ê¯;v;ÛV÷\u001eT8\u0005&ÈC}e§.?M&y>\b\u001dc=+\u001c\u001aNØJL0úØÀt5\u0014¬ ©V\u0012\u0005´°`x\bÙ\u0019\"Ú²",
+        "summary": "Curriculo importado e estruturado para leitura profissional no portfolio.",
+        "emails": [],
+        "phones": [],
+        "links": [],
+        "skills": [],
+        "sections": {
+          "objective": "Talento academico em desenvolvimento profissional com foco em aplicar conhecimentos academicos em projetos reais, produtos digitais e desafios de mercado.",
+          "about": "#,òNI\bá'U¤\"©÷LzõÙ$~«\u0014ÝRã½Igk\\ó\u001c*ÖäÐ\u0001 ²\u0002¦fÀHW|ÇHC\u0010AEÜÌá\u001c·CB8ê¯;v;ÛV÷\u001eT8\u0005&ÈC}e§.?M&y>\b\u001dc=+\u001c\u001aNØJL0úØÀt5\u0014¬ ©V\u0012\u0005´°`x\bÙ\u0019\"Ú²",
+          "stack": [],
+          "softSkills": [
+            "Comunicacao",
+            "Organizacao",
+            "Aprendizado Continuo"
+          ],
+          "tools": [],
+          "professionalLinks": []
+        },
+        "parsedAt": "2026-05-22T03:49:44.281Z",
+        "documentUrl": "https://axhbjybdkpvvhwccxpgb.supabase.co/storage/v1/object/public/ava-entregas/portfolio-curriculos/vinacerqueira/1779421784281-kbaioy.pdf",
+        "documentName": "Curriculo_Vinicius (2).pdf",
+        "documentStorage": "supabase",
+        "documentPath": "portfolio-curriculos/vinacerqueira/1779421784281-kbaioy.pdf",
+        "mimeType": "application/pdf",
+        "size": 100022,
+        "updatedAt": "2026-05-22T03:49:45.714Z",
+        "candidateName": "Curriculo Vinicius (2)",
+        "virtualResume": {
+          "name": "Curriculo Vinicius (2)",
+          "professionalTitle": "Talento academico em desenvolvimento profissional",
+          "headline": "Curriculo importado e estruturado para leitura profissional no portfolio.",
+          "about": "#,òNI\bá'U¤\"©÷LzõÙ$~«\u0014ÝRã½Igk\\ó\u001c*ÖäÐ\u0001 ²\u0002¦fÀHW|ÇHC\u0010AEÜÌá\u001c·CB8ê¯;v;ÛV÷\u001eT8\u0005&ÈC}e§.?M&y>\b\u001dc=+\u001c\u001aNØJL0úØÀt5\u0014¬ ©V\u0012\u0005´°`x\bÙ\u0019\"Ú²",
+          "objective": "Talento academico em desenvolvimento profissional com foco em aplicar conhecimentos academicos em projetos reais, produtos digitais e desafios de mercado.",
+          "contacts": {
+            "emails": [],
+            "phones": [],
+            "links": []
+          },
+          "hardSkills": [],
+          "softSkills": [
+            "Comunicacao",
+            "Organizacao",
+            "Aprendizado Continuo"
+          ],
+          "tools": [],
+          "highlights": [
+            "Curriculo transformado em vitrine digital compartilhavel dentro do portfolio academico."
+          ],
+          "experiences": [
+            {
+              "title": "Projetos academicos e entregas aplicadas",
+              "description": "Experiencias do AVA e do curriculo organizadas como evidencias profissionais no portfolio publico."
+            }
+          ],
+          "education": [
+            {
+              "title": "Formacao academica em andamento",
+              "description": "Dados academicos complementados pelas entregas, projetos e certificados publicados na plataforma."
+            }
+          ]
+        }
+      }
+    }
+  },
+  "institutions": [
+    {
+      "id": "unigran",
+      "name": "UNIGRAN",
+      "campus": [
+        "Dourados",
+        "Online",
+        "Pos-graduacao"
+      ],
+      "avaEnabled": true
+    }
+  ]
+}
