@@ -51,6 +51,8 @@ export default function ZuniPage({ onOpenProfile }) {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const moreRef = useRef(null);
+  const feedRef = useRef(null);
+  const wheelLockRef = useRef(0);
   const videoRefs = useRef(new Map());
   const volumeRef = useRef(null);
 
@@ -168,6 +170,18 @@ export default function ZuniPage({ onOpenProfile }) {
     document.querySelector(`.zuni-reel[data-post-id="${next.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const onZuniWheel = (event) => {
+    if (Math.abs(event.deltaY) < 42) return;
+    const now = Date.now();
+    if (now - wheelLockRef.current < 720) {
+      event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    wheelLockRef.current = now;
+    scrollToNeighbor(event.deltaY > 0 ? 1 : -1);
+  };
+
   const toggleVolumePanel = () => {
     setVolumeOpen(prev => !prev);
     if (muted) setMuted(false);
@@ -210,7 +224,7 @@ export default function ZuniPage({ onOpenProfile }) {
     <div className="page-scroll zuni-shell">
       <Topbar title="Zuni" />
       <div className="zuni-page">
-        <main className="zuni-feed">
+        <main className="zuni-feed" ref={feedRef} onWheel={onZuniWheel}>
           {posts.length === 0 && !loading && (
             <div className="search-empty">Nenhum Zuni ainda.</div>
           )}

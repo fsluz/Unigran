@@ -13,6 +13,8 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [portfolioTitle, setPortfolioTitle] = useState('');
   const [portfolioLink, setPortfolioLink] = useState('');
   const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
+  const [portfolioTagInput, setPortfolioTagInput] = useState('');
+  const [portfolioTags, setPortfolioTags] = useState(['React', 'TypeScript']);
   const [submitting, setSubmitting] = useState(false);
   const [pickerAccept, setPickerAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
@@ -64,8 +66,11 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
         if (file && file.size > 1024 * 1024) throw new Error('Documento do portfolio deve ter ate 1024 KB por enquanto.');
         if (!text.trim() && !portfolioLink.trim() && !file) throw new Error('Adicione descricao, link ou documento para publicar no portfolio.');
       }
+      const portfolioTagLine = postType === 'portfolio-post' && portfolioTags.length
+        ? `\n\nTecnologias: ${portfolioTags.join(', ')}`
+        : '';
       await onSubmit({
-        content: text.replace(/^\s+|\s+$/g, ''),
+        content: `${text.replace(/^\s+|\s+$/g, '')}${portfolioTagLine}`,
         file,
         postType,
         portfolioTitle: portfolioTitle.trim(),
@@ -76,6 +81,8 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
       setPortfolioTitle('');
       setPortfolioLink('');
       setPortfolioLinkKind('repository');
+      setPortfolioTagInput('');
+      setPortfolioTags(['React', 'TypeScript']);
       clearFile();
     } catch (err) {
       showToast(err.message || 'Erro ao publicar.', '!');
@@ -106,6 +113,12 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const fileAccept = isPortfolioMode
     ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
+  const addPortfolioTag = (tag) => {
+    const clean = String(tag || '').trim().replace(/^#/, '');
+    if (!clean || portfolioTags.includes(clean)) return;
+    setPortfolioTags(prev => [...prev, clean].slice(0, 8));
+    setPortfolioTagInput('');
+  };
 
   return (
     <div className="card post-composer">
@@ -188,6 +201,25 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
                 <option value="article">Artigo</option>
                 <option value="other">Outro</option>
               </select>
+            </div>
+            <div className="composer-techs">
+              {portfolioTags.map(tag => (
+                <button type="button" key={tag} onClick={() => setPortfolioTags(prev => prev.filter(item => item !== tag))}>
+                  {tag} x
+                </button>
+              ))}
+              <input
+                value={portfolioTagInput}
+                onChange={e => setPortfolioTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addPortfolioTag(portfolioTagInput);
+                  }
+                }}
+                placeholder="+ tecnologia"
+              />
+              <button type="button" onClick={() => addPortfolioTag(portfolioTagInput)}>Adicionar</button>
             </div>
             <span>Publica no feed e tambem cria um case na aba Portfólio. Documento leve: PDF/DOC/DOCX ate 1024 KB.</span>
           </div>

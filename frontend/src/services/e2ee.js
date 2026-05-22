@@ -96,15 +96,15 @@ export function isEncryptedText(value) {
 export async function encryptMessage({ token, conversationId, usernames, content, media }) {
   const uniqueUsers = [...new Set(usernames.filter(Boolean))];
   const keys = await fetchPublicKeys(token, uniqueUsers);
-  const missing = uniqueUsers.filter(username => !keys[username]);
-  if (missing.length) {
-    throw new Error(`E2EE sem chave para: ${missing.join(', ')}`);
+  const keyUsers = uniqueUsers.filter(username => keys[username]);
+  if (!keyUsers.length) {
+    return content;
   }
 
   const aesKey = await getConversationKey(conversationId);
   const rawAes = await crypto.subtle.exportKey('raw', aesKey);
   const wrapped = {};
-  await Promise.all(uniqueUsers.map(async username => {
+  await Promise.all(keyUsers.map(async username => {
     const publicKey = await importPublicKey(keys[username]);
     wrapped[username] = bytesToBase64(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, rawAes));
   }));
@@ -118,6 +118,7 @@ export async function encryptMessage({ token, conversationId, usernames, content
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
     keys: wrapped,
+    missing: uniqueUsers.filter(username => !keys[username]),
   });
 }
 

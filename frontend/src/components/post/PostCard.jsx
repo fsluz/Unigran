@@ -41,6 +41,36 @@ function stripEmbedLinks(text = '') {
   return next.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+function getPortfolioPost(post) {
+  if (post.portfolioItem) {
+    const item = post.portfolioItem;
+    return {
+      title: item.title || 'Projeto de portfolio',
+      summary: item.summary || post.content || '',
+      link: item.externalUrl || item.shareUrl || '',
+      linkLabel: item.externalKind || 'Repositorio',
+      tags: extractPortfolioTags(post.content),
+    };
+  }
+  const content = String(post.content || '');
+  if (!content.includes('#PortfolioAcademico')) return null;
+  const title = content.match(/portfolio academico:\s*(.+)/i)?.[1]?.split('\n')[0]?.trim() || 'Projeto de portfolio';
+  const tags = extractPortfolioTags(content);
+  const link = (content.match(/https?:\/\/[^\s]+|\/portfolio\/[^\s]+/i) || [])[0] || '';
+  const summary = content
+    .replace(/Novo projeto no portfolio academico:.+/i, '')
+    .replace(/#PortfolioAcademico/gi, '')
+    .replace(/Tecnologias:.+/i, '')
+    .replace(link, '')
+    .trim();
+  return { title, summary, link, linkLabel: 'Repositorio', tags };
+}
+
+function extractPortfolioTags(content = '') {
+  const line = String(content).match(/Tecnologias:\s*(.+)/i)?.[1] || '';
+  return line.split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 8);
+}
+
 function AutoPauseVideo(props) {
   const ref = useRef(null);
   useEffect(() => {
@@ -184,7 +214,8 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
   const embeds = getEmbeds(post.content || '');
-  const bodyText = stripEmbedLinks(post.content || '');
+  const portfolio = getPortfolioPost(post);
+  const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -347,6 +378,36 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         </div>
       ) : (
         <>
+          {portfolio && (
+            <div className="portfolio-post-card">
+              <div className="portfolio-post-preview" aria-hidden="true">
+                <div className="portfolio-window-dots"><span /><span /><span /></div>
+                <div className="portfolio-preview-sidebar" />
+                <div className="portfolio-preview-main">
+                  <i />
+                  <i />
+                  <div><b /><b /></div>
+                  <em />
+                  <em />
+                </div>
+              </div>
+              <div className="portfolio-post-body">
+                <div className="portfolio-post-label">Portfolio</div>
+                <h3>{portfolio.title}</h3>
+                {portfolio.summary && <p>{portfolio.summary}</p>}
+                {portfolio.tags.length > 0 && (
+                  <div className="portfolio-post-tags">
+                    {portfolio.tags.map(tag => <span key={tag}>{tag}</span>)}
+                  </div>
+                )}
+                {portfolio.link && (
+                  <a className="portfolio-post-link" href={portfolio.link.startsWith('/') ? portfolio.link : portfolio.link} target={portfolio.link.startsWith('/') ? '_self' : '_blank'} rel="noreferrer">
+                    {portfolio.linkLabel || 'Repositorio'} <small>{portfolio.link.replace(/^https?:\/\//, '')}</small>
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
           {bodyText && <div className="post-body">{formatContent(bodyText)}</div>}
           {post.originalPost && (
             <div className="repost-card">
