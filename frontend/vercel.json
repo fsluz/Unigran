@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://unigran-backend.vercel.app/api/$1" }
+    { "source": "/api/:path*", "destination": "https://unigran-backend.vercel.app/api/:path*" },
+    { "source": "/portfolio/:path*", "destination": "https://unigran-backend.vercel.app/portfolio/:path*" },
+    { "source": "/portfolio", "destination": "https://unigran-backend.vercel.app/portfolio" },
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }

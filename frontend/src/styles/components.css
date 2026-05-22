@@ -410,7 +410,11 @@
 /* 
    POSTS
  */
-.post-composer { margin-bottom: 12px; border-radius: 24px; }
+.post-composer {
+  margin-bottom: 12px;
+  border-radius: 24px;
+  overflow: hidden;
+}
 .composer-row  { display: flex; gap: 12px; padding: 16px 16px 8px; border-radius: 24px 24px 0 0; }
 .composer-textarea {
   flex: 1; background: none; border: none; color: var(--text); font-size: 15px;
@@ -418,7 +422,14 @@
   font-family: var(--font-body);
 }
 .composer-textarea::placeholder { color: var(--text-light); }
-.composer-footer { display: flex; align-items: center; gap: 4px; padding: 8px 14px 12px; border-top: 1px solid var(--border); }
+.composer-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px 14px;
+  border-top: 1px solid var(--border);
+}
 .composer-btn {
   width: 34px; height: 34px; border-radius: var(--radius-sm); background: none; border: none;
   color: var(--text-muted); font-size: 17px; cursor: pointer; display: flex; align-items: center;
@@ -426,53 +437,146 @@
 }
 .composer-btn:hover { background: var(--accent-light); color: var(--accent); }
 .composer-submit-wrap { margin-left: auto; }
-.composer-mode-select { width: 108px; min-height: 34px; padding: 6px 10px; font-size: 12px; border-radius: 999px; }
+.composer-mode-select {
+  width: 116px;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+  color: var(--text);
+  font-weight: 800;
+}
 .composer-portfolio-panel {
   display: grid;
   flex: 1 1 100%;
-  gap: 8px;
-  order: 2;
-  margin-top: 8px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  gap: 10px;
+  order: -1;
+  margin: 8px 0 10px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   border-radius: 16px;
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 36%),
-    color-mix(in srgb, var(--card) 84%, transparent);
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 34%),
+    color-mix(in srgb, var(--card) 90%, var(--page-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent);
 }
 .composer-portfolio-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 10px;
+}
+.composer-portfolio-field,
+.composer-repo-select {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--page-bg) 48%, var(--card));
+}
+.composer-portfolio-field span,
+.composer-repo-select span,
+.composer-tech-title {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.composer-portfolio-field input,
+.composer-repo-select select {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.composer-repo-select {
+  position: relative;
+  padding-left: 42px;
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+}
+.composer-repo-select::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, var(--card) 0 2px, transparent 2px),
+    linear-gradient(135deg, var(--text), color-mix(in srgb, var(--text) 65%, var(--accent)));
+  opacity: .85;
+}
+.composer-repo-select select {
+  appearance: none;
+  cursor: pointer;
+}
+.composer-tech-title {
+  margin-top: 4px;
 }
 .composer-techs {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
 }
 .composer-techs button,
 .composer-techs input {
   min-height: 28px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   background: color-mix(in srgb, var(--accent) 10%, var(--card));
   color: var(--text);
-  padding: 5px 10px;
+  padding: 5px 9px;
   font-size: 12px;
   font-weight: 700;
 }
+.composer-techs button:not(.composer-add-tag) {
+  background: color-mix(in srgb, var(--accent) 18%, var(--card));
+  color: color-mix(in srgb, var(--text) 88%, var(--accent));
+}
 .composer-techs input {
-  width: 120px;
+  width: 126px;
   background: var(--card);
   outline: none;
 }
-.composer-portfolio-panel span {
+.composer-techs .composer-add-tag {
+  border-style: dashed;
+  color: var(--accent);
+}
+.composer-portfolio-help {
+  position: relative;
+  padding-left: 16px;
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
 }
-.composer-submit-btn { min-height: 36px; min-width: 74px; border-radius: 999px; }
+.composer-portfolio-help::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: .45em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-muted) 70%, transparent);
+}
+.composer-submit-btn {
+  min-height: 38px;
+  min-width: 94px;
+  border-radius: 10px;
+  padding-inline: 18px;
+}
 .composer-preview-wrap {
   position: relative;
   margin: 0 14px 10px 58px;

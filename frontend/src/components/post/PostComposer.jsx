@@ -57,7 +57,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   };
 
   const submit = async () => {
-    if (!text.trim() && !file) return;
+    if (!text.trim() && !file && !(isPortfolioMode && portfolioLink.trim())) return;
     const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : (postMode === 'portfolio' ? 'portfolio-post' : undefined));
     setSubmitting(true);
     try {
@@ -180,28 +180,36 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
         )}
         {isPortfolioMode && (
           <div className="composer-portfolio-panel">
-            <input
-              className="form-input"
-              value={portfolioTitle}
-              onChange={e => setPortfolioTitle(e.target.value)}
-              placeholder="Titulo comercial do projeto"
-            />
-            <div className="composer-portfolio-grid">
+            <label className="composer-portfolio-field composer-portfolio-title">
+              <span>Titulo do projeto</span>
               <input
-                className="form-input"
-                value={portfolioLink}
-                onChange={e => setPortfolioLink(e.target.value)}
-                placeholder="Link GitHub, deploy, Figma ou artigo"
+                value={portfolioTitle}
+                onChange={e => setPortfolioTitle(e.target.value)}
+                placeholder="Ex: Dashboard E-commerce 2024"
               />
-              <select className="form-input" value={portfolioLinkKind} onChange={e => setPortfolioLinkKind(e.target.value)}>
-                <option value="repository">GitHub/repositorio</option>
-                <option value="web_app">Aplicacao web</option>
-                <option value="prototype">Figma/prototipo</option>
-                <option value="drive">Drive</option>
-                <option value="article">Artigo</option>
-                <option value="other">Outro</option>
-              </select>
+            </label>
+            <div className="composer-portfolio-grid">
+              <label className="composer-portfolio-field">
+                <span>Links (Github, deploy, Figma)</span>
+                <input
+                  value={portfolioLink}
+                  onChange={e => setPortfolioLink(e.target.value)}
+                  placeholder="https://..."
+                />
+              </label>
+              <label className="composer-repo-select">
+                <span>{portfolioLinkKind === 'repository' ? 'Repositorio' : 'Tipo'}</span>
+                <select value={portfolioLinkKind} onChange={e => setPortfolioLinkKind(e.target.value)}>
+                  <option value="repository">Selecionar Repo</option>
+                  <option value="web_app">Aplicacao web</option>
+                  <option value="prototype">Figma/prototipo</option>
+                  <option value="drive">Drive</option>
+                  <option value="article">Artigo</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
             </div>
+            <strong className="composer-tech-title">Tecnologias & tags</strong>
             <div className="composer-techs">
               {portfolioTags.map(tag => (
                 <button type="button" key={tag} onClick={() => setPortfolioTags(prev => prev.filter(item => item !== tag))}>
@@ -219,9 +227,9 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
                 }}
                 placeholder="+ tecnologia"
               />
-              <button type="button" onClick={() => addPortfolioTag(portfolioTagInput)}>Adicionar</button>
+              <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span>Publica no feed e tambem cria um case na aba Portfólio. Documento leve: PDF/DOC/DOCX ate 1024 KB.</span>
+            <span className="composer-portfolio-help">Publica no feed e cria um case automatico. Formatos: PDF, DOCX (ate 1MB)</span>
           </div>
         )}
         <input
@@ -258,7 +266,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
             onClick={submit}
             disabled={submitting || (!text.trim() && !file && !(isPortfolioMode && portfolioLink.trim()))}
           >
-            {submitting ? 'Publicando...' : 'Postar'}
+            {submitting ? 'Publicando...' : (isPortfolioMode ? 'Postar Case' : 'Postar')}
           </button>
         </div>
       </div>
