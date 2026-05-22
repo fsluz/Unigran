@@ -34,7 +34,6 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
-import PortfolioIntelligencePage from './PortfolioIntelligencePage';
 
 const portalModules = [
   { id: 'home', label: 'Inicio', icon: PanelsTopLeft, permission: 'platform.read', badge: 'Live' },
@@ -43,7 +42,6 @@ const portalModules = [
   { id: 'coordination', label: 'Coordenacao', icon: Users, permission: 'academic.coordination.read', badge: '31' },
   { id: 'teacher', label: 'Professor', icon: GraduationCap, permission: 'academic.teacher.manage', badge: '23' },
   { id: 'student', label: 'Aluno', icon: BookOpen, permission: 'academic.student.read', badge: '82%' },
-  { id: 'portfolio', label: 'Portfolio Pro', icon: Sparkles, permission: 'platform.read', badge: 'AI' },
   { id: 'finance', label: 'Financeiro', icon: WalletCards, permission: 'platform.read', badge: '1' },
   { id: 'services', label: 'Servicos', icon: FileText, permission: 'platform.read', badge: '2' },
   { id: 'secretary', label: 'Secretaria', icon: Landmark, permission: 'secretary.manage', badge: 'SLA' },
@@ -321,7 +319,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
       </PortalCard>
 
-      <PortalCard title="Home Institucional Viva" text="Cursos, noticias, calendario, eventos, projetos e talentos conectados ao ecossistema academico." tone="wide" icon={Building2}>
+      <PortalCard title="Institucional" text="Cursos, noticias, calendario, eventos e projetos academicos." tone="wide" icon={Building2}>
         <div className="academic-institutional-strip">
           {institutionalHighlights.map(item => (
             <div key={item.title}>
@@ -333,10 +331,10 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
       </PortalCard>
 
-      <PortalCard title="Vitrine Academica" text="Projetos em formato Behance + GitHub academico, alimentados por entregas reais do AVA." tone="wide" icon={Sparkles}>
+      <PortalCard title="Vitrine Academica" text="Projetos e trabalhos de destaque publicados pela comunidade academica." tone="wide" icon={Sparkles}>
         <div className="academic-showcase-list">
           {showcaseProjects.map((project, index) => (
-            <button key={project.title} onClick={() => setActiveTab('portfolio')}>
+            <button key={project.title} onClick={onOpenAva}>
               <em>{String(index + 1).padStart(2, '0')}</em>
               <span>
                 <strong>{project.title}</strong>
@@ -393,21 +391,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
       </PortalCard>
 
-      <PortalCard title="AVA" text="Ambiente separado para estudos, entregas, materiais, forum e portfolio academico." tone="ava" icon={Zap}>
+      <PortalCard title="AVA" text="Aulas, entregas, materiais, forum e progresso academico." tone="ava" icon={Zap}>
         <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>Abrir ambiente <ArrowUpRight size={16} /></button>
-      </PortalCard>
-
-      <PortalCard title="Portfolio Pro" text="Central profissional inteligente para recrutadores, cases, skills e curriculo vivo." tone="wide ai" icon={Sparkles}>
-        <div className="academic-service-grid">
-          <button onClick={() => setActiveTab('portfolio')}>
-            <strong>Recruiter View</strong>
-            <span>Score, melhores projetos, skills e leitura executiva do aluno.</span>
-          </button>
-          <button onClick={() => setActiveTab('portfolio')}>
-            <strong>Curriculo inteligente</strong>
-            <span>Experiencias, certificados e tecnologias conectadas a evidencias.</span>
-          </button>
-        </div>
       </PortalCard>
     </motion.section>
   );
@@ -681,7 +666,6 @@ export default function AcademicPortalPage({ onOpenAva }) {
     library: renderLibrary,
     links: renderLinks,
     support: renderSupport,
-    portfolio: () => <PortfolioIntelligencePage user={user} token={token} />,
   }[activeTab];
 
   return (

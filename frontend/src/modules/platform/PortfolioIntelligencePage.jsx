@@ -6,7 +6,6 @@ import {
   BadgeCheck,
   BarChart3,
   BookOpen,
-  Bot,
   BriefcaseBusiness,
   CheckCircle2,
   Code2,
@@ -23,12 +22,9 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Trophy,
-  UserRoundSearch,
   Zap,
 } from 'lucide-react';
-import { fetchAva, fetchPowerBiAnalytics } from './platform';
-import { hasPermission } from '../shared/permissions';
+import { fetchAva } from './platform';
 
 const demoProjects = [
   {
@@ -73,6 +69,16 @@ const skillPalette = [
   ['Comunicacao', 'Soft skill', 86],
   ['Documentacao', 'Produto', 82],
 ];
+
+function normalizeSkillObject(skill, index = 0) {
+  if (Array.isArray(skill)) return skill;
+  if (typeof skill === 'string') return [skill, 'ML', Math.max(58, 92 - index * 4)];
+  return [
+    skill?.name || 'Skill',
+    skill?.family || skill?.category || 'Portfolio',
+    Number(skill?.level || Math.max(58, 92 - index * 4)),
+  ];
+}
 
 function publicPortfolioLink(user, item) {
   const path = item?.shareUrl || `/portfolio/${user?.username || 'aluno'}/${item?.activityId || item?.id || ''}`;
@@ -124,9 +130,9 @@ function RecruiterView({ score, projects, skills, resume }) {
       <div className="portfolio-section-head">
         <div>
           <span>Recruiter View</span>
-          <h2>Leitura executiva do perfil</h2>
+          <h2>Resumo para triagem</h2>
         </div>
-        <p>Resumo compacto para empresas avaliarem fit, evidencias, maturidade tecnica e contato sem procurar informacao.</p>
+        <p>Principais sinais do aluno reunidos para uma leitura objetiva.</p>
       </div>
       <div className="recruiter-grid-premium">
         <div className="recruiter-score-card">
@@ -137,15 +143,15 @@ function RecruiterView({ score, projects, skills, resume }) {
           <div>
             <small>Score profissional estimado</small>
             <h3>{resume?.virtualResume?.professionalTitle || 'Talento academico pronto para triagem'}</h3>
-            <p>Baseado em projetos publicados, curriculo estruturado, evidencias tecnicas, consistencia academica e clareza dos links.</p>
+            <p>Calculado a partir de projetos publicados, curriculo, evidencias tecnicas e links verificaveis.</p>
           </div>
         </div>
         <div className="recruiter-insight-stack">
           {[
             ['Fit tecnico', skills.slice(0, 5).map(item => item[0]).join(', ')],
-            ['Melhores evidencias', `${projects.length} cases publicados com stack, problema e links de entrega.`],
-            ['Perfil comportamental', 'Aprendizado continuo, comunicacao objetiva e boa organizacao de entregas.'],
-            ['Proxima acao', 'Abrir o case principal e validar GitHub, Figma ou deploy conectado.'],
+            ['Evidencias', `${projects.length} cases com disciplina, stack e entrega conectada.`],
+            ['Postura', 'Boa organizacao de entregas e evolucao academica consistente.'],
+            ['Proxima acao', 'Abrir o case principal e validar repositorio, Figma ou deploy.'],
           ].map(([title, text]) => (
             <div key={title} className="recruiter-insight">
               <i />
@@ -161,102 +167,59 @@ function RecruiterView({ score, projects, skills, resume }) {
   );
 }
 
-function InternalPowerBi({ token, enabled }) {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!enabled) return;
-    fetchPowerBiAnalytics(token)
-      .then(setData)
-      .catch(err => setError(err.message || 'Power BI interno indisponivel'));
-  }, [enabled, token]);
-
-  if (!enabled) return null;
-  const kpis = data?.kpis || {};
-  const courses = data?.courses || [];
-
-  return (
-    <section className="portfolio-section internal-bi-panel" id="power-bi">
-      <div className="portfolio-section-head">
-        <div>
-          <span>Master Admin BI</span>
-          <h2>Power BI interno consumindo TypeDB</h2>
-        </div>
-        <p>Inspirado no prototipo v-cerqueira/Power-Bi, agora como console interno com API, permissao admin e enriquecimento do AVA.</p>
-      </div>
-      {error && <div className="portfolio-alert">{error}</div>}
-      <div className="portfolio-bi-kpis">
-        <Metric icon={UserRoundSearch} label="Usuarios" value={kpis.users ?? '--'} hint="TypeDB person" />
-        <Metric icon={Activity} label="Interacoes" value={kpis.interactions ?? '--'} hint={`${kpis.engagementPerPost ?? 0} por post`} />
-        <Metric icon={BriefcaseBusiness} label="Portfolio" value={kpis.portfolioItems ?? '--'} hint={`${kpis.portfolioConversion ?? 0}% entrega -> case`} />
-        <Metric icon={Bot} label="RAI" value={data?.rai?.signal || '--'} hint={data?.rai?.risk || 'aguardando dados'} />
-      </div>
-      <div className="portfolio-bi-grid">
-        <div className="bi-chart-card">
-          <div className="bi-chart-head">
-            <strong>Atividade por curso</strong>
-            <span>submissoes + cases</span>
-          </div>
-          <div className="bi-bars">
-            {courses.slice(0, 6).map(course => {
-              const value = course.submissions + course.portfolioItems;
-              const max = Math.max(1, ...courses.map(item => item.submissions + item.portfolioItems));
-              return (
-                <div key={course.id}>
-                  <span>{course.name}</span>
-                  <i style={{ width: `${Math.max(10, (value / max) * 100)}%` }} />
-                  <strong>{value}</strong>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="bi-chart-card">
-          <div className="bi-chart-head">
-            <strong>Insights RAI</strong>
-            <span>playbook operacional</span>
-          </div>
-          <div className="bi-rai-list">
-            {(data?.rai?.actions || []).map(item => <span key={item}>{item}</span>)}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default function PortfolioIntelligencePage({ user, token }) {
+export default function PortfolioIntelligencePage({ user, token, portfolioItems, resume: resumeFromProfile, analysis }) {
   const [ava, setAva] = useState(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
   const [resumeMode, setResumeMode] = useState('compact');
 
   useEffect(() => {
+    if (Array.isArray(portfolioItems)) return;
     fetchAva(token).then(setAva).catch(() => setAva(null));
-  }, [token]);
+  }, [portfolioItems, token]);
 
   const projects = useMemo(() => {
-    const real = ava?.portfolio?.length ? ava.portfolio : demoProjects;
+    const real = Array.isArray(portfolioItems)
+      ? portfolioItems
+      : (ava?.portfolio?.length ? ava.portfolio : demoProjects);
     return real.map(item => ({ ...item, kind: projectKind(item) }));
-  }, [ava]);
-  const resume = ava?.resume || null;
+  }, [ava, portfolioItems]);
+  const resume = resumeFromProfile || ava?.resume || null;
   const courses = ava?.courses || [];
   const skills = useMemo(() => {
+    const mlSkills = (analysis?.skillObjects?.length ? analysis.skillObjects : analysis?.recommendedSkills || [])
+      .map(normalizeSkillObject)
+      .filter(item => item[0]);
+    if (mlSkills.length) return mlSkills;
+
+    const projectSkills = projects.flatMap(item => [
+      ...(item.technologies || []),
+      ...(item.competencies || []),
+      ...(item.tags || []),
+    ]);
+    if (projectSkills.length) {
+      return [...new Set(projectSkills)]
+        .slice(0, 12)
+        .map((name, index) => [name, 'Projeto', Math.max(62, 90 - index * 3)]);
+    }
+
+    if (Array.isArray(portfolioItems)) return [];
+
     const projectText = projects.map(item => `${item.title} ${item.summary} ${item.courseName}`).join(' ').toLowerCase();
     return skillPalette.map(([name, family, level]) => [
       name,
       family,
       projectText.includes(name.toLowerCase().split('.')[0]) ? Math.min(98, level + 6) : level,
     ]);
-  }, [projects]);
-  const score = Math.min(98, 62 + projects.length * 7 + (resume ? 9 : 0));
+  }, [analysis, portfolioItems, projects]);
+  const score = Number(analysis?.score) > 0
+    ? Math.min(98, Math.round(Number(analysis.score)))
+    : (Array.isArray(portfolioItems) && !projects.length ? 0 : Math.min(98, 52 + projects.length * 9 + (resume ? 9 : 0)));
   const filteredProjects = projects.filter(item => {
     const matchFilter = filter === 'Todos' || item.kind === filter;
     const text = `${item.title} ${item.summary} ${item.courseName} ${item.kind}`.toLowerCase();
     return matchFilter && (!query.trim() || text.includes(query.trim().toLowerCase()));
   });
-  const adminBiEnabled = hasPermission(user, 'rbac.manage');
   const displayName = user?.displayName || user?.name || user?.username || 'Aluno UNIGRAN';
 
   return (
@@ -265,18 +228,17 @@ export default function PortfolioIntelligencePage({ user, token }) {
         <div className="portfolio-hero-grid">
           <div className="portfolio-hero-main">
             <div className="portfolio-kicker">
-              <Sparkles size={15} /> Central profissional inteligente
+              <Sparkles size={15} /> Portfolio profissional
             </div>
             <h1>{displayName}</h1>
             <p>
-              Portfolio academico transformado em experiencia de recrutamento: projetos, skills, curriculo vivo,
-              timeline e evidencias reais em uma leitura premium.
+              Projetos, competencias, curriculo e evidencias academicas organizados para recrutadores.
             </p>
             <div className="portfolio-hero-tags">
               <span><GraduationCap size={14} /> ADS - 5 semestre</span>
               <span><MapPin size={14} /> Dourados / Remoto</span>
               <span><Zap size={14} /> Disponivel para estagio</span>
-              <span><Code2 size={14} /> React, IA, Dados</span>
+              <span><Code2 size={14} /> {skills.slice(0, 3).map(([name]) => name).join(', ') || 'Skills em analise'}</span>
             </div>
             <div className="portfolio-actions">
               <a className="btn btn-primary" href="#recruiter">Recruiter View <ArrowUpRight size={16} /></a>
@@ -286,8 +248,8 @@ export default function PortfolioIntelligencePage({ user, token }) {
           </div>
           <aside className="portfolio-identity-panel">
             <div className="portfolio-avatar">{displayName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</div>
-            <strong>{resume?.virtualResume?.professionalTitle || 'Product-minded developer'}</strong>
-            <span>{courses[0]?.name || 'Analise e Desenvolvimento de Sistemas'}</span>
+            <strong>{resume?.virtualResume?.professionalTitle || analysis?.area || 'Perfil academico em construcao'}</strong>
+            <span>{courses[0]?.name || projects[0]?.courseName || 'Portfolio social'}</span>
             <div className="portfolio-mini-stack">
               {skills.slice(0, 5).map(([name]) => <small key={name}>{name}</small>)}
             </div>
@@ -298,7 +260,7 @@ export default function PortfolioIntelligencePage({ user, token }) {
       <section className="portfolio-metrics-row">
         <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="cases publicados" />
         <Metric icon={BadgeCheck} label="Certificados" value={Math.max(3, projects.length + 1)} hint="credenciais e selos" />
-        <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? 82}%`} hint="progresso academico" />
+        <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? (projects.length ? 78 : 0)}%`} hint="progresso academico" />
         <Metric icon={Target} label="Score" value={score} hint="prontidao profissional" />
       </section>
 
@@ -308,9 +270,9 @@ export default function PortfolioIntelligencePage({ user, token }) {
         <div className="portfolio-section-head">
           <div>
             <span>Skills visuais</span>
-            <h2>Competencias conectadas a evidencias</h2>
+            <h2>Competencias com evidencia</h2>
           </div>
-          <p>Niveis, frequencia e familias de habilidade sem barras genericas.</p>
+          <p>Habilidades agrupadas por pratica, projeto e contexto academico.</p>
         </div>
         <div className="portfolio-skill-grid">
           {skills.map(([name, family, level], index) => <SkillNode key={name} name={name} family={family} level={level} index={index} />)}
@@ -321,9 +283,9 @@ export default function PortfolioIntelligencePage({ user, token }) {
         <div className="portfolio-section-head">
           <div>
             <span>Projetos</span>
-            <h2>Cases profissionais organizados</h2>
+            <h2>Cases academicos</h2>
           </div>
-          <p>Busca inteligente, filtros por area, stack automatica e links para GitHub, Figma, deploy ou documento.</p>
+          <p>Entregas do AVA convertidas em projetos com problema, stack, resultado e link verificavel.</p>
         </div>
         <div className="portfolio-project-toolbar">
           <label>
@@ -364,13 +326,19 @@ export default function PortfolioIntelligencePage({ user, token }) {
             ))}
           </AnimatePresence>
         </div>
+        {!filteredProjects.length && (
+          <div className="profile-portfolio-empty">
+            <strong>Nenhum case publicado ainda.</strong>
+            <span>Crie uma postagem de portfolio ou publique uma entrega do AVA para alimentar esta area.</span>
+          </div>
+        )}
       </section>
 
       <section className="portfolio-section resume-console">
         <div className="portfolio-section-head">
           <div>
             <span>Curriculo inteligente</span>
-            <h2>CV vivo, interativo e conectado</h2>
+            <h2>Curriculo conectado</h2>
           </div>
           <div className="resume-mode-toggle">
             <button className={resumeMode === 'compact' ? 'active' : ''} onClick={() => setResumeMode('compact')}>Compacto</button>
@@ -381,7 +349,7 @@ export default function PortfolioIntelligencePage({ user, token }) {
           <div className="resume-profile-card">
             <FileText size={22} />
             <h3>{resume?.virtualResume?.professionalTitle || 'Curriculo estruturado aguardando upload'}</h3>
-            <p>{resume?.virtualResume?.about || 'Ao enviar PDF/DOCX, o sistema transforma contatos, skills, objetivo e experiencias em blocos recrutaveis.'}</p>
+            <p>{resume?.virtualResume?.about || 'Envie PDF ou DOCX no perfil para estruturar objetivo, contatos, skills e experiencias.'}</p>
             <button className="btn btn-secondary"><Download size={15} /> Baixar PDF</button>
           </div>
           <div className="resume-evidence-list">
@@ -402,9 +370,9 @@ export default function PortfolioIntelligencePage({ user, token }) {
         <div className="portfolio-section-head">
           <div>
             <span>Timeline profissional</span>
-            <h2>Evolucao academica cinematografica</h2>
+            <h2>Evolucao academica</h2>
           </div>
-          <p>Projetos, certificados, workshops, monitorias e conquistas aparecem como narrativa de crescimento.</p>
+          <p>Projetos, certificados e marcos academicos em ordem de desenvolvimento.</p>
         </div>
         <div className="portfolio-timeline">
           {projects.slice(0, 5).map((project, index) => (
@@ -414,7 +382,7 @@ export default function PortfolioIntelligencePage({ user, token }) {
               <p>{project.courseName || 'Marco profissional'} - {projectKind(project)}</p>
             </motion.div>
           ))}
-          <div className="portfolio-time-item final"><span>Agora</span><strong>Portfolio pronto para recrutamento</strong><p>Recruiter View, CV vivo e analytics internos ativos.</p></div>
+          <div className="portfolio-time-item final"><span>Agora</span><strong>Portfolio pronto para recrutamento</strong><p>Recruiter View, curriculo conectado e evidencias verificaveis.</p></div>
         </div>
       </section>
 
@@ -430,7 +398,7 @@ export default function PortfolioIntelligencePage({ user, token }) {
           <Radar size={18} />
           <span>
             <strong>Insights automaticos</strong>
-            <small>Score, fit tecnico e evidencias por projeto</small>
+            <small>{analysis?.area ? `${analysis.area} - score ${analysis.score}%` : 'Score, fit tecnico e evidencias por projeto'}</small>
           </span>
         </div>
         <div>
@@ -441,8 +409,6 @@ export default function PortfolioIntelligencePage({ user, token }) {
           </span>
         </div>
       </section>
-
-      <InternalPowerBi token={token} enabled={adminBiEnabled} />
     </motion.div>
   );
 }

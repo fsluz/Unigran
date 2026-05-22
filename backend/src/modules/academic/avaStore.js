@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createPost } from '../../repositories/post.repository.js';
+import { createPost, listUserPosts } from '../../repositories/post.repository.js';
 import { buildPortfolioMlAnalysis } from '../../services/portfolio-ml.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -164,6 +164,60 @@ function usernameOf(user) {
 
 function displayNameOf(user) {
   return user?.displayName || user?.name || user?.username || 'Aluno Unigran';
+}
+
+function socialPortfolioPostToItem(post, username) {
+  const meta = post?.portfolioItem || {};
+  const activityId = meta.activityId || `social-${post.id}`;
+  return {
+    id: `typedb-${post.id}`,
+    title: meta.title || String(post.content || '').split('\n').find(Boolean)?.replace(/^Novo projeto no portfolio academico:\s*/i, '').slice(0, 90) || 'Projeto de portfolio',
+    summary: meta.summary || String(post.content || '').replace(/#PortfolioAcademico/gi, '').slice(0, 420),
+    courseId: 'social',
+    courseName: 'Portfolio social',
+    activityId,
+    activityTitle: 'Postagem de portfolio',
+    documentUrl: meta.documentUrl || '',
+    documentName: meta.documentName || '',
+    documentStorage: meta.documentStorage || '',
+    documentPath: meta.documentPath || '',
+    externalUrl: meta.externalUrl || '',
+    externalKind: meta.externalKind || '',
+    mediaUrl: meta.mediaUrl || post.media?.url || '',
+    mediaType: meta.mediaType || post.media?.resource_type || '',
+    source: 'typedb-post',
+    content: post.content || '',
+    createdAt: post.time || new Date().toISOString(),
+    updatedAt: post.time || new Date().toISOString(),
+    shareUrl: meta.shareUrl || `/portfolio/${username}/${activityId}`,
+    postId: post.id,
+    likes: post.likes || 0,
+    comments: post.comments || 0,
+    authorUsername: username,
+  };
+}
+
+function mergePortfolioItems(primary = [], secondary = []) {
+  const map = new Map();
+  for (const item of [...secondary, ...primary]) {
+    const key = item.activityId || item.id || item.postId;
+    if (!key) continue;
+    map.set(key, { ...(map.get(key) || {}), ...item });
+  }
+  return [...map.values()]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+}
+
+async function listSocialPortfolioItems(username) {
+  try {
+    const posts = await listUserPosts({ username, viewerUsername: username, limit: 120 });
+    return posts
+      .filter(post => post.portfolioItem)
+      .map(post => socialPortfolioPostToItem(post, username));
+  } catch (err) {
+    console.warn('[portfolio social items]', err.message);
+    return [];
+  }
 }
 
 function ensureUserState(store, user) {
@@ -565,9 +619,8 @@ export async function getPublicPortfolioItem(username, activityId) {
 export async function listPublicPortfolioItems(username) {
   const store = await readStore();
   const userState = store.users?.[username];
-  if (!userState?.portfolio?.length) return [];
-  const institution = (store.institutions || []).find(entry => entry.id === userState.institutionId) || null;
-  return userState.portfolio
+  const institution = (store.institutions || []).find(entry => entry.id === userState?.institutionId) || null;
+  const storeItems = (userState?.portfolio || [])
     .slice()
     .reverse()
     .map(item => ({
@@ -575,13 +628,16 @@ export async function listPublicPortfolioItems(username) {
       authorUsername: username,
       institution,
     }));
+  const socialItems = await listSocialPortfolioItems(username);
+  return mergePortfolioItems(storeItems, socialItems);
 }
 
 export async function getPortfolioMlAnalysis(username) {
   const store = await readStore();
   const userState = store.users?.[username];
+  const items = await listPublicPortfolioItems(username);
   return buildPortfolioMlAnalysis({
-    items: userState?.portfolio || [],
+    items,
     resume: userState?.resume || null,
   });
 }

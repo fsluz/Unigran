@@ -4609,6 +4609,20 @@ img, video { max-width: 100%; }
 .bi-bars strong { color: var(--text); }
 .bi-rai-list span { padding: 11px; border: 1px solid rgba(255,255,255,.10); border-radius: 14px; color: var(--text-muted); background: rgba(255,255,255,.045); }
 
+.master-bi-page { background: var(--page-bg); }
+.master-bi-shell {
+  width: min(100% - 28px, 1240px);
+  margin: 18px auto 40px;
+  display: grid;
+  gap: 18px;
+}
+.master-bi-hero .portfolio-hero-grid {
+  min-height: 360px;
+}
+.master-bi-metric {
+  background: radial-gradient(circle at 100% 0%, rgba(34,211,238,.14), transparent 34%), linear-gradient(145deg, rgba(255,255,255,.10), rgba(255,255,255,.045));
+}
+
 .academic-institutional-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

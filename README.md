@@ -96,16 +96,16 @@ A solucao proposta e um ecossistema academico em que cada modulo possui papel cl
 
 ```mermaid
 flowchart LR
-  Portal[Portal Academico] --> AVA[AVA]
-  AVA --> Entrega[Entrega Academica]
-  Entrega --> Modal{Publicar no Portfolio?}
-  Modal -->|Sim| Portfolio[Academic Case Hub]
-  Modal -->|Nao| Historico[Historico Academico]
-  Portfolio --> Perfil[/u/:username]
-  Portfolio --> Recruiter[Recruiter View]
-  AVA --> BI[Power BI Interno]
-  Portfolio --> BI
-  Portal --> Vitrine[Vitrine Academica]
+  Portal["Portal Academico"] --> AVA["AVA"]
+  AVA --> Entrega["Entrega Academica"]
+  Entrega --> Modal{"Publicar no Portfolio?"}
+  Modal -->|Sim| Perfil["Perfil social do aluno"]
+  Modal -->|Nao| Historico["Historico Academico"]
+  Perfil --> Portfolio["Aba Portfolio Pro"]
+  Portfolio --> Recruiter["Recruiter View"]
+  AVA --> BI["Master Admin BI"]
+  Perfil --> BI
+  Portal --> Vitrine["Vitrine Academica"]
 ```
 
 ### Ideia Central
@@ -270,9 +270,9 @@ O perfil publico apresenta:
 
 ---
 
-## 5. BI Interno / Master Admin
+## 5. Master Admin BI
 
-Foi criado um endpoint para consumo interno inspirado no projeto Power BI:
+O BI interno e um modulo administrativo separado do Portal Academico e do Portfolio Pro. Ele consome dados consolidados por API e fica restrito a perfis master/admin.
 
 ```http
 GET /api/admin/power-bi
@@ -289,6 +289,8 @@ Esse endpoint agrega dados de:
 - cursos;
 - indicadores de engajamento.
 
+No frontend, o acesso aparece como item proprio de navegacao: **Master BI**.
+
 O objetivo e permitir uma visao gerencial sem duplicar toda a base transacional.
 
 ---
@@ -299,14 +301,14 @@ O objetivo e permitir uma visao gerencial sem duplicar toda a base transacional.
 
 ```mermaid
 flowchart TB
-  Browser[Navegador]
-  React[Frontend React + Vite]
-  API[Backend Express]
-  TypeDB[(TypeDB Cloud)]
-  Supabase[(Supabase Storage)]
-  Cloudinary[(Cloudinary)]
-  Ably[Ably Realtime]
-  ML[Modulo ML Python]
+  Browser["Navegador"]
+  React["Frontend React + Vite"]
+  API["Backend Express"]
+  TypeDB[("TypeDB Cloud")]
+  Supabase[("Supabase Storage")]
+  Cloudinary[("Cloudinary")]
+  Ably["Ably Realtime"]
+  ML["Modulo ML Python"]
 
   Browser --> React
   React --> API
@@ -464,6 +466,7 @@ Unigran/
         platform/
           AcademicPortalPage.jsx
           CampusPage.jsx
+          MasterAdminBiPage.jsx
           PortfolioIntelligencePage.jsx
           platform.js
         shared/
@@ -917,10 +920,10 @@ Alguns pontos ainda estao em evolucao:
 5. Selecionar disciplina.
 6. Enviar atividade.
 7. Confirmar publicacao no portfolio.
-8. Abrir Portfolio Pro.
+8. Abrir a aba Portfolio no perfil social.
 9. Mostrar Recruiter View.
 10. Abrir rota publica `/u/:username`.
-11. Abrir endpoint BI interno.
+11. Abrir Master BI com usuario admin.
 12. Apresentar PDF de modelagem do banco.
 
 ### Login em Desenvolvimento
