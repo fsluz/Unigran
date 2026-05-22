@@ -5,7 +5,8 @@ import { createPost } from '../../repositories/post.repository.js';
 import { buildPortfolioMlAnalysis } from '../../services/portfolio-ml.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STORE_PATH = path.resolve(__dirname, '../../../data/ava-store.json');
+const STORE_PATH = process.env.AVA_STORE_PATH
+  || (process.env.VERCEL ? '/tmp/ava-store.json' : path.resolve(__dirname, '../../../data/ava-store.json'));
 
 const seedStore = {
   version: 1,
