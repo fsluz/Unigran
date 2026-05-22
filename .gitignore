@@ -1,5 +1,58 @@
-node_modules
+# Dependências
+node_modules/
+
+# Lock files
 package-lock.json
-schema.tql
+
+# Python
+__pycache__/
+*.pyc
+
+# Ambientes
 backend/.env
 frontend/.env
+
+# Dados locais
+backend/data/
+
+# Modelos ML
+backend/models/
+backend/outputs/
+*.pkl
+*.joblib
+*.h5
+*.keras
+*.pt
+*.pth
+*.parquet
+
+# Logs
+*.log
+*.err.log
+
+# Build frontend
+frontend/dist/
+
+# Cache
+.cache/
+.cache-loader/
+tmp/
+temp/
+
+# Vite
+.vite/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+
+# Banco/local storage
+*.sqlite
+*.db
+
+# Schema
+schema.tql

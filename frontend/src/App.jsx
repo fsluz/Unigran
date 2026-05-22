@@ -17,6 +17,9 @@ import PublicProfilePage  from './pages/PublicProfilePage';
 import FavoritesPage      from './pages/FavoritesPage';
 import ZuniPage           from './pages/ZuniPage';
 import AuditLogsPage       from './pages/AuditLogsPage';
+import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
+import CampusPage          from './modules/platform/CampusPage';
+import { hasPermission }   from './modules/shared/permissions';
 
 function AppShell() {
   const { user, logout } = useAuth();
@@ -77,6 +80,8 @@ function AppShell() {
     communities:   <CommunitiesPage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
     favorites:     <FavoritesPage onOpenProfile={openProfile} />,
+    campus:        hasPermission(user, 'platform.read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
+    ava:           hasPermission(user, 'platform.read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,

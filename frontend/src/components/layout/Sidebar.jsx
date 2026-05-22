@@ -23,6 +23,13 @@ const NAV_TOP = [
       <polygon points="10 8 16 12 10 16 10 8"/>
     </svg>
   )},
+  { id: 'campus',        label: 'Portal',        icon: () => (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10l9-6 9 6-9 6-9-6z"/>
+      <path d="M5 12v5c2 2 12 2 14 0v-5"/>
+      <path d="M21 10v6"/>
+    </svg>
+  )},
   { id: 'messages',      label: 'Mensagens',     badge: 'messages', icon: () => (
     <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>

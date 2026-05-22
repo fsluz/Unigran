@@ -10,9 +10,13 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [postMode, setPostMode] = useState('post');
+  const [portfolioTitle, setPortfolioTitle] = useState('');
+  const [portfolioLink, setPortfolioLink] = useState('');
+  const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
   const [submitting, setSubmitting] = useState(false);
   const [fileAccept, setFileAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
+  const isPortfolioMode = !forcedPostType && postMode === 'portfolio';
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
@@ -52,12 +56,26 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
 
   const submit = async () => {
     if (!text.trim() && !file) return;
-    const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : undefined);
+    const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : (postMode === 'portfolio' ? 'portfolio-post' : undefined));
     setSubmitting(true);
     try {
       if (postType === 'zuni-post') await checkZuniVideo(file);
-      await onSubmit({ content: text.replace(/^\s+|\s+$/g, ''), file, postType });
+      if (postType === 'portfolio-post') {
+        if (file && file.size > 1024 * 1024) throw new Error('Documento do portfolio deve ter ate 1024 KB por enquanto.');
+        if (!text.trim() && !portfolioLink.trim() && !file) throw new Error('Adicione descricao, link ou documento para publicar no portfolio.');
+      }
+      await onSubmit({
+        content: text.replace(/^\s+|\s+$/g, ''),
+        file,
+        postType,
+        portfolioTitle: portfolioTitle.trim(),
+        portfolioLink: portfolioLink.trim(),
+        portfolioLinkKind,
+      });
       setT('');
+      setPortfolioTitle('');
+      setPortfolioLink('');
+      setPortfolioLinkKind('repository');
       clearFile();
     } catch (err) {
       showToast(err.message || 'Erro ao publicar.', '!');
@@ -69,8 +87,8 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const onPick = (event) => {
     const next = event.target.files?.[0];
     if (!next) return;
-    if (next.size > 25 * 1024 * 1024) {
-      showToast('Arquivo muito grande', '!');
+    if (isPortfolioMode && next.size > 1024 * 1024) {
+      showToast('Documento do portfolio deve ter ate 1024 KB.', '!');
       event.target.value = '';
       return;
     }
@@ -85,6 +103,9 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   };
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
   const isVideo = file?.type?.startsWith('video/');
+  const fileAccept = isPortfolioMode
+    ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
 
   return (
     <div className="card post-composer">
@@ -141,7 +162,35 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
           >
             <option value="post">Post</option>
             <option value="zuni">Zuni</option>
+            <option value="portfolio">Portfólio</option>
           </select>
+        )}
+        {isPortfolioMode && (
+          <div className="composer-portfolio-panel">
+            <input
+              className="form-input"
+              value={portfolioTitle}
+              onChange={e => setPortfolioTitle(e.target.value)}
+              placeholder="Titulo comercial do projeto"
+            />
+            <div className="composer-portfolio-grid">
+              <input
+                className="form-input"
+                value={portfolioLink}
+                onChange={e => setPortfolioLink(e.target.value)}
+                placeholder="Link GitHub, deploy, Figma ou artigo"
+              />
+              <select className="form-input" value={portfolioLinkKind} onChange={e => setPortfolioLinkKind(e.target.value)}>
+                <option value="repository">GitHub/repositorio</option>
+                <option value="web_app">Aplicacao web</option>
+                <option value="prototype">Figma/prototipo</option>
+                <option value="drive">Drive</option>
+                <option value="article">Artigo</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+            <span>Publica no feed e tambem cria um case na aba Portfólio. Documento leve: PDF/DOC/DOCX ate 1024 KB.</span>
+          </div>
         )}
         <input
           ref={fileInputRef}
@@ -175,7 +224,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
           <button
             className="btn btn-primary btn-sm composer-submit-btn"
             onClick={submit}
-            disabled={submitting || (!text.trim() && !file)}
+            disabled={submitting || (!text.trim() && !file && !(isPortfolioMode && portfolioLink.trim()))}
           >
             {submitting ? 'Publicando...' : 'Postar'}
           </button>

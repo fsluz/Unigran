@@ -109,9 +109,41 @@ JWT_EXPIRES_IN=7d
 PORT=3001
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
+
+# Midias sociais: imagens e videos
+CLOUDINARY_CLOUD_NAME=demo
+CLOUDINARY_API_KEY=123456789012345
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# Documentos do AVA, principalmente entregas academicas
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+SUPABASE_DOCUMENTS_BUCKET=ava-entregas
 ```
 
 > ⚠️ **Nunca suba o `.env` para o repositório!** Ele já está no `.gitignore`.
+
+---
+
+## Arquitetura de armazenamento
+
+O sistema separa responsabilidades de armazenamento:
+
+- **TypeDB Cloud**: dados estruturados, textos, usuarios, posts, comentarios, relacoes sociais, auditoria e metadados academicos quando o schema do AVA for migrado.
+- **Cloudinary**: imagens e videos da rede social, stories, posts e midias visuais.
+- **Supabase Storage**: documentos do AVA, principalmente arquivos enviados em entregas academicas.
+
+No AVA atual, as entregas aceitam texto da resposta, link externo opcional, documento enviado ao Supabase e publicacao opcional no portfolio academico.
+
+Quando o aluno marca a publicacao no portfolio, o sistema registra a entrega no AVA, cria um item de portfolio com link compartilhavel, tenta criar um post na rede social academica e mantem a entrega salva mesmo se a publicacao social falhar.
+
+Rota publica de portfolio:
+
+```http
+GET /api/portfolio/:username/:activityId
+```
+
+Para documentos publicos no portfolio, o bucket `SUPABASE_DOCUMENTS_BUCKET` precisa permitir leitura publica. Se o bucket for privado, sera necessario trocar o link publico por signed URLs.
 
 ---
 
@@ -187,3 +219,50 @@ select $attr;
 | POST   | /api/conversations/:id/messages               | Enviar mensagem                |
 | DELETE | /api/conversations/:cid/messages/:mid         | Excluir mensagem               |
 | GET    | /api/search?q=&type=users\|communities\|posts | Busca global                   |
+
+---
+
+## Machine Learning do TCC
+
+A camada de Machine Learning fica em `backend/project_ml` e utiliza os artefatos ja treinados em `backend/models`.
+Ela atende a especificacao do sistema de predicao sem exigir novo treinamento durante a demonstracao.
+
+Artefatos principais:
+
+- `backend/models/modelo_clusterizacao.pkl`
+- `backend/models/tfidf_vectorizer.pkl`
+- `backend/models/svd_reducer.pkl`
+- `backend/models/nomes_clusters.pkl`
+- `backend/models/ranking_compatibilidade.json`
+
+Outputs de analise e avaliacao:
+
+- `backend/outputs/metricas_clusterizacao.csv`
+- `backend/outputs/explicacao_clusters.csv`
+- `backend/outputs/recomendacoes_vagas_por_postagem.csv`
+- `backend/outputs/skills_recomendadas_por_postagem.csv`
+- `backend/outputs/relatorio_tcc_ml.txt`
+
+Executar a API Python:
+
+```bash
+cd backend
+pip install -r requirements-ml.txt
+uvicorn project_ml.api.app:app --reload --port 8000
+```
+
+Endpoint principal:
+
+```http
+POST http://localhost:8000/predict
+```
+
+Exemplo de entrada:
+
+```json
+{
+  "texto": "Desenvolvi um dashboard em Power BI usando SQL, indicadores e analise de dados."
+}
+```
+
+Mais detalhes estao em `backend/project_ml/README.md`.

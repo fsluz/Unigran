@@ -8,13 +8,13 @@ import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchSavedPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
-import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPosts, removeFollower, unfollowUser, updateUserProfile } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPortfolioDetails, fetchUserPosts, removeFollower, unfollowUser, updateUserProfile, uploadPortfolioResume } from '../services/users';
 import ImageCropModal from '../components/media/ImageCropModal';
 import ImageLightbox from '../components/media/ImageLightbox';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicaes', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
+const TABS = ['Publicaes', 'Portfolio', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
@@ -22,6 +22,99 @@ const POST_FILTERS = [
   { id: 'media', label: 'Foto/Vdeo' },
   { id: 'date',  label: 'Por data'   },
 ];
+
+function portfolioShareUrl(item) {
+  const path = (item.shareUrl || `/portfolio/${item.authorUsername}/${item.activityId}`).replace(/^\/api\/portfolio/, '/portfolio');
+  if (path.startsWith('http')) return path;
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${path}`;
+}
+
+function portfolioProfileUrl(username) {
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
+}
+
+function externalKindLabel(kind) {
+  const labels = {
+    web_app: 'Aplicacao web',
+    repository: 'Repositorio',
+    prototype: 'Prototipo',
+    drive: 'Drive',
+    article: 'Artigo',
+    other: 'Link externo',
+  };
+  return labels[kind] || 'Link externo';
+}
+
+function MlRecommendationLinks({ analysis }) {
+  const jobs = analysis?.recommendedJobs || [];
+  const posts = analysis?.matchedPosts || [];
+  if (!jobs.length && !posts.length) return null;
+  return (
+    <div className="profile-ml-links">
+      {jobs.slice(0, 3).map((job, index) => (
+        <a key={`${job.link}-${index}`} href={job.link} target="_blank" rel="noreferrer">
+          <strong>{job.title || 'Vaga recomendada'}</strong>
+          <span>{job.company || 'Empresa'} {job.score ? `- ${job.score}%` : ''}</span>
+        </a>
+      ))}
+      {posts.slice(0, 1).map((post, index) => post.topLink && (
+        <a key={`${post.topLink}-${index}`} href={post.topLink} target="_blank" rel="noreferrer">
+          <strong>{post.topJob || 'Vaga mais aderente'}</strong>
+          <span>{post.topCompany || post.area || 'Recomendacao ML'}</span>
+        </a>
+      ))}
+      {analysis?.artifactLinks?.outputs && (
+        <a href={analysis.artifactLinks.outputs} target="_blank" rel="noreferrer">
+          <strong>Outputs ML no Drive</strong>
+          <span>CSV, dashboards e analises geradas</span>
+        </a>
+      )}
+      {analysis?.artifactLinks?.models && (
+        <a href={analysis.artifactLinks.models} target="_blank" rel="noreferrer">
+          <strong>Models ML no Drive</strong>
+          <span>Modelos treinados e vetorizadores</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
+function PortfolioCard({ item, onCopy }) {
+  const shareUrl = portfolioShareUrl(item);
+  const externalUrl = item.externalUrl || (item.documentStorage === 'external' ? item.documentUrl : '');
+  return (
+    <article className="profile-portfolio-card">
+      <div className="profile-portfolio-card-glow" />
+      <div className="profile-portfolio-card-head">
+        <div>
+          <span className="profile-portfolio-kicker">{item.courseName || 'Portfolio academico'}</span>
+          <h3>{item.title || item.activityTitle}</h3>
+        </div>
+        <span className="profile-portfolio-status">Publicado</span>
+      </div>
+      <p>{item.summary || 'Trabalho academico publicado no portfolio.'}</p>
+      <div className="profile-portfolio-meta">
+        <span>{item.institution?.name || 'Instituicao'}</span>
+        <span>{item.documentName || 'Entrega academica'}</span>
+      </div>
+      {externalUrl && (
+        <a className="profile-portfolio-preview-link" href={externalUrl} target="_blank" rel="noreferrer">
+          <strong>{item.externalLabel || externalKindLabel(item.externalKind)}</strong>
+          <span>{externalKindLabel(item.externalKind)} para recrutadores abrirem</span>
+        </a>
+      )}
+      <div className="profile-share-field">
+        <input value={shareUrl} readOnly aria-label="Link compartilhavel do portfolio" />
+        <button type="button" onClick={() => onCopy(shareUrl)}>Copiar</button>
+      </div>
+      {item.documentUrl && (
+        <a className="profile-portfolio-doc" href={item.documentUrl} target="_blank" rel="noreferrer">
+          Abrir documento
+        </a>
+      )}
+    </article>
+  );
+}
 
 export default function ProfilePage({ onNavigate }) {
   const { user, token, updateUser } = useAuth();
@@ -35,6 +128,10 @@ export default function ProfilePage({ onNavigate }) {
   const [likedPosts, setLikedPosts] = useState([]);
   const [savedPosts, setSavedPosts] = useState([]);
   const [reposts, setReposts] = useState([]);
+  const [portfolioItems, setPortfolioItems] = useState([]);
+  const [portfolioResume, setPortfolioResume] = useState(null);
+  const [portfolioAnalysis, setPortfolioAnalysis] = useState(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
@@ -58,6 +155,13 @@ export default function ProfilePage({ onNavigate }) {
     fetchUserPosts({ token, username: user.username })
       .then((loaded) => setPosts(loaded))
       .catch(() => setPosts([]));
+    fetchUserPortfolioDetails({ token, username: user.username })
+      .then((details) => {
+        setPortfolioItems(details.portfolio);
+        setPortfolioResume(details.resume);
+        setPortfolioAnalysis(details.analysis);
+      })
+      .catch(() => setPortfolioItems([]));
   }, [token, user?.username]);
 
   useEffect(() => {
@@ -118,6 +222,33 @@ export default function ProfilePage({ onNavigate }) {
       setPeople(await loader({ token, username: user.username }));
     } catch {
       showToast('Falha ao carregar lista', '!');
+    }
+  };
+
+  const copyPortfolioLink = async (url) => {
+    try {
+      if (!navigator.clipboard) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(url);
+      showToast('Link do portfolio copiado', 'OK');
+    } catch {
+      showToast('Nao foi possivel copiar o link', '!');
+    }
+  };
+
+  const handleResumeUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setResumeUploading(true);
+      const result = await uploadPortfolioResume({ token, file });
+      setPortfolioResume(result.resume);
+      setPortfolioAnalysis(result.analysis);
+      showToast('Curriculo lido e conectado ao portfolio', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Falha ao enviar curriculo', '!');
+    } finally {
+      setResumeUploading(false);
     }
   };
 
@@ -183,7 +314,7 @@ export default function ProfilePage({ onNavigate }) {
   const achievements = [
     { title: 'Primeiro post', text: posts.length > 0 ? 'O comeco e aqui.' : 'O comeco e aqui - faca seu primeiro post.', done: posts.length > 0 },
     { title: 'Perfil vivo', text: user.bio ? 'Bio pronta.' : 'Conte quem voce e.', done: Boolean(user.bio) },
-    { title: 'Rede aberta', text: (stats.following || 0) > 0 ? 'Voce ja seguiu alguem.' : 'Siga uma pessoa.', done: (stats.following || 0) > 0 },
+    { title: 'Portfolio academico', text: portfolioItems.length > 0 ? 'Trabalhos publicados.' : 'Publique uma entrega do AVA.', done: portfolioItems.length > 0 },
   ];
 
   const editPost = (id, newText) => {
@@ -205,6 +336,8 @@ export default function ProfilePage({ onNavigate }) {
   const linkPosts = posts
     .filter(p => URL_RE.test(p.content || ''))
     .map(p => ({ ...p, url: (p.content || '').match(URL_RE)?.[0] }));
+
+  const virtualResume = portfolioResume?.virtualResume;
 
   return (
     <div className="page-scroll">
@@ -249,6 +382,10 @@ export default function ProfilePage({ onNavigate }) {
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.following || 0}</div>
               <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('following')}>Seguindo</div>
+            </div>
+            <div className="profile-stat" onClick={() => setTab('Portfolio')}>
+              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{portfolioItems.length}</div>
+              <div className="profile-stat-label">Portfolio</div>
             </div>
           </div>
 
@@ -304,6 +441,92 @@ export default function ProfilePage({ onNavigate }) {
                   />
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {tab === 'Portfolio' && (
+          <div className="profile-portfolio-panel">
+            <div className="profile-portfolio-hero">
+              <div>
+                <span className="profile-portfolio-kicker">Vitrine academica</span>
+                <h2>Portfolio de trabalhos</h2>
+                <p>Entregas publicadas pelo AVA aparecem aqui com link somente de compartilhamento para divulgar como portfolio.</p>
+              </div>
+              <div className="profile-portfolio-count">
+                <strong>{portfolioItems.length}</strong>
+                <span>itens</span>
+              </div>
+            </div>
+            <div className="profile-portfolio-master-share">
+              <div>
+                <strong>Link profissional do portfolio</strong>
+                <span>Use este link em processos seletivos, networking e conversas com empresas.</span>
+              </div>
+              <div className="profile-share-field">
+                <input value={portfolioProfileUrl(user.username)} readOnly aria-label="Link publico do portfolio academico" />
+                <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(user.username))}>Copiar</button>
+              </div>
+            </div>
+            <div className="profile-resume-panel">
+              <div>
+                <span className="profile-portfolio-kicker">Curriculo virtual</span>
+                <strong>{virtualResume?.professionalTitle || (portfolioResume ? 'Curriculo conectado ao portfolio' : 'Adicionar curriculo PDF ou DOCX')}</strong>
+                <p>{virtualResume?.about || portfolioResume?.summary || 'Envie seu curriculo para o sistema criar uma versao virtual com objetivo, contatos, skills e destaques profissionais.'}</p>
+                {portfolioResume && (
+                  <div className="profile-resume-preview">
+                    <div>
+                      <span>Objetivo</span>
+                      <p>{virtualResume?.objective || portfolioResume.summary}</p>
+                    </div>
+                    <div>
+                      <span>Contato</span>
+                      <p>{portfolioResume.emails?.[0] || portfolioResume.phones?.[0] || 'Sem contato extraido'}</p>
+                    </div>
+                  </div>
+                )}
+                {(virtualResume?.hardSkills?.length > 0 || portfolioResume?.skills?.length > 0) && (
+                  <div className="profile-resume-skills">
+                    {(virtualResume?.hardSkills || portfolioResume.skills).slice(0, 10).map(skill => <span key={skill}>{skill}</span>)}
+                  </div>
+                )}
+                {virtualResume?.highlights?.length > 0 && (
+                  <div className="profile-resume-highlights">
+                    {virtualResume.highlights.slice(0, 3).map(item => <span key={item}>{item}</span>)}
+                  </div>
+                )}
+              </div>
+              <label className="profile-resume-upload">
+                {resumeUploading ? 'Lendo curriculo...' : 'Enviar curriculo'}
+                <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleResumeUpload} />
+              </label>
+            </div>
+            {portfolioAnalysis && (
+              <div className="profile-ml-panel">
+                <div>
+                  <span className="profile-portfolio-kicker">Analise ML de vagas</span>
+                  <strong>{portfolioAnalysis.area}</strong>
+                  <p>Score {portfolioAnalysis.score}% - {portfolioAnalysis.category}. Baseado no notebook ml vagas e nos outputs atualizados.</p>
+                </div>
+                <div>
+                  <div className="profile-ml-skills">
+                    {(portfolioAnalysis.recommendedSkills || []).slice(0, 8).map(skill => <span key={skill}>{skill}</span>)}
+                  </div>
+                  <MlRecommendationLinks analysis={portfolioAnalysis} />
+                </div>
+              </div>
+            )}
+            {portfolioItems.length === 0 ? (
+              <div className="profile-portfolio-empty">
+                <strong>Nenhum trabalho publicado ainda.</strong>
+                <span>Ao entregar uma atividade no AVA, marque a opcao de publicar no portfolio academico.</span>
+              </div>
+            ) : (
+              <div className="profile-portfolio-grid">
+                {portfolioItems.map(item => (
+                  <PortfolioCard key={item.id || item.activityId} item={item} onCopy={copyPortfolioLink} />
+                ))}
+              </div>
             )}
           </div>
         )}

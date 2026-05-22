@@ -112,14 +112,14 @@ export default function HomePage({ onOpenProfile }) {
     }
   };
 
-  const handleNewPost = async ({ content, file, postType }) => {
-    const created = await createPost({ token, content, file, postType });
+  const handleNewPost = async ({ content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind }) => {
+    const created = await createPost({ token, content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind });
     if (postType === 'zuni-post') {
       showToast('Short publicado no Zuni', 'OK');
       return;
     }
     setPosts(prev => [created, ...prev]);
-    showToast('Post publicado', 'OK');
+    showToast(postType === 'portfolio-post' ? 'Portfolio publicado no feed e na vitrine' : 'Post publicado', 'OK');
   };
 
   const handleDelete = id => {
