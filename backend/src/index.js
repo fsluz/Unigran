@@ -57,6 +57,7 @@ app.use('/api/search',        searchRouter);
 app.use('/api/uploads',       uploadsRouter);
 app.use('/api/portfolio',     portfolioRouter);
 app.use('/portfolio',         portfolioRouter);
+app.use('/u',                 portfolioRouter);
 app.use('/api/stories',       storiesRouter);
 app.use('/api/realtime',      realtimeRouter);
 app.use('/api/data-export',   dataExportRouter);

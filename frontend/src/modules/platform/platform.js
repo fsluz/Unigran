@@ -61,6 +61,15 @@ export async function submitAvaActivity(token, activityId, payload) {
   return readJson(res, 'Erro ao enviar atividade');
 }
 
+export async function publishSubmissionToPortfolio(token, submissionId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/submissions/${submissionId}/portfolio`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload || {}),
+  });
+  return readJson(res, 'Erro ao publicar entrega no portfolio');
+}
+
 export async function uploadAvaDocument(token, file) {
   const body = new FormData();
   body.append('file', file);
@@ -122,4 +131,11 @@ export async function gradeTeacherSubmission(token, submissionId, payload) {
     body: JSON.stringify(payload),
   });
   return readJson(res, 'Erro ao corrigir entrega');
+}
+
+export async function fetchPowerBiAnalytics(token) {
+  const res = await apiFetch('/admin/power-bi', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar Power BI interno');
 }

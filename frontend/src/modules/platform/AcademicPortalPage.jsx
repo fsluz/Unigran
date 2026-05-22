@@ -34,6 +34,7 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
+import PortfolioIntelligencePage from './PortfolioIntelligencePage';
 
 const portalModules = [
   { id: 'home', label: 'Inicio', icon: PanelsTopLeft, permission: 'platform.read', badge: 'Live' },
@@ -42,6 +43,7 @@ const portalModules = [
   { id: 'coordination', label: 'Coordenacao', icon: Users, permission: 'academic.coordination.read', badge: '31' },
   { id: 'teacher', label: 'Professor', icon: GraduationCap, permission: 'academic.teacher.manage', badge: '23' },
   { id: 'student', label: 'Aluno', icon: BookOpen, permission: 'academic.student.read', badge: '82%' },
+  { id: 'portfolio', label: 'Portfolio Pro', icon: Sparkles, permission: 'platform.read', badge: 'AI' },
   { id: 'finance', label: 'Financeiro', icon: WalletCards, permission: 'platform.read', badge: '1' },
   { id: 'services', label: 'Servicos', icon: FileText, permission: 'platform.read', badge: '2' },
   { id: 'secretary', label: 'Secretaria', icon: Landmark, permission: 'secretary.manage', badge: 'SLA' },
@@ -76,6 +78,18 @@ const externalLinks = [
   { title: 'Oportunidade de Estagio', url: 'https://www.unigran.br' },
   { title: 'Guia do Estudante', url: 'https://www.unigran.br' },
   { title: 'Central de Ajuda', url: 'https://www.unigran.br' },
+];
+
+const institutionalHighlights = [
+  { title: 'Academic Case Hub', value: '128', text: 'cases academicos publicados por alunos' },
+  { title: 'Talentos em destaque', value: '32', text: 'perfis com portfolio verificavel' },
+  { title: 'Projetos interdisciplinares', value: '18', text: 'trabalhos conectando pesquisa, tecnologia e mercado' },
+];
+
+const showcaseProjects = [
+  { title: 'RAi Campus Assistant', area: 'IA Aplicada', student: 'Fabio Henrique', signal: 'Deploy + GitHub' },
+  { title: 'Data Hub Academico', area: 'Banco de Dados', student: 'Ana Paula', signal: 'Modelo normalizado' },
+  { title: 'UX para AVA Premium', area: 'Design de Interacao', student: 'Isabela Rocha', signal: 'Figma + pesquisa' },
 ];
 
 const roleLabels = {
@@ -187,7 +201,7 @@ function PremiumStat({ label, value, hint, icon: Icon = Activity }) {
 }
 
 export default function AcademicPortalPage({ onOpenAva }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { showToast } = useToast();
   const institutions = useMemo(() => {
     const linked = user?.institutions || user?.faculdades || user?.instituicoes;
@@ -307,6 +321,33 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
       </PortalCard>
 
+      <PortalCard title="Home Institucional Viva" text="Cursos, noticias, calendario, eventos, projetos e talentos conectados ao ecossistema academico." tone="wide" icon={Building2}>
+        <div className="academic-institutional-strip">
+          {institutionalHighlights.map(item => (
+            <div key={item.title}>
+              <strong>{item.value}</strong>
+              <span>{item.title}</span>
+              <small>{item.text}</small>
+            </div>
+          ))}
+        </div>
+      </PortalCard>
+
+      <PortalCard title="Vitrine Academica" text="Projetos em formato Behance + GitHub academico, alimentados por entregas reais do AVA." tone="wide" icon={Sparkles}>
+        <div className="academic-showcase-list">
+          {showcaseProjects.map((project, index) => (
+            <button key={project.title} onClick={() => setActiveTab('portfolio')}>
+              <em>{String(index + 1).padStart(2, '0')}</em>
+              <span>
+                <strong>{project.title}</strong>
+                <small>{project.area} - {project.student}</small>
+              </span>
+              <b>{project.signal}</b>
+            </button>
+          ))}
+        </div>
+      </PortalCard>
+
       <PortalCard title="Disciplinas Matriculadas" text="Acesso as aulas, atividades, forum e material complementar." tone="wide" icon={GraduationCap}>
         <DisciplinesList onOpenAva={onOpenAva} />
       </PortalCard>
@@ -354,6 +395,19 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
       <PortalCard title="AVA" text="Ambiente separado para estudos, entregas, materiais, forum e portfolio academico." tone="ava" icon={Zap}>
         <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>Abrir ambiente <ArrowUpRight size={16} /></button>
+      </PortalCard>
+
+      <PortalCard title="Portfolio Pro" text="Central profissional inteligente para recrutadores, cases, skills e curriculo vivo." tone="wide ai" icon={Sparkles}>
+        <div className="academic-service-grid">
+          <button onClick={() => setActiveTab('portfolio')}>
+            <strong>Recruiter View</strong>
+            <span>Score, melhores projetos, skills e leitura executiva do aluno.</span>
+          </button>
+          <button onClick={() => setActiveTab('portfolio')}>
+            <strong>Curriculo inteligente</strong>
+            <span>Experiencias, certificados e tecnologias conectadas a evidencias.</span>
+          </button>
+        </div>
       </PortalCard>
     </motion.section>
   );
@@ -627,6 +681,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     library: renderLibrary,
     links: renderLinks,
     support: renderSupport,
+    portfolio: () => <PortfolioIntelligencePage user={user} token={token} />,
   }[activeTab];
 
   return (

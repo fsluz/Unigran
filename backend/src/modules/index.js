@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
-import { jwtSecret } from '../config/jwt.js';
 import { auth } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole, requirePermission } from './auth/rbac.js';
 import avaRouter from './academic/avaRoutes.js';
@@ -8,41 +6,7 @@ import { aiSnapshot, dashboardForRole, librarySnapshot, platformModules, secreta
 
 const router = Router();
 
-function platformAuth(req, res, next) {
-  if (process.env.NODE_ENV === 'production') return auth(req, res, next);
-
-  const header = req.headers.authorization || '';
-  if (header === 'Bearer mock-token-dev' || !header.startsWith('Bearer ')) {
-    req.user = {
-      id: 'dev-aluno',
-      username: 'dev-aluno',
-      displayName: 'Aluno Dev',
-      email: 'dev@unigran.com.br',
-      role: 'admin',
-    };
-    return next();
-  }
-
-  try {
-    const decoded = jwt.verify(header.slice(7), jwtSecret());
-    req.user = {
-      ...decoded,
-      role: normalizeUniversityRole(decoded.role),
-    };
-    return next();
-  } catch {
-    req.user = {
-      id: 'dev-aluno',
-      username: 'dev-aluno',
-      displayName: 'Aluno Dev',
-      email: 'dev@unigran.com.br',
-      role: 'admin',
-    };
-    return next();
-  }
-}
-
-router.use(platformAuth);
+router.use(auth);
 
 router.get('/v1/modules', requirePermission('platform.read'), (req, res) => {
   const role = normalizeUniversityRole(req.user?.role);

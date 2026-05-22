@@ -35,20 +35,6 @@ function attrBoolTrue(value) {
 
 export async function auth(req, res, next) {
   const header = req.headers.authorization;
-  const isDev = process.env.NODE_ENV !== 'production';
-  const mockUser = {
-    id: 'fabiohenrique',
-    username: 'fabiohenrique',
-    displayName: 'Fabio Henrique',
-    email: 'fabio@unigran.com.br',
-    role: 'admin',
-  };
-
-  if (isDev && header === 'Bearer mock-token-dev') {
-    req.user = mockUser;
-    return next();
-  }
-
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token nao fornecido' });
   }
@@ -76,6 +62,7 @@ export async function auth(req, res, next) {
           return res.status(403).json({ error: 'Conta banida' });
         }
       } catch (err) {
+        const isDev = process.env.NODE_ENV !== 'production';
         if (!isDev) throw err;
         console.warn('[auth] pulando checagem de banimento no dev:', err?.message || err);
       }

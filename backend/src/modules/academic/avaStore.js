@@ -413,16 +413,30 @@ export async function submitActivity(user, activityId, payload) {
 
   if (payload.publishToPortfolio) {
     const portfolioTitle = payload.portfolioTitle || activity.title;
+    const metadata = inferProjectMetadata({ course, activity, submission, payload });
     const portfolioItem = {
       id: previous?.portfolioItemId || `portfolio-${activityId}-${usernameOf(user)}-${Date.now()}`,
       title: portfolioTitle,
-      summary: payload.portfolioSummary || payload.content.slice(0, 280),
+      summary: metadata.autoSummary,
       courseId: course.id,
       courseName: course.name,
       activityId,
       activityTitle: activity.title,
+      professor: metadata.professor,
+      semester: metadata.semester,
+      technologies: metadata.technologies,
+      competencies: metadata.competencies,
+      tags: metadata.tags,
+      difficulty: metadata.difficulty,
+      status: metadata.status,
+      grade: metadata.grade,
+      thumbnailSeed: metadata.thumbnailSeed,
+      bannerTone: metadata.bannerTone,
+      timeline: metadata.timeline,
+      evidence: metadata.evidence,
       documentUrl: submission.documentUrl || submission.attachmentUrl,
       documentName: submission.documentName || 'Entrega academica',
+      documentStorage: submission.documentStorage || '',
       externalUrl: payload.attachmentUrl || '',
       externalKind: payload.attachmentKind || (payload.attachmentUrl ? 'other' : ''),
       externalLabel: payload.attachmentLabel || '',
@@ -454,6 +468,83 @@ export async function submitActivity(user, activityId, payload) {
     submission.portfolioPostId = portfolioItem.postId;
     submission.portfolioShareUrl = portfolioItem.shareUrl;
   }
+
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function publishSubmissionToPortfolio(user, submissionId, payload = {}) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const submission = userState.submissions.find(item => item.id === submissionId);
+  if (!submission) return null;
+  const { course, activity } = findActivity(store, submission.activityId);
+  if (!course || !activity) return null;
+
+  const now = new Date().toISOString();
+  const title = payload.title || submission.activityTitle || activity.title;
+  const metadata = inferProjectMetadata({ course, activity, submission, payload });
+  const previous = userState.portfolio.find(item => item.activityId === submission.activityId);
+  const portfolioItem = {
+    id: previous?.id || `portfolio-${submission.activityId}-${usernameOf(user)}-${Date.now()}`,
+    title,
+    summary: metadata.autoSummary,
+    courseId: course.id,
+    courseName: course.name,
+    activityId: submission.activityId,
+    activityTitle: activity.title,
+    professor: metadata.professor,
+    semester: metadata.semester,
+    technologies: metadata.technologies,
+    competencies: metadata.competencies,
+    tags: metadata.tags,
+    difficulty: metadata.difficulty,
+    status: metadata.status,
+    grade: metadata.grade,
+    thumbnailSeed: metadata.thumbnailSeed,
+    bannerTone: metadata.bannerTone,
+    timeline: metadata.timeline,
+    evidence: metadata.evidence,
+    documentUrl: submission.documentUrl || submission.attachmentUrl,
+    documentName: submission.documentName || 'Entrega academica',
+    documentStorage: submission.documentStorage || '',
+    externalUrl: submission.externalUrl || '',
+    externalKind: submission.externalKind || '',
+    externalLabel: submission.externalLabel || '',
+    createdAt: previous?.createdAt || now,
+    updatedAt: now,
+    shareUrl: `/portfolio/${usernameOf(user)}/${submission.activityId}`,
+    postId: previous?.postId || null,
+  };
+
+  if (!portfolioItem.postId) {
+    try {
+      const createdPost = await createPost({
+        authorUsername: usernameOf(user),
+        postType: 'text-post',
+        content: `Novo case academico publicado: ${title}\n\n${portfolioItem.summary}\n\n${portfolioItem.shareUrl} #PortfolioAcademico`,
+        media: null,
+        communityId: null,
+      });
+      portfolioItem.postId = createdPost.id;
+    } catch {
+      portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
+    }
+  }
+
+  const itemIndex = userState.portfolio.findIndex(item => item.activityId === submission.activityId);
+  if (itemIndex >= 0) userState.portfolio[itemIndex] = { ...userState.portfolio[itemIndex], ...portfolioItem };
+  else userState.portfolio.push(portfolioItem);
+  submission.portfolioItemId = portfolioItem.id;
+  submission.portfolioPostId = portfolioItem.postId;
+  submission.portfolioShareUrl = portfolioItem.shareUrl;
+  userState.notifications.push({
+    id: `portfolio-${submission.id}-${Date.now()}`,
+    title: 'Entrega virou case profissional',
+    body: `${portfolioItem.title} agora aparece no seu portfolio inteligente.`,
+    createdAt: now,
+    read: false,
+  });
 
   await writeStore(store);
   return getAvaState(user);
@@ -493,6 +584,126 @@ export async function getPortfolioMlAnalysis(username) {
     items: userState?.portfolio || [],
     resume: userState?.resume || null,
   });
+}
+
+export async function getAvaPowerBiSnapshot() {
+  const store = await readStore();
+  const users = Object.entries(store.users || {}).map(([username, state]) => ({ username, ...state }));
+  const courses = store.courses || [];
+  const submissions = users.flatMap(user => (user.submissions || []).map(item => ({ ...item, username: user.username })));
+  const portfolio = users.flatMap(user => (user.portfolio || []).map(item => ({ ...item, username: user.username })));
+  const resumes = users.filter(user => user.resume).map(user => ({ username: user.username, resume: user.resume }));
+  const completedMaterials = users.reduce((sum, user) => sum + (user.completedMaterials || []).length, 0);
+  const activityCount = courses.reduce((sum, course) => sum + (course.activities || []).length, 0);
+  const materialCount = courses.reduce((sum, course) => sum + (course.materials || []).length, 0);
+  const averageProgress = users.length
+    ? Math.round(users.reduce((sum, user) => {
+      const linkedCourses = courses.filter(course => !user.institutionId || course.institutionId === user.institutionId);
+      const built = linkedCourses.map(course => buildCourse(course, user));
+      const progress = built.length ? built.reduce((acc, course) => acc + course.progress, 0) / built.length : 0;
+      return sum + progress;
+    }, 0) / users.length)
+    : 0;
+
+  const byCourse = courses.map(course => {
+    const courseSubmissions = submissions.filter(item => item.courseId === course.id);
+    const coursePortfolio = portfolio.filter(item => item.courseId === course.id);
+    return {
+      id: course.id,
+      name: course.name,
+      code: course.code,
+      period: course.period,
+      grade: course.grade,
+      attendance: course.attendance,
+      activities: course.activities?.length || 0,
+      materials: course.materials?.length || 0,
+      submissions: courseSubmissions.length,
+      portfolioItems: coursePortfolio.length,
+    };
+  });
+
+  return {
+    generatedAt: new Date().toISOString(),
+    source: 'AVA store + TypeDB admin enrichment',
+    dimensions: {
+      students: users.length,
+      courses: courses.length,
+      activities: activityCount,
+      materials: materialCount,
+    },
+    kpis: {
+      submissions: submissions.length,
+      portfolioItems: portfolio.length,
+      resumes: resumes.length,
+      completedMaterials,
+      averageProgress,
+      publishRate: submissions.length ? Math.round((portfolio.length / submissions.length) * 100) : 0,
+    },
+    byCourse,
+    portfolio: portfolio
+      .slice()
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 12),
+    submissions: submissions
+      .slice()
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 12),
+  };
+}
+
+function inferProjectMetadata({ course = {}, activity = {}, submission = {}, payload = {} } = {}) {
+  const text = `${activity.title || ''} ${activity.description || ''} ${submission.content || ''} ${payload.portfolioSummary || ''} ${payload.summary || ''} ${submission.externalUrl || ''}`.toLowerCase();
+  const technologies = [
+    ['React', ['react', 'jsx', 'frontend', 'interface']],
+    ['Node.js', ['node', 'express', 'api', 'backend']],
+    ['TypeDB', ['typedb', 'typeql', 'grafo']],
+    ['SQL', ['sql', 'banco', 'dados', 'normalizado', 'normalizacao']],
+    ['Python', ['python', 'pandas', 'notebook']],
+    ['IA Aplicada', ['ia', 'inteligencia artificial', 'prompt', 'embedding']],
+    ['Figma', ['figma', 'prototipo', 'ux', 'design']],
+    ['GitHub', ['github', 'repositorio', 'codigo']],
+  ].filter(([, keys]) => keys.some(key => text.includes(key))).map(([name]) => name);
+  const competencies = [
+    course.name,
+    ...(course.tags || []),
+    text.includes('document') ? 'Documentacao tecnica' : null,
+    text.includes('pesquisa') ? 'Pesquisa aplicada' : null,
+    text.includes('usuario') || text.includes('ux') ? 'Experiencia do usuario' : null,
+    text.includes('api') || text.includes('backend') ? 'Arquitetura de software' : null,
+    text.includes('dados') || text.includes('sql') ? 'Modelagem de dados' : null,
+    text.includes('ia') ? 'Automacao com IA' : null,
+  ].filter(Boolean);
+  const difficulty = submission.content?.length > 1200 || technologies.length >= 4
+    ? 'Alta'
+    : technologies.length >= 2 || submission.externalUrl
+      ? 'Media'
+      : 'Inicial';
+
+  return {
+    professor: course.professor || '',
+    semester: course.period || '',
+    technologies: [...new Set(technologies.length ? technologies : [...(course.tags || []), course.name].filter(Boolean))].slice(0, 10),
+    competencies: [...new Set(competencies)].slice(0, 10),
+    tags: [...new Set([...(course.tags || []), course.name, activity.title, difficulty].filter(Boolean))].slice(0, 10),
+    difficulty,
+    status: submission.score != null ? 'Avaliado' : 'Publicado',
+    grade: submission.score ?? null,
+    thumbnailSeed: `${course.id || 'portfolio'}-${activity.id || activity.title || Date.now()}`,
+    bannerTone: course.color || '#2563eb',
+    autoSummary: payload.portfolioSummary || payload.summary || submission.content?.slice(0, 360) || activity.description || '',
+    timeline: [
+      { title: 'Atividade criada', at: activity.due || submission.createdAt, type: 'activity' },
+      { title: 'Entrega enviada', at: submission.updatedAt || submission.createdAt, type: 'submission' },
+      { title: 'Case publicado no portfolio', at: new Date().toISOString(), type: 'portfolio' },
+    ],
+    evidence: {
+      documentUrl: submission.documentUrl || '',
+      externalUrl: submission.externalUrl || '',
+      externalKind: submission.externalKind || '',
+      documentName: submission.documentName || '',
+      previewMode: submission.documentUrl?.toLowerCase().endsWith('.pdf') ? 'pdf' : submission.documentUrl ? 'document' : submission.externalUrl ? 'external' : 'text',
+    },
+  };
 }
 
 export async function createForumPost(user, courseId, content) {

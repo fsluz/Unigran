@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Modelagem de Banco de Dados - Ecossistema Academico UNIGRAN</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #172033; font-family: "Segoe UI", Arial, sans-serif; line-height: 1.45; }
+    h1, h2, h3 { color: #111827; line-height: 1.1; }
+    h1 { font-size: 34px; margin: 0 0 10px; }
+    h2 { margin: 28px 0 10px; padding-top: 12px; border-top: 2px solid #e5e7eb; font-size: 22px; }
+    h3 { margin: 18px 0 8px; font-size: 16px; }
+    p { margin: 7px 0; }
+    .cover { min-height: 92vh; display: grid; align-content: center; }
+    .kicker { color: #2563eb; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .subtitle { max-width: 720px; color: #4b5563; font-size: 17px; }
+    .meta { margin-top: 28px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .meta div, .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 11px; page-break-inside: avoid; }
+    th, td { border: 1px solid #e5e7eb; padding: 7px; vertical-align: top; }
+    th { background: #eff6ff; color: #1e3a8a; text-align: left; }
+    code { padding: 1px 4px; border-radius: 4px; background: #eef2ff; color: #3730a3; }
+    ul { margin: 6px 0 12px 18px; padding: 0; }
+    li { margin: 4px 0; }
+    .page-break { break-before: page; }
+    .tag { display: inline-block; margin: 2px 3px 2px 0; padding: 3px 7px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 700; }
+    .note { border-left: 4px solid #2563eb; padding: 10px 12px; background: #eff6ff; color: #1f2937; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="kicker">UNIGRAN Comunidades</div>
+    <h1>Modelagem de Banco de Dados para Portal, AVA e Portfolio Inteligente</h1>
+    <p class="subtitle">
+      Documento tecnico para orientar a criacao correta do banco de dados, sem migrations automaticas gigantes.
+      O foco e permitir que atividades academicas alimentem reputacao profissional verificavel, portfolios publicos,
+      curriculo vivo, analytics internos e leitura para recrutadores.
+    </p>
+    <div class="meta">
+      <div><strong>Versao:</strong><br>1.0 - proposta estrutural</div>
+      <div><strong>Data:</strong><br>22/05/2026</div>
+      <div><strong>Escopo:</strong><br>Portal Academico, AVA, Academic Case Hub, Recruiter View e BI interno</div>
+      <div><strong>Principio:</strong><br>Normalizar eventos academicos e gerar agregados por API/cache</div>
+    </div>
+  </section>
+
+  <section class="page-break">
+    <h2>1. Visao Geral da Arquitetura de Dados</h2>
+    <p>O ecossistema deve ser dividido em tres dominios conectados:</p>
+    <div class="grid">
+      <div class="card"><strong>Portal Academico</strong><br>Conteudo institucional, cursos, eventos, noticias, calendario, vitrine publica e destaques.</div>
+      <div class="card"><strong>AVA</strong><br>Disciplinas, materiais, atividades, entregas, notas, feedback, forum, progresso e IA contextual.</div>
+      <div class="card"><strong>Portfolio Inteligente</strong><br>Cases profissionais, evidencias, competencias, curriculo vivo, timeline e perfil publico.</div>
+      <div class="card"><strong>Analytics Interno</strong><br>Power BI/master admin com indicadores a partir de eventos reais, sem duplicar fonte transacional.</div>
+    </div>
+    <p class="note">Recomendacao: manter tabelas/entidades transacionais normalizadas e criar views/materialized views ou endpoints de agregacao para dashboards.</p>
+  </section>
+
+  <section>
+    <h2>2. Entidades Base</h2>
+    <h3>2.1 person / user_profile</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Obrigatorio</th><th>Observacao</th></tr>
+      <tr><td>id</td><td>uuid/string</td><td>sim</td><td>Identificador interno imutavel.</td></tr>
+      <tr><td>username</td><td>string unique</td><td>sim</td><td>Usado em <code>/u/:username</code> e portfolio publico.</td></tr>
+      <tr><td>name</td><td>string</td><td>sim</td><td>Nome exibido.</td></tr>
+      <tr><td>email</td><td>string unique</td><td>sim</td><td>Login e contato.</td></tr>
+      <tr><td>phone</td><td>string</td><td>nao</td><td>Contato privado/publicavel por permissao.</td></tr>
+      <tr><td>role</td><td>enum</td><td>sim</td><td>student, professor, coordination, management, admin, super_admin.</td></tr>
+      <tr><td>status</td><td>enum</td><td>sim</td><td>active, inactive, banned, invited, archived.</td></tr>
+      <tr><td>profile_picture</td><td>url</td><td>nao</td><td>Avatar publico.</td></tr>
+      <tr><td>cover_picture</td><td>url</td><td>nao</td><td>Capa do perfil/portfolio.</td></tr>
+      <tr><td>bio</td><td>text</td><td>nao</td><td>Bio academica/profissional.</td></tr>
+      <tr><td>headline</td><td>string</td><td>nao</td><td>Chamada profissional curta.</td></tr>
+      <tr><td>location</td><td>string</td><td>nao</td><td>Cidade/UF/remoto.</td></tr>
+      <tr><td>linkedin_url</td><td>url</td><td>nao</td><td>Link profissional.</td></tr>
+      <tr><td>github_url</td><td>url</td><td>nao</td><td>Repositorio publico.</td></tr>
+      <tr><td>portfolio_visibility</td><td>enum</td><td>sim</td><td>public, private, recruiters_only.</td></tr>
+      <tr><td>created_at / updated_at</td><td>datetime</td><td>sim</td><td>Auditoria basica.</td></tr>
+    </table>
+
+    <h3>2.2 institution, campus, course, enrollment</h3>
+    <table>
+      <tr><th>Entidade</th><th>Campos principais</th><th>Relacionamentos</th></tr>
+      <tr><td>institution</td><td>id, name, slug, legal_name, logo_url, status</td><td>1:N campus, 1:N course</td></tr>
+      <tr><td>campus</td><td>id, institution_id, name, city, state, modality</td><td>N:1 institution</td></tr>
+      <tr><td>course</td><td>id, institution_id, name, code, level, modality, duration, coordinator_id, status</td><td>N:1 institution, N:1 coordinator</td></tr>
+      <tr><td>enrollment</td><td>id, student_id, course_id, semester, period, status, started_at, expected_graduation_at</td><td>N:1 student, N:1 course</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>3. Portal Academico</h2>
+    <h3>3.1 portal_content</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Identificador da noticia/evento/pagina.</td></tr>
+      <tr><td>type</td><td>enum</td><td>news, event, announcement, course_page, showcase, banner.</td></tr>
+      <tr><td>title</td><td>string</td><td>Titulo publico.</td></tr>
+      <tr><td>slug</td><td>string unique</td><td>URL amigavel.</td></tr>
+      <tr><td>summary</td><td>text</td><td>Resumo para cards.</td></tr>
+      <tr><td>body</td><td>rich text/json</td><td>Conteudo completo.</td></tr>
+      <tr><td>cover_url</td><td>url</td><td>Imagem principal.</td></tr>
+      <tr><td>starts_at / ends_at</td><td>datetime</td><td>Eventos e calendario.</td></tr>
+      <tr><td>audience</td><td>enum/json</td><td>public, students, professors, recruiters, internal.</td></tr>
+      <tr><td>published_at</td><td>datetime</td><td>Publicacao.</td></tr>
+      <tr><td>author_id</td><td>fk person</td><td>Responsavel.</td></tr>
+    </table>
+    <h3>3.2 academic_showcase</h3>
+    <p>Vitrine publica que referencia projetos reais sem duplicar dados.</p>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Observacao</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Registro do destaque.</td></tr>
+      <tr><td>portfolio_project_id</td><td>fk</td><td>Projeto destacado.</td></tr>
+      <tr><td>rank_position</td><td>integer</td><td>Ranking editorial ou automatico.</td></tr>
+      <tr><td>highlight_reason</td><td>text</td><td>Motivo do destaque.</td></tr>
+      <tr><td>featured_from / featured_until</td><td>datetime</td><td>Janela de destaque.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>4. AVA - Dados Operacionais</h2>
+    <h3>4.1 discipline / class_section</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Turma/disciplina ofertada.</td></tr>
+      <tr><td>course_id</td><td>fk course</td><td>Curso relacionado.</td></tr>
+      <tr><td>name</td><td>string</td><td>Nome da disciplina.</td></tr>
+      <tr><td>code</td><td>string</td><td>Codigo academico.</td></tr>
+      <tr><td>professor_id</td><td>fk person</td><td>Professor responsavel.</td></tr>
+      <tr><td>semester</td><td>string</td><td>Ex: 2026.1.</td></tr>
+      <tr><td>description</td><td>text</td><td>Visao geral.</td></tr>
+      <tr><td>color</td><td>string</td><td>Personalizacao visual.</td></tr>
+      <tr><td>status</td><td>enum</td><td>draft, active, finished, archived.</td></tr>
+    </table>
+
+    <h3>4.2 material</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Material do AVA.</td></tr>
+      <tr><td>discipline_id</td><td>fk</td><td>Disciplina.</td></tr>
+      <tr><td>title</td><td>string</td><td>Titulo.</td></tr>
+      <tr><td>type</td><td>enum</td><td>video, pdf, docx, link, template, quiz, embed.</td></tr>
+      <tr><td>storage_url</td><td>url</td><td>Supabase/Cloudinary/S3.</td></tr>
+      <tr><td>duration_minutes</td><td>integer</td><td>Tempo estimado.</td></tr>
+      <tr><td>required</td><td>boolean</td><td>Conta para progresso.</td></tr>
+      <tr><td>order_index</td><td>integer</td><td>Ordenacao.</td></tr>
+    </table>
+
+    <h3>4.3 activity</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Atividade avaliativa.</td></tr>
+      <tr><td>discipline_id</td><td>fk</td><td>Disciplina.</td></tr>
+      <tr><td>title</td><td>string</td><td>Titulo.</td></tr>
+      <tr><td>description</td><td>text</td><td>Briefing completo.</td></tr>
+      <tr><td>rubric_json</td><td>json</td><td>Criterios de avaliacao.</td></tr>
+      <tr><td>due_at</td><td>datetime</td><td>Prazo.</td></tr>
+      <tr><td>points</td><td>decimal</td><td>Peso/nota maxima.</td></tr>
+      <tr><td>xp</td><td>integer</td><td>Gamificacao academica.</td></tr>
+      <tr><td>portfolio_eligible</td><td>boolean</td><td>Pode virar case.</td></tr>
+      <tr><td>expected_evidence_types</td><td>json</td><td>pdf, docx, github, figma, deploy, video.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>5. Entregas, Evidencias e Avaliacao</h2>
+    <h3>5.1 submission</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Entrega.</td></tr>
+      <tr><td>activity_id</td><td>fk activity</td><td>Atividade relacionada.</td></tr>
+      <tr><td>student_id</td><td>fk person</td><td>Aluno.</td></tr>
+      <tr><td>content</td><td>text</td><td>Resposta/observacoes.</td></tr>
+      <tr><td>status</td><td>enum</td><td>draft, submitted, resubmitted, late, graded, returned.</td></tr>
+      <tr><td>submitted_at</td><td>datetime</td><td>Data de envio.</td></tr>
+      <tr><td>score</td><td>decimal</td><td>Nota.</td></tr>
+      <tr><td>feedback</td><td>text</td><td>Feedback do professor.</td></tr>
+      <tr><td>graded_by</td><td>fk person</td><td>Avaliador.</td></tr>
+      <tr><td>graded_at</td><td>datetime</td><td>Data da avaliacao.</td></tr>
+      <tr><td>portfolio_project_id</td><td>fk nullable</td><td>Case criado a partir da entrega.</td></tr>
+    </table>
+
+    <h3>5.2 submission_evidence</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Evidencia individual.</td></tr>
+      <tr><td>submission_id</td><td>fk</td><td>Entrega.</td></tr>
+      <tr><td>type</td><td>enum</td><td>pdf, docx, image, video, github, figma, deploy, documentation, drive, other.</td></tr>
+      <tr><td>label</td><td>string</td><td>Rotulo exibido.</td></tr>
+      <tr><td>url</td><td>url</td><td>Arquivo ou link externo.</td></tr>
+      <tr><td>storage_provider</td><td>enum</td><td>supabase, cloudinary, github, figma, external.</td></tr>
+      <tr><td>mime_type</td><td>string</td><td>Para viewer.</td></tr>
+      <tr><td>file_size</td><td>integer</td><td>Bytes.</td></tr>
+      <tr><td>preview_url</td><td>url</td><td>Thumbnail/preview gerado.</td></tr>
+      <tr><td>metadata_json</td><td>json</td><td>Paginas PDF, dimensoes imagem, duracao video.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>6. Portfolio Inteligente / Academic Case Hub</h2>
+    <h3>6.1 portfolio_project</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Projeto/case profissional.</td></tr>
+      <tr><td>owner_id</td><td>fk person</td><td>Aluno dono.</td></tr>
+      <tr><td>source_submission_id</td><td>fk nullable</td><td>Origem no AVA.</td></tr>
+      <tr><td>title</td><td>string</td><td>Titulo publico.</td></tr>
+      <tr><td>slug</td><td>string</td><td>URL amigavel.</td></tr>
+      <tr><td>summary</td><td>text</td><td>Resumo profissional.</td></tr>
+      <tr><td>problem_statement</td><td>text</td><td>Problema resolvido.</td></tr>
+      <tr><td>solution</td><td>text</td><td>Solução proposta.</td></tr>
+      <tr><td>results</td><td>text/json</td><td>Resultados, metricas, aprendizados.</td></tr>
+      <tr><td>discipline_id</td><td>fk</td><td>Disciplina relacionada.</td></tr>
+      <tr><td>professor_id</td><td>fk</td><td>Orientador.</td></tr>
+      <tr><td>semester</td><td>string</td><td>Semestre.</td></tr>
+      <tr><td>grade</td><td>decimal</td><td>Nota se publicavel.</td></tr>
+      <tr><td>difficulty</td><td>enum</td><td>Inicial, Media, Alta, Avancada.</td></tr>
+      <tr><td>status</td><td>enum</td><td>draft, published, highlighted, archived.</td></tr>
+      <tr><td>visibility</td><td>enum</td><td>public, private, recruiters_only.</td></tr>
+      <tr><td>thumbnail_url</td><td>url</td><td>Card.</td></tr>
+      <tr><td>banner_url</td><td>url</td><td>Hero do case.</td></tr>
+      <tr><td>professional_score</td><td>integer</td><td>Score de prontidao do case.</td></tr>
+      <tr><td>published_at</td><td>datetime</td><td>Publicacao.</td></tr>
+    </table>
+
+    <h3>6.2 project_skill, project_technology, project_evidence</h3>
+    <table>
+      <tr><th>Entidade</th><th>Campos</th><th>Observacao</th></tr>
+      <tr><td>skill</td><td>id, name, category, description</td><td>Hard e soft skills normalizadas.</td></tr>
+      <tr><td>technology</td><td>id, name, category, icon_url, website</td><td>Stack tecnica.</td></tr>
+      <tr><td>project_skill</td><td>project_id, skill_id, level, evidence_strength, source</td><td>Conecta competencia ao case.</td></tr>
+      <tr><td>project_technology</td><td>project_id, technology_id, usage_level, frequency</td><td>Uso real no projeto.</td></tr>
+      <tr><td>project_evidence</td><td>project_id, evidence_id, visibility, order_index</td><td>Reaproveita evidencias da entrega.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>7. Curriculo Vivo</h2>
+    <h3>7.1 resume_document</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>id</td><td>uuid</td><td>Documento de curriculo enviado.</td></tr>
+      <tr><td>user_id</td><td>fk person</td><td>Dono.</td></tr>
+      <tr><td>file_url</td><td>url</td><td>PDF/DOCX original.</td></tr>
+      <tr><td>file_type</td><td>enum</td><td>pdf, docx.</td></tr>
+      <tr><td>parsed_text</td><td>text</td><td>Texto extraido.</td></tr>
+      <tr><td>parser_status</td><td>enum</td><td>pending, parsed, failed, needs_review.</td></tr>
+      <tr><td>parsed_at</td><td>datetime</td><td>Quando foi processado.</td></tr>
+      <tr><td>version</td><td>integer</td><td>Historico de curriculos.</td></tr>
+    </table>
+    <h3>7.2 resume_profile</h3>
+    <table>
+      <tr><th>Campo</th><th>Tipo</th><th>Uso</th></tr>
+      <tr><td>user_id</td><td>fk unique</td><td>Perfil profissional vivo.</td></tr>
+      <tr><td>professional_title</td><td>string</td><td>Cargo/aspiracao.</td></tr>
+      <tr><td>about</td><td>text</td><td>Resumo profissional.</td></tr>
+      <tr><td>objective</td><td>text</td><td>Objetivo.</td></tr>
+      <tr><td>availability</td><td>enum</td><td>internship, junior, freelance, research, unavailable.</td></tr>
+      <tr><td>preferred_roles</td><td>json</td><td>Cargos alvo.</td></tr>
+      <tr><td>preferred_locations</td><td>json</td><td>Remoto/cidades.</td></tr>
+      <tr><td>recruiter_summary</td><td>text</td><td>Resumo executivo gerado.</td></tr>
+      <tr><td>professional_score</td><td>integer</td><td>Score geral.</td></tr>
+    </table>
+    <h3>7.3 resume_experience, resume_certification, resume_link</h3>
+    <table>
+      <tr><th>Entidade</th><th>Campos essenciais</th></tr>
+      <tr><td>resume_experience</td><td>id, user_id, company, role, type, started_at, ended_at, description, skills_json, source</td></tr>
+      <tr><td>resume_certification</td><td>id, user_id, title, issuer, issued_at, expires_at, credential_url, skills_json</td></tr>
+      <tr><td>resume_link</td><td>id, user_id, type, label, url, verified_at, visibility</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>8. Timeline, Reputacao e Recruiter View</h2>
+    <table>
+      <tr><th>Entidade</th><th>Campos</th><th>Uso</th></tr>
+      <tr><td>academic_timeline_event</td><td>id, user_id, source_type, source_id, title, description, occurred_at, visibility, weight</td><td>Linha do tempo unificada.</td></tr>
+      <tr><td>reputation_signal</td><td>id, user_id, type, value, source_type, source_id, confidence, calculated_at</td><td>Score profissional auditavel.</td></tr>
+      <tr><td>recruiter_view_snapshot</td><td>id, user_id, summary, top_skills_json, top_projects_json, score, generated_at</td><td>Cache de leitura rapida.</td></tr>
+      <tr><td>profile_view_event</td><td>id, profile_user_id, viewer_type, viewer_id, referrer, viewed_at</td><td>Analytics publico/privado.</td></tr>
+    </table>
+  </section>
+
+  <section class="page-break">
+    <h2>9. Permissoes e Privacidade</h2>
+    <table>
+      <tr><th>Area</th><th>Regra</th></tr>
+      <tr><td>Aluno</td><td>Cria entregas, publica/despublica projetos, controla visibilidade do perfil e curriculo.</td></tr>
+      <tr><td>Professor</td><td>Cria atividades/materiais, avalia entregas, recomenda projetos para destaque.</td></tr>
+      <tr><td>Coordenacao</td><td>Enxerga indicadores de curso, alunos em risco, projetos por disciplina.</td></tr>
+      <tr><td>Master admin</td><td>Administra roles, auditoria, BI, destaques institucionais e integracoes.</td></tr>
+      <tr><td>Recrutador</td><td>Acessa apenas perfis/projetos publicos ou liberados.</td></tr>
+    </table>
+    <p>Campos sensiveis como nota, telefone, email e feedback devem ter flags de visibilidade por contexto.</p>
+  </section>
+
+  <section>
+    <h2>10. Indices Recomendados</h2>
+    <ul>
+      <li><code>person.username</code>, <code>person.email</code> unicos.</li>
+      <li><code>portfolio_project.owner_id + published_at</code> para perfil publico.</li>
+      <li><code>portfolio_project.slug</code> unico por usuario.</li>
+      <li><code>submission.student_id + activity_id</code> para evitar duplicidade sem versionamento.</li>
+      <li><code>activity.discipline_id + due_at</code> para calendario e kanban.</li>
+      <li><code>academic_timeline_event.user_id + occurred_at</code> para timeline.</li>
+      <li><code>profile_view_event.profile_user_id + viewed_at</code> para analytics.</li>
+      <li><code>project_skill.skill_id</code> e <code>project_technology.technology_id</code> para busca de talentos.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>11. APIs Recomendadas</h2>
+    <ul>
+      <li><code>GET /api/platform/v1/portal/home</code> - home institucional, projetos e talentos.</li>
+      <li><code>GET /api/platform/v1/ava</code> - dashboard do aluno por role.</li>
+      <li><code>POST /api/platform/v1/ava/activities/:id/submissions</code> - envio de entrega.</li>
+      <li><code>POST /api/platform/v1/ava/submissions/:id/portfolio</code> - transforma entrega em case.</li>
+      <li><code>GET /api/portfolio/:username</code> e <code>GET /u/:username</code> - perfil publico.</li>
+      <li><code>GET /api/admin/power-bi</code> - BI interno agregado.</li>
+      <li><code>POST /api/uploads/documents</code> - upload com metadados de preview.</li>
+      <li><code>POST /api/resume/parse</code> - parser PDF/DOCX para curriculo vivo.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>12. Roadmap de Implementacao</h2>
+    <ol>
+      <li>Criar schema base de pessoas, instituicoes, cursos, turmas e matriculas.</li>
+      <li>Normalizar AVA: disciplinas, materiais, atividades, entregas e evidencias.</li>
+      <li>Criar portfolio_project e vincular a submission.</li>
+      <li>Adicionar parser de curriculo e tabelas de resume_profile/experience/certification.</li>
+      <li>Criar timeline academica unificada por eventos.</li>
+      <li>Criar views/agregados para dashboard interno e vitrine publica.</li>
+      <li>Adicionar auditoria e flags de privacidade por campo sensivel.</li>
+    </ol>
+    <p class="note">Este documento e uma orientacao de modelagem. A criacao fisica das migrations deve ser feita em lotes pequenos, revisaveis e testados por dominio.</p>
+  </section>
+</body>
+</html>

@@ -33,6 +33,7 @@ import {
   fetchAva,
   fetchTeacherSubmissions,
   gradeTeacherSubmission,
+  publishSubmissionToPortfolio,
   submitAvaActivity,
   uploadAvaDocument,
 } from './platform';
@@ -134,6 +135,8 @@ export default function CampusPage({ onBackToPortal }) {
     points: 10,
     xp: 120,
   });
+  const [portfolioPrompt, setPortfolioPrompt] = useState(null);
+  const [portfolioPublishing, setPortfolioPublishing] = useState(false);
 
   const role = normalizeRole(user?.role);
   const canTeach = hasPermission(user, 'academic.teacher.manage');
@@ -232,16 +235,43 @@ export default function CampusPage({ onBackToPortal }) {
         documentUrl: document?.url || '',
         documentName: document?.name || '',
         documentStorage: document?.storage || (draft.attachmentUrl ? 'external' : undefined),
-        publishToPortfolio: Boolean(draft.publishToSocial),
-        portfolioTitle: draft.portfolioTitle || activity.title,
-        portfolioSummary: draft.portfolioSummary || '',
+        publishToPortfolio: false,
       });
-      setActivityDrafts(prev => ({ ...prev, [activity.id]: { content: '', attachmentUrl: '', attachmentKind: '', attachmentLabel: '', publishToSocial: false } }));
-      replaceAva(next, draft.publishToSocial ? 'Atividade enviada, publicada na rede e adicionada ao portfolio' : 'Atividade enviada');
+      const updatedActivity = next.courses
+        ?.flatMap(course => course.activities || [])
+        .find(item => item.id === activity.id);
+      const submission = updatedActivity?.submission;
+      setActivityDrafts(prev => ({ ...prev, [activity.id]: { content: '', attachmentUrl: '', attachmentKind: '', attachmentLabel: '' } }));
+      replaceAva(next, 'Atividade enviada');
+      if (submission && !submission.portfolioShareUrl) {
+        setPortfolioPrompt({
+          activity: updatedActivity || activity,
+          submission,
+          title: draft.portfolioTitle || activity.title,
+          summary: draft.portfolioSummary || draft.content.slice(0, 360),
+        });
+      }
     } catch (err) {
       showToast(err.message || 'Erro ao enviar atividade', '!');
     } finally {
       setSubmittingActivities(prev => ({ ...prev, [activity.id]: false }));
+    }
+  };
+
+  const handlePublishPortfolioPrompt = async () => {
+    if (!portfolioPrompt?.submission) return;
+    try {
+      setPortfolioPublishing(true);
+      const next = await publishSubmissionToPortfolio(token, portfolioPrompt.submission.id, {
+        title: portfolioPrompt.title,
+        summary: portfolioPrompt.summary,
+      });
+      replaceAva(next, 'Entrega transformada em case profissional');
+      setPortfolioPrompt(null);
+    } catch (err) {
+      showToast(err.message || 'Erro ao publicar no portfolio', '!');
+    } finally {
+      setPortfolioPublishing(false);
     }
   };
 
@@ -581,46 +611,29 @@ export default function CampusPage({ onBackToPortal }) {
                               }))}
                             />
                           </label>
-                          <label className="ava-check ava-portfolio-check">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(draft.publishToSocial)}
-                              onChange={event => setActivityDrafts(prev => ({
-                                ...prev,
-                                [activity.id]: { ...draft, publishToSocial: event.target.checked },
-                              }))}
-                            />
-                            Publicar tambem na rede social academica
-                          </label>
-                          <small className="ava-social-hint">
-                            Ao publicar na rede social, este trabalho tambem vira item do seu portfolio com link compartilhavel.
-                          </small>
-                          {draft.publishToSocial && (
-                            <div className="ava-portfolio-fields">
-                              <input
-                                className="ava-input"
-                                value={draft.portfolioTitle || activity.title}
-                                onChange={event => setActivityDrafts(prev => ({
-                                  ...prev,
-                                  [activity.id]: { ...draft, portfolioTitle: event.target.value },
-                                }))}
-                                placeholder="Titulo da publicacao e do portfolio"
-                              />
-                              <textarea
-                                className="ava-textarea"
-                                value={draft.portfolioSummary || ''}
-                                onChange={event => setActivityDrafts(prev => ({
-                                  ...prev,
-                                  [activity.id]: { ...draft, portfolioSummary: event.target.value },
-                                }))}
-                                placeholder="Resumo para a publicacao academica"
-                              />
-                            </div>
-                          )}
                           {activity.submission?.portfolioShareUrl && (
                             <div className="ava-portfolio-link">
-                              <strong>Publicado na rede e no portfolio</strong>
+                              <strong>Case profissional publicado</strong>
                               <span>{publicPortfolioLink(activity.submission.portfolioShareUrl)}</span>
+                            </div>
+                          )}
+                          {activity.submission && !activity.submission?.portfolioShareUrl && (
+                            <div className="ava-portfolio-suggestion">
+                              <div>
+                                <strong>Esta entrega pode virar reputacao profissional</strong>
+                                <span>O sistema gera resumo, tags, tecnologias, competencias e timeline para o portfolio.</span>
+                              </div>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => setPortfolioPrompt({
+                                  activity,
+                                  submission: activity.submission,
+                                  title: activity.title,
+                                  summary: activity.submission.content?.slice(0, 360) || activity.description,
+                                })}
+                              >
+                                Adicionar ao portfolio
+                              </button>
                             </div>
                           )}
                           <button className="btn btn-primary" onClick={() => handleSubmitActivity(activity)} disabled={Boolean(submittingActivities[activity.id])}>
@@ -836,6 +849,45 @@ export default function CampusPage({ onBackToPortal }) {
             </div>
           </aside>
         </section>
+
+        <AnimatePresence>
+          {portfolioPrompt && (
+            <motion.div className="ava-portfolio-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.section className="ava-portfolio-modal" initial={{ opacity: 0, y: 22, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }}>
+                <div className="ava-portfolio-modal-head">
+                  <span><Trophy size={16} /> Academic Case Hub</span>
+                  <button onClick={() => setPortfolioPrompt(null)}>Agora nao</button>
+                </div>
+                <h2>Deseja adicionar esta entrega ao seu portfolio profissional?</h2>
+                <p>
+                  Vamos criar um case com resumo automatico, tecnologias detectadas, competencias, evidencias,
+                  timeline academica e link publico verificavel para recrutadores.
+                </p>
+                <div className="ava-portfolio-preview">
+                  <strong>{portfolioPrompt.activity?.title}</strong>
+                  <span>{selectedCourse?.name} - {selectedCourse?.professor || 'Professor orientador'}</span>
+                  <div>
+                    {(selectedCourse?.tags || ['Portfolio', 'Academico', 'Case']).map(tag => <small key={tag}>{tag}</small>)}
+                  </div>
+                </div>
+                <label className="ava-modal-field">
+                  <span>Titulo do case</span>
+                  <input value={portfolioPrompt.title || ''} onChange={event => setPortfolioPrompt(prev => ({ ...prev, title: event.target.value }))} />
+                </label>
+                <label className="ava-modal-field">
+                  <span>Resumo profissional</span>
+                  <textarea value={portfolioPrompt.summary || ''} onChange={event => setPortfolioPrompt(prev => ({ ...prev, summary: event.target.value }))} />
+                </label>
+                <div className="ava-portfolio-modal-actions">
+                  <button className="btn btn-secondary" onClick={() => setPortfolioPrompt(null)}>Manter apenas no AVA</button>
+                  <button className="btn btn-primary" onClick={handlePublishPortfolioPrompt} disabled={portfolioPublishing}>
+                    {portfolioPublishing ? 'Publicando...' : <><ArrowUpRight size={16} /> Criar case profissional</>}
+                  </button>
+                </div>
+              </motion.section>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

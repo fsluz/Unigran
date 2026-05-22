@@ -9,6 +9,7 @@ import {
   gradeSubmission,
   getAvaState,
   listTeacherSubmissions,
+  publishSubmissionToPortfolio,
   setMaterialCompletion,
   submitActivity,
 } from './avaStore.js';
@@ -52,6 +53,11 @@ const GradeSchema = z.object({
   feedback: z.string().trim().min(2).max(4000),
 });
 
+const PortfolioPublishSchema = z.object({
+  title: z.string().trim().max(180).optional().or(z.literal('')),
+  summary: z.string().trim().max(1000).optional().or(z.literal('')),
+});
+
 router.get('/', async (req, res) => {
   try {
     res.json(await getAvaState(req.user));
@@ -83,6 +89,20 @@ router.post('/activities/:activityId/submissions', async (req, res) => {
   } catch (err) {
     console.error('[ava submit activity]', err);
     res.status(500).json({ error: 'Erro ao enviar atividade' });
+  }
+});
+
+router.post('/submissions/:submissionId/portfolio', async (req, res) => {
+  const parsed = PortfolioPublishSchema.safeParse(req.body || {});
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  try {
+    const state = await publishSubmissionToPortfolio(req.user, req.params.submissionId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Entrega nao encontrada' });
+    res.status(201).json(state);
+  } catch (err) {
+    console.error('[ava publish portfolio]', err);
+    res.status(500).json({ error: 'Erro ao publicar no portfolio' });
   }
 });
 
