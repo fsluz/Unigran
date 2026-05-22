@@ -18,6 +18,7 @@ import realtimeRouter      from './routes/realtime.js';
 import dataExportRouter    from './routes/dataExport.js';
 import portfolioRouter     from './routes/portfolio.js';
 import platformRouter      from './modules/index.js';
+import cryptoRouter        from './routes/crypto.js';
 import { setupSocket }     from './socket/handlers.js';
 import { auditRequests }    from './middleware/audit.js';
 
@@ -60,6 +61,7 @@ app.use('/api/stories',       storiesRouter);
 app.use('/api/realtime',      realtimeRouter);
 app.use('/api/data-export',   dataExportRouter);
 app.use('/api/platform',      platformRouter);
+app.use('/api/crypto',        cryptoRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
 

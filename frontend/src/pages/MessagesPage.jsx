@@ -5,7 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
-import { getCallChannel } from '../services/realtime';
+import { getCallChannel, getConversationChannel, getPresenceChannel } from '../services/realtime';
+import { decryptMessage, decryptMessages, encryptMessage, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
@@ -114,18 +115,40 @@ export default function MessagesPage() {
   };
   const filteredConversations = useMemo(() => {
     const q = conversationSearch.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter(conv => {
+    const sorted = [...conversations].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+    if (!q) return sorted;
+    return sorted.filter(conv => {
       const name = conv.participant?.displayName || conv.title || '';
       const username = conv.participant?.username || '';
       return name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
     });
   }, [conversations, conversationSearch]);
 
+  const bumpConversation = (conversationId, message) => {
+    setConversations(prev => prev
+      .map(conv => conv.id === conversationId ? {
+        ...conv,
+        lastMessageAt: message?.time || new Date().toISOString(),
+        lastMessage: message?.content || (message?.media ? 'Midia enviada' : conv.lastMessage),
+      } : conv)
+      .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
+  };
+
+  const participantUsernames = (conv = active) => [
+    user?.username,
+    ...(conv?.participants || []).map(person => person.username),
+    conv?.participant?.username,
+  ].filter(Boolean);
+
+  useEffect(() => {
+    if (!token) return;
+    publishOwnPublicKey(token).catch(() => showToast('E2EE sem chave publica salva', '!'));
+  }, [token, showToast]);
+
   useEffect(() => {
     fetchConversations(token)
       .then((loaded) => {
-        setConversations(loaded);
+        setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
         setActive(prev => prev || loaded[0] || null);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
@@ -136,7 +159,7 @@ export default function MessagesPage() {
     const interval = setInterval(() => {
       fetchConversations(token)
         .then((loaded) => {
-          setConversations(loaded);
+          setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
           setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (loaded[0] || null));
         })
         .catch(() => null);
@@ -147,6 +170,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!active?.id) return;
     fetchMessages({ token, conversationId: active.id })
+      .then(loaded => decryptMessages(active.id, loaded, user?.username))
       .then(loaded => {
         const markerId = firstUnreadId(loaded);
         setUnreadMarkerByConv(prev => ({ ...prev, [active.id]: markerId }));
@@ -164,6 +188,7 @@ export default function MessagesPage() {
 
     const interval = setInterval(() => {
       fetchMessages({ token, conversationId: active.id })
+        .then(loaded => decryptMessages(active.id, loaded, user?.username))
         .then(loaded => {
           setMessages(prev => {
             const current = prev[active.id] || [];
@@ -177,6 +202,63 @@ export default function MessagesPage() {
 
     return () => clearInterval(interval);
   }, [active?.id, token]);
+
+  useEffect(() => {
+    if (!token || !active?.id) return undefined;
+    const channel = getConversationChannel(token, active.id);
+    const onMessage = ({ data }) => {
+      if (!data?.message?.id) return;
+      decryptMessage(active.id, data.message, user?.username).then((message) => setMessages(prev => {
+        const current = prev[active.id] || [];
+        if (current.some(msg => msg.id === message.id)) return prev;
+        return { ...prev, [active.id]: [...current, message] };
+      }));
+      bumpConversation(active.id, data.message);
+      if (data.message?.author?.id !== user?.username) markConversationRead({ token, conversationId: active.id }).catch(() => null);
+    };
+    const onEdited = ({ data }) => {
+      if (!data?.message?.id) return;
+      decryptMessage(active.id, data.message, user?.username).then(message => {
+        setMessages(prev => ({
+          ...prev,
+          [active.id]: (prev[active.id] || []).map(msg => msg.id === message.id ? { ...msg, ...message, edited: true } : msg),
+        }));
+      });
+    };
+    const onDeleted = ({ data }) => {
+      if (!data?.messageId) return;
+      setMessages(prev => ({ ...prev, [active.id]: (prev[active.id] || []).filter(msg => msg.id !== data.messageId) }));
+    };
+    channel.subscribe('message_sent', onMessage);
+    channel.subscribe('message_edited', onEdited);
+    channel.subscribe('message_deleted', onDeleted);
+    return () => {
+      channel.unsubscribe('message_sent', onMessage);
+      channel.unsubscribe('message_edited', onEdited);
+      channel.unsubscribe('message_deleted', onDeleted);
+    };
+  }, [token, active?.id, user?.username]);
+
+  useEffect(() => {
+    if (!token || !user?.username) return undefined;
+    const channel = getPresenceChannel(token);
+    channel.presence.enter({ username: user.username, profilePicture: user.profilePicture || null }).catch(() => null);
+    const refreshPresence = async () => {
+      const members = await channel.presence.get().catch(() => []);
+      const online = new Set(members.map(member => member.clientId));
+      setConversations(prev => prev.map(conv => ({
+        ...conv,
+        participant: conv.participant ? { ...conv.participant, online: online.has(conv.participant.username) } : conv.participant,
+        participants: (conv.participants || []).map(person => ({ ...person, online: online.has(person.username) })),
+      })));
+    };
+    channel.presence.subscribe(refreshPresence);
+    refreshPresence();
+    return () => {
+      channel.presence.unsubscribe(refreshPresence);
+      channel.presence.leave().catch(() => null);
+    };
+  }, [token, user?.username, user?.profilePicture]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -424,6 +506,7 @@ export default function MessagesPage() {
     if (!active?.id || !window.confirm('Excluir mensagem?')) return;
     await deleteMessage({ token, conversationId: active.id, messageId }).catch(err => showToast(err.message || 'Erro ao excluir mensagem', ''));
     setMessages(prev => ({ ...prev, [active.id]: (prev[active.id] || []).filter(msg => msg.id !== messageId) }));
+    getConversationChannel(token, active.id).publish('message_deleted', { messageId }).catch(() => null);
     setMessageMenuOpen(null);
   };
 
@@ -436,16 +519,35 @@ export default function MessagesPage() {
   const saveEditedMessage = async () => {
     if (!active?.id || !editingMessage?.id || !editText.trim()) return;
     try {
-      const saved = await updateMessage({ token, conversationId: active.id, messageId: editingMessage.id, content: editText.trim() });
+      const encryptedContent = await encryptMessage({
+        token,
+        conversationId: active.id,
+        usernames: participantUsernames(),
+        content: editText.trim(),
+        media: editingMessage.media || null,
+      });
+      const savedEncrypted = await updateMessage({ token, conversationId: active.id, messageId: editingMessage.id, content: encryptedContent });
+      const saved = { ...savedEncrypted, content: editText.trim(), media: editingMessage.media || null, encrypted: true };
       setMessages(prev => ({
         ...prev,
         [active.id]: (prev[active.id] || []).map(msg => msg.id === editingMessage.id ? { ...msg, ...saved, edited: true } : msg),
       }));
+      getConversationChannel(token, active.id).publish('message_edited', { message: savedEncrypted }).catch(() => null);
       setEditingMessage(null);
       setEditText('');
       showToast('Mensagem editada', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao editar mensagem', '!');
+    }
+  };
+
+  const copyMessage = async (msg) => {
+    try {
+      await navigator.clipboard.writeText(msg.content || msg.media?.url || '');
+      setMessageMenuOpen(null);
+      showToast('Mensagem copiada', 'OK');
+    } catch {
+      showToast('Nao foi possivel copiar', '!');
     }
   };
 
@@ -458,18 +560,36 @@ export default function MessagesPage() {
     setSendingMedia(Boolean(chosenFile));
     try {
       let media = null;
-      if (chosenFile) media = await uploadMedia({ token, file: chosenFile });
-      const created = await sendMessage({
+      if (chosenFile) {
+        if (chosenFile.size > 25 * 1024 * 1024) throw new Error('Arquivo muito grande');
+        media = await uploadMedia({ token, file: chosenFile });
+      }
+      const encryptedContent = await encryptMessage({
         token,
         conversationId: active.id,
+        usernames: participantUsernames(),
         content,
-        mediaUrl: media?.url || '',
-        mediaType: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media?.resource_type || ''),
+        media: media ? { url: media.url, type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || '') } : null,
       });
+      const createdEncrypted = await sendMessage({
+        token,
+        conversationId: active.id,
+        content: encryptedContent,
+        mediaUrl: '',
+        mediaType: '',
+      });
+      const created = {
+        ...createdEncrypted,
+        content,
+        media: media ? { url: media.url, type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || '') } : null,
+        encrypted: true,
+      };
       setMessages(prev => ({
         ...prev,
         [active.id]: [...(prev[active.id] || []), created],
       }));
+      bumpConversation(active.id, created);
+      getConversationChannel(token, active.id).publish('message_sent', { message: createdEncrypted }).catch(() => null);
     } catch (err) {
       setText(content);
       setFile(chosenFile);
@@ -533,14 +653,24 @@ export default function MessagesPage() {
         setSendingMedia(true);
         try {
           const media = await uploadMedia({ token, file: audioFile });
-          const created = await sendMessage({
+          const encryptedContent = await encryptMessage({
             token,
             conversationId: active.id,
+            usernames: participantUsernames(),
             content: '',
-            mediaUrl: media?.url || '',
-            mediaType: 'audio',
+            media: { url: media?.url || '', type: 'audio' },
           });
+          const createdEncrypted = await sendMessage({
+            token,
+            conversationId: active.id,
+            content: encryptedContent,
+            mediaUrl: '',
+            mediaType: '',
+          });
+          const created = { ...createdEncrypted, content: '', media: { url: media?.url || '', type: 'audio' }, encrypted: true };
           setMessages(prev => ({ ...prev, [active.id]: [...(prev[active.id] || []), created] }));
+          bumpConversation(active.id, created);
+          getConversationChannel(token, active.id).publish('message_sent', { message: createdEncrypted }).catch(() => null);
         } catch (err) {
           showToast(err.message || 'Erro ao enviar audio', '!');
         } finally {
@@ -890,7 +1020,7 @@ export default function MessagesPage() {
                 />
                 <div className="conv-info">
                   <div className="conv-name">{conversationTitle(conv)}</div>
-                  <div className="conv-preview">{conversationSub(conv)}</div>
+                <div className="conv-preview">{conv.lastMessage || conversationSub(conv)}</div>
                 </div>
                 {Number(conv.receivedUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.receivedUnreadCount}</span>}
               </button>
@@ -964,6 +1094,7 @@ export default function MessagesPage() {
                               {messageMenuOpen === msg.id && (
                                 <div className="msg-menu">
                                   <button onClick={() => startEditMessage(msg)}><ChatIcon name="edit" size={14} /> Editar mensagem</button>
+                                  <button onClick={() => copyMessage(msg)}><ChatIcon name="chat" size={14} /> Copiar</button>
                                   <button className="danger" onClick={() => removeMessage(msg.id)}><ChatIcon name="trash" size={14} /> Excluir mensagem</button>
                                 </div>
                               )}
@@ -988,7 +1119,15 @@ export default function MessagesPage() {
                 type="file"
                 accept="image/*,video/*,audio/*"
                 style={{ display: 'none' }}
-                onChange={e => setFile(e.target.files?.[0] || null)}
+                onChange={e => {
+                  const chosen = e.target.files?.[0] || null;
+                  if (chosen && chosen.size > 25 * 1024 * 1024) {
+                    showToast('Arquivo muito grande', '!');
+                    e.target.value = '';
+                    return;
+                  }
+                  setFile(chosen);
+                }}
               />
               <button className="chat-input-icon" onClick={() => fileInputRef.current?.click()} title="Foto, video ou audio">
                 <ChatIcon name="plus" size={18} />

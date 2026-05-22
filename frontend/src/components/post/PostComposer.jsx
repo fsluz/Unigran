@@ -14,6 +14,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [portfolioLink, setPortfolioLink] = useState('');
   const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
   const [submitting, setSubmitting] = useState(false);
+  const [fileAccept, setFileAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
   const isPortfolioMode = !forcedPostType && postMode === 'portfolio';
 
@@ -96,7 +97,10 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
     setPreview(URL.createObjectURL(next));
   };
 
-  const openPicker = () => fileInputRef.current?.click();
+  const openPicker = (accept = fileAccept) => {
+    setFileAccept(accept);
+    setTimeout(() => fileInputRef.current?.click(), 0);
+  };
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
   const isVideo = file?.type?.startsWith('video/');
   const fileAccept = isPortfolioMode
@@ -195,13 +199,13 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
           style={{ display: 'none' }}
           onChange={onPick}
         />
-        <button className="composer-btn" title="Foto/GIF" type="button" onClick={openPicker}>
+        <button className="composer-btn" title="Foto/GIF" type="button" onClick={() => openPicker('image/*,.gif')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
             <polyline points="21 15 16 10 5 21"/>
           </svg>
         </button>
-        <button className="composer-btn" title="Video" type="button" onClick={openPicker}>
+        <button className="composer-btn" title="Video" type="button" onClick={() => openPicker('video/*')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
           </svg>
@@ -211,7 +215,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
             <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
           </svg>
         </button>
-        <button className="composer-btn" title="Anexo" type="button" onClick={openPicker}>
+        <button className="composer-btn" title="Anexo" type="button" onClick={() => openPicker('image/*,video/*,audio/*,.pdf,.doc,.docx,.zip')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
           </svg>

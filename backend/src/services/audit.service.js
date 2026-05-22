@@ -1,10 +1,40 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { createRequire } from 'module';
 
-const dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOG_DIR = path.resolve(dirname, '../../logs');
+const require = createRequire(import.meta.url);
+const { Pool } = require('pg');
+
+// ---------------------------------------------------------------------------
+// Pool PostgreSQL (Supabase)
+// ---------------------------------------------------------------------------
+let pool = null;
+
+function getPool() {
+  if (!pool && process.env.DB_HOST) {
+    pool = new Pool({
+      host:     process.env.DB_HOST,
+      port:     parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME     || 'postgres',
+      user:     process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      ssl:      { rejectUnauthorized: false },
+      max:      5,
+      idleTimeoutMillis: 30_000,
+    });
+    pool.on('error', err => {
+      console.error('[audit] Erro no pool PostgreSQL:', err.message);
+    });
+  }
+  return pool;
+}
+
+// ---------------------------------------------------------------------------
+// Fallback: arquivo local
+// ---------------------------------------------------------------------------
+const dirname  = path.dirname(fileURLToPath(import.meta.url));
+const LOG_DIR  = path.resolve(dirname, '../../logs');
 const LOG_FILE = path.join(LOG_DIR, 'audit.log');
 
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -15,17 +45,20 @@ function writeAuditFallback(entry) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Gravar log
+// ---------------------------------------------------------------------------
 export function auditLog({
   action,
   category,
-  actor = 'anonymous',
+  actor  = 'anonymous',
   target = null,
-  meta = {},
-  ip = null,
-  level = 'INFO',
+  meta   = {},
+  ip     = null,
+  level  = 'INFO',
 }) {
   const entry = {
-    id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    id:        `audit-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     timestamp: new Date().toISOString(),
     level,
     category,
@@ -36,80 +69,90 @@ export function auditLog({
     meta: meta || {},
   };
 
-  const targetClause = target ? `, has audit-target "${typeqlLiteral(target)}"` : '';
-  const ipClause = ip ? `, has audit-ip "${typeqlLiteral(ip)}"` : '';
-  const metaText = JSON.stringify(entry.meta);
+  const db = getPool();
 
-  writeQuery(`
-    insert
-      $log isa audit-log,
-        has audit-log-id "${typeqlLiteral(entry.id)}",
-        has audit-timestamp ${typeqlDatetime(entry.timestamp)},
-        has audit-level "${typeqlLiteral(entry.level)}",
-        has audit-category "${typeqlLiteral(entry.category)}",
-        has audit-action "${typeqlLiteral(entry.action)}",
-        has audit-actor "${typeqlLiteral(entry.actor)}"${targetClause}${ipClause},
-        has audit-meta "${typeqlLiteral(metaText)}";
-  `).catch(err => {
-    console.error('[audit] Falha ao gravar no TypeDB:', err.message);
+  if (db) {
+    db.query(
+      `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        entry.id,
+        entry.timestamp,
+        entry.level,
+        entry.category,
+        entry.action,
+        entry.actor,
+        entry.target,
+        entry.ip,
+        JSON.stringify(entry.meta),
+      ]
+    ).catch(err => {
+      console.error('[audit] Falha ao gravar no Supabase:', err.message);
+      writeAuditFallback(entry);
+    });
+  } else {
     writeAuditFallback(entry);
-  });
+  }
 
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`[AUDIT] ${entry.timestamp} | ${category}:${action} | actor=${entry.actor}${target ? ` target=${target}` : ''}`);
+    console.log(
+      `[AUDIT] ${entry.timestamp} | ${category}:${action} | actor=${entry.actor}${target ? ` target=${target}` : ''}`
+    );
   }
 }
 
-export async function readAuditLogs() {
-  try {
-    const rows = await readQuery(`
-      match
-        $log isa audit-log,
-          has audit-log-id $id,
-          has audit-timestamp $timestamp,
-          has audit-level $level,
-          has audit-category $category,
-          has audit-action $action,
-          has audit-actor $actor;
-        try { $log has audit-target $target; };
-        try { $log has audit-ip $ip; };
-        try { $log has audit-meta $meta; };
-      sort $timestamp desc;
-      limit 500;
-      fetch {
-        "id": $id,
-        "timestamp": $timestamp,
-        "level": $level,
-        "category": $category,
-        "action": $action,
-        "actor": $actor,
-        "target": $target,
-        "ip": $ip,
-        "meta": $meta
-      };
-    `);
+// ---------------------------------------------------------------------------
+// Ler logs (com filtros opcionais)
+// ---------------------------------------------------------------------------
+export async function readAuditLogs(filters = {}) {
+  const db = getPool();
 
-    return rows.map(row => {
-      let parsedMeta = {};
-      try {
-        parsedMeta = row.meta ? JSON.parse(row.meta) : {};
-      } catch {
-        parsedMeta = { raw: row.meta };
-      }
-      return { ...row, meta: parsedMeta };
-    });
-  } catch (err) {
-    console.error('[audit] Falha ao ler TypeDB, usando arquivo local:', err.message);
+  if (db) {
+    try {
+      const conditions = [];
+      const values     = [];
+      let   idx        = 1;
+
+      if (filters.category) { conditions.push(`category = $${idx++}`);      values.push(filters.category.toUpperCase()); }
+      if (filters.level)    { conditions.push(`level = $${idx++}`);         values.push(filters.level.toUpperCase()); }
+      if (filters.actor)    { conditions.push(`actor ILIKE $${idx++}`);     values.push(`%${filters.actor}%`); }
+      if (filters.action)   { conditions.push(`action ILIKE $${idx++}`);    values.push(`%${filters.action}%`); }
+      if (filters.from)     { conditions.push(`timestamp >= $${idx++}`);    values.push(filters.from); }
+      if (filters.to)       { conditions.push(`timestamp <= $${idx++}`);    values.push(filters.to); }
+
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const limit = Math.min(parseInt(filters.limit) || 500, 1000);
+
+      const { rows } = await db.query(
+        `SELECT id, timestamp, level, category, action, actor, target, ip, meta
+         FROM audit_logs
+         ${where}
+         ORDER BY timestamp DESC
+         LIMIT $${idx}`,
+        [...values, limit]
+      );
+
+      return rows.map(row => ({
+        ...row,
+        timestamp: row.timestamp instanceof Date
+          ? row.timestamp.toISOString()
+          : row.timestamp,
+        meta: typeof row.meta === 'string'
+          ? (() => { try { return JSON.parse(row.meta); } catch { return {}; } })()
+          : (row.meta || {}),
+      }));
+    } catch (err) {
+      console.error('[audit] Falha ao ler Supabase, usando arquivo local:', err.message);
+    }
   }
 
+  // Fallback: arquivo local
   if (!fs.existsSync(LOG_FILE)) return [];
   return fs.readFileSync(LOG_FILE, 'utf8')
     .split('\n')
     .filter(Boolean)
-    .map(line => {
-      try { return JSON.parse(line); }
-      catch { return null; }
-    })
+    .map(line => { try { return JSON.parse(line); } catch { return null; } })
     .filter(Boolean)
-    .reverse();
+    .reverse()
+    .slice(0, 500);
 }

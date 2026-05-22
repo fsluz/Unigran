@@ -142,6 +142,14 @@ router.patch('/users/:username/restrictions', async (req, res) => {
       update
         ${updates.join('\n        ')}
     `);
+    auditLog({
+      action: 'USER_RESTRICTIONS_UPDATED',
+      category: 'ADMIN',
+      actor: req.user?.username,
+      target: req.params.username,
+      ip: getIp(req),
+      meta: parsed.data,
+    });
     res.json({ username: req.params.username, saved: true });
   } catch (err) {
     console.error('[admin restrictions]', err);
@@ -185,6 +193,14 @@ router.patch('/reports/:id', async (req, res) => {
       update
         $r has report-status "${parsed.data.status}";
     `);
+    auditLog({
+      action: 'REPORT_STATUS_CHANGED',
+      category: 'ADMIN',
+      actor: req.user?.username,
+      target: req.params.id,
+      ip: getIp(req),
+      meta: { status: parsed.data.status },
+    });
     res.json({ id: req.params.id, status: parsed.data.status });
   } catch (err) {
     console.error('[admin report status]', err);
@@ -195,18 +211,10 @@ router.patch('/reports/:id', async (req, res) => {
 // GET /api/admin/audit-logs — apenas admins
 router.get('/audit-logs', requireAtLeast('admin'), async (req, res) => {
   try {
-    let logs = await readAuditLogs();
-
-    // Filtros opcionais via query string
     const { category, action, actor, level, from, to, limit } = req.query;
-    if (category) logs = logs.filter(l => l.category?.toUpperCase() === category.toUpperCase());
-    if (action)   logs = logs.filter(l => l.action?.toLowerCase().includes(action.toLowerCase()));
-    if (actor)    logs = logs.filter(l => l.actor?.toLowerCase().includes(actor.toLowerCase()));
-    if (level)    logs = logs.filter(l => l.level?.toUpperCase() === level.toUpperCase());
-    if (from)     logs = logs.filter(l => l.timestamp >= from);
-    if (to)       logs = logs.filter(l => l.timestamp <= to);
 
-    if (limit) logs = logs.slice(0, parseInt(limit) || 100);
+    // Filtros passados direto pro service (query no banco, não em memória)
+    const logs = await readAuditLogs({ category, action, actor, level, from, to, limit });
 
     auditLog({ action: 'AUDIT_LOGS_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
     res.json({ logs, total: logs.length });

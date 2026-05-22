@@ -23,12 +23,16 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    fetchNotifications(token)
-      .then(items => alive && setNotifs(items))
-      .catch(err => showToast(err.message || 'Erro ao carregar notificacoes', '!'))
-      .finally(() => alive && setLoading(false));
-    return () => { alive = false; };
+    const load = (first = false) => {
+      if (first) setLoading(true);
+      fetchNotifications(token)
+        .then(items => alive && setNotifs(items))
+        .catch(err => first && showToast(err.message || 'Erro ao carregar notificacoes', '!'))
+        .finally(() => first && alive && setLoading(false));
+    };
+    load(true);
+    const interval = setInterval(() => load(false), 12000);
+    return () => { alive = false; clearInterval(interval); };
   }, [token, showToast]);
 
   const readOne = async (id) => {

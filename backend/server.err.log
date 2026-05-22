@@ -1,0 +1,6 @@
+[upload resume] Error: Supabase retornou TenantNotFound. Verifique se SUPABASE_URL esta exatamente igual ao Project URL em Project Settings > API (ex: https://PROJECT_REF.supabase.co) e reinicie o backend.
+    at uploadDocumentBuffer (file:///C:/Users/Vinicius/Desktop/Unigran/backend/src/services/document.service.js:67:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///C:/Users/Vinicius/Desktop/Unigran/backend/src/routes/uploads.js:63:22 {
+  statusCode: 400
+}
