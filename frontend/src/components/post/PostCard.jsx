@@ -49,6 +49,8 @@ function getPortfolioPost(post) {
       summary: item.summary || post.content || '',
       link: item.externalUrl || item.shareUrl || '',
       linkLabel: item.externalKind || 'Repositorio',
+      mediaUrl: item.mediaUrl || post.media?.url || '',
+      mediaType: item.mediaType || post.media?.resource_type || '',
       tags: extractPortfolioTags(post.content),
     };
   }
@@ -63,12 +65,53 @@ function getPortfolioPost(post) {
     .replace(/Tecnologias:.+/i, '')
     .replace(link, '')
     .trim();
-  return { title, summary, link, linkLabel: 'Repositorio', tags };
+  return { title, summary, link, linkLabel: 'Repositorio', mediaUrl: post.media?.url || '', mediaType: post.media?.resource_type || '', tags };
 }
 
 function extractPortfolioTags(content = '') {
   const line = String(content).match(/Tecnologias:\s*(.+)/i)?.[1] || '';
   return line.split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 8);
+}
+
+function portfolioLinkMeta(url = '', fallback = '') {
+  const raw = String(url || '');
+  const clean = raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+  const github = raw.match(/github\.com\/([^/\s]+)\/([^/?#\s]+)/i);
+  if (github) {
+    return {
+      label: 'GitHub',
+      title: `${github[1]}/${github[2].replace(/\.git$/i, '')}`,
+      subtitle: 'Repositorio publico',
+      tone: 'github',
+    };
+  }
+  const figma = raw.match(/figma\.com\/(?:file|design|proto)\/([^/?#\s]+)/i);
+  if (figma) {
+    return { label: 'Figma', title: 'Protótipo Figma', subtitle: clean, tone: 'figma' };
+  }
+  const instagram = raw.match(/instagram\.com\/([^/?#\s]+)/i);
+  if (instagram) {
+    return { label: 'Instagram', title: `@${instagram[1]}`, subtitle: 'Perfil ou publicacao', tone: 'instagram' };
+  }
+  const linkedin = raw.match(/linkedin\.com\/(?:in|company)\/([^/?#\s]+)/i);
+  if (linkedin) {
+    return { label: 'LinkedIn', title: linkedin[1].replace(/-/g, ' '), subtitle: 'Perfil profissional', tone: 'linkedin' };
+  }
+  const behance = raw.match(/behance\.net\/([^/?#\s]+)/i);
+  if (behance) {
+    return { label: 'Behance', title: `@${behance[1]}`, subtitle: 'Portfolio criativo', tone: 'behance' };
+  }
+  const youtube = raw.match(/(?:youtube\.com|youtu\.be)\/(.+)/i);
+  if (youtube) {
+    return { label: 'YouTube', title: 'Video do projeto', subtitle: clean, tone: 'youtube' };
+  }
+  const domain = clean.split('/')[0] || fallback || 'Link';
+  return {
+    label: fallback || 'Link',
+    title: domain,
+    subtitle: clean,
+    tone: 'generic',
+  };
 }
 
 function AutoPauseVideo(props) {
@@ -215,6 +258,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
   const embeds = getEmbeds(post.content || '');
   const portfolio = getPortfolioPost(post);
+  const portfolioLink = portfolio?.link ? portfolioLinkMeta(portfolio.link, portfolio.linkLabel) : null;
   const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
 
   const toggleLike = () => {
@@ -380,16 +424,24 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         <>
           {portfolio && (
             <div className="portfolio-post-card">
-              <div className="portfolio-post-preview" aria-hidden="true">
-                <div className="portfolio-window-dots"><span /><span /><span /></div>
-                <div className="portfolio-preview-sidebar" />
-                <div className="portfolio-preview-main">
-                  <i />
-                  <i />
-                  <div><b /><b /></div>
-                  <em />
-                  <em />
-                </div>
+              <div className="portfolio-post-preview">
+                {portfolio.mediaUrl && portfolio.mediaType !== 'video' ? (
+                  <img src={portfolio.mediaUrl} alt="" className="portfolio-preview-image" />
+                ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
+                  <AutoPauseVideo src={portfolio.mediaUrl} className="portfolio-preview-image" muted playsInline controls />
+                ) : (
+                  <>
+                    <div className="portfolio-window-dots"><span /><span /><span /></div>
+                    <div className="portfolio-preview-sidebar" />
+                    <div className="portfolio-preview-main">
+                      <i />
+                      <i />
+                      <div><b /><b /></div>
+                      <em />
+                      <em />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="portfolio-post-body">
                 <div className="portfolio-post-label">Portfolio</div>
@@ -401,8 +453,12 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
                   </div>
                 )}
                 {portfolio.link && (
-                  <a className="portfolio-post-link" href={portfolio.link.startsWith('/') ? portfolio.link : portfolio.link} target={portfolio.link.startsWith('/') ? '_self' : '_blank'} rel="noreferrer">
-                    {portfolio.linkLabel || 'Repositorio'} <small>{portfolio.link.replace(/^https?:\/\//, '')}</small>
+                  <a className={`portfolio-post-link is-${portfolioLink?.tone || 'generic'}`} href={portfolio.link.startsWith('/') ? portfolio.link : portfolio.link} target={portfolio.link.startsWith('/') ? '_self' : '_blank'} rel="noreferrer">
+                    <span>
+                      <b>{portfolioLink?.title || portfolio.linkLabel || 'Link do projeto'}</b>
+                      <small>{portfolioLink?.subtitle || portfolio.link.replace(/^https?:\/\//, '')}</small>
+                    </span>
+                    <em>{portfolioLink?.label || portfolio.linkLabel || 'Abrir'}</em>
                   </a>
                 )}
               </div>

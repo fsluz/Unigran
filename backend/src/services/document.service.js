@@ -1,5 +1,8 @@
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  || process.env.SUPABASE_SERVICE_KEY
+  || process.env.SUPABASE_PUBLISHABLE_KEY
+  || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const SUPABASE_BUCKET = process.env.SUPABASE_DOCUMENTS_BUCKET || 'ava-entregas';
 
 function supabaseBaseUrl() {
@@ -27,7 +30,7 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
   }
 
   if (!isSupabaseDocumentsConfigured()) {
-    const err = new Error('Supabase Storage nao configurado. Defina SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e SUPABASE_DOCUMENTS_BUCKET.');
+    const err = new Error('Supabase Storage nao configurado. Defina SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e SUPABASE_DOCUMENTS_BUCKET no backend.');
     err.statusCode = 503;
     throw err;
   }

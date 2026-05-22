@@ -1,5 +1,6 @@
 ﻿import { z } from 'zod';
 import {
+  annotatePortfolioPost,
   createComment,
   createPost,
   deletePostById,
@@ -64,6 +65,11 @@ function isAllowedPortfolioDocument(file) {
   );
 }
 
+function isPortfolioMedia(file) {
+  const mime = String(file?.mimetype || '').toLowerCase();
+  return mime.startsWith('image/') || mime.startsWith('video/');
+}
+
 function inferPortfolioLinkKind(url = '', fallback = 'repository') {
   const lower = String(url || '').toLowerCase();
   if (lower.includes('github.com') || lower.includes('gitlab.com') || lower.includes('bitbucket.org')) return 'repository';
@@ -126,13 +132,17 @@ export async function createPostWithRules({ user, body, file }) {
   let portfolioDocument = null;
   if (isPortfolio && file) {
     const maxBytes = 1024 * 1024;
-    if (file.size > maxBytes) {
+    if (!isPortfolioMedia(file) && file.size > maxBytes) {
       return { error: 'Documento do portfolio deve ter ate 1024 KB por enquanto.', status: 400 };
     }
-    if (!isAllowedPortfolioDocument(file)) {
-      return { error: 'Use PDF, DOC ou DOCX para documento de portfolio.', status: 400 };
+    if (isPortfolioMedia(file)) {
+      media = await uploadMediaBuffer(file, 'unigran/posts');
+    } else {
+      if (!isAllowedPortfolioDocument(file)) {
+        return { error: 'Use imagem, video, PDF, DOC ou DOCX para portfolio.', status: 400 };
+      }
+      portfolioDocument = await uploadDocumentBuffer({ file, user, folder: 'portfolio-posts' });
     }
-    portfolioDocument = await uploadDocumentBuffer({ file, user, folder: 'portfolio-posts' });
   } else if (file) {
     media = await uploadMediaBuffer(
       file,
@@ -184,6 +194,25 @@ export async function createPostWithRules({ user, body, file }) {
       externalLabel: portfolioExternalUrl ? 'Link do projeto' : '',
       shareUrl: portfolioShareUrl,
       postId: created.id,
+    });
+    annotatePortfolioPost({
+      postId: created.id,
+      metadata: {
+        portfolioId: manualActivityId,
+        title: portfolioTitle,
+        summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+        shareUrl: portfolioShareUrl,
+        externalUrl: portfolioExternalUrl,
+        externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
+        documentUrl: portfolioDocument?.url || '',
+        documentName: portfolioDocument?.name || '',
+        documentStorage: portfolioDocument?.storage || '',
+        documentPath: portfolioDocument?.path || '',
+        mediaUrl: media?.url || '',
+        mediaType: media?.resource_type || '',
+      },
+    }).catch(err => {
+      console.error('[portfolio typedb metadata]', err.message);
     });
   }
 

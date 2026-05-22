@@ -299,6 +299,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const mediaUrl = imageUrl || videoUrl;
     const authorProfile = profilesMap.get(entry?.author?.username || '');
     const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const portfolioId = attrs['portfolio-id'] || null;
     const comments = commentsMap.get(postId) || [];
     const repostOriginal = repostOriginalMap.get(postId) || null;
     const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
@@ -321,6 +322,20 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       likes: metric.likes,
       liked: metric.liked,
       comments: metric.comments || comments.length,
+      portfolioItem: portfolioId ? {
+        activityId: portfolioId,
+        title: attrs['portfolio-title'] || '',
+        summary: attrs['portfolio-summary'] || '',
+        shareUrl: attrs['portfolio-share-url'] || '',
+        externalUrl: attrs['portfolio-external-url'] || '',
+        externalKind: attrs['portfolio-external-kind'] || '',
+        documentUrl: attrs['portfolio-document-url'] || '',
+        documentName: attrs['portfolio-document-name'] || '',
+        documentStorage: attrs['portfolio-document-storage'] || '',
+        documentPath: attrs['portfolio-document-path'] || '',
+        mediaUrl: attrs['portfolio-media-url'] || '',
+        mediaType: attrs['portfolio-media-type'] || '',
+      } : null,
       _comments: comments.map((comment) => {
         const commentAuthorProfile = profilesMap.get(comment?.author?.username || '');
         return {
@@ -443,6 +458,39 @@ export async function createPost({ authorUsername, postType, content, media, com
   return { id: postId, time: now };
 }
 
+export async function annotatePortfolioPost({ postId, metadata = {} }) {
+  const safePost = typeqlLiteral(postId);
+  const attrs = [];
+  const add = (type, value) => {
+    if (value === undefined || value === null || value === '') return;
+    attrs.push(`$post has ${type} "${typeqlLiteral(value)}"`);
+  };
+
+  add('portfolio-id', metadata.portfolioId);
+  add('portfolio-title', metadata.title);
+  add('portfolio-summary', metadata.summary);
+  add('portfolio-share-url', metadata.shareUrl);
+  add('portfolio-external-url', metadata.externalUrl);
+  add('portfolio-external-kind', metadata.externalKind);
+  add('portfolio-document-url', metadata.documentUrl);
+  add('portfolio-document-name', metadata.documentName);
+  add('portfolio-document-storage', metadata.documentStorage);
+  add('portfolio-document-path', metadata.documentPath);
+  add('portfolio-media-url', metadata.mediaUrl);
+  add('portfolio-media-type', metadata.mediaType);
+
+  if (!attrs.length) return false;
+
+  await writeQuery(`
+    match
+      $post isa post, has post-id "${safePost}";
+    insert
+      ${attrs.join(';\n      ')};
+  `);
+  cache.clear();
+  return true;
+}
+
 export async function updatePostContent({ username, postId, content }) {
   const safeUser = typeqlLiteral(username);
   const safePost = typeqlLiteral(postId);
@@ -556,6 +604,7 @@ export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
     const imageUrl = entry?.post_image || attrs['post-image'] || null;
     const videoUrl = entry?.post_video || attrs['post-video'] || null;
     const postId = entry?.post_id || attrs['post-id'] || uuid();
+    const portfolioId = attrs['portfolio-id'] || null;
     const comments = commentsMap.get(postId) || [];
     const metric = metrics.get(postId) || { likes: 0, comments: comments.length, liked: false };
     return {
@@ -574,6 +623,20 @@ export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
       likes: metric.likes,
       liked: metric.liked,
       comments: metric.comments || comments.length,
+      portfolioItem: portfolioId ? {
+        activityId: portfolioId,
+        title: attrs['portfolio-title'] || '',
+        summary: attrs['portfolio-summary'] || '',
+        shareUrl: attrs['portfolio-share-url'] || '',
+        externalUrl: attrs['portfolio-external-url'] || '',
+        externalKind: attrs['portfolio-external-kind'] || '',
+        documentUrl: attrs['portfolio-document-url'] || '',
+        documentName: attrs['portfolio-document-name'] || '',
+        documentStorage: attrs['portfolio-document-storage'] || '',
+        documentPath: attrs['portfolio-document-path'] || '',
+        mediaUrl: attrs['portfolio-media-url'] || '',
+        mediaType: attrs['portfolio-media-type'] || '',
+      } : null,
       _comments: comments,
     };
   })

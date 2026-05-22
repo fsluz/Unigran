@@ -603,6 +603,13 @@
   border: 1px solid var(--border);
   overflow: hidden;
 }
+.portfolio-preview-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #050816;
+}
 .portfolio-window-dots {
   position: absolute;
   top: 14px;
@@ -684,6 +691,7 @@
 }
 .portfolio-post-link {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
@@ -694,6 +702,17 @@
   font-weight: 900;
   text-decoration: none;
 }
+.portfolio-post-link span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.portfolio-post-link b {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .portfolio-post-link small {
   color: var(--text-muted);
   font-weight: 500;
@@ -701,6 +720,22 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.portfolio-post-link em {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+.portfolio-post-link.is-github em { background: color-mix(in srgb, #111827 18%, transparent); color: var(--text); }
+.portfolio-post-link.is-figma em { background: color-mix(in srgb, #a855f7 18%, transparent); color: #a855f7; }
+.portfolio-post-link.is-instagram em { background: color-mix(in srgb, #ec4899 18%, transparent); color: #ec4899; }
+.portfolio-post-link.is-linkedin em { background: color-mix(in srgb, #0a66c2 18%, transparent); color: #0a66c2; }
+.portfolio-post-link.is-behance em { background: color-mix(in srgb, #1769ff 18%, transparent); color: #1769ff; }
+.portfolio-post-link.is-youtube em { background: color-mix(in srgb, #ff0033 18%, transparent); color: #ff0033; }
 .composer-preview-media {
   display: block;
   width: 100%;
