@@ -34,10 +34,15 @@ function getPool() {
 // Fallback: arquivo local
 // ---------------------------------------------------------------------------
 const dirname  = path.dirname(fileURLToPath(import.meta.url));
-const LOG_DIR  = path.resolve(dirname, '../../logs');
+const LOG_DIR  = process.env.AUDIT_LOG_DIR
+  || (process.env.VERCEL ? '/tmp/unigran-logs' : path.resolve(dirname, '../../logs'));
 const LOG_FILE = path.join(LOG_DIR, 'audit.log');
 
-if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+} catch (err) {
+  console.error('[audit] Falha ao criar pasta local:', err.message);
+}
 
 function writeAuditFallback(entry) {
   fs.appendFile(LOG_FILE, JSON.stringify(entry) + '\n', err => {

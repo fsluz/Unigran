@@ -1,15 +1,26 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-  || process.env.SUPABASE_SERVICE_KEY
-  || process.env.SUPABASE_PUBLISHABLE_KEY
-  || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const SUPABASE_BUCKET = process.env.SUPABASE_DOCUMENTS_BUCKET || 'ava-entregas';
+function cleanEnv(value = '') {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '');
+}
+
+function supabaseConfig() {
+  return {
+    url: cleanEnv(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL),
+    key: cleanEnv(
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+      || process.env.SUPABASE_SERVICE_KEY
+      || process.env.SUPABASE_PUBLISHABLE_KEY
+      || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    ),
+    bucket: cleanEnv(process.env.SUPABASE_DOCUMENTS_BUCKET || 'ava-entregas'),
+  };
+}
 
 function supabaseBaseUrl() {
+  const { url } = supabaseConfig();
   try {
-    return new URL(SUPABASE_URL).origin;
+    return new URL(url).origin;
   } catch {
-    return String(SUPABASE_URL || '').replace(/\/$/, '');
+    return String(url || '').replace(/\/$/, '');
   }
 }
 
@@ -19,7 +30,8 @@ function extensionFromName(name = '') {
 }
 
 export function isSupabaseDocumentsConfigured() {
-  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY && SUPABASE_BUCKET);
+  const { url, key, bucket } = supabaseConfig();
+  return Boolean(url && key && bucket);
 }
 
 export async function uploadDocumentBuffer({ file, user, folder = 'submissions' }) {
@@ -30,22 +42,29 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
   }
 
   if (!isSupabaseDocumentsConfigured()) {
-    const err = new Error('Supabase Storage nao configurado. Defina SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e SUPABASE_DOCUMENTS_BUCKET no backend.');
+    const { url, key, bucket } = supabaseConfig();
+    const missing = [
+      !url && 'SUPABASE_URL',
+      !key && 'SUPABASE_SERVICE_ROLE_KEY',
+      !bucket && 'SUPABASE_DOCUMENTS_BUCKET',
+    ].filter(Boolean).join(', ');
+    const err = new Error(`Supabase Storage nao configurado. Falta: ${missing}. Defina no projeto backend da Vercel.`);
     err.statusCode = 503;
     throw err;
   }
 
   const safeUser = String(user?.username || user?.id || 'anon').replace(/[^a-z0-9_-]/gi, '-');
   const ext = extensionFromName(file.originalname);
+  const { key, bucket } = supabaseConfig();
   const storagePath = `${folder}/${safeUser}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const baseUrl = supabaseBaseUrl();
-  const uploadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(SUPABASE_BUCKET)}/${storagePath}`;
+  const uploadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${storagePath}`;
 
   const response = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${key}`,
+      apikey: key,
       'Content-Type': file.mimetype || 'application/octet-stream',
       'x-upsert': 'false',
     },
@@ -73,9 +92,9 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
   }
 
   return {
-    url: `${baseUrl}/storage/v1/object/public/${SUPABASE_BUCKET}/${storagePath}`,
+    url: `${baseUrl}/storage/v1/object/public/${bucket}/${storagePath}`,
     storage: 'supabase',
-    bucket: SUPABASE_BUCKET,
+    bucket,
     path: storagePath,
     name: file.originalname || storagePath.split('/').pop(),
     mimeType: file.mimetype || 'application/octet-stream',
