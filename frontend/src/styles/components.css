@@ -427,6 +427,29 @@
 .composer-btn:hover { background: var(--accent-light); color: var(--accent); }
 .composer-submit-wrap { margin-left: auto; }
 .composer-mode-select { width: 108px; min-height: 34px; padding: 6px 10px; font-size: 12px; border-radius: 999px; }
+.composer-portfolio-panel {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 8px;
+  order: 2;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 36%),
+    color-mix(in srgb, var(--card) 84%, transparent);
+}
+.composer-portfolio-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 8px;
+}
+.composer-portfolio-panel span {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
 .composer-submit-btn { min-height: 36px; min-width: 74px; border-radius: 999px; }
 .composer-preview-wrap {
   position: relative;
@@ -890,6 +913,149 @@
   font-size: 12px;
   line-height: 1.45;
 }
+.profile-resume-panel,
+.profile-ml-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 15px;
+  border: 1px solid rgba(124, 58, 237, .20);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(124, 58, 237, .14), transparent 34%),
+    rgba(255,255,255,.05);
+}
+.profile-resume-panel strong,
+.profile-ml-panel strong {
+  display: block;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.profile-resume-panel p,
+.profile-ml-panel p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.profile-resume-upload {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.profile-resume-upload input { display: none; }
+.profile-resume-skills,
+.profile-ml-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+.profile-resume-skills span,
+.profile-ml-skills span {
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.profile-resume-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(180px, .85fr);
+  gap: 9px;
+  margin-top: 12px;
+}
+.profile-resume-preview > div {
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+}
+.profile-resume-preview span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.profile-resume-preview p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.profile-resume-highlights {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.profile-resume-highlights span {
+  padding: 8px 10px;
+  border-left: 2px solid var(--accent-2);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-2) 8%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.profile-ml-panel {
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  border-color: rgba(14,165,233,.22);
+  background:
+    radial-gradient(circle at top left, rgba(14,165,233,.13), transparent 36%),
+    rgba(14,165,233,.05);
+}
+.profile-ml-skills { margin-top: 0; justify-content: flex-end; }
+.profile-ml-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.profile-ml-links a {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(14,165,233,.22);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(14,165,233,.12), transparent 40%),
+    color-mix(in srgb, var(--card) 72%, transparent);
+  text-decoration: none;
+  transition: transform .18s ease, border-color .18s ease;
+}
+.profile-ml-links a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(14,165,233,.42);
+}
+.profile-ml-links strong {
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: 13px;
+}
+.profile-ml-links span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
 .profile-portfolio-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .profile-portfolio-card {
   position: relative;
@@ -1049,6 +1215,10 @@
   .profile-portfolio-hero { flex-direction: column; }
   .profile-portfolio-count { width: 100%; }
   .profile-portfolio-master-share { grid-template-columns: 1fr; }
+  .profile-resume-panel,
+  .profile-ml-panel { grid-template-columns: 1fr; }
+  .profile-resume-preview { grid-template-columns: 1fr; }
+  .profile-ml-skills { justify-content: flex-start; }
   .profile-portfolio-grid { grid-template-columns: 1fr; }
   .profile-share-field { grid-template-columns: 1fr; }
   .profile-share-field button { width: 100%; }
@@ -3947,6 +4117,7 @@ img, video { max-width: 100%; }
   .post-action-btn { min-width: 50%; flex: 1 1 50%; font-size: 12px; }
   .composer-row { padding: 12px; }
   .composer-footer { flex-wrap: wrap; gap: 4px; }
+  .composer-portfolio-grid { grid-template-columns: 1fr; }
   .comment-replies { margin-left: 18px; }
   .comment-reply-box { margin-left: 0; }
   .zuni-page { height: calc(100vh - 122px); }

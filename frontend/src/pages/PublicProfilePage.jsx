@@ -4,17 +4,17 @@ import PostCard from '../components/post/PostCard';
 import { Avatar, Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { fetchFollowers, fetchFollowing, fetchUserPortfolio, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchUserPortfolioDetails, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
 import ImageLightbox from '../components/media/ImageLightbox';
 
 function portfolioShareUrl(item) {
-  const path = item.shareUrl || `/api/portfolio/${item.authorUsername}/${item.activityId}`;
+  const path = (item.shareUrl || `/portfolio/${item.authorUsername}/${item.activityId}`).replace(/^\/api\/portfolio/, '/portfolio');
   if (path.startsWith('http')) return path;
-  return `${window.location.origin}${path}`;
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${path}`;
 }
 
 function portfolioProfileUrl(username) {
-  return `${window.location.origin}/api/portfolio/${username}`;
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
 }
 
 function externalKindLabel(kind) {
@@ -29,12 +29,47 @@ function externalKindLabel(kind) {
   return labels[kind] || 'Link externo';
 }
 
+function MlRecommendationLinks({ analysis }) {
+  const jobs = analysis?.recommendedJobs || [];
+  const posts = analysis?.matchedPosts || [];
+  if (!jobs.length && !posts.length) return null;
+  return (
+    <div className="profile-ml-links">
+      {jobs.slice(0, 3).map((job, index) => (
+        <a key={`${job.link}-${index}`} href={job.link} target="_blank" rel="noreferrer">
+          <strong>{job.title || 'Vaga recomendada'}</strong>
+          <span>{job.company || 'Empresa'} {job.score ? `- ${job.score}%` : ''}</span>
+        </a>
+      ))}
+      {posts.slice(0, 1).map((post, index) => post.topLink && (
+        <a key={`${post.topLink}-${index}`} href={post.topLink} target="_blank" rel="noreferrer">
+          <strong>{post.topJob || 'Vaga mais aderente'}</strong>
+          <span>{post.topCompany || post.area || 'Recomendacao ML'}</span>
+        </a>
+      ))}
+      {analysis?.artifactLinks?.outputs && (
+        <a href={analysis.artifactLinks.outputs} target="_blank" rel="noreferrer">
+          <strong>Outputs ML no Drive</strong>
+          <span>CSV, dashboards e analises geradas</span>
+        </a>
+      )}
+      {analysis?.artifactLinks?.models && (
+        <a href={analysis.artifactLinks.models} target="_blank" rel="noreferrer">
+          <strong>Models ML no Drive</strong>
+          <span>Modelos treinados e vetorizadores</span>
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [portfolioItems, setPortfolioItems] = useState([]);
+  const [portfolioAnalysis, setPortfolioAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
@@ -49,13 +84,14 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
     Promise.all([
       fetchUserProfile({ token, username }),
       fetchUserPosts({ token, username }),
-      fetchUserPortfolio({ token, username }),
+      fetchUserPortfolioDetails({ token, username }),
     ])
       .then(([profileData, postData, portfolioData]) => {
         if (!alive) return;
         setProfile(profileData.user);
         setPosts(postData);
-        setPortfolioItems(portfolioData);
+        setPortfolioItems(portfolioData.portfolio);
+        setPortfolioAnalysis(portfolioData.analysis);
         setFollowRequested(false);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar perfil', '!'))
@@ -231,6 +267,21 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
                     <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(profile.username))}>Copiar</button>
                   </div>
                 </div>
+                {portfolioAnalysis && (
+                  <div className="profile-ml-panel">
+                    <div>
+                      <span className="profile-portfolio-kicker">Analise ML de vagas</span>
+                      <strong>{portfolioAnalysis.area}</strong>
+                      <p>Score {portfolioAnalysis.score}% - {portfolioAnalysis.category}</p>
+                    </div>
+                    <div>
+                      <div className="profile-ml-skills">
+                        {(portfolioAnalysis.recommendedSkills || []).slice(0, 8).map(skill => <span key={skill}>{skill}</span>)}
+                      </div>
+                      <MlRecommendationLinks analysis={portfolioAnalysis} />
+                    </div>
+                  </div>
+                )}
                 <div className="profile-portfolio-grid">
                   {portfolioItems.map(item => {
                     const shareUrl = portfolioShareUrl(item);

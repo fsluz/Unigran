@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
-import { listPublicPortfolioItems } from '../modules/academic/avaStore.js';
+import { getPortfolioMlAnalysis, getPortfolioResume, listPublicPortfolioItems } from '../modules/academic/avaStore.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();
@@ -152,7 +152,12 @@ router.get('/:id/portfolio', auth, async (req, res) => {
       return res.json({ portfolio: [], private: true });
     }
 
-    res.json({ portfolio: await listPublicPortfolioItems(req.params.id) });
+    const [portfolio, resume, analysis] = await Promise.all([
+      listPublicPortfolioItems(req.params.id),
+      getPortfolioResume(req.params.id),
+      getPortfolioMlAnalysis(req.params.id),
+    ]);
+    res.json({ portfolio, resume, analysis });
   } catch (err) {
     console.error('[user portfolio]', err);
     res.status(500).json({ error: 'Erro interno' });

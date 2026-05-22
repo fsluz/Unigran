@@ -234,7 +234,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
             </aside>
 
             <main className="community-feed">
-              {activeCommunity.joined && <PostComposer onSubmit={submitCommunityPost} placeholder={`Publicar em ${activeCommunity.name}`} />}
+              {activeCommunity.joined && <PostComposer onSubmit={submitCommunityPost} placeholder={`Publicar em ${activeCommunity.name}`} allowMode={false} />}
               {postsLoading ? (
                 <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
               ) : communityPosts.length === 0 ? (

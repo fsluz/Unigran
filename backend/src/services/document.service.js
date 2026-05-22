@@ -2,6 +2,14 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const SUPABASE_BUCKET = process.env.SUPABASE_DOCUMENTS_BUCKET || 'ava-entregas';
 
+function supabaseBaseUrl() {
+  try {
+    return new URL(SUPABASE_URL).origin;
+  } catch {
+    return String(SUPABASE_URL || '').replace(/\/$/, '');
+  }
+}
+
 function extensionFromName(name = '') {
   const match = String(name).toLowerCase().match(/\.([a-z0-9]{1,12})$/);
   return match ? match[1] : 'bin';
@@ -27,7 +35,7 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
   const safeUser = String(user?.username || user?.id || 'anon').replace(/[^a-z0-9_-]/gi, '-');
   const ext = extensionFromName(file.originalname);
   const storagePath = `${folder}/${safeUser}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const baseUrl = SUPABASE_URL.replace(/\/$/, '');
+  const baseUrl = supabaseBaseUrl();
   const uploadUrl = `${baseUrl}/storage/v1/object/${encodeURIComponent(SUPABASE_BUCKET)}/${storagePath}`;
 
   const response = await fetch(uploadUrl, {
@@ -43,7 +51,20 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    const err = new Error(detail || 'Falha ao enviar documento para o Supabase');
+    let message = detail || 'Falha ao enviar documento para o Supabase';
+    try {
+      const parsed = JSON.parse(detail);
+      if (parsed?.error === 'TenantNotFound' || parsed?.message?.includes('Missing tenant config')) {
+        message = 'Supabase retornou TenantNotFound. Verifique se SUPABASE_URL esta exatamente igual ao Project URL em Project Settings > API (ex: https://PROJECT_REF.supabase.co) e reinicie o backend.';
+      } else if (parsed?.message) {
+        message = parsed.message;
+      }
+    } catch {
+      if (detail.includes('TenantNotFound') || detail.includes('Missing tenant config')) {
+        message = 'Supabase retornou TenantNotFound. Verifique se SUPABASE_URL esta exatamente igual ao Project URL em Project Settings > API (ex: https://PROJECT_REF.supabase.co) e reinicie o backend.';
+      }
+    }
+    const err = new Error(message);
     err.statusCode = response.status;
     throw err;
   }

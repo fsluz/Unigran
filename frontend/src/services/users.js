@@ -67,6 +67,27 @@ export async function fetchUserPortfolio({ token, username }) {
   return data.portfolio || [];
 }
 
+export async function fetchUserPortfolioDetails({ token, username }) {
+  const res = await apiFetch(`/users/${username}/portfolio`, { headers: authHeaders(token) });
+  const data = await parseResponse(res, 'Erro ao carregar portfolio');
+  return {
+    portfolio: data.portfolio || [],
+    resume: data.resume || null,
+    analysis: data.analysis || null,
+  };
+}
+
+export async function uploadPortfolioResume({ token, file }) {
+  const body = new FormData();
+  body.append('file', file);
+  const res = await apiFetch('/uploads/resume', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body,
+  });
+  return parseResponse(res, 'Erro ao enviar curriculo');
+}
+
 export async function updateUserProfile({ token, username, data }) {
   const res = await apiFetch(`/users/${username}`, {
     method: 'PUT',

@@ -1,1 +1,0 @@
-RELATÓRIO DO PIPELINE DE MACHINE LEARNING - UNIGRAN SOCIALVagas usadas na modelagem: 50000Postagens acadêmicas analisadas: 10Melhor quantidade de clusters: 9Técnicas utilizadas: TF-IDF, SVD, MiniBatchKMeans, similaridade de cosseno e ranking de compatibilidade em 7 níveis.Valor para o projeto: transformar postagens acadêmicas em evidências de competência profissional.

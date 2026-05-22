@@ -17,6 +17,7 @@ backend/data/
 
 # Modelos ML
 backend/models/
+backend/outputs/
 *.pkl
 *.joblib
 *.h5

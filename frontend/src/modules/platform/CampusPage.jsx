@@ -73,6 +73,11 @@ function EmptyState({ text }) {
   return <div className="ava-empty">{text}</div>;
 }
 
+function publicPortfolioLink(path = '') {
+  const normalized = String(path || '').replace(/^\/api\/portfolio/, '/portfolio');
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${normalized}`;
+}
+
 const ROLE_MODULES = [
   { id: 'super', title: 'Super Admin', permission: 'rbac.manage', icon: ShieldCheck, metric: 'Global', items: ['Permissoes globais', 'Logs e auditoria', 'Backups', 'Integracoes'] },
   { id: 'management', title: 'Gestao institucional', permission: 'institution.manage', icon: Activity, metric: '91%', items: ['Dashboard executivo', 'Retencao e evasao', 'Campi', 'Indicadores'] },
@@ -615,7 +620,7 @@ export default function CampusPage({ onBackToPortal }) {
                           {activity.submission?.portfolioShareUrl && (
                             <div className="ava-portfolio-link">
                               <strong>Publicado na rede e no portfolio</strong>
-                              <span>{window.location.origin}{activity.submission.portfolioShareUrl}</span>
+                              <span>{publicPortfolioLink(activity.submission.portfolioShareUrl)}</span>
                             </div>
                           )}
                           <button className="btn btn-primary" onClick={() => handleSubmitActivity(activity)} disabled={Boolean(submittingActivities[activity.id])}>
@@ -736,7 +741,7 @@ export default function CampusPage({ onBackToPortal }) {
                           {submission.portfolioShareUrl && (
                             <div className="ava-portfolio-link">
                               <strong>Publicado na rede e no portfolio</strong>
-                              <span>{window.location.origin}{submission.portfolioShareUrl}</span>
+                              <span>{publicPortfolioLink(submission.portfolioShareUrl)}</span>
                             </div>
                           )}
                           <div className="ava-grade-grid">
@@ -824,7 +829,7 @@ export default function CampusPage({ onBackToPortal }) {
                 <div key={item.id} className="campus-workflow">
                   <strong>{item.title}</strong>
                   <span>{item.courseName}</span>
-                  <small>{window.location.origin}{item.shareUrl}</small>
+                  <small>{publicPortfolioLink(item.shareUrl)}</small>
                 </div>
               ))}
               {!(ava?.portfolio || []).length && <EmptyState text="Publique uma entrega na rede social para gerar seu portfolio." />}

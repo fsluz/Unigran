@@ -70,13 +70,18 @@ export async function fetchSavedPosts(token) {
   return (data.posts || []).map(normalizePost);
 }
 
-export async function createPost({ token, content, file, communityId, postType }) {
+export async function createPost({ token, content, file, communityId, postType, portfolioTitle, portfolioLink, portfolioLinkKind }) {
   const fd = new FormData();
   if (content) fd.append('content', content);
   if (communityId) fd.append('communityId', communityId);
   if (postType) fd.append('postType', postType);
+  if (portfolioTitle) fd.append('portfolioTitle', portfolioTitle);
+  if (portfolioLink) fd.append('portfolioLink', portfolioLink);
+  if (portfolioLinkKind) fd.append('portfolioLinkKind', portfolioLinkKind);
 
-  if (file && file.type.startsWith('video/')) {
+  if (postType === 'portfolio-post' && file) {
+    fd.append('file', file);
+  } else if (file && file.type.startsWith('video/')) {
     const videoMedia = await uploadDirectCloudinary(token, file, 'video');
     fd.append('mediaUrl', videoMedia.url);
     fd.append('mediaType', 'video');

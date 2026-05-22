@@ -8,7 +8,7 @@ import { Modal, Button, FormField } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchSavedPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
-import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPortfolio, fetchUserPosts, removeFollower, unfollowUser, updateUserProfile } from '../services/users';
+import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUserPortfolioDetails, fetchUserPosts, removeFollower, unfollowUser, updateUserProfile, uploadPortfolioResume } from '../services/users';
 import ImageCropModal from '../components/media/ImageCropModal';
 import ImageLightbox from '../components/media/ImageLightbox';
 
@@ -24,13 +24,13 @@ const POST_FILTERS = [
 ];
 
 function portfolioShareUrl(item) {
-  const path = item.shareUrl || `/api/portfolio/${item.authorUsername}/${item.activityId}`;
+  const path = (item.shareUrl || `/portfolio/${item.authorUsername}/${item.activityId}`).replace(/^\/api\/portfolio/, '/portfolio');
   if (path.startsWith('http')) return path;
-  return `${window.location.origin}${path}`;
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${path}`;
 }
 
 function portfolioProfileUrl(username) {
-  return `${window.location.origin}/api/portfolio/${username}`;
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
 }
 
 function externalKindLabel(kind) {
@@ -43,6 +43,40 @@ function externalKindLabel(kind) {
     other: 'Link externo',
   };
   return labels[kind] || 'Link externo';
+}
+
+function MlRecommendationLinks({ analysis }) {
+  const jobs = analysis?.recommendedJobs || [];
+  const posts = analysis?.matchedPosts || [];
+  if (!jobs.length && !posts.length) return null;
+  return (
+    <div className="profile-ml-links">
+      {jobs.slice(0, 3).map((job, index) => (
+        <a key={`${job.link}-${index}`} href={job.link} target="_blank" rel="noreferrer">
+          <strong>{job.title || 'Vaga recomendada'}</strong>
+          <span>{job.company || 'Empresa'} {job.score ? `- ${job.score}%` : ''}</span>
+        </a>
+      ))}
+      {posts.slice(0, 1).map((post, index) => post.topLink && (
+        <a key={`${post.topLink}-${index}`} href={post.topLink} target="_blank" rel="noreferrer">
+          <strong>{post.topJob || 'Vaga mais aderente'}</strong>
+          <span>{post.topCompany || post.area || 'Recomendacao ML'}</span>
+        </a>
+      ))}
+      {analysis?.artifactLinks?.outputs && (
+        <a href={analysis.artifactLinks.outputs} target="_blank" rel="noreferrer">
+          <strong>Outputs ML no Drive</strong>
+          <span>CSV, dashboards e analises geradas</span>
+        </a>
+      )}
+      {analysis?.artifactLinks?.models && (
+        <a href={analysis.artifactLinks.models} target="_blank" rel="noreferrer">
+          <strong>Models ML no Drive</strong>
+          <span>Modelos treinados e vetorizadores</span>
+        </a>
+      )}
+    </div>
+  );
 }
 
 function PortfolioCard({ item, onCopy }) {
@@ -95,6 +129,9 @@ export default function ProfilePage({ onNavigate }) {
   const [savedPosts, setSavedPosts] = useState([]);
   const [reposts, setReposts] = useState([]);
   const [portfolioItems, setPortfolioItems] = useState([]);
+  const [portfolioResume, setPortfolioResume] = useState(null);
+  const [portfolioAnalysis, setPortfolioAnalysis] = useState(null);
+  const [resumeUploading, setResumeUploading] = useState(false);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
@@ -118,8 +155,12 @@ export default function ProfilePage({ onNavigate }) {
     fetchUserPosts({ token, username: user.username })
       .then((loaded) => setPosts(loaded))
       .catch(() => setPosts([]));
-    fetchUserPortfolio({ token, username: user.username })
-      .then(setPortfolioItems)
+    fetchUserPortfolioDetails({ token, username: user.username })
+      .then((details) => {
+        setPortfolioItems(details.portfolio);
+        setPortfolioResume(details.resume);
+        setPortfolioAnalysis(details.analysis);
+      })
       .catch(() => setPortfolioItems([]));
   }, [token, user?.username]);
 
@@ -191,6 +232,23 @@ export default function ProfilePage({ onNavigate }) {
       showToast('Link do portfolio copiado', 'OK');
     } catch {
       showToast('Nao foi possivel copiar o link', '!');
+    }
+  };
+
+  const handleResumeUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setResumeUploading(true);
+      const result = await uploadPortfolioResume({ token, file });
+      setPortfolioResume(result.resume);
+      setPortfolioAnalysis(result.analysis);
+      showToast('Curriculo lido e conectado ao portfolio', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Falha ao enviar curriculo', '!');
+    } finally {
+      setResumeUploading(false);
     }
   };
 
@@ -278,6 +336,8 @@ export default function ProfilePage({ onNavigate }) {
   const linkPosts = posts
     .filter(p => URL_RE.test(p.content || ''))
     .map(p => ({ ...p, url: (p.content || '').match(URL_RE)?.[0] }));
+
+  const virtualResume = portfolioResume?.virtualResume;
 
   return (
     <div className="page-scroll">
@@ -408,6 +468,54 @@ export default function ProfilePage({ onNavigate }) {
                 <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(user.username))}>Copiar</button>
               </div>
             </div>
+            <div className="profile-resume-panel">
+              <div>
+                <span className="profile-portfolio-kicker">Curriculo virtual</span>
+                <strong>{virtualResume?.professionalTitle || (portfolioResume ? 'Curriculo conectado ao portfolio' : 'Adicionar curriculo PDF ou DOCX')}</strong>
+                <p>{virtualResume?.about || portfolioResume?.summary || 'Envie seu curriculo para o sistema criar uma versao virtual com objetivo, contatos, skills e destaques profissionais.'}</p>
+                {portfolioResume && (
+                  <div className="profile-resume-preview">
+                    <div>
+                      <span>Objetivo</span>
+                      <p>{virtualResume?.objective || portfolioResume.summary}</p>
+                    </div>
+                    <div>
+                      <span>Contato</span>
+                      <p>{portfolioResume.emails?.[0] || portfolioResume.phones?.[0] || 'Sem contato extraido'}</p>
+                    </div>
+                  </div>
+                )}
+                {(virtualResume?.hardSkills?.length > 0 || portfolioResume?.skills?.length > 0) && (
+                  <div className="profile-resume-skills">
+                    {(virtualResume?.hardSkills || portfolioResume.skills).slice(0, 10).map(skill => <span key={skill}>{skill}</span>)}
+                  </div>
+                )}
+                {virtualResume?.highlights?.length > 0 && (
+                  <div className="profile-resume-highlights">
+                    {virtualResume.highlights.slice(0, 3).map(item => <span key={item}>{item}</span>)}
+                  </div>
+                )}
+              </div>
+              <label className="profile-resume-upload">
+                {resumeUploading ? 'Lendo curriculo...' : 'Enviar curriculo'}
+                <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleResumeUpload} />
+              </label>
+            </div>
+            {portfolioAnalysis && (
+              <div className="profile-ml-panel">
+                <div>
+                  <span className="profile-portfolio-kicker">Analise ML de vagas</span>
+                  <strong>{portfolioAnalysis.area}</strong>
+                  <p>Score {portfolioAnalysis.score}% - {portfolioAnalysis.category}. Baseado no notebook ml vagas e nos outputs atualizados.</p>
+                </div>
+                <div>
+                  <div className="profile-ml-skills">
+                    {(portfolioAnalysis.recommendedSkills || []).slice(0, 8).map(skill => <span key={skill}>{skill}</span>)}
+                  </div>
+                  <MlRecommendationLinks analysis={portfolioAnalysis} />
+                </div>
+              </div>
+            )}
             {portfolioItems.length === 0 ? (
               <div className="profile-portfolio-empty">
                 <strong>Nenhum trabalho publicado ainda.</strong>

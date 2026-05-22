@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createPost } from '../../repositories/post.repository.js';
+import { buildPortfolioMlAnalysis } from '../../services/portfolio-ml.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STORE_PATH = path.resolve(__dirname, '../../../data/ava-store.json');
@@ -184,6 +185,7 @@ function ensureUserState(store, user) {
       ],
       institutionId: 'unigran',
       portfolio: [],
+      resume: null,
     };
   }
   if (!store.users[username].institutionId) store.users[username].institutionId = user?.institutionId || user?.facultyId || 'unigran';
@@ -292,7 +294,58 @@ export async function getAvaState(user) {
     courses,
     notifications: userState.notifications.slice().reverse(),
     portfolio: userState.portfolio.slice().reverse(),
+    resume: userState.resume || null,
   };
+}
+
+export async function savePortfolioResume(user, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  userState.resume = {
+    ...(userState.resume || {}),
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeStore(store);
+  return userState.resume;
+}
+
+export async function saveManualPortfolioItem(user, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const now = new Date().toISOString();
+  const activityId = payload.activityId || `manual-${Date.now()}`;
+  const previous = userState.portfolio.find(item => item.activityId === activityId);
+  const item = {
+    id: previous?.id || payload.id || `portfolio-${activityId}-${usernameOf(user)}-${Date.now()}`,
+    title: payload.title || 'Projeto academico',
+    summary: payload.summary || '',
+    courseId: payload.courseId || 'manual',
+    courseName: payload.courseName || 'Portfolio academico',
+    activityId,
+    activityTitle: payload.activityTitle || 'Publicacao de portfolio',
+    documentUrl: payload.documentUrl || '',
+    documentName: payload.documentName || '',
+    documentStorage: payload.documentStorage || '',
+    documentPath: payload.documentPath || '',
+    externalUrl: payload.externalUrl || '',
+    externalKind: payload.externalKind || (payload.externalUrl ? 'repository' : ''),
+    externalLabel: payload.externalLabel || '',
+    createdAt: previous?.createdAt || now,
+    updatedAt: now,
+    shareUrl: payload.shareUrl || `/portfolio/${usernameOf(user)}/${activityId}`,
+    postId: payload.postId || previous?.postId || null,
+  };
+  const index = userState.portfolio.findIndex(entry => entry.activityId === activityId);
+  if (index >= 0) userState.portfolio[index] = { ...userState.portfolio[index], ...item };
+  else userState.portfolio.push(item);
+  await writeStore(store);
+  return item;
+}
+
+export async function getPortfolioResume(username) {
+  const store = await readStore();
+  return store.users?.[username]?.resume || null;
 }
 
 export async function setMaterialCompletion(user, materialId, completed) {
@@ -374,7 +427,7 @@ export async function submitActivity(user, activityId, payload) {
       externalLabel: payload.attachmentLabel || '',
       createdAt: previous?.createdAt || now,
       updatedAt: now,
-      shareUrl: `/api/portfolio/${usernameOf(user)}/${activityId}`,
+      shareUrl: `/portfolio/${usernameOf(user)}/${activityId}`,
       postId: previous?.portfolioPostId || null,
     };
 
@@ -430,6 +483,15 @@ export async function listPublicPortfolioItems(username) {
       authorUsername: username,
       institution,
     }));
+}
+
+export async function getPortfolioMlAnalysis(username) {
+  const store = await readStore();
+  const userState = store.users?.[username];
+  return buildPortfolioMlAnalysis({
+    items: userState?.portfolio || [],
+    resume: userState?.resume || null,
+  });
 }
 
 export async function createForumPost(user, courseId, content) {
