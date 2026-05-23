@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
-import { getCallChannel, getConversationChannel, getPresenceChannel } from '../services/realtime';
+import { getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel } from '../services/realtime';
 import { decryptMessage, decryptMessages, encryptMessage, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
@@ -139,6 +139,17 @@ export default function MessagesPage() {
     ...(conv?.participants || []).map(person => person.username),
     conv?.participant?.username,
   ].filter(Boolean);
+
+  const callRecipients = (conv = active) => [
+    ...(conv?.participants || []).map(person => person.username),
+    conv?.participant?.username,
+  ].filter(Boolean).filter(username => username !== user?.username);
+
+  const callChannelFor = (conversationId) => {
+    const channel = getCallChannel(token, conversationId);
+    if (active?.id === conversationId) callChannelRef.current = channel;
+    return channel;
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -335,6 +346,51 @@ export default function MessagesPage() {
       channel.unsubscribe('call_end', onEnd);
     };
   }, [token, active?.id, user?.username, incomingCall]);
+
+  useEffect(() => {
+    if (!token || !user?.username) return undefined;
+    const channel = getUserCallChannel(token, user.username);
+    const onOffer = ({ data: payload }) => {
+      if (!payload?.conversationId || payload.from?.id === user.username) return;
+      if (payload.toDeviceId && payload.toDeviceId !== deviceIdRef.current) return;
+      setIncomingCall(payload);
+    };
+    const onAnswer = async ({ data }) => {
+      const { answer, callId } = data || {};
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
+      if (!pcRef.current || !answer) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+      setCall(prev => prev ? { ...prev, status: 'Conectado', remoteDeviceId: data?.fromDeviceId || prev.remoteDeviceId } : prev);
+    };
+    const onIce = async ({ data }) => {
+      const { candidate, callId, toDeviceId } = data || {};
+      if (toDeviceId && toDeviceId !== deviceIdRef.current) return;
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
+      if (!pcRef.current || !candidate) return;
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+    };
+    const onAccepted = ({ data }) => {
+      if (!incomingCall) return;
+      if (data?.callId === incomingCall.callId && data?.deviceId !== deviceIdRef.current) setIncomingCall(null);
+    };
+    const onEnd = ({ data }) => {
+      if (data?.toDeviceId && data.toDeviceId !== deviceIdRef.current) return;
+      if (data?.callId && callIdRef.current && data.callId !== callIdRef.current) return;
+      endCall(false);
+    };
+    channel.subscribe('call_offer', onOffer);
+    channel.subscribe('call_answer', onAnswer);
+    channel.subscribe('call_ice', onIce);
+    channel.subscribe('call_accepted', onAccepted);
+    channel.subscribe('call_end', onEnd);
+    return () => {
+      channel.unsubscribe('call_offer', onOffer);
+      channel.unsubscribe('call_answer', onAnswer);
+      channel.unsubscribe('call_ice', onIce);
+      channel.unsubscribe('call_accepted', onAccepted);
+      channel.unsubscribe('call_end', onEnd);
+    };
+  }, [token, user?.username, incomingCall]);
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
@@ -695,7 +751,7 @@ export default function MessagesPage() {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     pc.onicecandidate = event => {
-      if (event.candidate) callChannelRef.current?.publish('call_ice', {
+      if (event.candidate) callChannelFor(conversationId)?.publish('call_ice', {
         conversationId,
         callId: callIdRef.current,
         candidate: event.candidate,
@@ -772,7 +828,7 @@ export default function MessagesPage() {
   };
 
   const startCall = async (kind) => {
-    if (!active?.id || !callChannelRef.current) return;
+    if (!active?.id) return;
     try {
       const stream = await requestCallStream(kind);
       if (!stream) return;
@@ -784,14 +840,18 @@ export default function MessagesPage() {
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await callChannelRef.current.publish('call_offer', {
+      const payload = {
         conversationId: active.id,
         callId,
         kind,
         offer,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
+      };
+      await callChannelFor(active.id).publish('call_offer', payload);
+      await Promise.all(callRecipients(active).map(username =>
+        getUserCallChannel(token, username).publish('call_offer', payload).catch(() => null)
+      ));
       setCall({ kind, status: 'Chamando...', conversationId: active.id, callId });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
@@ -799,7 +859,7 @@ export default function MessagesPage() {
   };
 
   const acceptCall = async () => {
-    if (!incomingCall || !callChannelRef.current) return;
+    if (!incomingCall) return;
     try {
       const stream = await requestCallStream(incomingCall.kind);
       if (!stream) return;
@@ -811,20 +871,25 @@ export default function MessagesPage() {
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      await callChannelRef.current.publish('call_accepted', {
+      const channel = callChannelFor(incomingCall.conversationId);
+      const acceptedPayload = {
         conversationId: incomingCall.conversationId,
         callId: incomingCall.callId,
         deviceId: deviceIdRef.current,
         by: { id: user?.username, displayName: user?.displayName || user?.username },
-      });
-      await callChannelRef.current.publish('call_answer', {
+      };
+      await channel.publish('call_accepted', acceptedPayload);
+      if (incomingCall.from?.id) await getUserCallChannel(token, incomingCall.from.id).publish('call_accepted', acceptedPayload).catch(() => null);
+      const answerPayload = {
         conversationId: incomingCall.conversationId,
         callId: incomingCall.callId,
         answer,
         toDeviceId: incomingCall.fromDeviceId,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
+      };
+      await channel.publish('call_answer', answerPayload);
+      if (incomingCall.from?.id) await getUserCallChannel(token, incomingCall.from.id).publish('call_answer', answerPayload).catch(() => null);
       setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId });
       setIncomingCall(null);
     } catch {
@@ -833,24 +898,32 @@ export default function MessagesPage() {
   };
 
   const rejectCall = () => {
-    if (incomingCall?.conversationId) callChannelRef.current?.publish('call_end', {
+    if (incomingCall?.conversationId) {
+      const payload = {
       conversationId: incomingCall.conversationId,
       callId: incomingCall.callId,
       toDeviceId: incomingCall.fromDeviceId,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
       fromDeviceId: deviceIdRef.current,
-    });
+      };
+      callChannelFor(incomingCall.conversationId)?.publish('call_end', payload).catch(() => null);
+      if (incomingCall.from?.id) getUserCallChannel(token, incomingCall.from.id).publish('call_end', payload).catch(() => null);
+    }
     setIncomingCall(null);
   };
 
   const endCall = (emit = true) => {
-    if (emit && call?.conversationId) callChannelRef.current?.publish('call_end', {
+    if (emit && call?.conversationId) {
+      const payload = {
       conversationId: call.conversationId,
       callId: call.callId,
       toDeviceId: call.remoteDeviceId || null,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
       fromDeviceId: deviceIdRef.current,
-    });
+      };
+      callChannelFor(call.conversationId)?.publish('call_end', payload).catch(() => null);
+      callRecipients(active).forEach(username => getUserCallChannel(token, username).publish('call_end', payload).catch(() => null));
+    }
     pcRef.current?.close?.();
     pcRef.current = null;
     localStreamRef.current?.getTracks?.().forEach(track => track.stop());

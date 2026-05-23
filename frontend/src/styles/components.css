@@ -1783,8 +1783,39 @@
 @media (max-width: 1024px) { .right-panel { display: none; } }
 @media (max-width: 768px)  { .comm-grid { grid-template-columns: 1fr; } .settings-sidenav { width: 190px; } }
 @media (max-width: 700px)  {
-  .messages-shell { flex-direction: column; min-height: 0; height: 100%; }
-  .conv-list { width: 100%; max-height: none; flex: 1; border-right: none; border-bottom: 1px solid var(--border); }
+  .messages-shell { flex-direction: column; min-height: 0; height: 100%; background: var(--card); }
+  .conv-list { width: 100%; max-height: none; flex: 1; border-right: none; border-bottom: 1px solid var(--border); background: var(--card); }
+  .conv-list-head { padding: 14px 14px 10px; position: sticky; top: 0; z-index: 5; background: var(--card); }
+  .messages-title-row { margin-bottom: 12px; }
+  .messages-title-row h3 { font-size: 22px; }
+  .messages-search-input { min-height: 42px; border-radius: 999px; background: var(--page-bg); }
+  .conv-item {
+    gap: 12px;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+  }
+  .conv-item.active,
+  .conv-item:active {
+    background: color-mix(in srgb, var(--accent) 10%, var(--page-bg)) !important;
+  }
+  .conv-item .avatar,
+  .conv-item [class*="avatar"] {
+    flex: 0 0 auto;
+  }
+  .conv-name { font-size: 15px; font-weight: 800; }
+  .conv-preview { margin-top: 3px; font-size: 12px; }
+  .sidebar-wide-badge {
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 900;
+  }
   .messages-shell.has-active .conv-list { display: none; }
   .messages-shell.has-active .chat-area { display: flex; }
   .chat-area { min-height: 0; flex: 1; display: none; }
