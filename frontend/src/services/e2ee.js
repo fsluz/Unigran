@@ -85,6 +85,19 @@ export async function fetchPublicKeys(token, usernames) {
   return data.keys || {};
 }
 
+export async function getE2EEStatus({ token, usernames }) {
+  const uniqueUsers = [...new Set((usernames || []).filter(Boolean))];
+  if (!uniqueUsers.length) return { ready: false, missing: [], checked: true };
+
+  const keys = await fetchPublicKeys(token, uniqueUsers);
+  const missing = uniqueUsers.filter(username => !keys[username]);
+  return {
+    ready: missing.length === 0,
+    missing,
+    checked: true,
+  };
+}
+
 export function isEncryptedText(value) {
   try {
     return JSON.parse(value)?.e2ee === 1;
@@ -96,10 +109,11 @@ export function isEncryptedText(value) {
 export async function encryptMessage({ token, conversationId, usernames, content, media }) {
   const uniqueUsers = [...new Set(usernames.filter(Boolean))];
   const keys = await fetchPublicKeys(token, uniqueUsers);
-  const keyUsers = uniqueUsers.filter(username => keys[username]);
-  if (!keyUsers.length) {
+  const missing = uniqueUsers.filter(username => !keys[username]);
+  if (missing.length) {
     return content;
   }
+  const keyUsers = uniqueUsers;
 
   const aesKey = await getConversationKey(conversationId);
   const rawAes = await crypto.subtle.exportKey('raw', aesKey);
@@ -118,7 +132,7 @@ export async function encryptMessage({ token, conversationId, usernames, content
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
     keys: wrapped,
-    missing: uniqueUsers.filter(username => !keys[username]),
+    missing,
   });
 }
 

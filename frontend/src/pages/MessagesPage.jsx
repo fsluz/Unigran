@@ -6,7 +6,7 @@ import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel } from '../services/realtime';
-import { decryptMessage, decryptMessages, encryptMessage, publishOwnPublicKey } from '../services/e2ee';
+import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
@@ -40,6 +40,7 @@ export default function MessagesPage() {
   const [groupSettings, setGroupSettings] = useState({ title: '', description: '', picture: '' });
   const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [e2eeStatus, setE2eeStatus] = useState({ ready: false, missing: [], checked: false });
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -150,6 +151,17 @@ export default function MessagesPage() {
     if (active?.id === conversationId) callChannelRef.current = channel;
     return channel;
   };
+
+  useEffect(() => {
+    if (!token || !active?.id) {
+      setE2eeStatus({ ready: false, missing: [], checked: false });
+      return;
+    }
+
+    getE2EEStatus({ token, usernames: participantUsernames(active) })
+      .then(setE2eeStatus)
+      .catch(() => setE2eeStatus({ ready: false, missing: [], checked: true }));
+  }, [token, active?.id, active?.participants, active?.participant?.username, user?.username]);
 
   useEffect(() => {
     if (!token) return;
@@ -1133,6 +1145,16 @@ export default function MessagesPage() {
                 </div>
               </div>
             </div>
+
+            {e2eeStatus.checked && (
+              <div className={`e2ee-banner ${e2eeStatus.ready ? 'ready' : 'warn'}`}>
+                {e2eeStatus.ready
+                  ? 'E2EE ativo. Novas mensagens seguem cifradas.'
+                  : e2eeStatus.missing.filter(name => name !== user?.username).length
+                    ? `E2EE aguardando chave: ${e2eeStatus.missing.filter(name => name !== user?.username).join(', ')}. Conversa antiga continua normal.`
+                    : 'E2EE criando sua chave. Conversa antiga continua normal.'}
+              </div>
+            )}
 
             <div className="chat-messages">
               {activeMessages.map(msg => {

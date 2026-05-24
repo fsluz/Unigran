@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
+import { publishOwnPublicKey } from '../services/e2ee';
 
 const AuthContext = createContext(null);
 
@@ -38,6 +39,11 @@ export function AuthProvider({ children }) {
     const interval = setInterval(ping, 25000);
     return () => clearInterval(interval);
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !user?.username) return;
+    publishOwnPublicKey(token).catch(() => null);
+  }, [token, user?.username]);
 
   function login(userData, jwt) {
     setUser(userData);
