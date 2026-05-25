@@ -1,4 +1,0 @@
-define
-  attribute crypto-public-key, value string;
-
-  person owns crypto-public-key @card(0..1);

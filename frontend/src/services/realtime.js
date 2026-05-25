@@ -39,6 +39,17 @@ export function getPresenceChannel(token) {
   return getRealtime(token).channels.get('presence:users');
 }
 
+export async function relayCallSignal(token, { event, conversationId, recipients, payload }) {
+  const res = await apiFetch('/realtime/call-signal', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ event, conversationId, recipients, payload }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro ao enviar sinal');
+  return data;
+}
+
 export function closeRealtime() {
   if (client) client.close();
   client = null;

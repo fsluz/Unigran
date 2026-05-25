@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
-import { getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel } from '../services/realtime';
+import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
 import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
@@ -50,6 +50,7 @@ export default function MessagesPage() {
   const [ringtoneSrc, setRingtoneSrc] = useState(() => localStorage.getItem('unigran_call_ringtone') || callRingtone);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [realtimeRevision, setRealtimeRevision] = useState(0);
   const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
   const recorderRef = useRef(null);
@@ -260,7 +261,7 @@ export default function MessagesPage() {
       channel.unsubscribe('message_edited', onEdited);
       channel.unsubscribe('message_deleted', onDeleted);
     };
-  }, [token, active?.id, user?.username]);
+  }, [token, active?.id, user?.username, realtimeRevision]);
 
   useEffect(() => {
     if (!token || !user?.username) return undefined;
@@ -281,7 +282,7 @@ export default function MessagesPage() {
       channel.presence.unsubscribe(refreshPresence);
       channel.presence.leave().catch(() => null);
     };
-  }, [token, user?.username, user?.profilePicture]);
+  }, [token, user?.username, user?.profilePicture, realtimeRevision]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -357,7 +358,7 @@ export default function MessagesPage() {
       channel.unsubscribe('call_accepted', onAccepted);
       channel.unsubscribe('call_end', onEnd);
     };
-  }, [token, active?.id, user?.username, incomingCall]);
+  }, [token, active?.id, user?.username, incomingCall, realtimeRevision]);
 
   useEffect(() => {
     if (!token || !user?.username) return undefined;
@@ -402,7 +403,7 @@ export default function MessagesPage() {
       channel.unsubscribe('call_accepted', onAccepted);
       channel.unsubscribe('call_end', onEnd);
     };
-  }, [token, user?.username, incomingCall]);
+  }, [token, user?.username, incomingCall, realtimeRevision]);
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
@@ -495,6 +496,8 @@ export default function MessagesPage() {
         const exists = prev.some(item => item.id === conversation.id);
         return exists ? prev : [conversation, ...prev];
       });
+      closeRealtime();
+      setRealtimeRevision(value => value + 1);
       setActive(conversation);
       setTargetUsername('');
       setConversationSearch('');
@@ -519,6 +522,8 @@ export default function MessagesPage() {
       }
       const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants, picture });
       setConversations(prev => [conversation, ...prev]);
+      closeRealtime();
+      setRealtimeRevision(value => value + 1);
       setActive(conversation);
       setSelectedGroupUsers([]);
       setGroupSearch('');
@@ -763,14 +768,20 @@ export default function MessagesPage() {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     pc.onicecandidate = event => {
-      if (event.candidate) callChannelFor(conversationId)?.publish('call_ice', {
+      if (!event.candidate) return;
+      const payload = {
         conversationId,
         callId: callIdRef.current,
         candidate: event.candidate,
         toDeviceId: incomingCall?.fromDeviceId || call?.remoteDeviceId || null,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
+      };
+      callChannelFor(conversationId)?.publish('call_ice', payload).catch(() => null);
+      const recipients = incomingCall?.from?.id
+        ? [incomingCall.from.id]
+        : (call?.remoteUsername ? [call.remoteUsername] : callRecipients(active));
+      relayCallSignal(token, { event: 'call_ice', conversationId, recipients, payload }).catch(() => null);
     };
     pc.ontrack = event => {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
@@ -861,10 +872,8 @@ export default function MessagesPage() {
         fromDeviceId: deviceIdRef.current,
       };
       await callChannelFor(active.id).publish('call_offer', payload);
-      await Promise.all(callRecipients(active).map(username =>
-        getUserCallChannel(token, username).publish('call_offer', payload).catch(() => null)
-      ));
-      setCall({ kind, status: 'Chamando...', conversationId: active.id, callId });
+      await relayCallSignal(token, { event: 'call_offer', conversationId: active.id, recipients: callRecipients(active), payload });
+      setCall({ kind, status: 'Chamando...', conversationId: active.id, callId, remoteUsername: callRecipients(active)[0] || null });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
     }
@@ -891,7 +900,7 @@ export default function MessagesPage() {
         by: { id: user?.username, displayName: user?.displayName || user?.username },
       };
       await channel.publish('call_accepted', acceptedPayload);
-      if (incomingCall.from?.id) await getUserCallChannel(token, incomingCall.from.id).publish('call_accepted', acceptedPayload).catch(() => null);
+      if (incomingCall.from?.id) await relayCallSignal(token, { event: 'call_accepted', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload: acceptedPayload });
       const answerPayload = {
         conversationId: incomingCall.conversationId,
         callId: incomingCall.callId,
@@ -901,8 +910,8 @@ export default function MessagesPage() {
         fromDeviceId: deviceIdRef.current,
       };
       await channel.publish('call_answer', answerPayload);
-      if (incomingCall.from?.id) await getUserCallChannel(token, incomingCall.from.id).publish('call_answer', answerPayload).catch(() => null);
-      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId });
+      if (incomingCall.from?.id) await relayCallSignal(token, { event: 'call_answer', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload: answerPayload });
+      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId, remoteUsername: incomingCall.from?.id || null });
       setIncomingCall(null);
     } catch {
       showToast('Falha na chamada', '!');
@@ -919,7 +928,7 @@ export default function MessagesPage() {
       fromDeviceId: deviceIdRef.current,
       };
       callChannelFor(incomingCall.conversationId)?.publish('call_end', payload).catch(() => null);
-      if (incomingCall.from?.id) getUserCallChannel(token, incomingCall.from.id).publish('call_end', payload).catch(() => null);
+      if (incomingCall.from?.id) relayCallSignal(token, { event: 'call_end', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload }).catch(() => null);
     }
     setIncomingCall(null);
   };
@@ -934,7 +943,7 @@ export default function MessagesPage() {
       fromDeviceId: deviceIdRef.current,
       };
       callChannelFor(call.conversationId)?.publish('call_end', payload).catch(() => null);
-      callRecipients(active).forEach(username => getUserCallChannel(token, username).publish('call_end', payload).catch(() => null));
+      relayCallSignal(token, { event: 'call_end', conversationId: call.conversationId, recipients: call.remoteUsername ? [call.remoteUsername] : callRecipients(active), payload }).catch(() => null);
     }
     pcRef.current?.close?.();
     pcRef.current = null;

@@ -1,6 +1,8 @@
 import { apiFetch, authHeaders } from '../utils/api';
 
 const IDENTITY_KEY = 'unigran_e2ee_identity_v1';
+const DEVICE_ID_KEY = 'unigran_device_id';
+const DEVICE_IDENTITY_PREFIX = 'unigran_e2ee_device_identity_v1_';
 const CONV_PREFIX = 'unigran_e2ee_conv_';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -33,21 +35,47 @@ async function importPrivateKey(jwk) {
   );
 }
 
-async function ensureIdentity() {
-  const saved = localStorage.getItem(IDENTITY_KEY);
-  if (saved) return JSON.parse(saved);
-
+async function generateIdentity() {
   const pair = await crypto.subtle.generateKey(
     { name: 'RSA-OAEP', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
     true,
     ['encrypt', 'decrypt'],
   );
-  const identity = {
+  return {
     publicKey: await crypto.subtle.exportKey('jwk', pair.publicKey),
     privateKey: await crypto.subtle.exportKey('jwk', pair.privateKey),
   };
+}
+
+function getDeviceId() {
+  const saved = localStorage.getItem(DEVICE_ID_KEY);
+  if (saved) return saved;
+  const created = `dev-${Date.now()}-${crypto.randomUUID()}`;
+  localStorage.setItem(DEVICE_ID_KEY, created);
+  return created;
+}
+
+async function ensureLegacyIdentity() {
+  const saved = localStorage.getItem(IDENTITY_KEY);
+  if (saved) return JSON.parse(saved);
+
+  const identity = await generateIdentity();
   localStorage.setItem(IDENTITY_KEY, JSON.stringify(identity));
   return identity;
+}
+
+async function ensureDeviceIdentity() {
+  const deviceId = getDeviceId();
+  const keyName = `${DEVICE_IDENTITY_PREFIX}${deviceId}`;
+  const saved = localStorage.getItem(keyName);
+  if (saved) return { deviceId, identity: JSON.parse(saved) };
+
+  // Reuse the first browser identity so legacy messages remain readable after migration.
+  const identity = localStorage.getItem(IDENTITY_KEY)
+    ? JSON.parse(localStorage.getItem(IDENTITY_KEY))
+    : await ensureLegacyIdentity();
+  localStorage.setItem(keyName, JSON.stringify(identity));
+  return { deviceId, identity };
 }
 
 async function getConversationKey(conversationId) {
@@ -66,7 +94,20 @@ async function cacheConversationKey(conversationId, key) {
 }
 
 export async function publishOwnPublicKey(token) {
-  const identity = await ensureIdentity();
+  const device = await ensureDeviceIdentity();
+  const deviceResponse = await apiFetch('/crypto/devices/current', {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      deviceId: device.deviceId,
+      deviceName: navigator.userAgent.includes('Mobile') ? 'Celular' : 'Navegador',
+      publicKey: JSON.stringify(device.identity.publicKey),
+    }),
+  }).catch(() => null);
+  if (deviceResponse?.ok || deviceResponse?.status === 403) return;
+
+  // Legacy fallback keeps old deployments usable until the device schema is installed.
+  const identity = await ensureLegacyIdentity();
   await apiFetch('/crypto/public-key', {
     method: 'PUT',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
@@ -89,8 +130,8 @@ export async function getE2EEStatus({ token, usernames }) {
   const uniqueUsers = [...new Set((usernames || []).filter(Boolean))];
   if (!uniqueUsers.length) return { ready: false, missing: [], checked: true };
 
-  const keys = await fetchPublicKeys(token, uniqueUsers);
-  const missing = uniqueUsers.filter(username => !keys[username]);
+  const devices = await fetchRecipientDevices(token, uniqueUsers);
+  const missing = uniqueUsers.filter(username => !(devices[username] || []).length);
   return {
     ready: missing.length === 0,
     missing,
@@ -100,35 +141,58 @@ export async function getE2EEStatus({ token, usernames }) {
 
 export function isEncryptedText(value) {
   try {
-    return JSON.parse(value)?.e2ee === 1;
+    return [1, 2].includes(JSON.parse(value)?.e2ee);
   } catch {
     return false;
   }
 }
 
+async function fetchRecipientDevices(token, usernames) {
+  let deviceRows = {};
+  try {
+    const res = await apiFetch('/crypto/device-keys', {
+      method: 'POST',
+      headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ usernames }),
+    });
+    if (res.ok) deviceRows = (await res.json()).devices || {};
+  } catch {
+    deviceRows = {};
+  }
+
+  const legacy = await fetchPublicKeys(token, usernames).catch(() => ({}));
+  const devices = {};
+  usernames.forEach(username => {
+    devices[username] = deviceRows[username]?.length
+      ? deviceRows[username]
+      : (legacy[username] ? [{ id: 'legacy', publicKey: legacy[username] }] : []);
+  });
+  return devices;
+}
+
 export async function encryptMessage({ token, conversationId, usernames, content, media }) {
   const uniqueUsers = [...new Set(usernames.filter(Boolean))];
-  const keys = await fetchPublicKeys(token, uniqueUsers);
-  const missing = uniqueUsers.filter(username => !keys[username]);
+  const devices = await fetchRecipientDevices(token, uniqueUsers);
+  const missing = uniqueUsers.filter(username => !(devices[username] || []).length);
   if (missing.length) {
     return content;
   }
-  const keyUsers = uniqueUsers;
 
-  const aesKey = await getConversationKey(conversationId);
+  const aesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   const rawAes = await crypto.subtle.exportKey('raw', aesKey);
   const wrapped = {};
-  await Promise.all(keyUsers.map(async username => {
-    const publicKey = await importPublicKey(keys[username]);
-    wrapped[username] = bytesToBase64(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, rawAes));
-  }));
+  await Promise.all(uniqueUsers.flatMap(username => devices[username].map(async device => {
+    const publicKey = await importPublicKey(device.publicKey);
+    if (!wrapped[username]) wrapped[username] = {};
+    wrapped[username][device.id] = bytesToBase64(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, rawAes));
+  })));
 
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plain = JSON.stringify({ content, media: media || null });
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, encoder.encode(plain));
   return JSON.stringify({
-    e2ee: 1,
-    alg: 'AES-GCM-256/RSA-OAEP',
+    e2ee: 2,
+    alg: 'AES-GCM-256/RSA-OAEP-device',
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
     keys: wrapped,
@@ -138,20 +202,29 @@ export async function encryptMessage({ token, conversationId, usernames, content
 
 export async function decryptMessagePayload(conversationId, encryptedText, username) {
   const payload = JSON.parse(encryptedText);
-  if (payload.e2ee !== 1) return null;
+  if (![1, 2].includes(payload.e2ee)) return null;
 
   let aesKey = null;
-  const saved = localStorage.getItem(`${CONV_PREFIX}${conversationId}`);
-  if (saved) {
-    aesKey = await crypto.subtle.importKey('jwk', JSON.parse(saved), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+  if (payload.e2ee === 1) {
+    const saved = localStorage.getItem(`${CONV_PREFIX}${conversationId}`);
+    if (saved) {
+      aesKey = await crypto.subtle.importKey('jwk', JSON.parse(saved), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+    } else {
+      const wrapped = payload.keys?.[username];
+      if (!wrapped) throw new Error('Chave desta mensagem ausente');
+      const identity = await ensureLegacyIdentity();
+      const privateKey = await importPrivateKey(identity.privateKey);
+      const rawAes = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, base64ToBytes(wrapped));
+      aesKey = await crypto.subtle.importKey('raw', rawAes, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+      await cacheConversationKey(conversationId, aesKey);
+    }
   } else {
-    const wrapped = payload.keys?.[username];
+    const { deviceId, identity } = await ensureDeviceIdentity();
+    const wrapped = payload.keys?.[username]?.[deviceId] || payload.keys?.[username]?.legacy;
     if (!wrapped) throw new Error('Chave desta mensagem ausente');
-    const identity = await ensureIdentity();
     const privateKey = await importPrivateKey(identity.privateKey);
     const rawAes = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, base64ToBytes(wrapped));
     aesKey = await crypto.subtle.importKey('raw', rawAes, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
-    await cacheConversationKey(conversationId, aesKey);
   }
 
   const plainBytes = await crypto.subtle.decrypt(
