@@ -3,6 +3,7 @@ import { auth } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole, requirePermission } from './auth/rbac.js';
 import avaRouter from './academic/avaRoutes.js';
 import { aiSnapshot, dashboardForRole, librarySnapshot, platformModules, secretaryWorkflows } from './platformData.js';
+import { answerRaiFromTypeDB } from '../services/rai.service.js';
 
 const router = Router();
 
@@ -30,23 +31,18 @@ router.get('/v1/dashboard', requirePermission('platform.read'), (req, res) => {
   });
 });
 
-router.post('/v1/ai/assistant', requirePermission('ai.use'), (req, res) => {
+router.post('/v1/ai/assistant', requirePermission('ai.use'), async (req, res) => {
   const prompt = String(req.body?.prompt || '').trim();
   if (!prompt) return res.status(400).json({ error: 'Informe uma pergunta para a RAi' });
 
-  const answer = process.env.OPENAI_API_KEY
-    ? 'RAi esta pronta para conectar ao provedor de IA configurado. A chamada real deve ser ativada no modulo de orquestracao.'
-    : 'RAi esta em modo demonstracao. Configure OPENAI_API_KEY no backend para respostas generativas reais.';
-
-  res.json({
-    assistant: 'RAi',
-    answer,
-    suggestions: [
-      'Revisar materiais com menor progresso',
-      'Criar um quiz curto de fixacao',
-      'Agendar acompanhamento se houver risco academico',
-    ],
-  });
+  try {
+    res.json(await answerRaiFromTypeDB({ user: req.user, prompt }));
+  } catch (err) {
+    console.error('[RAi TypeDB]', err);
+    res.status(503).json({
+      error: 'RAi nao conseguiu ler o TypeDB agora. Verifique a conexao e as credenciais do banco.',
+    });
+  }
 });
 
 router.use('/v1/ava', requirePermission('platform.read'), avaRouter);

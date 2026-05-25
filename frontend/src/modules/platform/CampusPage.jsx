@@ -1005,9 +1005,12 @@ export default function CampusPage({ onBackToPortal }) {
               </form>
               {rai && (
                 <div className="campus-rai-answer">
-                  <strong>{rai.assistant}</strong>
+                  <strong>{rai.assistant} {rai.mode ? `- ${rai.mode}` : ''}</strong>
                   <p>{rai.answer}</p>
                   {rai.suggestions?.map(item => <span key={item}>{item}</span>)}
+                  {rai.sources?.length > 0 && (
+                    <small>{rai.sources.length} fonte(s) academica(s) consultada(s)</small>
+                  )}
                 </div>
               )}
             </div>

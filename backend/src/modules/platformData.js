@@ -119,7 +119,7 @@ export const aiSnapshot = {
     'detectar risco de evasao',
     'apoiar correcao docente',
   ],
-  status: process.env.OPENAI_API_KEY ? 'ready' : 'needs_api_key',
+  status: 'typedb_internal',
 };
 
 export function dashboardForRole(role) {

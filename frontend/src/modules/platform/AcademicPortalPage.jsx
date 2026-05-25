@@ -34,7 +34,7 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
-import { assignAcademicTeacher, enrollAcademicStudent, fetchAva } from './platform';
+import { askRai, assignAcademicTeacher, enrollAcademicStudent, fetchAva } from './platform';
 
 const portalModules = [
   { id: 'home', label: 'Inicio', icon: PanelsTopLeft, permission: 'platform.read', badge: 'Live' },
@@ -186,6 +186,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const { user, token } = useAuth();
   const { showToast } = useToast();
   const [ava, setAva] = useState(null);
+  const [raiQuick, setRaiQuick] = useState(null);
+  const [raiQuickLoading, setRaiQuickLoading] = useState(false);
   const [avaLoading, setAvaLoading] = useState(true);
   const [avaError, setAvaError] = useState('');
 
@@ -359,6 +361,18 @@ export default function AcademicPortalPage({ onOpenAva }) {
     }
   };
 
+  const askRaiQuick = async (question) => {
+    setRaiQuickLoading(true);
+    try {
+      const response = await askRai(token, question);
+      setRaiQuick(response);
+    } catch (err) {
+      showToast(err.message || 'Erro na RAi', '!');
+    } finally {
+      setRaiQuickLoading(false);
+    }
+  };
+
   const renderHome = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate" exit="exit">
       <PortalCard title={`Central ${selectedInstitution.shortName}`} text="Acesse os modulos disponiveis para seu perfil e instituicao selecionada." tone="wide" icon={Command}>
@@ -414,10 +428,22 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
       <PortalCard title="RAi Academica" text="IA para estudo, produtividade e tomada de decisao." tone="ai" icon={Bot}>
         <div className="academic-ai-panel">
-          {['Resumir conteudos', 'Gerar quiz', 'Criar cronograma', 'Explicar materia'].map(item => (
-            <button key={item} onClick={() => showToast(`${item} acionado em modo demonstracao`, 'OK')}><Sparkles size={14} />{item}</button>
+          {[
+            ['Resumir conteudos', 'Resuma os materiais e conteudos disponiveis nas minhas disciplinas'],
+            ['Gerar quiz', 'Quais materiais reais posso usar para montar um quiz de revisao?'],
+            ['Criar cronograma', 'Crie uma prioridade de estudos com minhas atividades pendentes'],
+            ['Explicar materia', 'Explique o que eu tenho disponivel para estudar agora'],
+          ].map(([label, question]) => (
+            <button key={label} onClick={() => askRaiQuick(question)} disabled={raiQuickLoading}><Sparkles size={14} />{label}</button>
           ))}
         </div>
+        {raiQuick && (
+          <div className="campus-rai-answer">
+            <strong>{raiQuick.assistant} · {raiQuick.mode}</strong>
+            <p>{raiQuick.answer}</p>
+            {raiQuick.suggestions?.map(item => <span key={item}>{item}</span>)}
+          </div>
+        )}
       </PortalCard>
 
       <PortalCard title="Acompanhamento" text="Prazos, avisos e pendencias academicas." icon={CalendarClock}>
