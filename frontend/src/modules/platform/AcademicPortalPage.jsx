@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
+import AttendanceTeacher from '../../components/academic/AttendanceTeacher';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
@@ -43,8 +44,6 @@ const portalModules = [
   { id: 'coordination', label: 'Coordenacao', icon: Users, permission: 'academic.coordination.read', badge: '31' },
   { id: 'teacher', label: 'Professor', icon: GraduationCap, permission: 'academic.teacher.manage', badge: '23' },
   { id: 'student', label: 'Aluno', icon: BookOpen, permission: 'academic.student.read', badge: '82%' },
-  { id: 'finance', label: 'Financeiro', icon: WalletCards, permission: 'platform.read', badge: '1' },
-  { id: 'services', label: 'Servicos', icon: FileText, permission: 'platform.read', badge: '2' },
   { id: 'secretary', label: 'Secretaria', icon: Landmark, permission: 'secretary.manage', badge: 'SLA' },
   { id: 'library', label: 'Biblioteca', icon: Library, permission: 'platform.read', badge: 'IA' },
   { id: 'links', label: 'Links Externos', icon: LinkIcon, permission: 'platform.read', badge: null },
@@ -237,23 +236,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const institutionStorageKey = `academic:selectedInstitution:${user?.username || user?.id || 'anon'}`;
   const [selectedInstitutionId, setSelectedInstitutionId] = useState(() => localStorage.getItem(institutionStorageKey) || institutions[0]?.id || '');
   const [activeTab, setActiveTab] = useState('home');
-  const [boletos, setBoletos] = useState([
-    { id: 'bol-1', title: 'Mensalidade Maio/2026', due: '10/05/2026', value: 'R$ 749,90', status: 'Aberto' },
-    { id: 'bol-2', title: 'Mensalidade Abril/2026', due: '10/04/2026', value: 'R$ 749,90', status: 'Pago' },
-  ]);
-  const [protocols, setProtocols] = useState([
-    { id: 'prot-1', title: 'Declaracao de matricula', status: 'Concluido', date: '18/05/2026' },
-    { id: 'prot-2', title: 'Analise de atividade complementar', status: 'Em analise', date: '20/05/2026' },
-  ]);
-  const [serviceDraft, setServiceDraft] = useState({ type: 'Documentacao Academica', text: '' });
-  const [librarySearch, setLibrarySearch] = useState('');
-  const [supportDraft, setSupportDraft] = useState('');
-  const [supportMessages, setSupportMessages] = useState([
-    { id: 'msg-1', text: 'Bem-vindo ao atendimento academico. Como podemos ajudar?', author: 'Mediador', at: '20/05/2026 23:06' },
-  ]);
   const [enrollmentDraft, setEnrollmentDraft] = useState({ courseId: '', username: '', name: '', registration: '' });
   const [teacherDraft, setTeacherDraft] = useState({ courseId: '', username: '', name: '' });
   const [globalSearch, setGlobalSearch] = useState('');
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [showAttendance, setShowAttendance] = useState(false);
   const role = normalizeRole(user?.role);
   const academicCourses = ava?.courses || [];
   const academicSummary = ava?.summary || {};
@@ -274,41 +261,6 @@ export default function AcademicPortalPage({ onOpenAva }) {
     if (!needle) return libraryItems;
     return libraryItems.filter(item => `${item.title} ${item.type} ${item.area}`.toLowerCase().includes(needle));
   }, [librarySearch]);
-
-  const payBoleto = (id) => {
-    setBoletos(prev => prev.map(item => item.id === id ? { ...item, status: 'Pago' } : item));
-    showToast('Pagamento registrado em modo demonstracao', 'OK');
-  };
-
-  const createProtocol = (event) => {
-    event.preventDefault();
-    if (!serviceDraft.text.trim()) {
-      showToast('Descreva a solicitacao', '!');
-      return;
-    }
-    setProtocols(prev => [{
-      id: `prot-${Date.now()}`,
-      title: serviceDraft.type,
-      status: 'Aberto',
-      date: new Date().toLocaleDateString('pt-BR'),
-      text: serviceDraft.text.trim(),
-    }, ...prev]);
-    setServiceDraft(prev => ({ ...prev, text: '' }));
-    showToast('Protocolo aberto', 'OK');
-  };
-
-  const sendSupport = (event) => {
-    event.preventDefault();
-    if (!supportDraft.trim()) return;
-    setSupportMessages(prev => [...prev, {
-      id: `msg-${Date.now()}`,
-      text: supportDraft.trim(),
-      author: user?.displayName || user?.username || 'Aluno',
-      at: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
-    }]);
-    setSupportDraft('');
-    showToast('Mensagem enviada ao atendimento', 'OK');
-  };
 
   const openExternal = (url) => {
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -517,7 +469,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
       <PortalCard title="Painel Docente" text="Gestao de turmas, atividades, presenca, materiais e correcoes." tone="wide" icon={GraduationCap}>
         <div className="academic-course-actions">
           {['Criar atividade', 'Criar questionario', 'Lancar notas', 'Controle de presenca', 'Upload de materiais', 'Forum da turma'].map(item => (
-            <button key={item} onClick={item.includes('atividade') || item.includes('materiais') ? onOpenAva : () => showToast(`${item} aberto em modo demonstracao`, 'OK')}>{item}</button>
+            <button key={item} onClick={
+              item.includes('presenca') ? () => setShowAttendance(true) :
+              item.includes('atividade') || item.includes('materiais') ? onOpenAva :
+              () => showToast(`${item} - nao implementado ainda`, 'i')
+            }>{item}</button>
           ))}
         </div>
       </PortalCard>
@@ -545,7 +501,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
       <PortalCard title="Coordenacao" text="Cursos, disciplinas, turmas, professores e alunos em risco." tone="wide" icon={Users}>
         <div className="academic-course-actions">
           {['Gestao de cursos', 'Disciplinas', 'Turmas', 'Aprovacoes', 'Professores', 'Relatorios'].map(item => (
-            <button key={item} onClick={() => showToast(`${item} aberto em modo demonstracao`, 'OK')}>{item}</button>
+            <button key={item} onClick={() => showToast(`${item} - nao implementado ainda`, 'i')}>{item}</button>
           ))}
         </div>
       </PortalCard>
@@ -594,9 +550,9 @@ export default function AcademicPortalPage({ onOpenAva }) {
       </PortalCard>
       <PortalCard title="Indicadores Estrategicos" icon={Activity}>
         <div className="academic-action-list">
-          <button onClick={() => showToast('Analytics aberto em modo demonstracao', 'OK')}>Analytics</button>
-          <button onClick={() => showToast('Relatorio institucional gerado', 'OK')}>Relatorios institucionais</button>
-          <button onClick={() => showToast('Monitoramento aberto', 'OK')}>Monitoramento</button>
+          <button onClick={() => showToast('Analytics - nao implementado ainda', 'i')}>Analytics</button>
+          <button onClick={() => showToast('Relatorios institucionais - nao implementado ainda', 'i')}>Relatorios institucionais</button>
+          <button onClick={() => showToast('Monitoramento - nao implementado ainda', 'i')}>Monitoramento</button>
         </div>
       </PortalCard>
     </motion.section>
@@ -607,7 +563,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
       <PortalCard title="Super Admin" text="Controle total, permissoes globais, auditoria, backups, integracoes e multiinstituicao." tone="wide" icon={LockKeyhole}>
         <div className="academic-course-actions">
           {['Permissoes globais', 'Logs e auditoria', 'Backups', 'Integracoes', 'Configuracoes globais', 'Multiinstituicao'].map(item => (
-            <button key={item} onClick={() => showToast(`${item} aberto em modo demonstracao`, 'OK')}>{item}</button>
+            <button key={item} onClick={() => showToast(`${item} - nao implementado ainda`, 'i')}>{item}</button>
           ))}
         </div>
       </PortalCard>
@@ -621,73 +577,12 @@ export default function AcademicPortalPage({ onOpenAva }) {
     </motion.section>
   );
 
-  const renderFinance = () => (
-    <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-      <PortalCard title="Financeiro" text="Boletos, contratos, comprovantes e status de pagamento." tone="wide finance-premium" icon={WalletCards}>
-        <div className="academic-finance-orbit">
-          <div><span>Saldo do semestre</span><strong>R$ 749,90</strong></div>
-          <div><span>Situacao</span><strong>Em dia</strong></div>
-          <div><span>Proximo vencimento</span><strong>10/06</strong></div>
-        </div>
-        <div className="academic-finance-list">
-          {boletos.map(item => (
-            <div key={item.id} className={item.status === 'Pago' ? 'paid' : ''}>
-              <span>
-                <strong>{item.title}</strong>
-                <small>Vencimento {item.due}</small>
-              </span>
-              <strong>{item.value}</strong>
-              <small>{item.status}</small>
-              {item.status !== 'Pago' && <button className="btn btn-primary" onClick={() => payBoleto(item.id)}>Pagar</button>}
-            </div>
-          ))}
-        </div>
-      </PortalCard>
-      <PortalCard title="Contratos" icon={FileText}>
-        <div className="academic-action-list">
-          <button onClick={() => showToast('Contrato aberto em modo demonstracao', 'OK')}>Contrato educacional 2026.1</button>
-          <button onClick={() => showToast('Aditivo aberto em modo demonstracao', 'OK')}>Aditivo financeiro</button>
-        </div>
-      </PortalCard>
-      <PortalCard title="Comprovantes" icon={CheckCircle2}>
-        <div className="academic-action-list">
-          <button onClick={() => showToast('Comprovante gerado', 'OK')}>Gerar comprovante de pagamento</button>
-          <button onClick={() => showToast('Extrato gerado', 'OK')}>Extrato financeiro</button>
-        </div>
-      </PortalCard>
-    </motion.section>
-  );
-
-  const renderServices = () => (
-    <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate" exit="exit">
-      <PortalCard title="Abrir Protocolo" text="Solicite documentos, declaracoes, analises e outros servicos." tone="wide" icon={FileText}>
-        <form className="academic-form" onSubmit={createProtocol}>
-          <select value={serviceDraft.type} onChange={event => setServiceDraft(prev => ({ ...prev, type: event.target.value }))}>
-            {services.map(item => <option key={item.id} value={item.title}>{item.title}</option>)}
-          </select>
-          <textarea value={serviceDraft.text} onChange={event => setServiceDraft(prev => ({ ...prev, text: event.target.value }))} placeholder="Descreva sua solicitacao" />
-          <button className="btn btn-primary">Abrir protocolo</button>
-        </form>
-      </PortalCard>
-      <PortalCard title="Andamento dos Servicos" text="Protocolos recentes." tone="wide" icon={Activity}>
-        <div className="academic-table-list">
-          {protocols.map(item => (
-            <div key={item.id}>
-              <span>{item.title}<small>{item.date}</small></span>
-              <strong>{item.status}</strong>
-            </div>
-          ))}
-        </div>
-      </PortalCard>
-    </motion.section>
-  );
-
   const renderSecretary = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate" exit="exit">
       <PortalCard title="Secretaria" text="Historico escolar, declaracoes, transferencias, rematriculas e documentos." tone="wide" icon={Landmark}>
         <div className="academic-course-actions">
           {['Historico escolar', 'Declaracoes', 'Transferencias', 'Rematriculas', 'Protocolos', 'Emissao de documentos'].map(item => (
-            <button key={item} onClick={() => showToast(`${item} aberto em modo demonstracao`, 'OK')}>{item}</button>
+            <button key={item} onClick={() => showToast(`${item} - nao implementado ainda`, 'i')}>{item}</button>
           ))}
         </div>
       </PortalCard>
@@ -709,7 +604,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
         <div className="academic-service-grid">
           {filteredLibrary.map(item => (
-            <button key={item.title} onClick={() => showToast(`${item.title} aberto em modo demonstracao`, 'OK')}>
+            <button key={item.title} onClick={() => showToast(`${item.title} - redirecionando para biblioteca`, 'OK')}>
               <strong>{item.title}</strong>
               <span>{item.type} - {item.area}</span>
             </button>
@@ -761,8 +656,6 @@ export default function AcademicPortalPage({ onOpenAva }) {
     coordination: renderCoordination,
     teacher: renderTeacher,
     student: renderStudent,
-    finance: renderFinance,
-    services: renderServices,
     secretary: renderSecretary,
     library: renderLibrary,
     links: renderLinks,
@@ -866,6 +759,10 @@ export default function AcademicPortalPage({ onOpenAva }) {
           </AnimatePresence>
         </section>
       </main>
+
+      <AnimatePresence>
+        {showAttendance && <AttendanceTeacher courseId={selectedInstitution.id} onClose={() => setShowAttendance(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

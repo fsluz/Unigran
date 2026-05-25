@@ -1,0 +1,340 @@
+.attendance-teacher-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attendance-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+
+.attendance-content {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.attendance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.attendance-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.attendance-header .close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.attendance-header .close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.attendance-form {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-alpha);
+}
+
+.students-list {
+  margin-top: 24px;
+}
+
+.students-list h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  padding: 24px;
+  text-align: center;
+  background: var(--hover-bg);
+  border-radius: 8px;
+  border: 2px dashed var(--border-color);
+}
+
+.empty-state p {
+  margin: 0 0 12px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.attendance-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--hover-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.entry.present {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.entry.absent {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.entry.justified {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.entry-info {
+  flex: 1;
+}
+
+.entry-info input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.entry-status {
+  display: flex;
+  gap: 6px;
+}
+
+.status-btn {
+  flex: 0 0 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-btn:hover {
+  border-color: var(--border-color);
+  background: var(--hover-bg);
+}
+
+.status-btn.present {
+  color: #22c55e;
+}
+
+.status-btn.present.active {
+  background: #22c55e;
+  color: white;
+  border-color: #22c55e;
+}
+
+.status-btn.absent {
+  color: #ef4444;
+}
+
+.status-btn.absent.active {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.status-btn.justified {
+  color: #f59e0b;
+}
+
+.status-btn.justified.active {
+  background: #f59e0b;
+  color: white;
+  border-color: #f59e0b;
+}
+
+.justification-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 12px;
+  background: rgba(245, 158, 11, 0.05);
+  color: var(--text-primary);
+  margin-left: 12px;
+}
+
+.remove-btn {
+  padding: 6px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.remove-btn:hover {
+  color: #ef4444;
+}
+
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.btn-secondary {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  margin-top: 12px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border-color);
+}
+
+.attendance-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--hover-bg);
+  border-radius: 0 0 12px 12px;
+}
+
+.attendance-footer .btn {
+  flex: 1;
+}
+
+/* Responsivo */
+@media (max-width: 640px) {
+  .attendance-content {
+    width: 95%;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .attendance-header {
+    padding: 16px;
+  }
+
+  .attendance-form {
+    padding: 16px;
+  }
+
+  .entry-status {
+    flex-wrap: wrap;
+  }
+
+  .justification-input {
+    width: calc(100% - 12px);
+    margin-left: 0;
+    margin-top: 8px;
+  }
+}
