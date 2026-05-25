@@ -1032,6 +1032,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                           <option value="moderator">moderator</option>
                           <option value="community_moderator">community_moderator</option>
                           <option value="professor">professor</option>
+                          <option value="coordination">coordination</option>
+                          <option value="management">management</option>
+                          <option value="administrative">administrative</option>
+                          <option value="secretary">secretary</option>
+                          <option value="library">library</option>
+                          <option value="aluno">aluno</option>
                           <option value="user">usuario</option>
                         </select>
                       )}

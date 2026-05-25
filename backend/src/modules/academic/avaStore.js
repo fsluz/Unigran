@@ -133,13 +133,14 @@ const seedStore = {
 
 const academicDefaults = {
   'eng-software': {
+    professorUsername: 'prof_marcos',
     room: 'Laboratorio 04',
     schedule: 'Segunda e quarta - 19:00',
     announcements: ['A revisao do projeto integrador acontece nesta quarta-feira.'],
     students: [
-      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 42, attendance: 68, average: 5.8, risk: 'Alto' },
-      { id: 'carlos-mendes', name: 'Carlos Mendes', registration: '20260118', progress: 64, attendance: 82, average: 6.7, risk: 'Medio' },
-      { id: 'isabela-rocha', name: 'Isabela Rocha', registration: '20260126', progress: 91, attendance: 97, average: 9.1, risk: 'Regular' },
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 42, attendance: 68, average: 5.8, risk: 'Alto' },
+      { id: 'carlos-mendes', username: 'carlos-mendes', name: 'Carlos Mendes', registration: '20260118', progress: 64, attendance: 82, average: 6.7, risk: 'Medio' },
+      { id: 'isabela-rocha', username: 'isabela-rocha', name: 'Isabela Rocha', registration: '20260126', progress: 91, attendance: 97, average: 9.1, risk: 'Regular' },
     ],
     attendanceSessions: [
       { id: 'freq-esw-1', date: '2026-05-18', topic: 'Sprint planning', entries: { 'ana-paula': { status: 'absent', justification: '' }, 'carlos-mendes': { status: 'present', justification: '' }, 'isabela-rocha': { status: 'present', justification: '' } } },
@@ -147,24 +148,26 @@ const academicDefaults = {
     ],
   },
   'banco-dados': {
+    professorUsername: 'profa_renata',
     room: 'Sala B12',
     schedule: 'Terca - 19:00',
     announcements: ['Modelo logico deve incluir chaves e cardinalidades.'],
     students: [
-      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 71, attendance: 87, average: 7.4, risk: 'Regular' },
-      { id: 'joao-silva', name: 'Joao Silva', registration: '20260141', progress: 56, attendance: 78, average: 6.2, risk: 'Medio' },
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 71, attendance: 87, average: 7.4, risk: 'Regular' },
+      { id: 'joao-silva', username: 'joao-silva', name: 'Joao Silva', registration: '20260141', progress: 56, attendance: 78, average: 6.2, risk: 'Medio' },
     ],
     attendanceSessions: [
       { id: 'freq-bda-1', date: '2026-05-19', topic: 'Normalizacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'joao-silva': { status: 'absent', justification: '' } } },
     ],
   },
   'ia-aplicada': {
+    professorUsername: 'prof_fabio',
     room: 'AVA ao vivo',
     schedule: 'Quinta - 20:00',
     announcements: ['Material complementar publicado para proxima atividade.'],
     students: [
-      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 88, attendance: 96, average: 9.1, risk: 'Regular' },
-      { id: 'mateus-lima', name: 'Mateus Lima', registration: '20260155', progress: 38, attendance: 72, average: 5.4, risk: 'Alto' },
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 88, attendance: 96, average: 9.1, risk: 'Regular' },
+      { id: 'mateus-lima', username: 'mateus-lima', name: 'Mateus Lima', registration: '20260155', progress: 38, attendance: 72, average: 5.4, risk: 'Alto' },
     ],
     attendanceSessions: [
       { id: 'freq-iap-1', date: '2026-05-21', topic: 'Etica e avaliacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'mateus-lima': { status: 'absent', justification: '' } } },
@@ -174,6 +177,7 @@ const academicDefaults = {
 
 function academicDataFor(course) {
   const fallback = {
+    professorUsername: '',
     room: 'Sala virtual',
     schedule: 'Horario a definir',
     announcements: [],
@@ -202,10 +206,14 @@ async function readStore() {
     return {
       ...course,
       institutionId: course.institutionId || 'unigran',
+      professorUsername: course.professorUsername || defaults.professorUsername || '',
       room: course.room || defaults.room,
       schedule: course.schedule || defaults.schedule,
       announcements: Array.isArray(course.announcements) ? course.announcements : [...defaults.announcements],
-      students: Array.isArray(course.students) ? course.students : defaults.students.map(student => ({ ...student })),
+      students: (Array.isArray(course.students) ? course.students : defaults.students).map(student => {
+        const seeded = defaults.students.find(item => item.id === student.id) || {};
+        return { ...student, username: student.username || seeded.username || student.id };
+      }),
       attendanceSessions: Array.isArray(course.attendanceSessions)
         ? course.attendanceSessions
         : defaults.attendanceSessions.map(session => ({ ...session, entries: { ...session.entries } })),
@@ -229,6 +237,54 @@ function usernameOf(user) {
 
 function displayNameOf(user) {
   return user?.displayName || user?.name || user?.username || 'Aluno Unigran';
+}
+
+function normalizedIdentity(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^(prof|profa)\.?\s*/i, '')
+    .trim()
+    .toLowerCase();
+}
+
+function roleOf(user) {
+  return String(user?.role || 'user').trim().toLowerCase();
+}
+
+function sameInstitution(userState, course) {
+  return !userState?.institutionId || userState.institutionId === course.institutionId;
+}
+
+function enrollmentFor(user, course) {
+  const username = normalizedIdentity(usernameOf(user));
+  const displayName = normalizedIdentity(displayNameOf(user));
+  return course.students.find(student => (
+    normalizedIdentity(student.username) === username
+    || normalizedIdentity(student.id) === username
+    || normalizedIdentity(student.registration) === username
+    || normalizedIdentity(student.name) === displayName
+  )) || null;
+}
+
+function canManageAnyAcademicCourse(user) {
+  return ['coordination', 'management', 'admin', 'super_admin'].includes(roleOf(user));
+}
+
+function canTeachCourse(user, userState, course) {
+  if (!sameInstitution(userState, course)) return false;
+  if (canManageAnyAcademicCourse(user)) return true;
+  if (roleOf(user) !== 'professor') return false;
+  return normalizedIdentity(course.professorUsername) === normalizedIdentity(usernameOf(user))
+    || normalizedIdentity(course.professor) === normalizedIdentity(displayNameOf(user));
+}
+
+function canReadCourse(user, userState, course) {
+  return canTeachCourse(user, userState, course) || (sameInstitution(userState, course) && Boolean(enrollmentFor(user, course)));
+}
+
+function allowedCourses(store, userState, user) {
+  return store.courses.filter(course => canReadCourse(user, userState, course));
 }
 
 function socialPortfolioPostToItem(post, username) {
@@ -339,6 +395,7 @@ function statusForActivity(activity, submission) {
 }
 
 function buildCourse(course, userState, user) {
+  const { students: courseStudents, attendanceSessions, ...visibleCourse } = course;
   const submissions = userState.submissions.filter(item => item.courseId === course.id);
   const submittedIds = new Set(submissions.map(item => item.activityId));
   const completed = new Set(userState.completedMaterials);
@@ -346,10 +403,9 @@ function buildCourse(course, userState, user) {
   const doneTasks = course.materials.filter(item => completed.has(item.id)).length
     + course.activities.filter(item => submittedIds.has(item.id)).length;
 
-  const student = course.students.find(item => item.id === usernameOf(user))
-    || course.students.find(item => item.name === displayNameOf(user))
-    || course.students[0];
-  const attendanceRecords = course.attendanceSessions.map(session => ({
+  const student = enrollmentFor(user, course);
+  const canManageCourse = canTeachCourse(user, userState, course);
+  const attendanceRecords = attendanceSessions.map(session => ({
     id: session.id,
     date: session.date,
     topic: session.topic,
@@ -357,7 +413,10 @@ function buildCourse(course, userState, user) {
   }));
 
   return {
-    ...course,
+    ...visibleCourse,
+    grade: student && !canManageCourse ? student.average : course.grade,
+    attendance: student && !canManageCourse ? student.attendance : course.attendance,
+    students: canManageCourse ? courseStudents : [],
     progress: totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0,
     materials: course.materials.map(material => ({
       ...material,
@@ -371,7 +430,7 @@ function buildCourse(course, userState, user) {
         submission,
       };
     }),
-    attendanceRecords,
+    attendanceRecords: student ? attendanceRecords : [],
   };
 }
 
@@ -446,7 +505,7 @@ export async function getAvaState(user) {
   const userState = ensureUserState(store, user);
   const institutionId = userState.institutionId || user?.institutionId || user?.facultyId || null;
   const institution = (store.institutions || []).find(item => item.id === institutionId) || null;
-  const linkedCourses = store.courses.filter(course => !institutionId || course.institutionId === institutionId);
+  const linkedCourses = allowedCourses(store, userState, user);
   const courses = linkedCourses.map(course => buildCourse(course, userState, user));
   userState.level = Math.max(1, Math.floor(userState.xp / 700) + 1);
   await writeStore(store);
@@ -469,7 +528,9 @@ export async function getAvaState(user) {
     },
     summary: buildSummary(courses, userState),
     studentDashboard: buildStudentDashboard(courses),
-    teacherDashboard: buildTeacherDashboard(courses, store),
+    teacherDashboard: courses.some(course => canTeachCourse(user, userState, course))
+      ? buildTeacherDashboard(courses, store)
+      : {},
     courses,
     notifications: userState.notifications.slice().reverse(),
     portfolio: userState.portfolio.slice().reverse(),
@@ -530,8 +591,8 @@ export async function getPortfolioResume(username) {
 export async function setMaterialCompletion(user, materialId, completed) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
-  const { material } = findMaterial(store, materialId);
-  if (!material) return null;
+  const { course, material } = findMaterial(store, materialId);
+  if (!material || !enrollmentFor(user, course) || !sameInstitution(userState, course)) return null;
 
   const set = new Set(userState.completedMaterials);
   if (completed) set.add(materialId);
@@ -547,7 +608,7 @@ export async function submitActivity(user, activityId, payload) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
   const { course, activity } = findActivity(store, activityId);
-  if (!activity) return null;
+  if (!activity || !enrollmentFor(user, course) || !sameInstitution(userState, course)) return null;
 
   const now = new Date().toISOString();
   const existingIndex = userState.submissions.findIndex(item => item.activityId === activityId);
@@ -808,7 +869,10 @@ export async function getAvaPowerBiSnapshot() {
   const averageProgress = users.length
     ? Math.round(users.reduce((sum, user) => {
       const linkedCourses = courses.filter(course => !user.institutionId || course.institutionId === user.institutionId);
-      const built = linkedCourses.map(course => buildCourse(course, user));
+      const viewer = { username: user.username, displayName: user.username, role: 'aluno' };
+      const built = linkedCourses
+        .filter(course => enrollmentFor(viewer, course))
+        .map(course => buildCourse(course, user, viewer));
       const progress = built.length ? built.reduce((acc, course) => acc + course.progress, 0) / built.length : 0;
       return sum + progress;
     }, 0) / users.length)
@@ -917,8 +981,9 @@ function inferProjectMetadata({ course = {}, activity = {}, submission = {}, pay
 
 export async function createForumPost(user, courseId, content) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canReadCourse(user, userState, course)) return null;
 
   course.forum.unshift({
     id: `forum-${courseId}-${Date.now()}`,
@@ -935,7 +1000,9 @@ export async function createForumPost(user, courseId, content) {
 
 export async function createForumComment(user, courseId, postId, content) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
+  if (!course || !canReadCourse(user, userState, course)) return null;
   const post = course?.forum.find(item => item.id === postId);
   if (!post) return null;
 
@@ -953,8 +1020,9 @@ export async function createForumComment(user, courseId, postId, content) {
 
 export async function createTeacherMaterial(user, courseId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canTeachCourse(user, userState, course)) return null;
 
   course.materials.push({
     id: `mat-${courseId}-${Date.now()}`,
@@ -972,10 +1040,46 @@ export async function createTeacherMaterial(user, courseId, payload) {
   return getAvaState(user);
 }
 
+export async function enrollStudentInCourse(user, courseId, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const course = findCourse(store, courseId);
+  if (!course || !canManageAnyAcademicCourse(user) || !sameInstitution(userState, course)) return null;
+
+  const username = String(payload.username || '').trim();
+  const current = course.students.find(student => normalizedIdentity(student.username) === normalizedIdentity(username));
+  const enrollment = {
+    id: current?.id || username,
+    username,
+    name: payload.name,
+    registration: payload.registration,
+    progress: current?.progress ?? 0,
+    attendance: current?.attendance ?? 100,
+    average: current?.average ?? 0,
+    risk: current?.risk || 'Regular',
+  };
+  if (current) Object.assign(current, enrollment);
+  else course.students.push(enrollment);
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function assignTeacherToCourse(user, courseId, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const course = findCourse(store, courseId);
+  if (!course || !canManageAnyAcademicCourse(user) || !sameInstitution(userState, course)) return null;
+  course.professorUsername = payload.username;
+  course.professor = payload.name;
+  await writeStore(store);
+  return getAvaState(user);
+}
+
 export async function createTeacherActivity(user, courseId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canTeachCourse(user, userState, course)) return null;
 
   course.activities.push({
     id: `act-${courseId}-${Date.now()}`,
@@ -993,8 +1097,9 @@ export async function createTeacherActivity(user, courseId, payload) {
 
 export async function updateTeacherActivity(user, activityId, payload) {
   const store = await readStore();
-  const { activity } = findActivity(store, activityId);
-  if (!activity) return null;
+  const userState = ensureUserState(store, user);
+  const { course, activity } = findActivity(store, activityId);
+  if (!activity || !canTeachCourse(user, userState, course)) return null;
   Object.assign(activity, {
     title: payload.title,
     due: payload.due,
@@ -1010,8 +1115,10 @@ export async function updateTeacherActivity(user, activityId, payload) {
 
 export async function deleteTeacherActivity(user, activityId) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const { course, activity } = findActivity(store, activityId);
   if (!activity) return { state: null, conflict: false };
+  if (!canTeachCourse(user, userState, course)) return { state: null, conflict: false };
   const hasSubmission = Object.values(store.users)
     .some(userState => (userState.submissions || []).some(item => item.activityId === activityId));
   if (hasSubmission) return { state: null, conflict: true };
@@ -1022,8 +1129,11 @@ export async function deleteTeacherActivity(user, activityId) {
 
 export async function saveAttendance(user, courseId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canTeachCourse(user, userState, course)) return null;
+  const studentIds = new Set(course.students.map(student => student.id));
+  if (payload.entries.some(entry => !studentIds.has(entry.studentId))) return null;
   const date = payload.date || new Date().toISOString().slice(0, 10);
   const current = course.attendanceSessions.find(session => session.date === date);
   const session = current || {
@@ -1052,12 +1162,16 @@ export async function saveAttendance(user, courseId, payload) {
   return getAvaState(user);
 }
 
-export async function listTeacherSubmissions() {
+export async function listTeacherSubmissions(user) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const allowedCourseIds = new Set(store.courses
+    .filter(course => canTeachCourse(user, userState, course))
+    .map(course => course.id));
   const submissions = [];
   for (const [username, userState] of Object.entries(store.users)) {
     for (const submission of userState.submissions || []) {
-      submissions.push({ ...submission, username });
+      if (allowedCourseIds.has(submission.courseId)) submissions.push({ ...submission, username });
     }
   }
   return submissions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -1065,11 +1179,13 @@ export async function listTeacherSubmissions() {
 
 export async function gradeSubmission(user, submissionId, payload) {
   const store = await readStore();
+  const graderState = ensureUserState(store, user);
   let found = false;
 
   for (const userState of Object.values(store.users)) {
     const submission = userState.submissions.find(item => item.id === submissionId);
-    if (submission) {
+    const course = submission ? findCourse(store, submission.courseId) : null;
+    if (submission && course && canTeachCourse(user, graderState, course)) {
       submission.status = 'graded';
       submission.score = Number(payload.score);
       submission.feedback = payload.feedback || 'Feedback publicado pelo professor.';
@@ -1088,5 +1204,5 @@ export async function gradeSubmission(user, submissionId, payload) {
 
   if (!found) return null;
   await writeStore(store);
-  return listTeacherSubmissions();
+  return listTeacherSubmissions(user);
 }

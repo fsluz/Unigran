@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -34,6 +34,7 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
+import { assignAcademicTeacher, enrollAcademicStudent, fetchAva } from './platform';
 
 const portalModules = [
   { id: 'home', label: 'Inicio', icon: PanelsTopLeft, permission: 'platform.read', badge: 'Live' },
@@ -48,13 +49,6 @@ const portalModules = [
   { id: 'library', label: 'Biblioteca', icon: Library, permission: 'platform.read', badge: 'IA' },
   { id: 'links', label: 'Links Externos', icon: LinkIcon, permission: 'platform.read', badge: null },
   { id: 'support', label: 'Atendimento', icon: Headphones, permission: 'platform.read', badge: 'Online' },
-];
-
-const enrolledDisciplines = [
-  { name: 'Design de Interacao', type: 'Curricular', mode: 'Digital', start: '02/03/2026', module: '2026 / 1', grade: 8.6, attendance: 96 },
-  { name: 'Programacao Avancada', type: 'Curricular', mode: 'Presencial', start: '02/03/2026', module: '2026 / 1', grade: 9.1, attendance: 92 },
-  { name: 'Imersao Profissional: Fabrica de Software', type: 'Curricular', mode: 'Projeto', start: '18/05/2026', module: '2026 / 1', grade: 8.9, attendance: 100 },
-  { name: 'Estruturas, Pesquisa e Ordenacao de Dados', type: 'Curricular', mode: 'Digital', start: '20/05/2026', module: '2026 / 1', grade: 7.8, attendance: 88 },
 ];
 
 const services = [
@@ -76,18 +70,6 @@ const externalLinks = [
   { title: 'Oportunidade de Estagio', url: 'https://www.unigran.br' },
   { title: 'Guia do Estudante', url: 'https://www.unigran.br' },
   { title: 'Central de Ajuda', url: 'https://www.unigran.br' },
-];
-
-const institutionalHighlights = [
-  { title: 'Academic Case Hub', value: '128', text: 'cases academicos publicados por alunos' },
-  { title: 'Talentos em destaque', value: '32', text: 'perfis com portfolio verificavel' },
-  { title: 'Projetos interdisciplinares', value: '18', text: 'trabalhos conectando pesquisa, tecnologia e mercado' },
-];
-
-const showcaseProjects = [
-  { title: 'RAi Campus Assistant', area: 'IA Aplicada', student: 'Fabio Henrique', signal: 'Deploy + GitHub' },
-  { title: 'Data Hub Academico', area: 'Banco de Dados', student: 'Ana Paula', signal: 'Modelo normalizado' },
-  { title: 'UX para AVA Premium', area: 'Design de Interacao', student: 'Isabela Rocha', signal: 'Figma + pesquisa' },
 ];
 
 const roleLabels = {
@@ -163,12 +145,14 @@ function PortalCard({ title, text, tone = 'default', icon: Icon = Sparkles, chil
   );
 }
 
-function DisciplinesList({ onOpenAva }) {
+function DisciplinesList({ courses, onOpenAva, loading }) {
+  if (loading) return <div className="academic-table-list"><div><span>Carregando disciplinas...</span></div></div>;
+  if (!courses.length) return <div className="academic-table-list"><div><span>Nenhuma disciplina vinculada a sua matricula.</span></div></div>;
   return (
     <div className="academic-discipline-list">
-      {enrolledDisciplines.map((item, index) => (
+      {courses.map((item, index) => (
         <motion.button
-          key={item.name}
+          key={item.id}
           onClick={onOpenAva}
           initial={{ opacity: 0, x: -12 }}
           animate={{ opacity: 1, x: 0 }}
@@ -177,10 +161,10 @@ function DisciplinesList({ onOpenAva }) {
         >
           <span>
             <strong>{item.name}</strong>
-            <small>{item.type} - {item.mode}</small>
+            <small>{item.code} - {item.period}</small>
           </span>
           <div className="academic-mini-progress"><i style={{ width: `${item.attendance}%` }} /></div>
-          <small>Nota {item.grade}</small>
+          <small>Nota {item.grade ?? '--'}</small>
           <ChevronRight size={16} />
         </motion.button>
       ))}
@@ -201,6 +185,27 @@ function PremiumStat({ label, value, hint, icon: Icon = Activity }) {
 export default function AcademicPortalPage({ onOpenAva }) {
   const { user, token } = useAuth();
   const { showToast } = useToast();
+  const [ava, setAva] = useState(null);
+  const [avaLoading, setAvaLoading] = useState(true);
+  const [avaError, setAvaError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setAvaLoading(true);
+    fetchAva(token)
+      .then(data => {
+        if (!alive) return;
+        setAva(data);
+        setAvaError('');
+      })
+      .catch(err => {
+        if (!alive) return;
+        setAvaError(err.message || 'Nao foi possivel carregar dados academicos');
+      })
+      .finally(() => alive && setAvaLoading(false));
+    return () => { alive = false; };
+  }, [token]);
+
   const institutions = useMemo(() => {
     const linked = user?.institutions || user?.faculdades || user?.instituicoes;
     if (Array.isArray(linked) && linked.length) {
@@ -214,8 +219,19 @@ export default function AcademicPortalPage({ onOpenAva }) {
         color: item.color || '#063f63',
       }));
     }
+    if (ava?.institution?.id) {
+      return [{
+        id: ava.institution.id,
+        name: ava.institution.name,
+        shortName: ava.institution.name,
+        profile: roleLabels[normalizeRole(user?.role)] || 'Usuario',
+        campus: Array.isArray(ava.institution.campus) ? ava.institution.campus[0] : 'Campus principal',
+        course: ava.courses?.[0]?.name || 'Sem matricula ativa',
+        color: '#063f63',
+      }];
+    }
     return fallbackInstitutions;
-  }, [user]);
+  }, [user, ava]);
   const institutionStorageKey = `academic:selectedInstitution:${user?.username || user?.id || 'anon'}`;
   const [selectedInstitutionId, setSelectedInstitutionId] = useState(() => localStorage.getItem(institutionStorageKey) || institutions[0]?.id || '');
   const [activeTab, setActiveTab] = useState('home');
@@ -233,8 +249,18 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [supportMessages, setSupportMessages] = useState([
     { id: 'msg-1', text: 'Bem-vindo ao atendimento academico. Como podemos ajudar?', author: 'Mediador', at: '20/05/2026 23:06' },
   ]);
+  const [enrollmentDraft, setEnrollmentDraft] = useState({ courseId: '', username: '', name: '', registration: '' });
+  const [teacherDraft, setTeacherDraft] = useState({ courseId: '', username: '', name: '' });
   const [globalSearch, setGlobalSearch] = useState('');
   const role = normalizeRole(user?.role);
+  const academicCourses = ava?.courses || [];
+  const academicSummary = ava?.summary || {};
+  const showcaseProjects = ava?.portfolio || [];
+  const institutionalHighlights = [
+    { title: 'Cases publicados', value: String(showcaseProjects.length), text: 'entregas publicadas no portfolio' },
+    { title: 'Disciplinas vinculadas', value: String(academicCourses.length), text: 'turmas liberadas para este perfil' },
+    { title: 'Progresso academico', value: `${academicSummary.averageProgress || 0}%`, text: 'calculado a partir do AVA' },
+  ];
   const selectedInstitution = institutions.find(item => item.id === selectedInstitutionId) || institutions[0] || fallbackInstitutions[0];
   const visibleModules = useMemo(
     () => portalModules.filter(item => hasPermission(user, item.permission)),
@@ -298,12 +324,40 @@ export default function AcademicPortalPage({ onOpenAva }) {
     if (!needle) return [];
     return [
       ...visibleModules.map(item => ({ id: item.id, title: item.label, type: 'Modulo', action: () => setActiveTab(item.id) })),
-      ...enrolledDisciplines.map(item => ({ id: item.name, title: item.name, type: 'Disciplina', action: onOpenAva })),
+      ...academicCourses.map(item => ({ id: item.id, title: item.name, type: 'Disciplina', action: onOpenAva })),
       ...services.map(item => ({ id: item.id, title: item.title, type: 'Servico', action: () => setActiveTab('services') })),
       ...libraryItems.map(item => ({ id: item.title, title: item.title, type: 'Biblioteca', action: () => setActiveTab('library') })),
       ...externalLinks.map(item => ({ id: item.title, title: item.title, type: 'Link externo', action: () => openExternal(item.url) })),
     ].filter(item => `${item.title} ${item.type}`.toLowerCase().includes(needle)).slice(0, 8);
-  }, [globalSearch, visibleModules, onOpenAva]);
+  }, [globalSearch, visibleModules, onOpenAva, academicCourses]);
+
+  const createEnrollment = async (event) => {
+    event.preventDefault();
+    const courseId = enrollmentDraft.courseId || academicCourses[0]?.id;
+    if (!courseId) return;
+    try {
+      const next = await enrollAcademicStudent(token, courseId, enrollmentDraft);
+      setAva(next);
+      setEnrollmentDraft({ courseId, username: '', name: '', registration: '' });
+      showToast('Matricula registrada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao matricular aluno', '!');
+    }
+  };
+
+  const assignTeacher = async (event) => {
+    event.preventDefault();
+    const courseId = teacherDraft.courseId || academicCourses[0]?.id;
+    if (!courseId) return;
+    try {
+      const next = await assignAcademicTeacher(token, courseId, teacherDraft);
+      setAva(next);
+      setTeacherDraft({ courseId, username: '', name: '' });
+      showToast('Professor designado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao designar professor', '!');
+    }
+  };
 
   const renderHome = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate" exit="exit">
@@ -333,21 +387,21 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
       <PortalCard title="Vitrine Academica" text="Projetos e trabalhos de destaque publicados pela comunidade academica." tone="wide" icon={Sparkles}>
         <div className="academic-showcase-list">
-          {showcaseProjects.map((project, index) => (
+          {showcaseProjects.length ? showcaseProjects.slice(0, 3).map((project, index) => (
             <button key={project.title} onClick={onOpenAva}>
               <em>{String(index + 1).padStart(2, '0')}</em>
               <span>
                 <strong>{project.title}</strong>
-                <small>{project.area} - {project.student}</small>
+                <small>{project.courseName} - {project.activityTitle}</small>
               </span>
-              <b>{project.signal}</b>
+              <b>{project.status || 'Publicado'}</b>
             </button>
-          ))}
+          )) : <div className="academic-table-list"><div><span>Nenhum case publicado ainda.</span></div></div>}
         </div>
       </PortalCard>
 
       <PortalCard title="Disciplinas Matriculadas" text="Acesso as aulas, atividades, forum e material complementar." tone="wide" icon={GraduationCap}>
-        <DisciplinesList onOpenAva={onOpenAva} />
+        <DisciplinesList courses={academicCourses} onOpenAva={onOpenAva} loading={avaLoading} />
       </PortalCard>
 
       <PortalCard title="Financeiro" text="Mensalidades, boletos, contratos e comprovantes." icon={CreditCard}>
@@ -368,8 +422,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
       <PortalCard title="Acompanhamento" text="Prazos, avisos e pendencias academicas." icon={CalendarClock}>
         <div className="academic-status-stack">
-          <span><strong>1</strong> atividade pendente</span>
-          <span><strong>0</strong> notificacoes de prazo</span>
+          <span><strong>{academicSummary.pendingActivities || 0}</strong> atividades pendentes</span>
+          <span><strong>{academicSummary.notifications || 0}</strong> notificacoes academicas</span>
           <span><strong>{supportMessages.length}</strong> mensagens no atendimento</span>
         </div>
       </PortalCard>
@@ -407,12 +461,12 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </div>
       </PortalCard>
       <PortalCard title="Disciplinas" text="Selecione uma disciplina para abrir o AVA." tone="wide" icon={BookOpen}>
-        <DisciplinesList onOpenAva={onOpenAva} />
+        <DisciplinesList courses={academicCourses} onOpenAva={onOpenAva} loading={avaLoading} />
       </PortalCard>
       <PortalCard title="Boletim" icon={BarChart3}>
         <div className="academic-table-list">
-          {enrolledDisciplines.map(item => (
-            <div key={item.name}>
+          {academicCourses.map(item => (
+            <div key={item.id}>
               <span>{item.name}</span>
               <strong>Nota {item.grade}</strong>
             </div>
@@ -421,8 +475,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
       </PortalCard>
       <PortalCard title="Frequencia" icon={Activity}>
         <div className="academic-table-list">
-          {enrolledDisciplines.map(item => (
-            <div key={item.name}>
+          {academicCourses.map(item => (
+            <div key={item.id}>
               <span>{item.name}</span>
               <strong>{item.attendance}%</strong>
             </div>
@@ -478,6 +532,27 @@ export default function AcademicPortalPage({ onOpenAva }) {
             </div>
           ))}
         </div>
+      </PortalCard>
+      <PortalCard title="Matricular aluno" text="Vincule um usuario existente a uma disciplina." icon={GraduationCap}>
+        <form className="academic-form" onSubmit={createEnrollment}>
+          <select value={enrollmentDraft.courseId} onChange={event => setEnrollmentDraft(prev => ({ ...prev, courseId: event.target.value }))}>
+            {academicCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+          </select>
+          <input value={enrollmentDraft.username} onChange={event => setEnrollmentDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do aluno" required />
+          <input value={enrollmentDraft.name} onChange={event => setEnrollmentDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome completo" required />
+          <input value={enrollmentDraft.registration} onChange={event => setEnrollmentDraft(prev => ({ ...prev, registration: event.target.value }))} placeholder="Matricula" required />
+          <button className="btn btn-primary" disabled={!academicCourses.length}>Matricular</button>
+        </form>
+      </PortalCard>
+      <PortalCard title="Designar professor" text="Defina o docente responsavel por uma disciplina." icon={BookOpen}>
+        <form className="academic-form" onSubmit={assignTeacher}>
+          <select value={teacherDraft.courseId} onChange={event => setTeacherDraft(prev => ({ ...prev, courseId: event.target.value }))}>
+            {academicCourses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+          </select>
+          <input value={teacherDraft.username} onChange={event => setTeacherDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do professor" required />
+          <input value={teacherDraft.name} onChange={event => setTeacherDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome do professor" required />
+          <button className="btn btn-primary" disabled={!academicCourses.length}>Designar</button>
+        </form>
       </PortalCard>
     </motion.section>
   );
@@ -712,6 +787,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </motion.aside>
 
         <section className="academic-portal-main">
+          {avaError && <div className="portfolio-alert">{avaError}</div>}
           <section className="academic-command-bar">
             <div className="academic-search-wrap">
               <div className="academic-search">

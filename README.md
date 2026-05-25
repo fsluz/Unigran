@@ -501,7 +501,9 @@ Unigran/
           rbac.js
         academic/
           avaRoutes.js
-          avaStore.js
+          typedbAvaStore.js
+          typedbPortfolioStore.js
+          avaStore.js (legado)
       services/
         portfolio-ml.service.js
         resume.service.js
@@ -658,6 +660,8 @@ npm run preview
 | POST | `/api/platform/v1/ava/submissions/:submissionId/portfolio` | Transforma entrega em case profissional |
 | POST | `/api/platform/v1/ava/courses/:courseId/forum` | Cria topico no forum |
 | POST | `/api/platform/v1/ava/courses/:courseId/forum/:postId/comments` | Comenta no forum |
+| POST | `/api/platform/v1/ava/coordination/courses/:courseId/enrollments` | Matricula aluno em disciplina |
+| PUT | `/api/platform/v1/ava/coordination/courses/:courseId/teacher` | Designa professor responsavel |
 
 ### Professor
 
@@ -869,6 +873,8 @@ Este repositorio pode ser usado como base pratica para TCC porque contempla:
 Alguns pontos ainda estao em evolucao:
 
 - A migracao completa do AVA para banco definitivo ainda precisa ser feita.
+- As migrations TypeDB estao em `backend/migrations/typedb/`: `001_portfolio_schema_extension.tql`, `002_university_roles_extension.tql` e `003_academic_platform_schema.tql`. Aplique com `cd backend && npm run db:migrate:typedb`, depois crie as ofertas iniciais com `npm run db:seed:academic`.
+- O Portal Academico ativo grava em TypeDB; `backend/data/ava-store.json` e `avaStore.js` sao apenas legado, sem uso nas rotas do portal.
 - O estado do AVA possui camada local de desenvolvimento.
 - O parser completo de PDF/DOCX para curriculo vivo ainda deve ser aprofundado.
 - Visualizador interno de PDF/DOCX ainda pode evoluir para zoom, paginacao e fullscreen.
@@ -945,7 +951,8 @@ npm run build
 cd backend
 node --check src/index.js
 node --check src/modules/academic/avaRoutes.js
-node --check src/modules/academic/avaStore.js
+node --check src/modules/academic/typedbAvaStore.js
+node --check src/modules/academic/typedbPortfolioStore.js
 ```
 
 Health check:

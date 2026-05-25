@@ -51,6 +51,13 @@ export async function writeQuery(query) {
   return res.ok?.answers ?? [];
 }
 
+export async function schemaQuery(query) {
+  const driver = getDriver();
+  const res = await driver.oneShotQuery(query, true, DB, 'schema');
+  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
+  return res.ok?.answers ?? [];
+}
+
 export function val(row, varName) {
   if (!row) return null;
   let concept = row.data?.[varName];

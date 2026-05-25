@@ -6,6 +6,8 @@ import {
   createForumPost,
   createTeacherActivity,
   createTeacherMaterial,
+  enrollStudentInCourse,
+  assignTeacherToCourse,
   deleteTeacherActivity,
   gradeSubmission,
   getAvaState,
@@ -15,7 +17,7 @@ import {
   setMaterialCompletion,
   submitActivity,
   updateTeacherActivity,
-} from './avaStore.js';
+} from './typedbAvaStore.js';
 
 const router = Router();
 
@@ -52,6 +54,17 @@ const ActivitySchema = z.object({
   due: z.string().datetime(),
   points: z.number().min(1).max(100).optional(),
   xp: z.number().min(1).max(2000).optional(),
+});
+
+const EnrollmentSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  name: z.string().trim().min(2).max(120),
+  registration: z.string().trim().min(3).max(40),
+});
+
+const TeacherAssignmentSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  name: z.string().trim().min(2).max(120),
 });
 
 const GradeSchema = z.object({
@@ -150,9 +163,9 @@ router.post('/courses/:courseId/forum/:postId/comments', async (req, res) => {
   }
 });
 
-router.get('/teacher/submissions', requirePermission('academic.teacher.manage'), async (_req, res) => {
+router.get('/teacher/submissions', requirePermission('academic.teacher.manage'), async (req, res) => {
   try {
-    res.json({ submissions: await listTeacherSubmissions() });
+    res.json({ submissions: await listTeacherSubmissions(req.user) });
   } catch (err) {
     console.error('[ava teacher submissions]', err);
     res.status(500).json({ error: 'Erro ao listar entregas' });
@@ -170,6 +183,32 @@ router.post('/teacher/courses/:courseId/materials', requirePermission('academic.
   } catch (err) {
     console.error('[ava teacher material]', err);
     res.status(500).json({ error: 'Erro ao criar material' });
+  }
+});
+
+router.post('/coordination/courses/:courseId/enrollments', requirePermission('academic.coordination.read'), async (req, res) => {
+  const parsed = EnrollmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await enrollStudentInCourse(req.user, req.params.courseId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Disciplina nao encontrada ou fora do escopo' });
+    res.status(201).json(state);
+  } catch (err) {
+    console.error('[ava coordination enrollment]', err);
+    res.status(500).json({ error: 'Erro ao matricular aluno' });
+  }
+});
+
+router.put('/coordination/courses/:courseId/teacher', requirePermission('academic.coordination.read'), async (req, res) => {
+  const parsed = TeacherAssignmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await assignTeacherToCourse(req.user, req.params.courseId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Disciplina nao encontrada ou fora do escopo' });
+    res.json(state);
+  } catch (err) {
+    console.error('[ava coordination teacher]', err);
+    res.status(500).json({ error: 'Erro ao designar professor' });
   }
 });
 

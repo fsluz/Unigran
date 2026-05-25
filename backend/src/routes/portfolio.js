@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
-import { getPortfolioResume, getPublicPortfolioItem, listPublicPortfolioItems } from '../modules/academic/avaStore.js';
+import { getPortfolioResume, getPublicPortfolioItem, listPublicPortfolioItems } from '../modules/academic/typedbPortfolioStore.js';
 
 const router = Router();
 

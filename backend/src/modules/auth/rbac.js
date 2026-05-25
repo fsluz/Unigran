@@ -1,25 +1,3 @@
-export const UNIVERSITY_ROLES = {
-  student: 10,
-  aluno: 10,
-  user: 10,
-  professor: 30,
-  coordination: 45,
-  coordenacao: 45,
-  coordenacao_academica: 45,
-  administrative: 50,
-  administrativo: 50,
-  secretary: 50,
-  secretaria: 50,
-  library: 40,
-  biblioteca: 40,
-  management: 70,
-  gestao: 70,
-  admin: 90,
-  super_admin: 100,
-  moderator: 60,
-  community_moderator: 35,
-};
-
 export const ROLE_ALIASES = {
   ADMIN: 'admin',
   USER: 'user',
@@ -50,15 +28,11 @@ export function normalizeUniversityRole(role) {
   return ROLE_ALIASES[raw] || raw;
 }
 
-export function roleRank(role) {
-  return UNIVERSITY_ROLES[normalizeUniversityRole(role)] || UNIVERSITY_ROLES.user;
-}
-
 export function hasPermission(userOrRole, permission) {
   const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
   const normalized = normalizeUniversityRole(role);
   const allowed = PERMISSIONS[permission] || [];
-  return allowed.includes(normalized) || allowed.some(item => roleRank(normalized) >= roleRank(item));
+  return allowed.includes(normalized);
 }
 
 export function requirePermission(permission) {

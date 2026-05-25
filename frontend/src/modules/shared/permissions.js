@@ -10,21 +10,6 @@ export const ROLE_ALIASES = {
   gestao: 'management',
 };
 
-export const ROLE_RANK = {
-  aluno: 10,
-  student: 10,
-  user: 10,
-  professor: 30,
-  library: 40,
-  coordination: 45,
-  administrative: 50,
-  secretary: 50,
-  moderator: 60,
-  management: 70,
-  admin: 90,
-  super_admin: 100,
-};
-
 export const PERMISSIONS = {
   'platform.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
   'academic.student.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'management', 'admin', 'super_admin'],
@@ -46,5 +31,5 @@ export function normalizeRole(role) {
 export function hasPermission(userOrRole, permission) {
   const role = normalizeRole(typeof userOrRole === 'string' ? userOrRole : userOrRole?.role);
   const allowed = PERMISSIONS[permission] || [];
-  return allowed.includes(role) || allowed.some(item => (ROLE_RANK[role] || 0) >= (ROLE_RANK[item] || 0));
+  return allowed.includes(role);
 }
