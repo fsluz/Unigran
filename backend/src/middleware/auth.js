@@ -49,7 +49,11 @@ export async function auth(req, res, next) {
           match
             $u isa person, has username "${typeqlLiteral(username)}";
             try { $u has is-banned $banned; };
-          fetch { "banned": $banned };
+            try { $u has user-role $role; };
+          fetch {
+            "banned": $banned,
+            "role": $role
+          };
         `);
         if (attrBoolTrue(rows[0]?.banned)) {
           auditLog({
@@ -60,6 +64,9 @@ export async function auth(req, res, next) {
             level: 'ALERT',
           });
           return res.status(403).json({ error: 'Conta banida' });
+        }
+        if (rows[0]?.role) {
+          req.user.role = normalizeRole(rows[0].role);
         }
       } catch (err) {
         const isDev = process.env.NODE_ENV !== 'production';

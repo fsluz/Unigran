@@ -1919,7 +1919,14 @@
   .messages-shell.has-active .conv-list { display: none; }
   .messages-shell.has-active .chat-area { display: flex; }
   .chat-area { min-height: 0; flex: 1; display: none; }
-  .chat-back-btn { display: grid; place-items: center; flex-shrink: 0; }
+  .chat-back-btn {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
   .msg-stack { max-width: 86%; }
   .msg-menu-wrap { opacity: 1; }
   .chat-head { padding: 10px 12px; gap: 9px; }

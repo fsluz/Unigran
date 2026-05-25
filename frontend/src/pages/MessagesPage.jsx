@@ -153,6 +153,8 @@ export default function MessagesPage() {
     return channel;
   };
 
+  const isMobileMessagesView = () => window.matchMedia('(max-width: 700px)').matches;
+
   useEffect(() => {
     if (!token || !active?.id) {
       setE2eeStatus({ ready: false, missing: [], checked: false });
@@ -173,7 +175,7 @@ export default function MessagesPage() {
     fetchConversations(token)
       .then((loaded) => {
         setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
-        setActive(prev => prev || loaded[0] || null);
+        setActive(prev => prev || (isMobileMessagesView() ? null : (loaded[0] || null)));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
   }, [token, showToast]);
@@ -184,7 +186,7 @@ export default function MessagesPage() {
       fetchConversations(token)
         .then((loaded) => {
           setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
-          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (loaded[0] || null));
+          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (loaded[0] || null)));
         })
         .catch(() => null);
     }, 10000);
@@ -1125,7 +1127,7 @@ export default function MessagesPage() {
         {active ? (
           <div className="chat-area">
             <div className="chat-head">
-              <button className="chat-back-btn" onClick={() => setActive(null)}>{'<'}</button>
+              <button className="chat-back-btn" onClick={() => setActive(null)} aria-label="Voltar para conversas">{'<'}</button>
               <Avatar
                 size={40}
                 src={conversationPhoto(active)}
