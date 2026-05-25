@@ -26,50 +26,6 @@ import {
 } from 'lucide-react';
 import { fetchAva } from './platform';
 
-const demoProjects = [
-  {
-    id: 'case-ai-campus',
-    title: 'RAi Campus Assistant',
-    courseName: 'IA Aplicada',
-    activityTitle: 'Automacao academica com IA',
-    summary: 'Assistente que organiza estudo, resume entregas e conecta competencias do aluno com oportunidades reais.',
-    externalUrl: 'https://github.com',
-    externalKind: 'repository',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'case-data-hub',
-    title: 'Academic Data Hub',
-    courseName: 'Banco de Dados',
-    activityTitle: 'Modelo logico normalizado',
-    summary: 'Modelo de dados para rastrear publicacoes, entregas, skills e evidencias profissionais com leitura para recrutadores.',
-    externalUrl: 'https://figma.com',
-    externalKind: 'prototype',
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'case-product-ui',
-    title: 'Portfolio Recruiter View',
-    courseName: 'Design de Interacao',
-    activityTitle: 'Vitrine profissional',
-    summary: 'Experiencia de portfolio com score, timeline, skills visuais e curriculo interativo para empresas.',
-    externalUrl: 'https://unigran.br',
-    externalKind: 'web_app',
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const skillPalette = [
-  ['React', 'Frontend', 92],
-  ['TypeDB', 'Dados', 84],
-  ['UX Research', 'Produto', 78],
-  ['Node.js', 'Backend', 74],
-  ['IA Aplicada', 'Automacao', 88],
-  ['SQL', 'Dados', 80],
-  ['Comunicacao', 'Soft skill', 86],
-  ['Documentacao', 'Produto', 82],
-];
-
 function normalizeSkillObject(skill, index = 0) {
   if (Array.isArray(skill)) return skill;
   if (typeof skill === 'string') return [skill, 'ML', Math.max(58, 92 - index * 4)];
@@ -81,7 +37,7 @@ function normalizeSkillObject(skill, index = 0) {
 }
 
 function publicPortfolioLink(user, item) {
-  const path = item?.shareUrl || `/portfolio/${user?.username || 'aluno'}/${item?.activityId || item?.id || ''}`;
+  const path = item?.shareUrl || `/portfolio/${user?.username || ''}/${item?.slug || item?.activityId || item?.id || ''}`;
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${String(path).replace(/^\/api\/portfolio/, '/portfolio')}`;
 }
 
@@ -224,7 +180,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
   const projects = useMemo(() => {
     const real = Array.isArray(portfolioItems)
       ? portfolioItems
-      : (ava?.portfolio?.length ? ava.portfolio : demoProjects);
+      : (ava?.portfolio?.length ? ava.portfolio : []);
     return real.map(item => ({ ...item, kind: projectKind(item) }));
   }, [ava, portfolioItems]);
   const resume = resumeFromProfile || ava?.resume || null;
@@ -246,24 +202,17 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
         .map((name, index) => [name, 'Projeto', Math.max(62, 90 - index * 3)]);
     }
 
-    if (Array.isArray(portfolioItems)) return [];
-
-    const projectText = projects.map(item => `${item.title} ${item.summary} ${item.courseName}`).join(' ').toLowerCase();
-    return skillPalette.map(([name, family, level]) => [
-      name,
-      family,
-      projectText.includes(name.toLowerCase().split('.')[0]) ? Math.min(98, level + 6) : level,
-    ]);
+    return [];
   }, [analysis, portfolioItems, projects]);
   const score = Number(analysis?.score) > 0
     ? Math.min(98, Math.round(Number(analysis.score)))
-    : (Array.isArray(portfolioItems) && !projects.length ? 0 : Math.min(98, 52 + projects.length * 9 + (resume ? 9 : 0)));
+    : 0;
   const filteredProjects = projects.filter(item => {
     const matchFilter = filter === 'Todos' || item.kind === filter;
     const text = `${item.title} ${item.summary} ${item.courseName} ${item.kind}`.toLowerCase();
     return matchFilter && (!query.trim() || text.includes(query.trim().toLowerCase()));
   });
-  const displayName = user?.displayName || user?.name || user?.username || 'Aluno UNIGRAN';
+  const displayName = user?.displayName || user?.name || user?.username || '';
 
   return (
     <motion.div className="portfolio-intelligence" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
@@ -302,8 +251,8 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
 
       <section className="portfolio-metrics-row">
         <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="cases publicados" />
-        <Metric icon={BadgeCheck} label="Certificados" value={Math.max(3, projects.length + 1)} hint="credenciais e selos" />
-        <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? (projects.length ? 78 : 0)}%`} hint="progresso academico" />
+        <Metric icon={BadgeCheck} label="Certificados" value={0} hint="credenciais reais cadastradas" />
+        <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? 0}%`} hint="progresso academico" />
         <Metric icon={Target} label="Score" value={score} hint="prontidao profissional" />
       </section>
 
@@ -352,12 +301,12 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
                   <strong>{project.externalKind === 'web_app' ? 'Deploy' : project.externalKind === 'repository' ? 'GitHub' : 'Case'}</strong>
                 </div>
                 <div className="portfolio-project-body">
-                  <small>{project.courseName || 'Portfolio academico'}</small>
+                  <small>{project.courseName || ''}</small>
                   <h3>{project.title || project.activityTitle}</h3>
-                  <ProjectSummary text={project.summary || 'Entrega academica publicada como evidencia profissional.'} />
+                  {project.summary && <ProjectSummary text={project.summary} />}
                   <div className="portfolio-case-facts">
-                    <span><b>Problema</b>{project.activityTitle || 'Desafio academico'}</span>
-                    <span><b>Complexidade</b>{project.summary?.length > 160 ? 'Alta' : 'Media'}</span>
+                    <span><b>Problema</b>{project.activityTitle || ''}</span>
+                    <span><b>Complexidade</b>{project.summary?.length > 160 ? 'Alta' : project.summary ? 'Media' : ''}</span>
                     <span><b>Resultado</b>{project.externalUrl ? 'Link navegavel' : 'Entrega documentada'}</span>
                   </div>
                   <div className="portfolio-card-actions">

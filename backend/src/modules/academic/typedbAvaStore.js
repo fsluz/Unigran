@@ -22,6 +22,32 @@ function safe(value) {
   return typeqlLiteral(value || '');
 }
 
+function slugify(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'portfolio';
+}
+
+async function generatePortfolioSlug(username, title) {
+  const base = slugify(title);
+  const rows = await readQuery(`
+    match
+      $author isa person, has username "${safe(username)}";
+      $post isa post, has portfolio-slug $slug;
+      posting(page: $author, post: $post);
+    fetch { "slug": $slug };
+  `).catch(() => []);
+  const used = new Set(rows.map(row => row.slug).filter(Boolean));
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
 function attrs(row, name) {
   return row?.[name] || {};
 }
@@ -492,7 +518,8 @@ export async function publishSubmissionToPortfolio(user, submissionId, payload =
   const submission = mapSubmission(attrs(rows[0], 'submission'));
   const title = payload.title || rows[0].activity_title || 'Entrega academica';
   const summary = payload.summary || submission.content.slice(0, 360);
-  const shareUrl = `/portfolio/${usernameOf(user)}/${submissionId}`;
+  const slug = await generatePortfolioSlug(usernameOf(user), title);
+  const shareUrl = `/portfolio/${usernameOf(user)}/${slug}`;
   const post = await createPost({
     authorUsername: usernameOf(user),
     postType: 'text-post',
@@ -506,6 +533,7 @@ export async function publishSubmissionToPortfolio(user, submissionId, payload =
       portfolioId: submissionId,
       title,
       summary,
+      slug,
       shareUrl,
       documentUrl: submission.documentUrl,
       documentName: submission.documentName,

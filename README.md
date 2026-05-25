@@ -872,10 +872,9 @@ Este repositorio pode ser usado como base pratica para TCC porque contempla:
 
 Alguns pontos ainda estao em evolucao:
 
-- A migracao completa do AVA para banco definitivo ainda precisa ser feita.
 - As migrations TypeDB estao em `backend/migrations/typedb/`: `001_portfolio_schema_extension.tql`, `002_university_roles_extension.tql` e `003_academic_platform_schema.tql`. Aplique com `cd backend && npm run db:migrate:typedb`, depois crie as ofertas iniciais com `npm run db:seed:academic`.
 - O Portal Academico ativo grava em TypeDB; `backend/data/ava-store.json` e `avaStore.js` sao apenas legado, sem uso nas rotas do portal.
-- O estado do AVA possui camada local de desenvolvimento.
+- `npm run db:seed:academic` executa o seed completo de rede e AVA: professores, alunos, disciplinas, matriculas, materiais, atividades, frequencia, forum, entregas, portfolios, posts, stories, comentarios, curtidas, comunidades, notificacoes e conversas. Para criar contas ausentes, defina `SEED_DEFAULT_PASSWORD` ou as senhas especificas dos professores no `.env`.
 - O parser completo de PDF/DOCX para curriculo vivo ainda deve ser aprofundado.
 - Visualizador interno de PDF/DOCX ainda pode evoluir para zoom, paginacao e fullscreen.
 - Code splitting ainda pode ser melhorado para reduzir tamanho do bundle.

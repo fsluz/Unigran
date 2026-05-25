@@ -70,7 +70,19 @@ export async function fetchSavedPosts(token) {
   return (data.posts || []).map(normalizePost);
 }
 
-export async function createPost({ token, content, file, communityId, postType, portfolioTitle, portfolioLink, portfolioLinkKind }) {
+export async function createPost({
+  token,
+  content,
+  file,
+  communityId,
+  postType,
+  portfolioTitle,
+  portfolioLink,
+  portfolioLinkKind,
+  portfolioTags,
+  portfolioTechnologies,
+  portfolioProjectType,
+}) {
   const fd = new FormData();
   if (content) fd.append('content', content);
   if (communityId) fd.append('communityId', communityId);
@@ -78,6 +90,9 @@ export async function createPost({ token, content, file, communityId, postType, 
   if (portfolioTitle) fd.append('portfolioTitle', portfolioTitle);
   if (portfolioLink) fd.append('portfolioLink', portfolioLink);
   if (portfolioLinkKind) fd.append('portfolioLinkKind', portfolioLinkKind);
+  if (portfolioTags) fd.append('portfolioTags', JSON.stringify(portfolioTags));
+  if (portfolioTechnologies) fd.append('portfolioTechnologies', JSON.stringify(portfolioTechnologies));
+  if (portfolioProjectType) fd.append('portfolioProjectType', portfolioProjectType);
 
   if (postType === 'portfolio-post' && file) {
     fd.append('file', file);

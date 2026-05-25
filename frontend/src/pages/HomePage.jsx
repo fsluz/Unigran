@@ -112,8 +112,9 @@ export default function HomePage({ onOpenProfile }) {
     }
   };
 
-  const handleNewPost = async ({ content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind }) => {
-    const created = await createPost({ token, content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind });
+  const handleNewPost = async (payload) => {
+    const created = await createPost({ token, ...payload });
+    const { postType } = payload;
     if (postType === 'zuni-post') {
       showToast('Short publicado no Zuni', 'OK');
       return;

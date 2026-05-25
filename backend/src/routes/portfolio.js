@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
-import { getPortfolioResume, getPublicPortfolioItem, listPublicPortfolioItems } from '../modules/academic/typedbPortfolioStore.js';
+import {
+  getPortfolioResume,
+  getPublicPortfolioItem,
+  listAllPublicPortfolioItems,
+  listPublicPortfolioItems,
+} from '../modules/academic/typedbPortfolioStore.js';
 
 const router = Router();
 
@@ -43,10 +48,11 @@ async function getPublicProfile(username) {
   `).catch(() => []);
 
   const row = rows[0] || {};
+  if (!rows.length) return null;
   return {
     username,
     displayName: row.name || username,
-    bio: row.bio || 'Portfolio academico com projetos, entregas e evolucao profissional.',
+    bio: row.bio || '',
     profilePicture: row.profile_picture || '',
     coverPicture: row.cover_picture || '',
   };
@@ -140,6 +146,10 @@ function projectComplexity(item = {}) {
   return 'Inicial';
 }
 
+function wantsJson(req) {
+  return req.path.startsWith('/api/') || req.originalUrl.startsWith('/api/') || req.get('accept')?.includes('application/json');
+}
+
 function cleanProjectSummary(text = '') {
   return String(text || '')
     .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
@@ -188,15 +198,22 @@ function renderProjectSummary(text = '') {
   }
   flushParagraph();
   flushBullets();
-  return blocks.join('') || '<p>Trabalho academico publicado como portfolio profissional.</p>';
+  return blocks.join('');
 }
 
 function projectCard(item, req, highlighted = false) {
-  const link = absoluteUrl(req, normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.activityId}`));
+  const link = absoluteUrl(req, normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.slug}`));
   const externalUrl = item.externalUrl || (item.documentStorage === 'external' ? item.documentUrl : '');
   const meta = linkKindMeta(item.externalKind || (externalUrl ? 'other' : ''));
   const category = projectCategory(item);
-  const searchable = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.activityTitle || ''} ${categoryLabel(category)}`;
+  const searchable = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.activityTitle || ''} ${categoryLabel(category)} ${(item.tags || []).join(' ')} ${(item.technologies || []).join(' ')}`;
+  const chips = [
+    item.courseName,
+    categoryLabel(category),
+    item.projectType,
+    ...(item.tags || []),
+    ...(item.technologies || []),
+  ].filter(Boolean);
   const external = externalUrl
     ? `<a class="link-preview-card" href="${escapeHtml(externalUrl)}" target="_blank" rel="noreferrer">
         <span>${escapeHtml(meta.icon)}</span>
@@ -219,24 +236,18 @@ function projectCard(item, req, highlighted = false) {
       <div class="project-body">
         <div class="project-head">
           <div>
-            <small>${escapeHtml(item.activityTitle || 'Entrega academica')}</small>
-            <h3>${escapeHtml(item.title || item.activityTitle || 'Projeto academico')}</h3>
+            <small>${escapeHtml(item.activityTitle || '')}</small>
+            <h3>${escapeHtml(item.title || item.activityTitle || '')}</h3>
           </div>
           <em>${highlighted ? 'Case em destaque' : formatDate(item.updatedAt || item.createdAt)}</em>
         </div>
-        <div class="project-summary">${renderProjectSummary(item.summary || 'Trabalho academico publicado como portfolio profissional.')}</div>
+        ${item.summary ? `<div class="project-summary">${renderProjectSummary(item.summary)}</div>` : ''}
         <div class="case-grid">
           <div><span>Problema</span><b>${escapeHtml(item.activityTitle || 'Desafio academico')}</b></div>
           <div><span>Resultado</span><b>${externalUrl ? 'Link navegavel' : 'Entrega documentada'}</b></div>
           <div><span>Complexidade</span><b>${escapeHtml(projectComplexity(item))}</b></div>
         </div>
-        <div class="tech-row">
-          <span>${escapeHtml(item.courseName || 'Academico')}</span>
-          <span>${escapeHtml(categoryLabel(category))}</span>
-          <span>Portfolio</span>
-          <span>AVA</span>
-          ${item.externalKind === 'web_app' ? '<span>App ao vivo</span>' : ''}
-        </div>
+        ${chips.length ? `<div class="tech-row">${chips.slice(0, 10).map(chip => `<span>${escapeHtml(chip)}</span>`).join('')}</div>` : ''}
         ${external}
         <div class="project-actions">
           <a class="project-link" href="${escapeHtml(link)}">Ver case</a>
@@ -247,17 +258,64 @@ function projectCard(item, req, highlighted = false) {
   `;
 }
 
+function renderPortfolioIndexPage(req, items) {
+  const pageUrl = absoluteUrl(req, '/portfolio');
+  const title = 'Portfolios academicos';
+  const description = items.length
+    ? 'Portfolios academicos publicados por usuarios reais da plataforma.'
+    : 'Nenhum portfolio academico publicado ainda.';
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${escapeHtml(pageUrl)}" />
+  <style>
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:#080a12;color:#f8fbff}
+    main{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:34px 0 70px}
+    a{color:inherit}.top{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:22px}
+    h1{margin:0;font-size:clamp(34px,6vw,64px);letter-spacing:0}.muted{color:#aeb8d5;line-height:1.6}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .card{display:grid;gap:12px;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:rgba(255,255,255,.07);text-decoration:none}
+    .thumb{aspect-ratio:16/9;border-radius:12px;background:#111827;object-fit:cover;width:100%}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}.chips span{font-size:12px;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#dce7ff}
+    .empty{min-height:260px;display:grid;place-items:center;text-align:center;border:1px solid rgba(255,255,255,.14);border-radius:18px;color:#aeb8d5}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="top">
+      <div><h1>Portfolios academicos</h1><p class="muted">${escapeHtml(description)}</p></div>
+      <strong>${items.length} publicado(s)</strong>
+    </section>
+    ${items.length ? `<section class="grid">${items.map(item => `
+      <a class="card" href="${escapeHtml(normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.slug}`))}">
+        ${item.thumbnail ? `<img class="thumb" src="${escapeHtml(item.thumbnail)}" alt="">` : '<div class="thumb"></div>'}
+        <div>
+          <small class="muted">@${escapeHtml(item.authorUsername)}</small>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p class="muted">${escapeHtml(item.description || item.summary || '')}</p>
+        </div>
+        <div class="chips">${[...item.tags, ...item.technologies].slice(0, 6).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>
+      </a>`).join('')}</section>` : '<section class="empty">Nenhum portfolio publicado ainda.</section>'}
+  </main>
+</body>
+</html>`;
+}
+
 function renderPortfolioPage({ req, profile, items, focusItem = null, resume = null }) {
-  const pageUrl = absoluteUrl(req, `/portfolio/${profile.username}`);
-  const title = `${profile.displayName} - Portfolio Academico`;
-  const description = `${profile.displayName} apresenta projetos academicos, habilidades, certificados e evolucao profissional.`;
+  const pageUrl = absoluteUrl(req, focusItem ? `/portfolio/${profile.username}/${focusItem.slug}` : `/portfolio/${profile.username}`);
+  const title = focusItem ? `${focusItem.title} - ${profile.displayName}` : `${profile.displayName} - Portfolio Academico`;
+  const description = focusItem?.description || focusItem?.summary || (items.length ? `${profile.displayName} possui ${items.length} portfolio(s) publicado(s).` : `${profile.displayName} ainda nao publicou portfolios.`);
   const featured = focusItem || items[0] || null;
   const skills = inferSkills(items);
-  const institution = featured?.institution?.name || items[0]?.institution?.name || 'UNIGRAN';
+  const institution = featured?.institution?.name || items[0]?.institution?.name || '';
   const courseNames = [...new Set(items.map(item => item.courseName).filter(Boolean))];
-  const completion = Math.min(96, 42 + items.length * 12);
-  const certCount = Math.max(1, Math.min(8, items.length + 1));
-  const hours = 40 + items.length * 28;
   const ml = {};
   const virtualResume = resume?.virtualResume || {};
   const resumeContacts = virtualResume.contacts || {};
@@ -266,7 +324,6 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
   const resumeTools = virtualResume.tools || [];
   const resumeLinks = resumeContacts.links || resume?.links || [];
   const allSkillSignals = [...new Set([...skills, ...resumeHardSkills])].slice(0, 16);
-  const professionalScore = Math.min(98, Math.round(56 + items.length * 9 + resumeHardSkills.length * 2 + (resume ? 8 : 0)));
   const featuredProjects = items.slice(0, 3);
   const contactEmail = (resumeContacts.emails || resume?.emails || [])[0] || '';
   const contactPhone = (resumeContacts.phones || resume?.phones || [])[0] || '';
@@ -325,13 +382,13 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
     <section class="hero">
       <div class="hero-main">
         <div class="badge-row">
-          <span class="badge hot">${escapeHtml(institution)}</span>
+          ${institution ? `<span class="badge hot">${escapeHtml(institution)}</span>` : ''}
           <span class="badge">Portfolio verificavel</span>
           <span class="badge">Disponivel para networking</span>
         </div>
         <h1>${escapeHtml(profile.displayName)}</h1>
-        <p class="headline">${escapeHtml(courseNames[0] || 'Aluno UNIGRAN')} criando projetos academicos com mentalidade de produto, pesquisa e impacto profissional.</p>
-        <p class="bio">${escapeHtml(profile.bio)}</p>
+        ${courseNames[0] ? `<p class="headline">${escapeHtml(courseNames[0])}</p>` : ''}
+        ${profile.bio ? `<p class="bio">${escapeHtml(profile.bio)}</p>` : ''}
         <div class="hero-ctas">
           <a class="btn primary" href="#projetos">Ver projetos</a>
           ${featured?.externalUrl ? `<a class="btn" href="${escapeHtml(featured.externalUrl)}" target="_blank" rel="noreferrer">${escapeHtml(linkKindMeta(featured.externalKind).action)} destaque</a>` : featured?.documentUrl ? `<a class="btn" href="${escapeHtml(featured.documentUrl)}" target="_blank" rel="noreferrer">Abrir entrega destaque</a>` : ''}
@@ -351,9 +408,9 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="availability"><i></i> Aberto para oportunidades academicas e profissionais</div>
           <div class="stat-grid">
             <div class="stat"><strong>${items.length}</strong><span>Projetos</span></div>
-            <div class="stat"><strong>${completion}%</strong><span>Progresso</span></div>
-            <div class="stat"><strong>${hours}h</strong><span>Horas</span></div>
-            <div class="stat"><strong>${certCount}</strong><span>Selos</span></div>
+            <div class="stat"><strong>${resume ? 1 : 0}</strong><span>Curriculo</span></div>
+            <div class="stat"><strong>${contactEmail ? 1 : 0}</strong><span>Email</span></div>
+            <div class="stat"><strong>${resumeLinks.length}</strong><span>Links</span></div>
           </div>
         </div>
       </aside>
@@ -367,9 +424,9 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       <div class="recruiter-grid">
         <div class="recruiter-card feature">
           <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-            <div class="score-ring" style="--score:${professionalScore}"><div><strong>${professionalScore}</strong><small>/100</small></div></div>
+            <div class="score-ring" style="--score:${Math.min(100, items.length * 20)}"><div><strong>${items.length}</strong><small>cases</small></div></div>
             <div style="min-width:240px;flex:1">
-              <small>Indice de prontidao</small>
+              <small>Dados publicados</small>
               <h3 style="margin:6px 0 8px;font-size:30px">${escapeHtml(virtualResume.professionalTitle || courseNames[0] || 'Perfil academico em avaliacao')}</h3>
               <p>Perfil comercial organizado por projetos, curriculo, competencias e evidencias publicas para avaliacao profissional.</p>
             </div>
@@ -384,7 +441,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <small>Projetos em destaque</small>
           <h3 style="margin:6px 0 12px;font-size:24px">Cases para abrir primeiro</h3>
           <div class="insight-list">
-            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.activityId}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || 'Projeto')}</strong><small>${escapeHtml(project.courseName || 'Academico')} - ${escapeHtml(projectComplexity(project))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
+            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.slug}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || '')}</strong><small>${escapeHtml([project.courseName, projectComplexity(project)].filter(Boolean).join(' - '))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
           </div>
         </div>
       </div>
@@ -417,7 +474,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         ${items.map(item => projectCard(item, req, focusItem && item.activityId === focusItem.activityId)).join('')}
       </div>
     </section>` : `
-    <section class="section empty"><div><small>Portfolio em construcao</small><h2>Nenhum projeto publicado ainda</h2><p>Quando o aluno publicar uma entrega pelo AVA, ela aparecera aqui como case profissional.</p></div></section>`}
+    <section class="section empty"><div><small>Portfolio em construcao</small><h2>Nenhum projeto publicado ainda</h2><p>Nenhum dado real foi encontrado para este perfil.</p></div></section>`}
 
     <section class="section" id="skills">
       <div class="section-head">
@@ -427,8 +484,6 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       <div class="profile-grid">
         <div class="skill-cloud">${skills.map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('')}</div>
         <div class="metric-list">
-          <div class="metric"><span><b>Progresso do curso</b><b>${completion}%</b></span><div class="bar"><i style="width:${completion}%"></i></div></div>
-          <div class="metric"><span><b>Consistencia academica</b><b>92%</b></span><div class="bar"><i style="width:92%"></i></div></div>
           <div class="metric"><span><b>Portfolio publico</b><b>${Math.min(100, items.length * 25)}%</b></span><div class="bar"><i style="width:${Math.min(100, items.length * 25)}%"></i></div></div>
         </div>
       </div>
@@ -482,7 +537,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="virtual-resume-card">
             <small>Ferramentas</small>
             <h4>Stack de apoio</h4>
-            <div class="skill-cloud">${resumeTools.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Portfolio</span><span class="skill">AVA</span>'}</div>
+            <div class="skill-cloud">${resumeTools.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma ferramenta identificada no curriculo.</p>'}</div>
           </div>
         </div>
         <div class="virtual-resume-card">
@@ -531,11 +586,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         <div><small>Certificados e selos</small><h2>Credenciais academicas</h2></div>
         <p>Blocos visuais para certificados, atividades complementares e conquistas verificaveis.</p>
       </div>
-      <div class="cert-grid">
-        <div class="cert"><span>Selo digital</span><strong>Portfolio UNIGRAN</strong><p>Perfil academico publico.</p></div>
-        <div class="cert"><span>Competencia</span><strong>Projetos aplicados</strong><p>Entregas conectadas a disciplinas.</p></div>
-        <div class="cert"><span>Presenca</span><strong>Networking academico</strong><p>Compartilhavel com empresas.</p></div>
-      </div>
+      <div class="empty"><p>Nenhuma credencial real cadastrada para este perfil.</p></div>
     </section>
 
     <section class="footer-cta">
@@ -579,6 +630,18 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
 </html>`;
 }
 
+router.get('/', async (req, res) => {
+  try {
+    const items = await listAllPublicPortfolioItems();
+    if (wantsJson(req)) return res.json({ portfolios: items });
+    res.type('html').send(renderPortfolioIndexPage(req, items));
+  } catch (err) {
+    console.error('[portfolio list]', err);
+    if (wantsJson(req)) return res.status(500).json({ error: 'Erro ao carregar portfolios' });
+    res.status(500).send('Erro ao carregar portfolios');
+  }
+});
+
 router.get('/:username', async (req, res) => {
   try {
     const [profile, items, resume] = await Promise.all([
@@ -586,6 +649,11 @@ router.get('/:username', async (req, res) => {
       listPublicPortfolioItems(req.params.username),
       getPortfolioResume(req.params.username),
     ]);
+    if (!profile) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Usuario nao encontrado' });
+      return res.status(404).send('Usuario nao encontrado');
+    }
+    if (wantsJson(req)) return res.json({ profile, portfolios: items, resume });
     res.type('html').send(renderPortfolioPage({ req, profile, items, resume }));
   } catch (err) {
     console.error('[portfolio public page]', err);
@@ -593,15 +661,23 @@ router.get('/:username', async (req, res) => {
   }
 });
 
-router.get('/:username/:activityId', async (req, res) => {
+router.get('/:username/:slug', async (req, res) => {
   try {
     const [profile, item, items, resume] = await Promise.all([
       getPublicProfile(req.params.username),
-      getPublicPortfolioItem(req.params.username, req.params.activityId),
+      getPublicPortfolioItem(req.params.username, req.params.slug),
       listPublicPortfolioItems(req.params.username),
       getPortfolioResume(req.params.username),
     ]);
-    if (!item) return res.status(404).send('Portfolio nao encontrado');
+    if (!profile) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Usuario nao encontrado' });
+      return res.status(404).send('Usuario nao encontrado');
+    }
+    if (!item) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Portfolio nao encontrado' });
+      return res.status(404).send('Portfolio nao encontrado');
+    }
+    if (wantsJson(req)) return res.json({ portfolio: item, profile });
     res.type('html').send(renderPortfolioPage({ req, profile, items: items.length ? items : [item], focusItem: item, resume }));
   } catch (err) {
     console.error('[portfolio public item]', err);

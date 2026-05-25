@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, RoleBadge, Modal, Button } from '../ui';
-import { MOCK_COMMENTS } from '../../data/mock';
+import { createComment } from '../../services/posts';
 
 const EMOJI_OPTIONS = [];
 
@@ -14,18 +14,34 @@ function formatContent(text) {
 }
 
 export default function PostDetailModal({ post, onClose }) {
-  const { user }     = useAuth();
-  const [comments, setComments]     = useState(MOCK_COMMENTS);
+  const { token, user }     = useAuth();
+  const [comments, setComments]     = useState(() => (post._comments || []).map(comment => ({
+    id: comment.id,
+    author: {
+      displayName: comment.author?.displayName || comment.author?.username || 'Usuario',
+      avatar: comment.author?.avatar || comment.author?.displayName?.slice(0, 2) || comment.author?.username?.slice(0, 2),
+    },
+    authorId: comment.author?.username,
+    text: comment.text || comment.content || '',
+    likes: comment.likes || 0,
+    liked: Boolean(comment.liked),
+    reactions: comment.reactions || [],
+  })));
   const [newText, setNewText]       = useState('');
   const [emojiFor, setEmojiFor]     = useState(null);
   const [expandedComment, setExpandedComment] = useState(null);
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newText.trim()) return;
-    setComments(prev => [
-      ...prev,
-      { id: `c${Date.now()}`, author: { displayName: user.displayName, avatar: user.avatar }, text: newText.trim(), likes: 0, liked: false, reactions: [] },
-    ]);
+    const created = await createComment({ token, postId: post.id, content: newText.trim() });
+    setComments(prev => [...prev, {
+      id: created.id,
+      author: { displayName: user.displayName, avatar: user.avatar },
+      text: created.content || newText.trim(),
+      likes: 0,
+      liked: false,
+      reactions: [],
+    }]);
     setNewText('');
   };
 

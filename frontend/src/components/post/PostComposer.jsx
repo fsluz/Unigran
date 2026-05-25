@@ -14,7 +14,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [portfolioLink, setPortfolioLink] = useState('');
   const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
   const [portfolioTagInput, setPortfolioTagInput] = useState('');
-  const [portfolioTags, setPortfolioTags] = useState(['React', 'TypeScript']);
+  const [portfolioTags, setPortfolioTags] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [pickerAccept, setPickerAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
@@ -67,23 +67,23 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
         if (file && file.size > 1024 * 1024) throw new Error('Documento do portfolio deve ter ate 1024 KB por enquanto.');
         if (!text.trim() && !portfolioLink.trim() && !file) throw new Error('Adicione descricao, link ou documento para publicar no portfolio.');
       }
-      const portfolioTagLine = postType === 'portfolio-post' && portfolioTags.length
-        ? `\n\nTecnologias: ${portfolioTags.join(', ')}`
-        : '';
       await onSubmit({
-        content: `${text.replace(/^\s+|\s+$/g, '')}${portfolioTagLine}`,
+        content: text.replace(/^\s+|\s+$/g, ''),
         file,
         postType,
         portfolioTitle: portfolioTitle.trim(),
         portfolioLink: portfolioLink.trim(),
         portfolioLinkKind,
+        portfolioTags,
+        portfolioTechnologies: portfolioTags,
+        portfolioProjectType: 'academic',
       });
       setT('');
       setPortfolioTitle('');
       setPortfolioLink('');
       setPortfolioLinkKind('repository');
       setPortfolioTagInput('');
-      setPortfolioTags(['React', 'TypeScript']);
+      setPortfolioTags([]);
       clearFile();
     } catch (err) {
       showToast(err.message || 'Erro ao publicar.', '!');
