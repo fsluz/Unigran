@@ -16,6 +16,7 @@ export default function MessagesPage() {
   const { showToast } = useToast();
   const [conversations, setConversations] = useState([]);
   const [active, setActive] = useState(null);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
@@ -501,6 +502,7 @@ export default function MessagesPage() {
       closeRealtime();
       setRealtimeRevision(value => value + 1);
       setActive(conversation);
+      setMobileChatOpen(true);
       setTargetUsername('');
       setConversationSearch('');
       setNewConversationOpen(false);
@@ -527,6 +529,7 @@ export default function MessagesPage() {
       closeRealtime();
       setRealtimeRevision(value => value + 1);
       setActive(conversation);
+      setMobileChatOpen(true);
       setSelectedGroupUsers([]);
       setGroupSearch('');
       setGroupFile(null);
@@ -575,6 +578,7 @@ export default function MessagesPage() {
       return next;
     });
     setActive(conversations.find(conv => conv.id !== id) || null);
+    setMobileChatOpen(false);
   };
 
   const removeMessage = async (messageId) => {
@@ -1048,6 +1052,7 @@ export default function MessagesPage() {
       if (username === user?.username) {
         setGroupSettingsOpen(false);
         setActive(null);
+        setMobileChatOpen(false);
       }
     } catch (err) {
       showToast(err.message || 'Erro ao remover', '!');
@@ -1058,7 +1063,7 @@ export default function MessagesPage() {
     <div className="page-scroll">
       <audio ref={ringtoneRef} src={ringtoneSrc} loop preload="auto" />
       <Topbar title="Mensagens" />
-      <div className={`messages-shell ${active ? 'has-active' : ''}`}>
+      <div className={`messages-shell ${active ? 'has-active' : ''} ${mobileChatOpen ? 'mobile-chat-open' : ''}`}>
         <div className="conv-list">
           <div className="conv-list-head">
             <div className="messages-title-row">
@@ -1105,7 +1110,7 @@ export default function MessagesPage() {
               <button
                 key={conv.id}
                 className={`conv-item ${active?.id === conv.id ? 'active' : ''}`}
-                onClick={() => setActive(conv)}
+                onClick={() => { setActive(conv); setMobileChatOpen(true); }}
                 style={{ width: '100%', border: 'none', textAlign: 'left', background: 'transparent' }}
               >
                 <Avatar
@@ -1127,7 +1132,7 @@ export default function MessagesPage() {
         {active ? (
           <div className="chat-area">
             <div className="chat-head">
-              <button className="chat-back-btn" onClick={() => setActive(null)} aria-label="Voltar para conversas">{'<'}</button>
+              <button className="chat-back-btn" onClick={() => setMobileChatOpen(false)} aria-label="Voltar para conversas">{'<'}</button>
               <Avatar
                 size={40}
                 src={conversationPhoto(active)}
