@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { auth, normalizeRole, requireAtLeast } from '../middleware/auth.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
-import { getAvaPowerBiSnapshot } from '../modules/academic/avaStore.js';
+import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
 
 function getIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -12,7 +12,22 @@ function getIp(req) {
 const router = Router();
 
 const RoleSchema = z.object({
-  role: z.enum(['admin', 'moderator', 'community_moderator', 'professor', 'user', 'ADMIN']),
+  role: z.enum([
+    'super_admin',
+    'admin',
+    'management',
+    'coordination',
+    'administrative',
+    'secretary',
+    'library',
+    'moderator',
+    'community_moderator',
+    'professor',
+    'aluno',
+    'student',
+    'user',
+    'ADMIN',
+  ]),
 });
 
 const BanSchema = z.object({
@@ -282,8 +297,8 @@ router.get('/power-bi', requireAtLeast('admin'), async (req, res) => {
       repoReference: 'https://github.com/v-cerqueira/Power-Bi',
       source: {
         primary: 'TypeDB',
-        secondary: 'AVA store',
-        note: 'Endpoint de BI interno consome entidades reais quando o TypeDB esta disponivel e complementa com dados do AVA sem criar migrations.',
+        secondary: 'TypeDB academic relations',
+        note: 'Endpoint de BI interno consome as entidades sociais e academicas persistidas no TypeDB.',
       },
       kpis: {
         users: typedbUsers.length || ava.dimensions.students,

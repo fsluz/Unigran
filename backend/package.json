@@ -6,7 +6,9 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "db:migrate:typedb": "node scripts/apply-typedb-migrations.js",
+    "db:seed:academic": "node scripts/seed-academic-data.js"
   },
   "dependencies": {
     "@typedb/driver-http": "^3.8.1",

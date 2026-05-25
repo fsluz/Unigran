@@ -18,6 +18,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
   const [submitting, setSubmitting] = useState(false);
   const [pickerAccept, setPickerAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
+  const textInputRef = useRef(null);
   const isPortfolioMode = !forcedPostType && postMode === 'portfolio';
 
   useEffect(() => () => {
@@ -119,6 +120,27 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
     setPortfolioTags(prev => [...prev, clean].slice(0, 8));
     setPortfolioTagInput('');
   };
+  const formatSelection = (before, after = before, example = 'texto') => {
+    const input = textInputRef.current;
+    const start = input?.selectionStart ?? text.length;
+    const end = input?.selectionEnd ?? text.length;
+    const selected = text.slice(start, end) || example;
+    const next = `${text.slice(0, start)}${before}${selected}${after}${text.slice(end)}`;
+    setT(next);
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(start + before.length, start + before.length + selected.length);
+    });
+  };
+  const prefixLines = (prefix, example) => {
+    const input = textInputRef.current;
+    const start = input?.selectionStart ?? text.length;
+    const end = input?.selectionEnd ?? text.length;
+    const selected = text.slice(start, end) || example;
+    const formatted = selected.split('\n').map(line => `${prefix}${line}`).join('\n');
+    setT(`${text.slice(0, start)}${formatted}${text.slice(end)}`);
+    requestAnimationFrame(() => input?.focus());
+  };
 
   return (
     <div className="card post-composer">
@@ -129,13 +151,24 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
           name={user?.displayName || user?.username || ''}
           initials={user?.avatar || user?.displayName?.slice(0, 2)}
         />
-        <textarea
-          className="composer-textarea"
-          placeholder={placeholder}
-          value={text}
-          onChange={e => setT(e.target.value)}
-          rows={text.length > 80 ? 4 : 2}
-        />
+        <div className="composer-editor">
+          {isPortfolioMode && (
+            <div className="composer-format-toolbar" aria-label="Formatacao do portfolio">
+              <button type="button" onClick={() => formatSelection('**', '**', 'texto em negrito')}><strong>B</strong></button>
+              <button type="button" onClick={() => prefixLines('## ', 'Sobre o projeto')}>Titulo</button>
+              <button type="button" onClick={() => prefixLines('- ', 'Tecnologia utilizada')}>Lista</button>
+              <button type="button" onClick={() => formatSelection('[', '](https://)', 'link')}>Link</button>
+            </div>
+          )}
+          <textarea
+            ref={textInputRef}
+            className="composer-textarea"
+            placeholder={isPortfolioMode ? 'Conte o projeto com secoes, resultados e tecnologias...' : placeholder}
+            value={text}
+            onChange={e => setT(e.target.value)}
+            rows={isPortfolioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
+          />
+        </div>
       </div>
 
       {preview && (
@@ -229,7 +262,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
               />
               <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-portfolio-help">Publica no feed e cria um case automatico. Formatos: PDF, DOCX (ate 1MB)</span>
+            <span className="composer-portfolio-help">Use a barra de formatacao para negrito, secoes, listas e links. Publica no feed e cria case automatico. Formatos: PDF, DOCX (ate 1MB).</span>
           </div>
         )}
         <input

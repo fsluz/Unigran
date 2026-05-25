@@ -19,7 +19,6 @@ import {
 import { assertSafeMediaUrl, uploadMediaBuffer } from './cloudinary.service.js';
 import { uploadDocumentBuffer } from './document.service.js';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
-import { saveManualPortfolioItem } from '../modules/academic/avaStore.js';
 
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
@@ -180,10 +179,10 @@ export async function createPostWithRules({ user, body, file }) {
 
   let portfolioItem = null;
   if (isPortfolio) {
-    portfolioItem = await saveManualPortfolioItem(user, {
+    portfolioItem = {
       activityId: manualActivityId,
       title: portfolioTitle,
-      summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+      summary: baseContent.slice(0, 4000) || 'Projeto publicado pela rede social academica.',
       activityTitle: 'Publicacao social para portfolio',
       documentUrl: portfolioDocument?.url || '',
       documentName: portfolioDocument?.name || '',
@@ -194,13 +193,13 @@ export async function createPostWithRules({ user, body, file }) {
       externalLabel: portfolioExternalUrl ? 'Link do projeto' : '',
       shareUrl: portfolioShareUrl,
       postId: created.id,
-    });
+    };
     annotatePortfolioPost({
       postId: created.id,
       metadata: {
         portfolioId: manualActivityId,
         title: portfolioTitle,
-        summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+        summary: baseContent.slice(0, 4000) || 'Projeto publicado pela rede social academica.',
         shareUrl: portfolioShareUrl,
         externalUrl: portfolioExternalUrl,
         externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),

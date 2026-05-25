@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createPost, listUserPosts } from '../../repositories/post.repository.js';
+import { annotatePortfolioPost, createPost, listUserPosts } from '../../repositories/post.repository.js';
 import { buildPortfolioMlAnalysis } from '../../services/portfolio-ml.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -131,6 +131,62 @@ const seedStore = {
   users: {},
 };
 
+const academicDefaults = {
+  'eng-software': {
+    professorUsername: 'prof_marcos',
+    room: 'Laboratorio 04',
+    schedule: 'Segunda e quarta - 19:00',
+    announcements: ['A revisao do projeto integrador acontece nesta quarta-feira.'],
+    students: [
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 42, attendance: 68, average: 5.8, risk: 'Alto' },
+      { id: 'carlos-mendes', username: 'carlos-mendes', name: 'Carlos Mendes', registration: '20260118', progress: 64, attendance: 82, average: 6.7, risk: 'Medio' },
+      { id: 'isabela-rocha', username: 'isabela-rocha', name: 'Isabela Rocha', registration: '20260126', progress: 91, attendance: 97, average: 9.1, risk: 'Regular' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-esw-1', date: '2026-05-18', topic: 'Sprint planning', entries: { 'ana-paula': { status: 'absent', justification: '' }, 'carlos-mendes': { status: 'present', justification: '' }, 'isabela-rocha': { status: 'present', justification: '' } } },
+      { id: 'freq-esw-2', date: '2026-05-20', topic: 'Revisao tecnica', entries: { 'ana-paula': { status: 'justified', justification: 'Atestado enviado.' }, 'carlos-mendes': { status: 'present', justification: '' }, 'isabela-rocha': { status: 'present', justification: '' } } },
+    ],
+  },
+  'banco-dados': {
+    professorUsername: 'profa_renata',
+    room: 'Sala B12',
+    schedule: 'Terca - 19:00',
+    announcements: ['Modelo logico deve incluir chaves e cardinalidades.'],
+    students: [
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 71, attendance: 87, average: 7.4, risk: 'Regular' },
+      { id: 'joao-silva', username: 'joao-silva', name: 'Joao Silva', registration: '20260141', progress: 56, attendance: 78, average: 6.2, risk: 'Medio' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-bda-1', date: '2026-05-19', topic: 'Normalizacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'joao-silva': { status: 'absent', justification: '' } } },
+    ],
+  },
+  'ia-aplicada': {
+    professorUsername: 'prof_fabio',
+    room: 'AVA ao vivo',
+    schedule: 'Quinta - 20:00',
+    announcements: ['Material complementar publicado para proxima atividade.'],
+    students: [
+      { id: 'ana-paula', username: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 88, attendance: 96, average: 9.1, risk: 'Regular' },
+      { id: 'mateus-lima', username: 'mateus-lima', name: 'Mateus Lima', registration: '20260155', progress: 38, attendance: 72, average: 5.4, risk: 'Alto' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-iap-1', date: '2026-05-21', topic: 'Etica e avaliacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'mateus-lima': { status: 'absent', justification: '' } } },
+    ],
+  },
+};
+
+function academicDataFor(course) {
+  const fallback = {
+    professorUsername: '',
+    room: 'Sala virtual',
+    schedule: 'Horario a definir',
+    announcements: [],
+    students: [],
+    attendanceSessions: [],
+  };
+  return academicDefaults[course.id] || fallback;
+}
+
 async function ensureStore() {
   try {
     await fs.access(STORE_PATH);
@@ -145,10 +201,27 @@ async function readStore() {
   const raw = await fs.readFile(STORE_PATH, 'utf8');
   const store = JSON.parse(raw);
   if (!Array.isArray(store.institutions)) store.institutions = seedStore.institutions;
-  store.courses = (store.courses || []).map(course => ({
-    ...course,
-    institutionId: course.institutionId || 'unigran',
-  }));
+  store.courses = (store.courses || []).map(course => {
+    const defaults = academicDataFor(course);
+    return {
+      ...course,
+      institutionId: course.institutionId || 'unigran',
+      professorUsername: course.professorUsername || defaults.professorUsername || '',
+      room: course.room || defaults.room,
+      schedule: course.schedule || defaults.schedule,
+      announcements: Array.isArray(course.announcements) ? course.announcements : [...defaults.announcements],
+      students: (Array.isArray(course.students) ? course.students : defaults.students).map(student => {
+        const seeded = defaults.students.find(item => item.id === student.id) || {};
+        return { ...student, username: student.username || seeded.username || student.id };
+      }),
+      attendanceSessions: Array.isArray(course.attendanceSessions)
+        ? course.attendanceSessions
+        : defaults.attendanceSessions.map(session => ({ ...session, entries: { ...session.entries } })),
+      materials: Array.isArray(course.materials) ? course.materials : [],
+      activities: Array.isArray(course.activities) ? course.activities : [],
+      forum: Array.isArray(course.forum) ? course.forum : [],
+    };
+  });
   store.users = store.users || {};
   return store;
 }
@@ -164,6 +237,54 @@ function usernameOf(user) {
 
 function displayNameOf(user) {
   return user?.displayName || user?.name || user?.username || 'Aluno Unigran';
+}
+
+function normalizedIdentity(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/^(prof|profa)\.?\s*/i, '')
+    .trim()
+    .toLowerCase();
+}
+
+function roleOf(user) {
+  return String(user?.role || 'user').trim().toLowerCase();
+}
+
+function sameInstitution(userState, course) {
+  return !userState?.institutionId || userState.institutionId === course.institutionId;
+}
+
+function enrollmentFor(user, course) {
+  const username = normalizedIdentity(usernameOf(user));
+  const displayName = normalizedIdentity(displayNameOf(user));
+  return course.students.find(student => (
+    normalizedIdentity(student.username) === username
+    || normalizedIdentity(student.id) === username
+    || normalizedIdentity(student.registration) === username
+    || normalizedIdentity(student.name) === displayName
+  )) || null;
+}
+
+function canManageAnyAcademicCourse(user) {
+  return ['coordination', 'management', 'admin', 'super_admin'].includes(roleOf(user));
+}
+
+function canTeachCourse(user, userState, course) {
+  if (!sameInstitution(userState, course)) return false;
+  if (canManageAnyAcademicCourse(user)) return true;
+  if (roleOf(user) !== 'professor') return false;
+  return normalizedIdentity(course.professorUsername) === normalizedIdentity(usernameOf(user))
+    || normalizedIdentity(course.professor) === normalizedIdentity(displayNameOf(user));
+}
+
+function canReadCourse(user, userState, course) {
+  return canTeachCourse(user, userState, course) || (sameInstitution(userState, course) && Boolean(enrollmentFor(user, course)));
+}
+
+function allowedCourses(store, userState, user) {
+  return store.courses.filter(course => canReadCourse(user, userState, course));
 }
 
 function socialPortfolioPostToItem(post, username) {
@@ -273,7 +394,8 @@ function statusForActivity(activity, submission) {
   return new Date(activity.due).getTime() < Date.now() ? 'late' : 'pending';
 }
 
-function buildCourse(course, userState) {
+function buildCourse(course, userState, user) {
+  const { students: courseStudents, attendanceSessions, ...visibleCourse } = course;
   const submissions = userState.submissions.filter(item => item.courseId === course.id);
   const submittedIds = new Set(submissions.map(item => item.activityId));
   const completed = new Set(userState.completedMaterials);
@@ -281,8 +403,20 @@ function buildCourse(course, userState) {
   const doneTasks = course.materials.filter(item => completed.has(item.id)).length
     + course.activities.filter(item => submittedIds.has(item.id)).length;
 
+  const student = enrollmentFor(user, course);
+  const canManageCourse = canTeachCourse(user, userState, course);
+  const attendanceRecords = attendanceSessions.map(session => ({
+    id: session.id,
+    date: session.date,
+    topic: session.topic,
+    ...(student ? session.entries?.[student.id] : { status: 'present', justification: '' }),
+  }));
+
   return {
-    ...course,
+    ...visibleCourse,
+    grade: student && !canManageCourse ? student.average : course.grade,
+    attendance: student && !canManageCourse ? student.attendance : course.attendance,
+    students: canManageCourse ? courseStudents : [],
     progress: totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0,
     materials: course.materials.map(material => ({
       ...material,
@@ -296,6 +430,7 @@ function buildCourse(course, userState) {
         submission,
       };
     }),
+    attendanceRecords: student ? attendanceRecords : [],
   };
 }
 
@@ -319,13 +454,59 @@ function buildSummary(courses, userState) {
   };
 }
 
+function buildStudentDashboard(courses) {
+  const grades = courses.map(course => ({
+    courseId: course.id,
+    courseName: course.name,
+    grade: course.grade,
+    attendance: course.attendance,
+    progress: course.progress,
+  }));
+  const average = grades.length
+    ? (grades.reduce((sum, item) => sum + Number(item.grade || 0), 0) / grades.length).toFixed(1)
+    : '0.0';
+  return {
+    grades,
+    average,
+    attendanceAverage: grades.length
+      ? Math.round(grades.reduce((sum, item) => sum + Number(item.attendance || 0), 0) / grades.length)
+      : 0,
+    calendar: courses
+      .flatMap(course => course.activities.map(activity => ({ ...activity, courseName: course.name })))
+      .sort((a, b) => new Date(a.due) - new Date(b.due))
+      .slice(0, 6),
+  };
+}
+
+function buildTeacherDashboard(courses, store) {
+  const submissions = Object.values(store.users)
+    .flatMap(userState => userState.submissions || []);
+  const courseIds = new Set(courses.map(course => course.id));
+  const courseSubmissions = submissions.filter(submission => courseIds.has(submission.courseId));
+  return {
+    totalClasses: courses.length,
+    totalStudents: courses.reduce((sum, course) => sum + course.students.length, 0),
+    pendingCorrections: courseSubmissions.filter(item => item.status !== 'graded').length,
+    pendingActivities: courses.reduce((sum, course) => sum + course.activities.length, 0),
+    atRiskStudents: courses.flatMap(course => course.students
+      .filter(student => student.risk !== 'Regular')
+      .map(student => ({ ...student, courseName: course.name }))),
+    calendar: courses.flatMap(course => course.activities
+      .map(activity => ({ ...activity, courseName: course.name })))
+      .sort((a, b) => new Date(a.due) - new Date(b.due))
+      .slice(0, 6),
+    announcements: courses.flatMap(course => course.announcements
+      .map(text => ({ courseName: course.name, text }))),
+  };
+}
+
 export async function getAvaState(user) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
   const institutionId = userState.institutionId || user?.institutionId || user?.facultyId || null;
   const institution = (store.institutions || []).find(item => item.id === institutionId) || null;
-  const linkedCourses = store.courses.filter(course => !institutionId || course.institutionId === institutionId);
-  const courses = linkedCourses.map(course => buildCourse(course, userState));
+  const linkedCourses = allowedCourses(store, userState, user);
+  const courses = linkedCourses.map(course => buildCourse(course, userState, user));
   userState.level = Math.max(1, Math.floor(userState.xp / 700) + 1);
   await writeStore(store);
 
@@ -346,6 +527,10 @@ export async function getAvaState(user) {
       role: user?.role || 'aluno',
     },
     summary: buildSummary(courses, userState),
+    studentDashboard: buildStudentDashboard(courses),
+    teacherDashboard: courses.some(course => canTeachCourse(user, userState, course))
+      ? buildTeacherDashboard(courses, store)
+      : {},
     courses,
     notifications: userState.notifications.slice().reverse(),
     portfolio: userState.portfolio.slice().reverse(),
@@ -406,8 +591,8 @@ export async function getPortfolioResume(username) {
 export async function setMaterialCompletion(user, materialId, completed) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
-  const { material } = findMaterial(store, materialId);
-  if (!material) return null;
+  const { course, material } = findMaterial(store, materialId);
+  if (!material || !enrollmentFor(user, course) || !sameInstitution(userState, course)) return null;
 
   const set = new Set(userState.completedMaterials);
   if (completed) set.add(materialId);
@@ -423,7 +608,7 @@ export async function submitActivity(user, activityId, payload) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
   const { course, activity } = findActivity(store, activityId);
-  if (!activity) return null;
+  if (!activity || !enrollmentFor(user, course) || !sameInstitution(userState, course)) return null;
 
   const now = new Date().toISOString();
   const existingIndex = userState.submissions.findIndex(item => item.activityId === activityId);
@@ -510,6 +695,20 @@ export async function submitActivity(user, activityId, payload) {
           communityId: null,
         });
         portfolioItem.postId = createdPost.id;
+        await annotatePortfolioPost({
+          postId: createdPost.id,
+          metadata: {
+            portfolioId: portfolioItem.activityId,
+            title: portfolioItem.title,
+            summary: portfolioItem.summary,
+            shareUrl: portfolioItem.shareUrl,
+            externalUrl: portfolioItem.externalUrl,
+            externalKind: portfolioItem.externalKind,
+            documentUrl: portfolioItem.documentUrl,
+            documentName: portfolioItem.documentName,
+            documentStorage: portfolioItem.documentStorage,
+          },
+        }).catch(() => null);
       } catch (err) {
         portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
       }
@@ -581,6 +780,20 @@ export async function publishSubmissionToPortfolio(user, submissionId, payload =
         communityId: null,
       });
       portfolioItem.postId = createdPost.id;
+      await annotatePortfolioPost({
+        postId: createdPost.id,
+        metadata: {
+          portfolioId: portfolioItem.activityId,
+          title: portfolioItem.title,
+          summary: portfolioItem.summary,
+          shareUrl: portfolioItem.shareUrl,
+          externalUrl: portfolioItem.externalUrl,
+          externalKind: portfolioItem.externalKind,
+          documentUrl: portfolioItem.documentUrl,
+          documentName: portfolioItem.documentName,
+          documentStorage: portfolioItem.documentStorage,
+        },
+      }).catch(() => null);
     } catch {
       portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
     }
@@ -608,12 +821,13 @@ export async function getPublicPortfolioItem(username, activityId) {
   const store = await readStore();
   const userState = store.users?.[username];
   const item = userState?.portfolio?.find(entry => entry.activityId === activityId);
-  if (!item) return null;
-  return {
-    ...item,
-    authorUsername: username,
-    institution: (store.institutions || []).find(entry => entry.id === userState.institutionId) || null,
-  };
+  const institution = (store.institutions || []).find(entry => entry.id === userState?.institutionId) || null;
+  if (item) {
+    return { ...item, authorUsername: username, institution };
+  }
+  const socialItems = await listSocialPortfolioItems(username);
+  const socialItem = socialItems.find(entry => entry.activityId === activityId);
+  return socialItem ? { ...socialItem, authorUsername: username, institution } : null;
 }
 
 export async function listPublicPortfolioItems(username) {
@@ -655,7 +869,10 @@ export async function getAvaPowerBiSnapshot() {
   const averageProgress = users.length
     ? Math.round(users.reduce((sum, user) => {
       const linkedCourses = courses.filter(course => !user.institutionId || course.institutionId === user.institutionId);
-      const built = linkedCourses.map(course => buildCourse(course, user));
+      const viewer = { username: user.username, displayName: user.username, role: 'aluno' };
+      const built = linkedCourses
+        .filter(course => enrollmentFor(viewer, course))
+        .map(course => buildCourse(course, user, viewer));
       const progress = built.length ? built.reduce((acc, course) => acc + course.progress, 0) / built.length : 0;
       return sum + progress;
     }, 0) / users.length)
@@ -764,8 +981,9 @@ function inferProjectMetadata({ course = {}, activity = {}, submission = {}, pay
 
 export async function createForumPost(user, courseId, content) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canReadCourse(user, userState, course)) return null;
 
   course.forum.unshift({
     id: `forum-${courseId}-${Date.now()}`,
@@ -782,7 +1000,9 @@ export async function createForumPost(user, courseId, content) {
 
 export async function createForumComment(user, courseId, postId, content) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
+  if (!course || !canReadCourse(user, userState, course)) return null;
   const post = course?.forum.find(item => item.id === postId);
   if (!post) return null;
 
@@ -800,8 +1020,9 @@ export async function createForumComment(user, courseId, postId, content) {
 
 export async function createTeacherMaterial(user, courseId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canTeachCourse(user, userState, course)) return null;
 
   course.materials.push({
     id: `mat-${courseId}-${Date.now()}`,
@@ -809,6 +1030,9 @@ export async function createTeacherMaterial(user, courseId, payload) {
     type: payload.type || 'pdf',
     duration: payload.duration || '10 min',
     required: payload.required !== false,
+    url: payload.url || '',
+    documentName: payload.documentName || '',
+    storage: payload.storage || '',
     createdBy: displayNameOf(user),
   });
 
@@ -816,10 +1040,46 @@ export async function createTeacherMaterial(user, courseId, payload) {
   return getAvaState(user);
 }
 
+export async function enrollStudentInCourse(user, courseId, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const course = findCourse(store, courseId);
+  if (!course || !canManageAnyAcademicCourse(user) || !sameInstitution(userState, course)) return null;
+
+  const username = String(payload.username || '').trim();
+  const current = course.students.find(student => normalizedIdentity(student.username) === normalizedIdentity(username));
+  const enrollment = {
+    id: current?.id || username,
+    username,
+    name: payload.name,
+    registration: payload.registration,
+    progress: current?.progress ?? 0,
+    attendance: current?.attendance ?? 100,
+    average: current?.average ?? 0,
+    risk: current?.risk || 'Regular',
+  };
+  if (current) Object.assign(current, enrollment);
+  else course.students.push(enrollment);
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function assignTeacherToCourse(user, courseId, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const course = findCourse(store, courseId);
+  if (!course || !canManageAnyAcademicCourse(user) || !sameInstitution(userState, course)) return null;
+  course.professorUsername = payload.username;
+  course.professor = payload.name;
+  await writeStore(store);
+  return getAvaState(user);
+}
+
 export async function createTeacherActivity(user, courseId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
   const course = findCourse(store, courseId);
-  if (!course) return null;
+  if (!course || !canTeachCourse(user, userState, course)) return null;
 
   course.activities.push({
     id: `act-${courseId}-${Date.now()}`,
@@ -835,12 +1095,83 @@ export async function createTeacherActivity(user, courseId, payload) {
   return getAvaState(user);
 }
 
-export async function listTeacherSubmissions() {
+export async function updateTeacherActivity(user, activityId, payload) {
   const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const { course, activity } = findActivity(store, activityId);
+  if (!activity || !canTeachCourse(user, userState, course)) return null;
+  Object.assign(activity, {
+    title: payload.title,
+    due: payload.due,
+    points: Number(payload.points || 10),
+    xp: Number(payload.xp || 120),
+    description: payload.description || 'Atividade atualizada pelo professor.',
+    updatedBy: displayNameOf(user),
+    updatedAt: new Date().toISOString(),
+  });
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function deleteTeacherActivity(user, activityId) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const { course, activity } = findActivity(store, activityId);
+  if (!activity) return { state: null, conflict: false };
+  if (!canTeachCourse(user, userState, course)) return { state: null, conflict: false };
+  const hasSubmission = Object.values(store.users)
+    .some(userState => (userState.submissions || []).some(item => item.activityId === activityId));
+  if (hasSubmission) return { state: null, conflict: true };
+  course.activities = course.activities.filter(item => item.id !== activityId);
+  await writeStore(store);
+  return { state: await getAvaState(user), conflict: false };
+}
+
+export async function saveAttendance(user, courseId, payload) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const course = findCourse(store, courseId);
+  if (!course || !canTeachCourse(user, userState, course)) return null;
+  const studentIds = new Set(course.students.map(student => student.id));
+  if (payload.entries.some(entry => !studentIds.has(entry.studentId))) return null;
+  const date = payload.date || new Date().toISOString().slice(0, 10);
+  const current = course.attendanceSessions.find(session => session.date === date);
+  const session = current || {
+    id: `freq-${courseId}-${Date.now()}`,
+    date,
+    topic: payload.topic || 'Aula regular',
+    entries: {},
+  };
+  session.topic = payload.topic || session.topic;
+  for (const entry of payload.entries) {
+    session.entries[entry.studentId] = {
+      status: entry.status,
+      justification: entry.justification || '',
+    };
+  }
+  if (!current) course.attendanceSessions.unshift(session);
+  course.students = course.students.map(student => {
+    const sessions = course.attendanceSessions.filter(item => item.entries?.[student.id]);
+    const attended = sessions.filter(item => ['present', 'justified'].includes(item.entries[student.id].status)).length;
+    return { ...student, attendance: sessions.length ? Math.round((attended / sessions.length) * 100) : student.attendance };
+  });
+  course.attendance = course.students.length
+    ? Math.round(course.students.reduce((sum, student) => sum + student.attendance, 0) / course.students.length)
+    : course.attendance;
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function listTeacherSubmissions(user) {
+  const store = await readStore();
+  const userState = ensureUserState(store, user);
+  const allowedCourseIds = new Set(store.courses
+    .filter(course => canTeachCourse(user, userState, course))
+    .map(course => course.id));
   const submissions = [];
   for (const [username, userState] of Object.entries(store.users)) {
     for (const submission of userState.submissions || []) {
-      submissions.push({ ...submission, username });
+      if (allowedCourseIds.has(submission.courseId)) submissions.push({ ...submission, username });
     }
   }
   return submissions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -848,11 +1179,13 @@ export async function listTeacherSubmissions() {
 
 export async function gradeSubmission(user, submissionId, payload) {
   const store = await readStore();
+  const graderState = ensureUserState(store, user);
   let found = false;
 
   for (const userState of Object.values(store.users)) {
     const submission = userState.submissions.find(item => item.id === submissionId);
-    if (submission) {
+    const course = submission ? findCourse(store, submission.courseId) : null;
+    if (submission && course && canTeachCourse(user, graderState, course)) {
       submission.status = 'graded';
       submission.score = Number(payload.score);
       submission.feedback = payload.feedback || 'Feedback publicado pelo professor.';
@@ -871,5 +1204,5 @@ export async function gradeSubmission(user, submissionId, payload) {
 
   if (!found) return null;
   await writeStore(store);
-  return listTeacherSubmissions();
+  return listTeacherSubmissions(user);
 }

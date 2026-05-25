@@ -3,6 +3,10 @@
 -- Rode no SQL Editor do Supabase. O backend ainda pode continuar usando TypeDB/JSON
 -- enquanto estas tabelas passam a receber os novos dados.
 
+-- ATENCAO: SCRIPT LEGADO. NAO EXECUTAR na arquitetura atual.
+-- Este arquivo cria tabelas no Supabase. O projeto usa TypeDB para escrita.
+-- Para configurar somente arquivos, execute 002_ava_storage_only.sql.
+
 create extension if not exists pgcrypto;
 
 create table if not exists public.academic_portfolios (

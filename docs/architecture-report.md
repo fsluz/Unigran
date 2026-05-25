@@ -52,7 +52,7 @@ Nova camada compatível:
 
 ## Banco
 
-O projeto usa TypeDB, não Prisma. Como a migração para Prisma quebraria o modelo atual, a recomendação é manter TypeDB no curto prazo e introduzir migrações TypeQL versionadas. Foi criada a primeira migração segura em `backend/migrations/typedb/001_university_platform_schema.tql`.
+O projeto usa TypeDB, não Prisma. Como a migração para Prisma quebraria o modelo atual, a recomendação é manter TypeDB no curto prazo e introduzir migrações TypeQL versionadas. As extensões preparadas estão em `backend/migrations/typedb/001_portfolio_schema_extension.tql`, `002_university_roles_extension.tql` e `003_academic_platform_schema.tql`.
 
 ## Gargalos encontrados
 
@@ -74,16 +74,17 @@ O projeto usa TypeDB, não Prisma. Como a migração para Prisma quebraria o mod
 - Criada tela frontend `CampusPage` como AVA funcional e hub acadêmico.
 - Adicionado serviço frontend `platform.js`.
 - Adicionada navegação protegida por permissão.
-- O AVA novo usa persistência local em `backend/data/ava-store.json` para validação sem alterar TypeDB.
+- O AVA usa repositories TypeDB para disciplinas, matriculas, atividades, entregas, frequencia, forum, curriculo e vitrine publica; `backend/data/ava-store.json` ficou apenas como dado legado sem rota ativa.
+- O acesso a disciplinas agora exige matrícula do aluno ou designação docente; coordenação pode registrar esses vínculos no Portal.
 
-## Pendencias para migrar o AVA local para TypeDB
+## Ativacao do AVA no TypeDB
 
-Nada disso foi aplicado nesta etapa. Quando for validar no TypeDB, sera preciso criar schema para disciplinas, materiais, atividades, entregas, progresso, fórum, comentários, XP e notificações academicas.
+A migração de schema e os repositories TypeDB foram preparados. Execute `npm run db:migrate:typedb` e `npm run db:seed:academic` no `backend` com credenciais validas; a tentativa em 25 de maio de 2026 retornou erro de autenticacao do TypeDB antes de modificar o schema.
 
 ## Roadmap sem quebrar o sistema
 
 1. Fundacao: manter rotas atuais, adicionar `/api/platform/v1`, RBAC compatível e documentação.
-2. Dados reais: aplicar migrações TypeDB em staging, criar repositories por módulo e substituir mocks gradualmente.
+2. Dados reais: aplicar as migrations TypeDB, semear as ofertas iniciais e cadastrar matriculas/designacoes no portal.
 3. Frontend modular: migrar uma página por vez para `frontend/src/modules`, com lazy loading e guards.
 4. Acadêmico: disciplinas, atividades, entregas, notas, presença e feedback docente.
 5. Comunicação: consolidar chat, notificações, fóruns, grupos e eventos.

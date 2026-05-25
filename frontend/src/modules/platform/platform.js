@@ -117,6 +117,50 @@ export async function createTeacherActivity(token, courseId, payload) {
   return readJson(res, 'Erro ao criar atividade');
 }
 
+export async function enrollAcademicStudent(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/coordination/courses/${courseId}/enrollments`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao matricular aluno');
+}
+
+export async function assignAcademicTeacher(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/coordination/courses/${courseId}/teacher`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao designar professor');
+}
+
+export async function updateTeacherActivity(token, activityId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/activities/${activityId}`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao editar atividade');
+}
+
+export async function deleteTeacherActivity(token, activityId) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/activities/${activityId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao excluir atividade');
+}
+
+export async function saveTeacherAttendance(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/courses/${courseId}/attendance`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao registrar frequencia');
+}
+
 export async function fetchTeacherSubmissions(token) {
   const res = await apiFetch('/platform/v1/ava/teacher/submissions', {
     headers: authHeaders(token),

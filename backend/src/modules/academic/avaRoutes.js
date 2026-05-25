@@ -6,13 +6,18 @@ import {
   createForumPost,
   createTeacherActivity,
   createTeacherMaterial,
+  enrollStudentInCourse,
+  assignTeacherToCourse,
+  deleteTeacherActivity,
   gradeSubmission,
   getAvaState,
   listTeacherSubmissions,
   publishSubmissionToPortfolio,
+  saveAttendance,
   setMaterialCompletion,
   submitActivity,
-} from './avaStore.js';
+  updateTeacherActivity,
+} from './typedbAvaStore.js';
 
 const router = Router();
 
@@ -38,6 +43,9 @@ const MaterialSchema = z.object({
   type: z.enum(['video', 'pdf', 'link', 'template']).optional(),
   duration: z.string().trim().max(40).optional(),
   required: z.boolean().optional(),
+  url: z.string().trim().url().optional().or(z.literal('')),
+  documentName: z.string().trim().max(180).optional().or(z.literal('')),
+  storage: z.enum(['supabase', 'external']).optional().or(z.literal('')),
 });
 
 const ActivitySchema = z.object({
@@ -48,9 +56,30 @@ const ActivitySchema = z.object({
   xp: z.number().min(1).max(2000).optional(),
 });
 
+const EnrollmentSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  name: z.string().trim().min(2).max(120),
+  registration: z.string().trim().min(3).max(40),
+});
+
+const TeacherAssignmentSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  name: z.string().trim().min(2).max(120),
+});
+
 const GradeSchema = z.object({
   score: z.number().min(0).max(10),
   feedback: z.string().trim().min(2).max(4000),
+});
+
+const AttendanceSchema = z.object({
+  date: z.string().date(),
+  topic: z.string().trim().min(2).max(160),
+  entries: z.array(z.object({
+    studentId: z.string().trim().min(1).max(80),
+    status: z.enum(['present', 'absent', 'justified']),
+    justification: z.string().trim().max(240).optional().or(z.literal('')),
+  })).min(1),
 });
 
 const PortfolioPublishSchema = z.object({
@@ -134,9 +163,9 @@ router.post('/courses/:courseId/forum/:postId/comments', async (req, res) => {
   }
 });
 
-router.get('/teacher/submissions', requirePermission('academic.teacher.manage'), async (_req, res) => {
+router.get('/teacher/submissions', requirePermission('academic.teacher.manage'), async (req, res) => {
   try {
-    res.json({ submissions: await listTeacherSubmissions() });
+    res.json({ submissions: await listTeacherSubmissions(req.user) });
   } catch (err) {
     console.error('[ava teacher submissions]', err);
     res.status(500).json({ error: 'Erro ao listar entregas' });
@@ -157,6 +186,32 @@ router.post('/teacher/courses/:courseId/materials', requirePermission('academic.
   }
 });
 
+router.post('/coordination/courses/:courseId/enrollments', requirePermission('academic.coordination.read'), async (req, res) => {
+  const parsed = EnrollmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await enrollStudentInCourse(req.user, req.params.courseId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Disciplina nao encontrada ou fora do escopo' });
+    res.status(201).json(state);
+  } catch (err) {
+    console.error('[ava coordination enrollment]', err);
+    res.status(500).json({ error: 'Erro ao matricular aluno' });
+  }
+});
+
+router.put('/coordination/courses/:courseId/teacher', requirePermission('academic.coordination.read'), async (req, res) => {
+  const parsed = TeacherAssignmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await assignTeacherToCourse(req.user, req.params.courseId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Disciplina nao encontrada ou fora do escopo' });
+    res.json(state);
+  } catch (err) {
+    console.error('[ava coordination teacher]', err);
+    res.status(500).json({ error: 'Erro ao designar professor' });
+  }
+});
+
 router.post('/teacher/courses/:courseId/activities', requirePermission('academic.teacher.manage'), async (req, res) => {
   const parsed = ActivitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -168,6 +223,44 @@ router.post('/teacher/courses/:courseId/activities', requirePermission('academic
   } catch (err) {
     console.error('[ava teacher activity]', err);
     res.status(500).json({ error: 'Erro ao criar atividade' });
+  }
+});
+
+router.put('/teacher/activities/:activityId', requirePermission('academic.teacher.manage'), async (req, res) => {
+  const parsed = ActivitySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await updateTeacherActivity(req.user, req.params.activityId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Atividade nao encontrada' });
+    res.json(state);
+  } catch (err) {
+    console.error('[ava teacher update activity]', err);
+    res.status(500).json({ error: 'Erro ao editar atividade' });
+  }
+});
+
+router.delete('/teacher/activities/:activityId', requirePermission('academic.teacher.manage'), async (req, res) => {
+  try {
+    const result = await deleteTeacherActivity(req.user, req.params.activityId);
+    if (result.conflict) return res.status(409).json({ error: 'Atividade com entregas nao pode ser excluida' });
+    if (!result.state) return res.status(404).json({ error: 'Atividade nao encontrada' });
+    res.json(result.state);
+  } catch (err) {
+    console.error('[ava teacher delete activity]', err);
+    res.status(500).json({ error: 'Erro ao excluir atividade' });
+  }
+});
+
+router.put('/teacher/courses/:courseId/attendance', requirePermission('academic.teacher.manage'), async (req, res) => {
+  const parsed = AttendanceSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await saveAttendance(req.user, req.params.courseId, parsed.data);
+    if (!state) return res.status(404).json({ error: 'Turma nao encontrada' });
+    res.json(state);
+  } catch (err) {
+    console.error('[ava teacher attendance]', err);
+    res.status(500).json({ error: 'Erro ao registrar frequencia' });
   }
 });
 

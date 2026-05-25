@@ -94,6 +94,49 @@ function projectKind(item = {}) {
   return 'Academico';
 }
 
+function richInline(text = '') {
+  return String(text).split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, index) => {
+    const bold = part.match(/^\*\*([^*]+)\*\*$/);
+    if (bold) return <strong key={index}>{bold[1]}</strong>;
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+    if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function ProjectSummary({ text }) {
+  const lines = String(text || '').split(/\r?\n/);
+  const blocks = [];
+  let paragraph = [];
+  let bullets = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push(<p key={`p-${blocks.length}`}>{paragraph.map((line, index) => <span key={index}>{richInline(line)}{index < paragraph.length - 1 && <br />}</span>)}</p>);
+    paragraph = [];
+  };
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    blocks.push(<ul key={`ul-${blocks.length}`}>{bullets.map((line, index) => <li key={index}>{richInline(line)}</li>)}</ul>);
+    bullets = [];
+  };
+  for (const line of lines) {
+    if (!line.trim()) { flushParagraph(); flushBullets(); continue; }
+    if (/^#{1,3}\s+/.test(line)) {
+      flushParagraph(); flushBullets();
+      blocks.push(<h4 key={`h-${blocks.length}`}>{richInline(line.replace(/^#{1,3}\s+/, ''))}</h4>);
+    } else if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      bullets.push(line.replace(/^[-*]\s+/, ''));
+    } else {
+      flushBullets();
+      paragraph.push(line);
+    }
+  }
+  flushParagraph();
+  flushBullets();
+  return <div className="portfolio-rich-summary">{blocks}</div>;
+}
+
 function Metric({ icon: Icon, label, value, hint }) {
   return (
     <motion.div className="portfolio-metric" whileHover={{ y: -4 }}>
@@ -311,7 +354,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
                 <div className="portfolio-project-body">
                   <small>{project.courseName || 'Portfolio academico'}</small>
                   <h3>{project.title || project.activityTitle}</h3>
-                  <p>{project.summary || 'Entrega academica publicada como evidencia profissional.'}</p>
+                  <ProjectSummary text={project.summary || 'Entrega academica publicada como evidencia profissional.'} />
                   <div className="portfolio-case-facts">
                     <span><b>Problema</b>{project.activityTitle || 'Desafio academico'}</span>
                     <span><b>Complexidade</b>{project.summary?.length > 160 ? 'Alta' : 'Media'}</span>
