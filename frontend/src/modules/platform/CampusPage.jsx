@@ -13,11 +13,14 @@ import {
   FileText,
   GraduationCap,
   MessageSquare,
+  Pencil,
   Search,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Trophy,
   UploadCloud,
+  Users,
   Zap,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
@@ -30,11 +33,14 @@ import {
   createForumPost,
   createTeacherActivity,
   createTeacherMaterial,
+  deleteTeacherActivity,
   fetchAva,
   fetchTeacherSubmissions,
   gradeTeacherSubmission,
   publishSubmissionToPortfolio,
+  saveTeacherAttendance,
   submitAvaActivity,
+  updateTeacherActivity,
   uploadAvaDocument,
 } from './platform';
 import { hasPermission, normalizeRole } from '../shared/permissions';
@@ -80,14 +86,8 @@ function publicPortfolioLink(path = '') {
 }
 
 const ROLE_MODULES = [
-  { id: 'super', title: 'Super Admin', permission: 'rbac.manage', icon: ShieldCheck, metric: 'Global', items: ['Permissoes globais', 'Logs e auditoria', 'Backups', 'Integracoes'] },
-  { id: 'management', title: 'Gestao institucional', permission: 'institution.manage', icon: Activity, metric: '91%', items: ['Dashboard executivo', 'Retencao e evasao', 'Campi', 'Indicadores'] },
-  { id: 'coordination', title: 'Coordenacao', permission: 'academic.coordination.read', icon: GraduationCap, metric: '31', items: ['Cursos', 'Turmas', 'Professores', 'Alunos em risco'] },
   { id: 'teacher', title: 'Professor', permission: 'academic.teacher.manage', icon: BookOpen, metric: '23', items: ['Atividades', 'Notas', 'Presenca', 'Correcao'] },
   { id: 'student', title: 'Aluno', permission: 'academic.student.read', icon: Trophy, metric: '82%', items: ['Notas', 'Faltas', 'Entregas', 'Portfolio'] },
-  { id: 'admin', title: 'Administrativo', permission: 'secretary.manage', icon: FileText, metric: 'SLA', items: ['Financeiro', 'Matriculas', 'Protocolos', 'Assinaturas'] },
-  { id: 'library', title: 'Biblioteca digital', permission: 'library.manage', icon: BookOpen, metric: 'IA', items: ['Acervo', 'TCCs', 'Artigos', 'Busca inteligente'] },
-  { id: 'social', title: 'Rede social academica', permission: 'platform.read', icon: MessageSquare, metric: 'Live', items: ['Feed', 'Comunidades', 'Eventos', 'Networking'] },
 ];
 
 function ModuleOverview({ user }) {
@@ -114,7 +114,7 @@ export default function CampusPage({ onBackToPortal }) {
   const { showToast } = useToast();
   const [ava, setAva] = useState(null);
   const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [tab, setTab] = useState('materials');
+  const [tab, setTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [avaSearch, setAvaSearch] = useState('');
@@ -124,7 +124,8 @@ export default function CampusPage({ onBackToPortal }) {
   const [commentDrafts, setCommentDrafts] = useState({});
   const [prompt, setPrompt] = useState('');
   const [rai, setRai] = useState(null);
-  const [teacherMaterial, setTeacherMaterial] = useState({ title: '', type: 'pdf', duration: '15 min', required: true });
+  const [teacherMaterial, setTeacherMaterial] = useState({ title: '', type: 'pdf', duration: '15 min', required: true, url: '', file: null });
+  const [teacherMaterialSaving, setTeacherMaterialSaving] = useState(false);
   const [teacherSubmissions, setTeacherSubmissions] = useState([]);
   const [teacherSubmissionsLoading, setTeacherSubmissionsLoading] = useState(false);
   const [gradeDrafts, setGradeDrafts] = useState({});
@@ -135,6 +136,12 @@ export default function CampusPage({ onBackToPortal }) {
     points: 10,
     xp: 120,
   });
+  const [editingActivityId, setEditingActivityId] = useState('');
+  const [teacherActivitySaving, setTeacherActivitySaving] = useState(false);
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [attendanceTopic, setAttendanceTopic] = useState('Aula regular');
+  const [attendanceDrafts, setAttendanceDrafts] = useState({});
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [portfolioPrompt, setPortfolioPrompt] = useState(null);
   const [portfolioPublishing, setPortfolioPublishing] = useState(false);
 
@@ -274,6 +281,12 @@ export default function CampusPage({ onBackToPortal }) {
       setPortfolioPublishing(false);
     }
   };
+  const appendPortfolioSummary = (snippet) => {
+    setPortfolioPrompt(prev => prev ? ({
+      ...prev,
+      summary: `${prev.summary?.trim() || ''}${prev.summary?.trim() ? '\n\n' : ''}${snippet}`,
+    }) : prev);
+  };
 
   const handleForumPost = async (event) => {
     event.preventDefault();
@@ -315,11 +328,24 @@ export default function CampusPage({ onBackToPortal }) {
     event.preventDefault();
     if (!selectedCourse || !teacherMaterial.title.trim()) return;
     try {
-      const next = await createTeacherMaterial(token, selectedCourse.id, teacherMaterial);
-      setTeacherMaterial({ title: '', type: 'pdf', duration: '15 min', required: true });
+      setTeacherMaterialSaving(true);
+      let document = null;
+      if (teacherMaterial.file) {
+        const uploaded = await uploadAvaDocument(token, teacherMaterial.file);
+        document = uploaded.document;
+      }
+      const next = await createTeacherMaterial(token, selectedCourse.id, {
+        ...teacherMaterial,
+        url: document?.url || teacherMaterial.url || '',
+        documentName: document?.name || '',
+        storage: document?.storage || (teacherMaterial.url ? 'external' : ''),
+      });
+      setTeacherMaterial({ title: '', type: 'pdf', duration: '15 min', required: true, url: '', file: null });
       replaceAva(next, 'Material publicado');
     } catch (err) {
       showToast(err.message || 'Erro ao criar material', '!');
+    } finally {
+      setTeacherMaterialSaving(false);
     }
   };
 
@@ -327,16 +353,67 @@ export default function CampusPage({ onBackToPortal }) {
     event.preventDefault();
     if (!selectedCourse || !teacherActivity.title.trim() || !teacherActivity.due) return;
     try {
-      const next = await createTeacherActivity(token, selectedCourse.id, {
+      setTeacherActivitySaving(true);
+      const payload = {
         ...teacherActivity,
         due: new Date(teacherActivity.due).toISOString(),
         points: Number(teacherActivity.points),
         xp: Number(teacherActivity.xp),
-      });
+      };
+      const next = editingActivityId
+        ? await updateTeacherActivity(token, editingActivityId, payload)
+        : await createTeacherActivity(token, selectedCourse.id, payload);
       setTeacherActivity({ title: '', description: '', due: '', points: 10, xp: 120 });
-      replaceAva(next, 'Atividade criada');
+      setEditingActivityId('');
+      replaceAva(next, editingActivityId ? 'Atividade atualizada' : 'Atividade criada');
     } catch (err) {
       showToast(err.message || 'Erro ao criar atividade', '!');
+    } finally {
+      setTeacherActivitySaving(false);
+    }
+  };
+
+  const startEditActivity = (activity) => {
+    setTeacherActivity({
+      title: activity.title,
+      description: activity.description || '',
+      due: new Date(activity.due).toISOString().slice(0, 16),
+      points: activity.points,
+      xp: activity.xp,
+    });
+    setEditingActivityId(activity.id);
+    setTab('teacher');
+  };
+
+  const handleDeleteActivity = async (activity) => {
+    if (!window.confirm(`Excluir atividade "${activity.title}"? Esta acao nao pode ser desfeita.`)) return;
+    try {
+      const next = await deleteTeacherActivity(token, activity.id);
+      replaceAva(next, 'Atividade excluida');
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir atividade', '!');
+    }
+  };
+
+  const handleAttendance = async (event) => {
+    event.preventDefault();
+    if (!selectedCourse?.students?.length) return;
+    try {
+      setAttendanceSaving(true);
+      const next = await saveTeacherAttendance(token, selectedCourse.id, {
+        date: attendanceDate,
+        topic: attendanceTopic.trim() || 'Aula regular',
+        entries: selectedCourse.students.map(student => ({
+          studentId: student.id,
+          status: attendanceDrafts[student.id]?.status || 'present',
+          justification: attendanceDrafts[student.id]?.justification || '',
+        })),
+      });
+      replaceAva(next, 'Frequencia registrada');
+    } catch (err) {
+      showToast(err.message || 'Erro ao registrar frequencia', '!');
+    } finally {
+      setAttendanceSaving(false);
     }
   };
 
@@ -367,11 +444,15 @@ export default function CampusPage({ onBackToPortal }) {
   };
 
   const summary = ava?.summary || {};
+  const studentDashboard = ava?.studentDashboard || {};
+  const teacherDashboard = ava?.teacherDashboard || {};
   const institution = ava?.institution;
   const institutionBlocked = institution && institution.avaEnabled === false;
   const tabIcons = {
+    overview: Activity,
     materials: BookOpen,
     activities: FileText,
+    attendance: Users,
     forum: MessageSquare,
     teacher: GraduationCap,
     corrections: CheckCircle2,
@@ -448,7 +529,7 @@ export default function CampusPage({ onBackToPortal }) {
               <motion.button
                 key={course.id}
                 className={`ava-course-button ${selectedCourse?.id === course.id ? 'active' : ''}`}
-                onClick={() => { setSelectedCourseId(course.id); setTab('materials'); }}
+                onClick={() => { setSelectedCourseId(course.id); setTab('overview'); }}
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: .98 }}
               >
@@ -494,8 +575,10 @@ export default function CampusPage({ onBackToPortal }) {
 
                 <div className="ava-tabs">
                   {[
+                    ['overview', 'Visao geral'],
                     ['materials', 'Materiais'],
                     ['activities', 'Atividades'],
+                    ['attendance', 'Frequencia'],
                     ['forum', 'Forum'],
                     ['teacher', 'Docente'],
                     ['corrections', 'Correcoes'],
@@ -509,6 +592,67 @@ export default function CampusPage({ onBackToPortal }) {
                 </div>
 
                 <AnimatePresence mode="wait">
+                {tab === 'overview' && (
+                  <motion.div className="ava-dashboard-grid" key="overview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                    {canTeach ? (
+                      <>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Dashboard docente</span><h3>Resumo das turmas</h3></div>
+                          <div className="ava-mini-metrics">
+                            <MetricCard label="Turmas" value={teacherDashboard.totalClasses ?? 0} hint="semestre atual" />
+                            <MetricCard label="Alunos" value={teacherDashboard.totalStudents ?? 0} hint="matriculados" />
+                            <MetricCard label="Correcoes" value={teacherDashboard.pendingCorrections ?? 0} hint="aguardando" />
+                          </div>
+                        </section>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Turma selecionada</span><h3>Alunos e progresso</h3></div>
+                          <div className="ava-roster">
+                            {(selectedCourse.students || []).map(student => (
+                              <div key={student.id}>
+                                <span><strong>{student.name}</strong><small>{student.registration} - media {student.average}</small></span>
+                                <em className={student.risk.toLowerCase()}>{student.risk}</em>
+                                <b>{student.progress}%</b>
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Agenda e avisos</span><h3>Proximos eventos</h3></div>
+                          {(teacherDashboard.calendar || []).slice(0, 3).map(item => (
+                            <div key={item.id} className="ava-calendar-row"><CalendarClock size={15} /><span>{item.courseName}<small>{item.title} - {formatDate(item.due)}</small></span></div>
+                          ))}
+                          {(selectedCourse.announcements || []).map(text => <div key={text} className="ava-notice">{text}</div>)}
+                        </section>
+                      </>
+                    ) : (
+                      <>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Dashboard do aluno</span><h3>Desempenho atual</h3></div>
+                          <div className="ava-mini-metrics">
+                            <MetricCard label="Media geral" value={studentDashboard.average || '0.0'} hint="notas atuais" />
+                            <MetricCard label="Frequencia" value={`${studentDashboard.attendanceAverage || 0}%`} hint="media total" />
+                            <MetricCard label="Disciplinas" value={courses.length} hint="em curso" />
+                          </div>
+                        </section>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Boletim</span><h3>Notas e progresso</h3></div>
+                          <div className="ava-gradebook">
+                            {(studentDashboard.grades || []).map(item => (
+                              <div key={item.courseId}><span>{item.courseName}<small>Freq. {item.attendance}% - progresso {item.progress}%</small></span><strong>{item.grade}</strong></div>
+                            ))}
+                          </div>
+                        </section>
+                        <section className="ava-dashboard-panel">
+                          <div className="ava-panel-title"><span>Calendario</span><h3>Proximas atividades</h3></div>
+                          {(studentDashboard.calendar || []).map(item => (
+                            <div key={item.id} className="ava-calendar-row"><CalendarClock size={15} /><span>{item.courseName}<small>{item.title} - {formatDate(item.due)}</small></span></div>
+                          ))}
+                        </section>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+
                 {tab === 'materials' && (
                   <motion.div className="ava-card-grid" key="materials" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                     {!visibleMaterials.length && <EmptyState text="Nenhum material encontrado para essa busca." />}
@@ -518,6 +662,7 @@ export default function CampusPage({ onBackToPortal }) {
                           <span>{material.type} - {material.duration}</span>
                           <h3>{material.title}</h3>
                           <p>{material.required ? 'Material obrigatorio' : 'Complementar'}</p>
+                          {material.url && <a className="ava-document-link" href={material.url} target="_blank" rel="noreferrer">Abrir material</a>}
                         </div>
                         <button className="btn btn-secondary" onClick={() => handleMaterial(material)}>
                           {material.completed ? <><CheckCircle2 size={15} /> Reabrir</> : <><BookOpen size={15} /> Concluir</>}
@@ -537,9 +682,13 @@ export default function CampusPage({ onBackToPortal }) {
                           <div className="ava-item-head">
                             <div>
                               <span>{formatDate(activity.due)} - {activity.points} pts - {activity.xp} XP</span>
-                              <h3>{activity.title}</h3>
+                             <h3>{activity.title}</h3>
                             </div>
-                            <small>{statusLabel(activity.status)}</small>
+                            <div className="ava-head-actions">
+                              <small>{statusLabel(activity.status)}</small>
+                              {canTeach && <button onClick={() => startEditActivity(activity)} title="Editar"><Pencil size={14} /></button>}
+                              {canTeach && <button onClick={() => handleDeleteActivity(activity)} title="Excluir"><Trash2 size={14} /></button>}
+                            </div>
                           </div>
                           <p>{activity.description}</p>
                           {activity.submission && (
@@ -645,6 +794,47 @@ export default function CampusPage({ onBackToPortal }) {
                   </motion.div>
                 )}
 
+                {tab === 'attendance' && (
+                  <motion.div className="ava-attendance" key="attendance" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+                    {canTeach ? (
+                      <form className="ava-teacher-box" onSubmit={handleAttendance}>
+                        <div className="ava-panel-title"><span>Controle de presenca</span><h3>Chamada da turma</h3></div>
+                        <div className="ava-inline-fields">
+                          <input type="date" value={attendanceDate} onChange={event => setAttendanceDate(event.target.value)} />
+                          <input value={attendanceTopic} onChange={event => setAttendanceTopic(event.target.value)} placeholder="Conteudo da aula" />
+                        </div>
+                        <div className="ava-attendance-list">
+                          {(selectedCourse.students || []).map(student => {
+                            const draft = attendanceDrafts[student.id] || { status: 'present', justification: '' };
+                            return (
+                              <div key={student.id}>
+                                <strong>{student.name}</strong>
+                                <select value={draft.status} onChange={event => setAttendanceDrafts(prev => ({ ...prev, [student.id]: { ...draft, status: event.target.value } }))}>
+                                  <option value="present">Presente</option>
+                                  <option value="absent">Falta</option>
+                                  <option value="justified">Justificada</option>
+                                </select>
+                                <input value={draft.justification} onChange={event => setAttendanceDrafts(prev => ({ ...prev, [student.id]: { ...draft, justification: event.target.value } }))} placeholder="Justificativa (opcional)" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button className="btn btn-primary" disabled={attendanceSaving}>{attendanceSaving ? 'Salvando...' : 'Salvar frequencia'}</button>
+                      </form>
+                    ) : (
+                      <section className="ava-dashboard-panel">
+                        <div className="ava-panel-title"><span>Frequencia</span><h3>{selectedCourse.attendance}% de presenca</h3></div>
+                        <div className="ava-attendance-history">
+                          {(selectedCourse.attendanceRecords || []).map(record => (
+                            <div key={record.id}><span>{record.topic}<small>{record.date}</small></span><strong className={record.status}>{record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificada' : 'Falta'}</strong>{record.justification && <small>{record.justification}</small>}</div>
+                          ))}
+                          {!selectedCourse.attendanceRecords?.length && <EmptyState text="Nenhum registro de frequencia ainda." />}
+                        </div>
+                      </section>
+                    )}
+                  </motion.div>
+                )}
+
                 {tab === 'forum' && (
                   <motion.div className="ava-forum" key="forum" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
                     <form className="ava-forum-composer" onSubmit={handleForumPost}>
@@ -694,15 +884,20 @@ export default function CampusPage({ onBackToPortal }) {
                         </select>
                         <input value={teacherMaterial.duration} onChange={event => setTeacherMaterial(prev => ({ ...prev, duration: event.target.value }))} placeholder="Duracao" />
                       </div>
+                      <input value={teacherMaterial.url} onChange={event => setTeacherMaterial(prev => ({ ...prev, url: event.target.value }))} placeholder="Link do video ou documento (opcional)" />
+                      <label className="ava-file-picker">
+                        <span>{teacherMaterial.file ? teacherMaterial.file.name : 'Anexar PDF ou documento'}</span>
+                        <input type="file" onChange={event => setTeacherMaterial(prev => ({ ...prev, file: event.target.files?.[0] || null }))} />
+                      </label>
                       <label className="ava-check">
                         <input type="checkbox" checked={teacherMaterial.required} onChange={event => setTeacherMaterial(prev => ({ ...prev, required: event.target.checked }))} />
                         Obrigatorio
                       </label>
-                      <button className="btn btn-primary">Publicar</button>
+                      <button className="btn btn-primary" disabled={teacherMaterialSaving}>{teacherMaterialSaving ? 'Publicando...' : 'Publicar'}</button>
                     </form>
 
                     <form className="ava-teacher-box" onSubmit={handleCreateActivity}>
-                      <h3>Criar atividade</h3>
+                      <h3>{editingActivityId ? 'Editar atividade' : 'Criar atividade'}</h3>
                       <input value={teacherActivity.title} onChange={event => setTeacherActivity(prev => ({ ...prev, title: event.target.value }))} placeholder="Titulo da atividade" />
                       <textarea value={teacherActivity.description} onChange={event => setTeacherActivity(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
                       <div className="ava-inline-fields">
@@ -710,7 +905,10 @@ export default function CampusPage({ onBackToPortal }) {
                         <input type="number" min="1" max="100" value={teacherActivity.points} onChange={event => setTeacherActivity(prev => ({ ...prev, points: event.target.value }))} />
                         <input type="number" min="1" max="2000" value={teacherActivity.xp} onChange={event => setTeacherActivity(prev => ({ ...prev, xp: event.target.value }))} />
                       </div>
-                      <button className="btn btn-primary">Criar</button>
+                      <div className="ava-form-actions">
+                        {editingActivityId && <button type="button" className="btn btn-secondary" onClick={() => { setEditingActivityId(''); setTeacherActivity({ title: '', description: '', due: '', points: 10, xp: 120 }); }}>Cancelar</button>}
+                        <button className="btn btn-primary" disabled={teacherActivitySaving}>{teacherActivitySaving ? 'Salvando...' : editingActivityId ? 'Salvar alteracoes' : 'Criar'}</button>
+                      </div>
                     </form>
                   </motion.div>
                 )}
@@ -876,6 +1074,11 @@ export default function CampusPage({ onBackToPortal }) {
                 </label>
                 <label className="ava-modal-field">
                   <span>Resumo profissional</span>
+                  <div className="composer-format-toolbar">
+                    <button type="button" onClick={() => appendPortfolioSummary('## Resultado')}>Secao</button>
+                    <button type="button" onClick={() => appendPortfolioSummary('**Destaque do projeto**')}>Negrito</button>
+                    <button type="button" onClick={() => appendPortfolioSummary('- Tecnologia ou resultado')}>Lista</button>
+                  </div>
                   <textarea value={portfolioPrompt.summary || ''} onChange={event => setPortfolioPrompt(prev => ({ ...prev, summary: event.target.value }))} />
                 </label>
                 <div className="ava-portfolio-modal-actions">

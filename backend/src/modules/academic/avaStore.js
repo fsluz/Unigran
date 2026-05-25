@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createPost, listUserPosts } from '../../repositories/post.repository.js';
+import { annotatePortfolioPost, createPost, listUserPosts } from '../../repositories/post.repository.js';
 import { buildPortfolioMlAnalysis } from '../../services/portfolio-ml.service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -131,6 +131,58 @@ const seedStore = {
   users: {},
 };
 
+const academicDefaults = {
+  'eng-software': {
+    room: 'Laboratorio 04',
+    schedule: 'Segunda e quarta - 19:00',
+    announcements: ['A revisao do projeto integrador acontece nesta quarta-feira.'],
+    students: [
+      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 42, attendance: 68, average: 5.8, risk: 'Alto' },
+      { id: 'carlos-mendes', name: 'Carlos Mendes', registration: '20260118', progress: 64, attendance: 82, average: 6.7, risk: 'Medio' },
+      { id: 'isabela-rocha', name: 'Isabela Rocha', registration: '20260126', progress: 91, attendance: 97, average: 9.1, risk: 'Regular' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-esw-1', date: '2026-05-18', topic: 'Sprint planning', entries: { 'ana-paula': { status: 'absent', justification: '' }, 'carlos-mendes': { status: 'present', justification: '' }, 'isabela-rocha': { status: 'present', justification: '' } } },
+      { id: 'freq-esw-2', date: '2026-05-20', topic: 'Revisao tecnica', entries: { 'ana-paula': { status: 'justified', justification: 'Atestado enviado.' }, 'carlos-mendes': { status: 'present', justification: '' }, 'isabela-rocha': { status: 'present', justification: '' } } },
+    ],
+  },
+  'banco-dados': {
+    room: 'Sala B12',
+    schedule: 'Terca - 19:00',
+    announcements: ['Modelo logico deve incluir chaves e cardinalidades.'],
+    students: [
+      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 71, attendance: 87, average: 7.4, risk: 'Regular' },
+      { id: 'joao-silva', name: 'Joao Silva', registration: '20260141', progress: 56, attendance: 78, average: 6.2, risk: 'Medio' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-bda-1', date: '2026-05-19', topic: 'Normalizacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'joao-silva': { status: 'absent', justification: '' } } },
+    ],
+  },
+  'ia-aplicada': {
+    room: 'AVA ao vivo',
+    schedule: 'Quinta - 20:00',
+    announcements: ['Material complementar publicado para proxima atividade.'],
+    students: [
+      { id: 'ana-paula', name: 'Ana Paula', registration: '20260102', progress: 88, attendance: 96, average: 9.1, risk: 'Regular' },
+      { id: 'mateus-lima', name: 'Mateus Lima', registration: '20260155', progress: 38, attendance: 72, average: 5.4, risk: 'Alto' },
+    ],
+    attendanceSessions: [
+      { id: 'freq-iap-1', date: '2026-05-21', topic: 'Etica e avaliacao', entries: { 'ana-paula': { status: 'present', justification: '' }, 'mateus-lima': { status: 'absent', justification: '' } } },
+    ],
+  },
+};
+
+function academicDataFor(course) {
+  const fallback = {
+    room: 'Sala virtual',
+    schedule: 'Horario a definir',
+    announcements: [],
+    students: [],
+    attendanceSessions: [],
+  };
+  return academicDefaults[course.id] || fallback;
+}
+
 async function ensureStore() {
   try {
     await fs.access(STORE_PATH);
@@ -145,10 +197,23 @@ async function readStore() {
   const raw = await fs.readFile(STORE_PATH, 'utf8');
   const store = JSON.parse(raw);
   if (!Array.isArray(store.institutions)) store.institutions = seedStore.institutions;
-  store.courses = (store.courses || []).map(course => ({
-    ...course,
-    institutionId: course.institutionId || 'unigran',
-  }));
+  store.courses = (store.courses || []).map(course => {
+    const defaults = academicDataFor(course);
+    return {
+      ...course,
+      institutionId: course.institutionId || 'unigran',
+      room: course.room || defaults.room,
+      schedule: course.schedule || defaults.schedule,
+      announcements: Array.isArray(course.announcements) ? course.announcements : [...defaults.announcements],
+      students: Array.isArray(course.students) ? course.students : defaults.students.map(student => ({ ...student })),
+      attendanceSessions: Array.isArray(course.attendanceSessions)
+        ? course.attendanceSessions
+        : defaults.attendanceSessions.map(session => ({ ...session, entries: { ...session.entries } })),
+      materials: Array.isArray(course.materials) ? course.materials : [],
+      activities: Array.isArray(course.activities) ? course.activities : [],
+      forum: Array.isArray(course.forum) ? course.forum : [],
+    };
+  });
   store.users = store.users || {};
   return store;
 }
@@ -273,13 +338,23 @@ function statusForActivity(activity, submission) {
   return new Date(activity.due).getTime() < Date.now() ? 'late' : 'pending';
 }
 
-function buildCourse(course, userState) {
+function buildCourse(course, userState, user) {
   const submissions = userState.submissions.filter(item => item.courseId === course.id);
   const submittedIds = new Set(submissions.map(item => item.activityId));
   const completed = new Set(userState.completedMaterials);
   const totalTasks = course.materials.length + course.activities.length;
   const doneTasks = course.materials.filter(item => completed.has(item.id)).length
     + course.activities.filter(item => submittedIds.has(item.id)).length;
+
+  const student = course.students.find(item => item.id === usernameOf(user))
+    || course.students.find(item => item.name === displayNameOf(user))
+    || course.students[0];
+  const attendanceRecords = course.attendanceSessions.map(session => ({
+    id: session.id,
+    date: session.date,
+    topic: session.topic,
+    ...(student ? session.entries?.[student.id] : { status: 'present', justification: '' }),
+  }));
 
   return {
     ...course,
@@ -296,6 +371,7 @@ function buildCourse(course, userState) {
         submission,
       };
     }),
+    attendanceRecords,
   };
 }
 
@@ -319,13 +395,59 @@ function buildSummary(courses, userState) {
   };
 }
 
+function buildStudentDashboard(courses) {
+  const grades = courses.map(course => ({
+    courseId: course.id,
+    courseName: course.name,
+    grade: course.grade,
+    attendance: course.attendance,
+    progress: course.progress,
+  }));
+  const average = grades.length
+    ? (grades.reduce((sum, item) => sum + Number(item.grade || 0), 0) / grades.length).toFixed(1)
+    : '0.0';
+  return {
+    grades,
+    average,
+    attendanceAverage: grades.length
+      ? Math.round(grades.reduce((sum, item) => sum + Number(item.attendance || 0), 0) / grades.length)
+      : 0,
+    calendar: courses
+      .flatMap(course => course.activities.map(activity => ({ ...activity, courseName: course.name })))
+      .sort((a, b) => new Date(a.due) - new Date(b.due))
+      .slice(0, 6),
+  };
+}
+
+function buildTeacherDashboard(courses, store) {
+  const submissions = Object.values(store.users)
+    .flatMap(userState => userState.submissions || []);
+  const courseIds = new Set(courses.map(course => course.id));
+  const courseSubmissions = submissions.filter(submission => courseIds.has(submission.courseId));
+  return {
+    totalClasses: courses.length,
+    totalStudents: courses.reduce((sum, course) => sum + course.students.length, 0),
+    pendingCorrections: courseSubmissions.filter(item => item.status !== 'graded').length,
+    pendingActivities: courses.reduce((sum, course) => sum + course.activities.length, 0),
+    atRiskStudents: courses.flatMap(course => course.students
+      .filter(student => student.risk !== 'Regular')
+      .map(student => ({ ...student, courseName: course.name }))),
+    calendar: courses.flatMap(course => course.activities
+      .map(activity => ({ ...activity, courseName: course.name })))
+      .sort((a, b) => new Date(a.due) - new Date(b.due))
+      .slice(0, 6),
+    announcements: courses.flatMap(course => course.announcements
+      .map(text => ({ courseName: course.name, text }))),
+  };
+}
+
 export async function getAvaState(user) {
   const store = await readStore();
   const userState = ensureUserState(store, user);
   const institutionId = userState.institutionId || user?.institutionId || user?.facultyId || null;
   const institution = (store.institutions || []).find(item => item.id === institutionId) || null;
   const linkedCourses = store.courses.filter(course => !institutionId || course.institutionId === institutionId);
-  const courses = linkedCourses.map(course => buildCourse(course, userState));
+  const courses = linkedCourses.map(course => buildCourse(course, userState, user));
   userState.level = Math.max(1, Math.floor(userState.xp / 700) + 1);
   await writeStore(store);
 
@@ -346,6 +468,8 @@ export async function getAvaState(user) {
       role: user?.role || 'aluno',
     },
     summary: buildSummary(courses, userState),
+    studentDashboard: buildStudentDashboard(courses),
+    teacherDashboard: buildTeacherDashboard(courses, store),
     courses,
     notifications: userState.notifications.slice().reverse(),
     portfolio: userState.portfolio.slice().reverse(),
@@ -510,6 +634,20 @@ export async function submitActivity(user, activityId, payload) {
           communityId: null,
         });
         portfolioItem.postId = createdPost.id;
+        await annotatePortfolioPost({
+          postId: createdPost.id,
+          metadata: {
+            portfolioId: portfolioItem.activityId,
+            title: portfolioItem.title,
+            summary: portfolioItem.summary,
+            shareUrl: portfolioItem.shareUrl,
+            externalUrl: portfolioItem.externalUrl,
+            externalKind: portfolioItem.externalKind,
+            documentUrl: portfolioItem.documentUrl,
+            documentName: portfolioItem.documentName,
+            documentStorage: portfolioItem.documentStorage,
+          },
+        }).catch(() => null);
       } catch (err) {
         portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
       }
@@ -581,6 +719,20 @@ export async function publishSubmissionToPortfolio(user, submissionId, payload =
         communityId: null,
       });
       portfolioItem.postId = createdPost.id;
+      await annotatePortfolioPost({
+        postId: createdPost.id,
+        metadata: {
+          portfolioId: portfolioItem.activityId,
+          title: portfolioItem.title,
+          summary: portfolioItem.summary,
+          shareUrl: portfolioItem.shareUrl,
+          externalUrl: portfolioItem.externalUrl,
+          externalKind: portfolioItem.externalKind,
+          documentUrl: portfolioItem.documentUrl,
+          documentName: portfolioItem.documentName,
+          documentStorage: portfolioItem.documentStorage,
+        },
+      }).catch(() => null);
     } catch {
       portfolioItem.postError = 'Post social pendente: TypeDB indisponivel ou schema incompleto.';
     }
@@ -608,12 +760,13 @@ export async function getPublicPortfolioItem(username, activityId) {
   const store = await readStore();
   const userState = store.users?.[username];
   const item = userState?.portfolio?.find(entry => entry.activityId === activityId);
-  if (!item) return null;
-  return {
-    ...item,
-    authorUsername: username,
-    institution: (store.institutions || []).find(entry => entry.id === userState.institutionId) || null,
-  };
+  const institution = (store.institutions || []).find(entry => entry.id === userState?.institutionId) || null;
+  if (item) {
+    return { ...item, authorUsername: username, institution };
+  }
+  const socialItems = await listSocialPortfolioItems(username);
+  const socialItem = socialItems.find(entry => entry.activityId === activityId);
+  return socialItem ? { ...socialItem, authorUsername: username, institution } : null;
 }
 
 export async function listPublicPortfolioItems(username) {
@@ -809,6 +962,9 @@ export async function createTeacherMaterial(user, courseId, payload) {
     type: payload.type || 'pdf',
     duration: payload.duration || '10 min',
     required: payload.required !== false,
+    url: payload.url || '',
+    documentName: payload.documentName || '',
+    storage: payload.storage || '',
     createdBy: displayNameOf(user),
   });
 
@@ -831,6 +987,67 @@ export async function createTeacherActivity(user, courseId, payload) {
     createdBy: displayNameOf(user),
   });
 
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function updateTeacherActivity(user, activityId, payload) {
+  const store = await readStore();
+  const { activity } = findActivity(store, activityId);
+  if (!activity) return null;
+  Object.assign(activity, {
+    title: payload.title,
+    due: payload.due,
+    points: Number(payload.points || 10),
+    xp: Number(payload.xp || 120),
+    description: payload.description || 'Atividade atualizada pelo professor.',
+    updatedBy: displayNameOf(user),
+    updatedAt: new Date().toISOString(),
+  });
+  await writeStore(store);
+  return getAvaState(user);
+}
+
+export async function deleteTeacherActivity(user, activityId) {
+  const store = await readStore();
+  const { course, activity } = findActivity(store, activityId);
+  if (!activity) return { state: null, conflict: false };
+  const hasSubmission = Object.values(store.users)
+    .some(userState => (userState.submissions || []).some(item => item.activityId === activityId));
+  if (hasSubmission) return { state: null, conflict: true };
+  course.activities = course.activities.filter(item => item.id !== activityId);
+  await writeStore(store);
+  return { state: await getAvaState(user), conflict: false };
+}
+
+export async function saveAttendance(user, courseId, payload) {
+  const store = await readStore();
+  const course = findCourse(store, courseId);
+  if (!course) return null;
+  const date = payload.date || new Date().toISOString().slice(0, 10);
+  const current = course.attendanceSessions.find(session => session.date === date);
+  const session = current || {
+    id: `freq-${courseId}-${Date.now()}`,
+    date,
+    topic: payload.topic || 'Aula regular',
+    entries: {},
+  };
+  session.topic = payload.topic || session.topic;
+  for (const entry of payload.entries) {
+    session.entries[entry.studentId] = {
+      status: entry.status,
+      justification: entry.justification || '',
+    };
+  }
+  if (!current) course.attendanceSessions.unshift(session);
+  course.students = course.students.map(student => {
+    const sessions = course.attendanceSessions.filter(item => item.entries?.[student.id]);
+    const attended = sessions.filter(item => ['present', 'justified'].includes(item.entries[student.id].status)).length;
+    return { ...student, attendance: sessions.length ? Math.round((attended / sessions.length) * 100) : student.attendance };
+  });
+  course.attendance = course.students.length
+    ? Math.round(course.students.reduce((sum, student) => sum + student.attendance, 0) / course.students.length)
+    : course.attendance;
   await writeStore(store);
   return getAvaState(user);
 }

@@ -183,7 +183,7 @@ export async function createPostWithRules({ user, body, file }) {
     portfolioItem = await saveManualPortfolioItem(user, {
       activityId: manualActivityId,
       title: portfolioTitle,
-      summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+      summary: baseContent.slice(0, 4000) || 'Projeto publicado pela rede social academica.',
       activityTitle: 'Publicacao social para portfolio',
       documentUrl: portfolioDocument?.url || '',
       documentName: portfolioDocument?.name || '',
@@ -200,7 +200,7 @@ export async function createPostWithRules({ user, body, file }) {
       metadata: {
         portfolioId: manualActivityId,
         title: portfolioTitle,
-        summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+        summary: baseContent.slice(0, 4000) || 'Projeto publicado pela rede social academica.',
         shareUrl: portfolioShareUrl,
         externalUrl: portfolioExternalUrl,
         externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
