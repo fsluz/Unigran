@@ -5,7 +5,9 @@ import {
   createCommentController,
   favoritesController,
   createPostController,
+  deleteCommentController,
   deletePostController,
+  editCommentController,
   editPostController,
   getCommentsController,
   getFeedController,
@@ -35,6 +37,8 @@ router.post('/:id/like', auth, likePostController);
 router.delete('/:id/like', auth, unlikePostController);
 router.post('/comments/:commentId/like', auth, likeCommentController);
 router.delete('/comments/:commentId/like', auth, unlikeCommentController);
+router.patch('/comments/:commentId', auth, editCommentController);
+router.delete('/:id/comments/:commentId', auth, deleteCommentController);
 router.post('/:id/save', auth, savePostController);
 router.delete('/:id/save', auth, unsavePostController);
 router.post('/:id/share', auth, sharePostController);

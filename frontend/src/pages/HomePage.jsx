@@ -11,12 +11,15 @@ import { apiFetch, authHeaders } from '../utils/api';
 import { Avatar } from '../components/ui';
 import { followUser, unfollowUser } from '../services/users';
 import { joinCommunity } from '../services/communities';
+import { useAchievements } from '../contexts/AchievementsContext';
+import { EmptyState } from '../components/ui';
 
 const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
 
 export default function HomePage({ onOpenProfile }) {
   const { token } = useAuth();
   const { showToast } = useToast();
+  const { unlock } = useAchievements();
   const [posts, setPosts] = useState([]);
   const [openPost, setOpenPost] = useState(null);
   const [suggestedPeople, setSuggestedPeople] = useState([]);
@@ -45,7 +48,8 @@ export default function HomePage({ onOpenProfile }) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([tag, count]) => ({ tag, count: String(count) }));
-    return serverTrends.length ? serverTrends : dynamic;
+    const list = serverTrends.length ? serverTrends : dynamic;
+    return list.filter(t => Number(t.count) >= 2).slice(0, 10);
   }, [posts, serverTrends]);
 
   useEffect(() => {
@@ -95,6 +99,7 @@ export default function HomePage({ onOpenProfile }) {
 
   const handleNewPost = async (payload) => {
     const created = await createPost({ token, ...payload });
+    if (posts.length === 0) unlock('first_post');
     const { postType } = payload;
     if (postType === 'zuni-post') {
       showToast('Short publicado no Zuni', 'OK');
@@ -176,7 +181,9 @@ export default function HomePage({ onOpenProfile }) {
 
       <div className="page-layout">
         <main className="section-grid">
-          <StoriesBar onOpenProfile={onOpenProfile} />
+          <div className="stories-strip-wrap">
+            <StoriesBar onOpenProfile={onOpenProfile} />
+          </div>
 
           <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
 
@@ -214,6 +221,14 @@ export default function HomePage({ onOpenProfile }) {
                 <div className="skeleton-line" style={{ width: '70%' }} />
               </div>
             ))}
+
+            {!loadingPosts && posts.length === 0 && !trendTitle && (
+              <EmptyState
+                icon="📭"
+                title="Seu feed está vazio"
+                subtitle="Siga pessoas, entre em comunidades ou publique algo para começar."
+              />
+            )}
 
             {posts.map(post => (
               <PostCard

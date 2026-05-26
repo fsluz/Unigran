@@ -141,11 +141,22 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
                 {(profile.displayName || profile.username || '?').slice(0, 2)}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, paddingTop: 12 }}>
+            <div style={{ display: 'flex', gap: 8, paddingTop: 12, flexWrap: 'wrap' }}>
               {!isMe && (
-                <Button variant={profile.following ? 'secondary' : 'primary'} onClick={toggleFollow}>
-                  {profile.following ? 'Seguindo' : followRequested ? 'Solicitado' : profile.private ? 'Pedir para seguir' : 'Seguir'}
-                </Button>
+                <>
+                  <Button variant={profile.following ? 'secondary' : 'primary'} onClick={toggleFollow}>
+                    {profile.following ? 'Seguindo' : followRequested ? 'Solicitado' : profile.private ? 'Pedir para seguir' : 'Seguir'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'messages' }));
+                      window.dispatchEvent(new CustomEvent('unigran:start-chat', { detail: profile.username }));
+                    }}
+                  >
+                    Enviar mensagem
+                  </Button>
+                </>
               )}
             </div>
           </div>

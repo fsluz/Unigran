@@ -491,6 +491,33 @@ export default function MessagesPage() {
     return () => clearTimeout(timer);
   }, [groupSearch, selectedGroupUsers, token]);
 
+  const openConversationWith = async (username) => {
+    if (!username?.trim() || !token) return;
+    setLoading(true);
+    try {
+      const conversation = await startDirectConversation({ token, username: username.trim() });
+      setConversations(prev => {
+        const exists = prev.some(item => item.id === conversation.id);
+        return exists ? prev : [conversation, ...prev];
+      });
+      closeRealtime();
+      setRealtimeRevision(value => value + 1);
+      setActive(conversation);
+      setMobileChatOpen(true);
+      setNewConversationOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Sem permissao para enviar mensagem', '');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const onStartChat = (event) => openConversationWith(event.detail);
+    window.addEventListener('unigran:start-chat', onStartChat);
+    return () => window.removeEventListener('unigran:start-chat', onStartChat);
+  }, [token]);
+
   const beginConversation = async () => {
     if (!targetUsername.trim()) return;
     setLoading(true);

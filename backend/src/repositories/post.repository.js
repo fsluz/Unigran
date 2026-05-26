@@ -280,11 +280,17 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const visibility = entry?.author?.visibility || 'public';
     const attrs = entry?.post_all_attributes || {};
     const postText = entry?.post_text || attrs['post-text'] || '';
+    const imageUrl = entry?.post_image || attrs['post-image'] || null;
+    const videoUrl = entry?.post_video || attrs['post-video'] || null;
     const isZuni = String(postText).toLowerCase().includes('#zuni');
     if (feed === 'zuni') return isZuni;
     if (isZuni) return false;
     if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
     if (feed === 'trending') return true;
+    if (feed === 'explore') {
+      const hasMedia = Boolean(imageUrl || videoUrl);
+      return hasMedia && authorUsername !== viewerUsername;
+    }
     const textWords = new Set([
       ...(String(postText).toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
       ...String(postText).toLowerCase().split(/[^a-z0-9\u00c0-\u017f]+/).filter(Boolean),
@@ -369,7 +375,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
   const posts = normalized
     .sort((a, b) => {
-      if (feed === 'trending') {
+      if (feed === 'trending' || feed === 'explore') {
         const score = post => {
           const words = new Set([
             ...(String(post.content || '').toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
@@ -420,9 +426,11 @@ export async function listTrends(viewerUsername = '') {
       if (recent) hourCounts.set(word, (hourCounts.get(word) || 0) + 1);
     }
   }
+  const MIN_POSTS = 2;
   return [...counts.entries()]
+    .filter(([, count]) => count >= MIN_POSTS)
     .sort((a, b) => (b[1] + (likedKeywords.has(b[0]) ? 10 : 0)) - (a[1] + (likedKeywords.has(a[0]) ? 10 : 0)))
-    .slice(0, 12)
+    .slice(0, 10)
     .map(([tag, count]) => ({ tag, count, lastHour: hourCounts.get(tag) || 0, recommended: likedKeywords.has(tag) }));
 }
 
@@ -1035,5 +1043,92 @@ export async function unreactToComment({ username, commentId }) {
   `);
   cache.clear();
   return { liked: false };
+}
+
+export async function getCommentMeta(commentId) {
+  const safeId = typeqlLiteral(commentId);
+  const rows = await readQuery(`
+    match
+      $comment isa comment, has comment-id "${safeId}";
+      commenting(parent: $parent, comment: $comment, author: $author);
+      $author has username $author_username;
+      try { $parent isa post, has post-id $post_id; };
+      try { $parent isa comment, has comment-id $parent_comment_id; };
+      posting(page: $post_owner, post: $root_post);
+      $root_post isa post, has post-id $root_post_id;
+      $post_owner has username $post_owner_username;
+    fetch {
+      "author_username": $author_username,
+      "post_id": $post_id,
+      "parent_comment_id": $parent_comment_id,
+      "root_post_id": $root_post_id,
+      "post_owner_username": $post_owner_username
+    };
+  `).catch(() => []);
+
+  if (!rows.length) {
+    const fallback = await readQuery(`
+      match
+        $comment isa comment, has comment-id "${safeId}";
+        commenting(parent: $parent, comment: $comment, author: $author);
+        $author has username $author_username;
+        try { $parent isa post, has post-id $post_id; };
+        try { $parent isa comment, has comment-id $parent_comment_id; };
+      fetch {
+        "author_username": $author_username,
+        "post_id": $post_id,
+        "parent_comment_id": $parent_comment_id,
+        "root_post_id": $post_id,
+        "post_owner_username": ""
+      };
+    `).catch(() => []);
+    return fallback[0] || null;
+  }
+  return rows[0];
+}
+
+export async function updateCommentText({ commentId, content }) {
+  const safeId = typeqlLiteral(commentId);
+  const safeContent = typeqlLiteral(content);
+  await writeQuery(`
+    match
+      $comment isa comment, has comment-id "${safeId}";
+    update
+      $comment has comment-text "${safeContent}";
+  `);
+  cache.clear();
+  return { id: commentId, content, edited: true };
+}
+
+export async function deleteCommentById(commentId) {
+  const safeId = typeqlLiteral(commentId);
+  const replyRows = await readQuery(`
+    match
+      $parent isa comment, has comment-id "${safeId}";
+      commenting(parent: $parent, comment: $reply);
+      $reply has comment-id $reply_id;
+    fetch { "reply_id": $reply_id };
+  `).catch(() => []);
+
+  for (const row of replyRows) {
+    if (row?.reply_id) await deleteCommentById(row.reply_id);
+  }
+
+  await writeQuery(`
+    match
+      $comment isa comment, has comment-id "${safeId}";
+      $reaction isa reaction, links (parent: $comment);
+    delete
+      $reaction;
+  `).catch(() => null);
+
+  await writeQuery(`
+    match
+      $comment isa comment, has comment-id "${safeId}";
+    delete
+      $comment;
+  `);
+  cache.clear();
+  return { deleted: true };
 }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { markAllAsRead } from './services/notifications';
 import { ToastProvider } from './contexts/ToastContext';
 import FriendsPage from './pages/FriendsPage';
 
@@ -14,8 +15,11 @@ import MessagesPage       from './pages/MessagesPage';
 import NotificationsPage  from './pages/NotificationsPage';
 import SettingsPage       from './pages/SettingsPage';
 import PublicProfilePage  from './pages/PublicProfilePage';
-import FavoritesPage      from './pages/FavoritesPage';
+import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
+import FloatingAssistants from './components/assistants/FloatingAssistants';
+import NotificationsPanel from './components/layout/NotificationsPanel';
+import { AchievementsProvider } from './contexts/AchievementsContext';
 import AuditLogsPage       from './pages/AuditLogsPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
@@ -26,11 +30,13 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
 function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
   const [authView, setAuthView] = useState('login');
   const [enteringPortal, setEnteringPortal] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : false;
@@ -87,8 +93,8 @@ function AppShell() {
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
     communities:   <CommunitiesPage onOpenProfile={openProfile} />,
+    explore:       <ExplorePage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
-    favorites:     <FavoritesPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
     ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
     masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
@@ -101,15 +107,35 @@ function AppShell() {
     : <HomePage />,
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(v => {
+      const next = !v;
+      localStorage.setItem('sidebarCollapsed', next ? '1' : '0');
+      return next;
+    });
+  };
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
       <Sidebar
         page={page}
-        onNavigate={navigate}
+        onNavigate={id => { setNotifPanelOpen(false); navigate(id); }}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+        onOpenNotifications={() => {
+          setNotifPanelOpen(true);
+          if (token) markAllAsRead(token).catch(() => null);
+        }}
+        notifClearKey={notifPanelOpen ? 1 : 0}
         dark={dark}
-        onToggleTheme={() => setDark(d => !d)}
+      />
+      <NotificationsPanel
+        open={notifPanelOpen}
+        onClose={() => setNotifPanelOpen(false)}
+        sidebarCollapsed={sidebarCollapsed}
       />
       {pages[page] ?? <HomePage />}
+      <FloatingAssistants />
       {enteringPortal && (
         <PortalEntryTransition
           role={user.role}
@@ -127,7 +153,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <AppShell />
+        <AchievementsProvider>
+          <AppShell />
+        </AchievementsProvider>
       </ToastProvider>
     </AuthProvider>
   );

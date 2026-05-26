@@ -1,7 +1,9 @@
 ﻿import {
   createCommentWithRules,
   createPostWithRules,
+  deleteCommentWithRules,
   deletePostWithRules,
+  editCommentWithRules,
   editPostWithRules,
   favoritePost,
   getFeed,
@@ -154,6 +156,34 @@ export async function unlikeCommentController(req, res) {
   } catch (err) {
     console.error('[comments unlike]', err);
     res.status(500).json({ error: 'Erro ao remover curtida do comentario' });
+  }
+}
+
+export async function deleteCommentController(req, res) {
+  try {
+    res.json(await deleteCommentWithRules({
+      user: req.user,
+      postId: req.params.id,
+      commentId: req.params.commentId,
+    }));
+  } catch (err) {
+    console.error('[comments delete]', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao excluir comentario' });
+  }
+}
+
+export async function editCommentController(req, res) {
+  try {
+    const result = await editCommentWithRules({
+      user: req.user,
+      commentId: req.params.commentId,
+      content: req.body?.content,
+    });
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    res.status(result.status || 200).json(result.data);
+  } catch (err) {
+    console.error('[comments edit]', err);
+    res.status(500).json({ error: 'Erro ao editar comentario' });
   }
 }
 

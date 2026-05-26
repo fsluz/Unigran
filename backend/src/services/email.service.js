@@ -1,17 +1,28 @@
 import nodemailer from 'nodemailer';
 
 function createTransporter() {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, //senha de app do Google, não a senha normal do email
-        },
-    });
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS;
+  if (!user || !pass) return null;
+
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT || 587);
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+  });
 }
 
 export async function sendPasswordResetCode(toEmail, code) {
     const transporter = createTransporter();
+    if (!transporter) {
+      console.warn('[email] SMTP nao configurado (EMAIL_USER/EMAIL_PASS). Codigo de reset:', code);
+      return;
+    }
 
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; background: #f9f9f9; border-radius: 12px; overflow: hidden;">

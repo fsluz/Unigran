@@ -784,22 +784,30 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
               </Row>
             </Section>
-            <Section title="Aparelhos E2EE" desc="Aparelhos que podem abrir novas mensagens protegidas">
+            <Section title="Sessoes ativas" desc="Dispositivos com acesso a mensagens protegidas (E2EE)">
               {cryptoDevicesLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Carregando...</div>}
               {!cryptoDevicesLoading && !cryptoDevices.length && (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhum aparelho registrado. Entre novamente apos criar schema.</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma sessao registrada neste navegador.</div>
               )}
               {cryptoDevices.map(device => {
                 const revoked = device.revoked === true || String(device.revoked).toLowerCase() === 'true';
+                const isCurrent = device.device_id === localStorage.getItem('unigran_device_id');
                 return (
                   <Row
                     key={device.device_id}
-                    title={device.name || 'Aparelho'}
-                    sub={revoked ? 'Removido' : `Ativo - ${device.last_seen || 'agora'}`}
+                    title={device.name || 'Sessao'}
+                    sub={revoked ? 'Inativa' : `Ativa${isCurrent ? ' (este dispositivo)' : ''} · ${device.last_seen || 'agora'}`}
                   >
                     {revoked
-                      ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inativo</span>
-                      : <Button variant="danger" size="sm" onClick={() => revokeCryptoDevice(device.device_id)}>Remover</Button>}
+                      ? <span className="session-status-pill inactive">Inativa</span>
+                      : (
+                        <>
+                          <span className="session-status-pill active">Ativa</span>
+                          {!isCurrent && (
+                            <Button variant="danger" size="sm" onClick={() => revokeCryptoDevice(device.device_id)}>Remover</Button>
+                          )}
+                        </>
+                      )}
                   </Row>
                 );
               })}

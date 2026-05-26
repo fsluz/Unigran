@@ -344,6 +344,27 @@
   color: #f85149;
 }
 
+.post-detail-comment-top-right { display: flex; align-items: center; gap: 6px; }
+.post-detail-comment-edited { font-size: 11px; color: #8b949e; margin-left: 6px; font-weight: 500; }
+.comment-menu-wrap { position: relative; }
+.comment-dot-trigger { border: 0; background: transparent; color: #8b949e; cursor: pointer; padding: 2px 6px; border-radius: 6px; font-size: 16px; line-height: 1; }
+.comment-dot-trigger:hover { background: rgba(255,255,255,.08); color: #e2e8f0; }
+.comment-dot-menu { position: absolute; right: 0; top: 100%; margin-top: 4px; min-width: 120px; background: #161b22; border: 1px solid rgba(148,163,184,.2); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 20; overflow: hidden; }
+.comment-dot-menu button { display: block; width: 100%; border: 0; background: none; color: #e2e8f0; text-align: left; padding: 10px 12px; font-size: 13px; cursor: pointer; }
+.comment-dot-menu button:hover { background: rgba(255,255,255,.06); }
+.comment-dot-menu button.danger { color: #f85149; }
+.comment-like-btn { display: inline-flex; align-items: center; gap: 4px; }
+.comment-like-btn.is-liked { color: #f85149 !important; }
+.comment-inline-reply { display: flex; gap: 8px; margin-top: 8px; }
+.comment-inline-reply input { flex: 1; border-radius: 10px; border: 1px solid rgba(148,163,184,.2); background: #0d1117; color: #f0f6fc; padding: 8px 12px; font-size: 13px; }
+.comment-inline-reply button { border: 0; border-radius: 10px; background: #2374e1; color: #fff; padding: 8px 14px; font-weight: 700; font-size: 12px; cursor: pointer; }
+.comment-edit-box textarea { width: 100%; border-radius: 10px; border: 1px solid rgba(148,163,184,.2); background: #0d1117; color: #f0f6fc; padding: 8px; font-size: 13px; margin-bottom: 6px; }
+.comment-edit-box div { display: flex; gap: 8px; }
+.comment-edit-box button { border: 0; border-radius: 8px; background: #2374e1; color: #fff; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+.comment-edit-box button.muted { background: transparent; color: #8b949e; border: 1px solid rgba(148,163,184,.2); }
+.post-detail-comment-card.depth-1 { margin-left: 12px; margin-top: 8px; background: #12161c; }
+.post-detail-comment-card.depth-2 { margin-left: 24px; }
+
 /* Composer */
 .post-detail-composer {
   flex-shrink: 0;

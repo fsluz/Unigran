@@ -127,6 +127,7 @@ async function sendStoryCommentMessage({ actor, storyId, content }) {
 router.get('/', auth, async (req, res) => {
   try {
     const now = typeqlDatetime();
+    const viewer = typeqlLiteral(req.user.username);
     const rows = await readQuery(`
       match
         $story isa story,
@@ -136,6 +137,8 @@ router.get('/', auth, async (req, res) => {
         $expires > ${now};
         $posting isa posting, links (page: $author, post: $story);
         $author isa person, has username $username, has name $name;
+        $viewer isa person, has username "${viewer}";
+        { $author is $viewer; } or { following(follower: $viewer, page: $author); };
         try { $author has profile-picture $author_profile_picture; };
         try { $story has story-text $text; };
         try { $story has story-image $image; };

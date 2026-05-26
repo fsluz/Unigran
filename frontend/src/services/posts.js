@@ -158,6 +158,23 @@ export async function unlikeComment({ token, commentId }) {
   return parseResponse(res, 'Erro ao remover curtida');
 }
 
+export async function deleteComment({ token, postId, commentId }) {
+  const res = await apiFetch(`/posts/${postId}/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return parseResponse(res, 'Erro ao excluir comentario');
+}
+
+export async function updateComment({ token, commentId, content }) {
+  const res = await apiFetch(`/posts/comments/${commentId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, 'Erro ao editar comentario');
+}
+
 export async function uploadMedia({ token, file }) {
   const fd = new FormData();
   fd.append('file', file);

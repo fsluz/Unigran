@@ -2,10 +2,13 @@
 import {
   createComment,
   createPost,
+  deleteCommentById,
   deletePostById,
+  getCommentMeta,
   listSavedPosts,
   listComments,
   listFeed,
+  updateCommentText,
   updatePostContent,
   reactToPost,
   reactToComment,
@@ -366,6 +369,47 @@ export async function likeComment({ user, commentId }) {
 
 export async function unlikeComment({ user, commentId }) {
   return unreactToComment({ username: user.username, commentId });
+}
+
+export async function deleteCommentWithRules({ user, postId, commentId }) {
+  const meta = await getCommentMeta(commentId);
+  if (!meta) {
+    const err = new Error('Comentario nao encontrado');
+    err.statusCode = 404;
+    throw err;
+  }
+  const isAuthor = meta.author_username === user.username;
+  const isPostOwner = meta.post_owner_username === user.username;
+  const canModerate = hasPermission(user, 'posts:moderate');
+  if (!isAuthor && !isPostOwner && !canModerate) {
+    const err = new Error('Sem permissao para excluir comentario');
+    err.statusCode = 403;
+    throw err;
+  }
+  await deleteCommentById(commentId);
+  return { deleted: true, postId: postId || meta.root_post_id || meta.post_id };
+}
+
+export async function editCommentWithRules({ user, commentId, content }) {
+  const text = String(content || '').replace(/^\s+|\s+$/g, '');
+  if (!text) return { error: 'Conteudo obrigatorio', status: 400 };
+  if (hasAdultText(text)) return { error: 'Conteudo +18 proibido na plataforma', status: 400 };
+
+  const meta = await getCommentMeta(commentId);
+  if (!meta) return { error: 'Comentario nao encontrado', status: 404 };
+  if (meta.author_username !== user.username && !hasPermission(user, 'posts:moderate')) {
+    return { error: 'Sem permissao para editar comentario', status: 403 };
+  }
+
+  const updated = await updateCommentText({ commentId, content: text });
+  return {
+    data: {
+      ...updated,
+      content: text,
+      edited: true,
+    },
+    status: 200,
+  };
 }
 
 export async function favoritePost({ user, postId }) {
