@@ -123,6 +123,13 @@ export async function createUniversity(user, payload) {
   if (universities.some(university => String(university.cnpj || '').replace(/\D/g, '') === payload.cnpj)) {
     throw appError('Ja existe uma universidade cadastrada com este CNPJ.', 409);
   }
+  const pagesWithSlug = await readQuery(`
+    match $page isa page, has username "${safe(slug)}";
+    fetch { "page": { $page.* } };
+  `);
+  if (pagesWithSlug.length) {
+    throw appError('Este slug ja esta em uso por outro perfil, grupo ou instituicao.', 409);
+  }
 
   const id = `university-${uuid()}`;
   const createdAt = now();
@@ -130,7 +137,7 @@ export async function createUniversity(user, payload) {
     match $creator isa person, has username "${safe(user.username)}";
     insert
       $university isa university,
-        has page-id "${id}",
+        has id "${id}",
         has username "${safe(slug)}",
         has name "${safe(payload.name)}",
         has academic-institution-code "${safe(slug)}",
@@ -140,7 +147,6 @@ export async function createUniversity(user, payload) {
         has institution-logo "${safe(payload.logo || '')}",
         has institution-description "${safe(payload.description || '')}",
         has institution-status "${safe(payload.status || 'pending')}",
-        has page-visibility "public",
         has is-visible true,
         has is-active true,
         has can-publish false,

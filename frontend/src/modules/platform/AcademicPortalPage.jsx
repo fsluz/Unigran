@@ -120,6 +120,15 @@ function optionalValue(value = '') {
   return clean || undefined;
 }
 
+function formatCnpj(value = '') {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+}
+
 function isValidUrl(value) {
   if (!value) return true;
   try {
@@ -595,7 +604,15 @@ export default function AcademicPortalPage({ onOpenAva }) {
             <form className="academic-form" onSubmit={createUniversity}>
               <input value={universityDraft.name} onChange={event => setUniversityDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da universidade" required />
               <input value={universityDraft.slug} onChange={event => setUniversityDraft(prev => ({ ...prev, slug: event.target.value }))} placeholder="Slug opcional" />
-              <input value={universityDraft.cnpj} onChange={event => setUniversityDraft(prev => ({ ...prev, cnpj: event.target.value }))} placeholder="CNPJ" required />
+              <input
+                value={universityDraft.cnpj}
+                onChange={event => setUniversityDraft(prev => ({ ...prev, cnpj: formatCnpj(event.target.value) }))}
+                placeholder="CNPJ"
+                inputMode="numeric"
+                maxLength={18}
+                autoComplete="off"
+                required
+              />
               <input value={universityDraft.logo} onChange={event => setUniversityDraft(prev => ({ ...prev, logo: event.target.value }))} placeholder="URL do logo Cloudinary (opcional)" />
               <textarea value={universityDraft.description} onChange={event => setUniversityDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
               <button className="btn btn-primary">Criar universidade</button>

@@ -155,6 +155,9 @@ function creationFailureMessage(err) {
   if (['invalid credential', 'authentication error', '[aut1]'].some(term => detail.includes(term))) {
     return 'Nao foi possivel autenticar no TypeDB. Verifique as credenciais configuradas no backend.';
   }
+  if (detail.includes('id') && ['key', 'cardinality', 'required', 'missing'].some(term => detail.includes(term))) {
+    return 'A universidade nao pode ser criada por incompatibilidade de identificador obrigatorio no TypeDB.';
+  }
   const schemaError = [
     'university',
     'institution-id',
