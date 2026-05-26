@@ -659,11 +659,23 @@ O RAi recebe a mensagem atual e o historico recente da conversa:
 {
   "prompt": "Tenho prova hoje de algoritmos",
   "messages": [{ "role": "user", "content": "Curso Sistemas de Informacao" }],
-  "selectedCourseId": "curso-opcional"
+  "selectedCourseId": "curso-opcional",
+  "useWebSearch": true
 }
 ```
 
-O backend consulta apenas o contexto academico autorizado para o usuario autenticado, detecta perfil, intencao, tom, area e dificuldade, e gera a resposta usando o prompt base do RAi. Para habilitar a conversa generativa, configure `RAI_AI_API_KEY`, `RAI_AI_API_URL` e `RAI_AI_MODEL` com um endpoint OpenAI-compatible. Sem provedor, o RAi informa somente fatos recuperados do portal, sem inventar orientacoes.
+O backend consulta apenas o contexto academico autorizado para o usuario autenticado, detecta perfil, intencao, tom, area e dificuldade, e gera a resposta usando o prompt base do RAi. Para habilitar a conversa generativa com Groq, configure `RAI_AI_API_KEY`, `RAI_AI_API_URL=https://api.groq.com/openai/v1/chat/completions` e `RAI_AI_MODEL=llama-3.3-70b-versatile`. Sem provedor, o RAi informa somente fatos recuperados do portal, sem inventar orientacoes.
+
+O contexto interno e filtrado por escopo: estudante usa somente sua jornada; professor usa disciplinas e turmas atribuidas; coordenacao usa cursos sob responsabilidade; secretaria e admin usam apenas instituicoes vinculadas; super admin pode consultar a estrutura global. O historico permite continuidade da conversa, mas nao treina permanentemente o modelo com dados dos usuarios.
+
+Para complementar perguntas gerais com fontes publicas do Tavily Search, configure:
+
+```env
+RAI_WEB_SEARCH_ENABLED=true
+TAVILY_API_KEY=tvly-sua_chave
+```
+
+A pesquisa publica usa o modo `basic` do Tavily para economizar creditos e complementa explicacoes e referencias; ela nao amplia acesso a aulas, salas, turmas, notas ou qualquer dado institucional interno.
 
 ### AVA
 

@@ -42,6 +42,7 @@ export default function ChatRAIModal({ isOpen, onClose, token, user }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [useWebSearch, setUseWebSearch] = useState(true);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function ChatRAIModal({ isOpen, onClose, token, user }) {
     setError('');
     setLoading(true);
     try {
-      const response = await askRai(token, prompt, transcript(nextMessages));
+      const response = await askRai(token, prompt, transcript(nextMessages), '', useWebSearch);
       setMessages(current => [...current, {
         id: `rai-${Date.now()}`,
         role: 'assistant',
@@ -126,7 +127,15 @@ export default function ChatRAIModal({ isOpen, onClose, token, user }) {
                 <>
                   <small>{message.meta.intent} | {message.meta.tone} | {message.meta.mode}</small>
                   {message.meta.sources?.length > 0 && (
-                    <small>{message.meta.sources.length} fonte(s) academica(s) autorizada(s) consultada(s)</small>
+                    <div className="rai-message-sources">
+                      {message.meta.sources.filter(source => source.type === 'web').map(source => (
+                        <a key={source.id} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
+                      ))}
+                      <small>
+                        {message.meta.sources.filter(source => source.type !== 'web').length} fonte(s) interna(s);
+                        {' '}{message.meta.sources.filter(source => source.type === 'web').length} fonte(s) publica(s)
+                      </small>
+                    </div>
                   )}
                 </>
               )}
@@ -143,16 +152,22 @@ export default function ChatRAIModal({ isOpen, onClose, token, user }) {
         </div>
 
         <form className="rai-chat-form" onSubmit={handleSendMessage}>
-          <textarea
-            rows={2}
-            value={input}
-            onChange={event => setInput(event.target.value)}
-            onKeyDown={event => {
-              if (event.key === 'Enter' && !event.shiftKey) handleSendMessage(event);
-            }}
-            placeholder="Ex.: Tenho prova de algoritmos hoje as 19h. Como priorizo a revisao?"
-            disabled={loading}
-          />
+          <div className="rai-chat-compose">
+            <textarea
+              rows={2}
+              value={input}
+              onChange={event => setInput(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === 'Enter' && !event.shiftKey) handleSendMessage(event);
+              }}
+              placeholder="Ex.: Tenho prova de algoritmos hoje as 19h. Como priorizo a revisao?"
+              disabled={loading}
+            />
+            <label className="rai-web-toggle">
+              <input type="checkbox" checked={useWebSearch} onChange={event => setUseWebSearch(event.target.checked)} />
+              Pesquisar fontes publicas quando ajudar
+            </label>
+          </div>
           <button type="submit" disabled={loading || !input.trim()} aria-label="Enviar para RAi">
             <Send size={17} />
           </button>

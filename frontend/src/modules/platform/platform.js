@@ -29,11 +29,11 @@ export async function fetchPlatformDashboard(token) {
   return readJson(res, 'Erro ao carregar dashboard');
 }
 
-export async function askRai(token, prompt, messages = [], selectedCourseId = '') {
+export async function askRai(token, prompt, messages = [], selectedCourseId = '', useWebSearch = true) {
   const res = await apiFetch('/platform/v1/ai/assistant', {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ prompt, messages, selectedCourseId }),
+    body: JSON.stringify({ prompt, messages, selectedCourseId, useWebSearch }),
   });
   return readJson(res, 'Erro ao conversar com a RAi');
 }

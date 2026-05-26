@@ -139,6 +139,7 @@ export default function CampusPage({ onBackToPortal }) {
   const [raiMessages, setRaiMessages] = useState([]);
   const [raiLoading, setRaiLoading] = useState(false);
   const [raiError, setRaiError] = useState('');
+  const [raiWebSearch, setRaiWebSearch] = useState(true);
   const [teacherMaterial, setTeacherMaterial] = useState({ title: '', type: 'pdf', duration: '15 min', required: true, url: '', file: null });
   const [teacherMaterialSaving, setTeacherMaterialSaving] = useState(false);
   const [teacherSubmissions, setTeacherSubmissions] = useState([]);
@@ -364,6 +365,7 @@ export default function CampusPage({ onBackToPortal }) {
         message.content,
         conversation.slice(-18).map(item => ({ role: item.role, content: item.content })),
         selectedCourse?.id || '',
+        raiWebSearch,
       );
       setRaiMessages(current => [...current, {
         id: `rai-${Date.now()}`,
@@ -1081,6 +1083,10 @@ export default function CampusPage({ onBackToPortal }) {
               <form className="campus-rai-form" onSubmit={handleAskRai}>
                 <input value={prompt} onChange={event => setPrompt(event.target.value)} placeholder="Pergunte sobre a disciplina" disabled={raiLoading} />
                 <button className="btn btn-primary" disabled={raiLoading || !prompt.trim()}>Enviar</button>
+                <label className="campus-rai-search-toggle">
+                  <input type="checkbox" checked={raiWebSearch} onChange={event => setRaiWebSearch(event.target.checked)} />
+                  Consultar fontes publicas
+                </label>
               </form>
               <div className="campus-rai-thread">
                 {raiMessages.length === 0 && <small>Converse sobre a disciplina atual; o RAi considera as mensagens anteriores.</small>}
@@ -1090,7 +1096,15 @@ export default function CampusPage({ onBackToPortal }) {
                     <p>{message.content}</p>
                     {message.meta?.suggestions?.map(item => <span key={item}>{item}</span>)}
                     {message.meta?.sources?.length > 0 && (
-                      <small>{message.meta.sources.length} fonte(s) academica(s) consultada(s)</small>
+                      <>
+                        {message.meta.sources.filter(source => source.type === 'web').map(source => (
+                          <a key={source.id} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
+                        ))}
+                        <small>
+                          {message.meta.sources.filter(source => source.type !== 'web').length} interna(s);
+                          {' '}{message.meta.sources.filter(source => source.type === 'web').length} publica(s)
+                        </small>
+                      </>
                     )}
                   </div>
                 ))}

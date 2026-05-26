@@ -23,6 +23,7 @@ const RaiConversationSchema = z.object({
   prompt: z.string().trim().min(1).max(4000),
   messages: z.array(RaiMessageSchema).max(18).optional().default([]),
   selectedCourseId: z.string().trim().max(120).optional().default(''),
+  useWebSearch: z.boolean().optional().default(true),
 });
 
 router.use(auth);

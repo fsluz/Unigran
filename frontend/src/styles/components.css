@@ -3400,6 +3400,15 @@
   color: var(--text);
   outline: none;
 }
+.campus-rai-search-toggle {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.campus-rai-search-toggle input { width: auto; padding: 0; accent-color: var(--accent); }
 .campus-rai-answer {
   display: grid;
   gap: 8px;
@@ -3420,6 +3429,7 @@
   font-size: 12px;
   font-weight: 800;
 }
+.campus-rai-answer a { color: var(--accent); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
 
 @media (max-width: 980px) {
   .academic-portal-shell { grid-template-columns: 1fr; }
@@ -5316,6 +5326,8 @@ img, video { max-width: 100%; }
 .rai-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; font-size: 14px; }
 .rai-message small { display: block; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
 .rai-message.user small { color: rgba(255,255,255,.85); }
+.rai-message-sources { display: grid; gap: 5px; margin-top: 8px; }
+.rai-message-sources a { color: var(--accent); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
 .rai-chat-loading,
 .rai-chat-error { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
 .rai-chat-loading { display: flex; gap: 8px; align-items: center; color: var(--text-muted); }
@@ -5329,8 +5341,9 @@ img, video { max-width: 100%; }
   border-top: 1px solid var(--border);
   background: var(--card);
 }
+.rai-chat-compose { flex: 1; display: grid; gap: 7px; }
 .rai-chat-form textarea {
-  flex: 1;
+  width: 100%;
   resize: none;
   min-height: 45px;
   max-height: 108px;
@@ -5341,6 +5354,14 @@ img, video { max-width: 100%; }
   color: var(--text);
   background: var(--page-bg);
 }
+.rai-web-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.rai-web-toggle input { accent-color: var(--accent); }
 .rai-chat-form textarea:focus { outline: 2px solid var(--accent-light); border-color: var(--accent); }
 .rai-chat-form button {
   display: grid;

@@ -84,20 +84,29 @@ export const CONFIG = {
 
 ### RAi Assistant
 - **Endpoint:** `POST /api/platform/v1/ai/assistant`
-- **Body:** `{ prompt: string, messages?: Array<{ role: 'user' | 'assistant', content: string }>, selectedCourseId?: string }`
+- **Body:** `{ prompt: string, messages?: Array<{ role: 'user' | 'assistant', content: string }>, selectedCourseId?: string, useWebSearch?: boolean }`
 - **Response:** `{ answer: string, intent: string, tone: string, profile: string, sources?: array, contextUsed?: object }`
 
 O modal envia o historico recente da conversa, e o painel do AVA envia tambem a disciplina selecionada. O backend recupera somente dados permitidos ao usuario autenticado e os inclui no contexto do RAi.
 
-Para respostas conversacionais, configure no backend um provedor OpenAI-compatible:
+Para respostas conversacionais com Groq, configure no backend:
 
 ```env
 RAI_AI_API_KEY=
-RAI_AI_API_URL=https://api.openai.com/v1/chat/completions
-RAI_AI_MODEL=gpt-4o-mini
+RAI_AI_API_URL=https://api.groq.com/openai/v1/chat/completions
+RAI_AI_MODEL=llama-3.3-70b-versatile
 ```
 
 Sem `RAI_AI_API_KEY`, a API continua consultando o contexto real do portal, mas retorna apenas fatos verificados e informa que o motor conversacional nao esta configurado.
+
+Para ativar pesquisa de fontes publicas via Tavily Search:
+
+```env
+RAI_WEB_SEARCH_ENABLED=true
+TAVILY_API_KEY=tvly-sua_chave
+```
+
+O RAi usa pesquisa publica para conhecimento geral quando a opcao estiver marcada. Dados internos continuam vindo somente do contexto permitido ao perfil autenticado; o historico da conversa nao se torna treinamento permanente.
 
 ## Features
 

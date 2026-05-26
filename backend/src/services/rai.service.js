@@ -1,9 +1,14 @@
 import { getAvaState } from '../modules/academic/typedbAvaStore.js';
 import { normalizeUniversityRole } from '../modules/auth/rbac.js';
+import { readQuery, typeqlLiteral } from '../db/typedb.js';
+import { getUniversityHierarchy, listUniversities } from '../modules/institution/typedbInstitutionStore.js';
 import { buildRaiSystemPrompt, RAI_IDENTITY } from './rai.prompt.js';
+import { searchRaiPublicWeb } from './rai.search.service.js';
 
 const MAX_HISTORY_MESSAGES = 18;
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_CONTEXT_COURSES = 20;
+const MAX_CONTEXT_INSTITUTIONS = 10;
 
 function normalize(value = '') {
   return String(value || '')
@@ -114,7 +119,144 @@ function pendingActivities(courses) {
     .sort((a, b) => new Date(a.due || 0) - new Date(b.due || 0));
 }
 
-function buildAuthorizedContext({ user, ava, messages, selectedCourseId, intent, tone, area, difficulty }) {
+function summarizeAccessibleCourse(course) {
+  return {
+    id: course.id,
+    name: course.name,
+    code: course.code || null,
+    period: course.period || null,
+    schedule: course.schedule || null,
+    room: course.room || null,
+    professor: course.professor || null,
+    materialCount: (course.materials || []).length,
+    pendingActivities: (course.activities || []).filter(activity => ['pending', 'late'].includes(activity.status)).length,
+  };
+}
+
+function summarizeInstitutionHierarchy(hierarchy) {
+  return {
+    university: hierarchy.university ? {
+      id: hierarchy.university.id,
+      name: hierarchy.university.name,
+      status: hierarchy.university.status,
+    } : null,
+    campuses: (hierarchy.campuses || []).slice(0, 20).map(campus => ({
+      name: campus.name,
+      city: campus.city,
+      state: campus.state,
+    })),
+    courses: (hierarchy.courses || []).slice(0, 30).map(course => ({
+      id: course.id,
+      name: course.name,
+      campusId: course.campusId,
+      degreeType: course.degreeType,
+    })),
+    classes: (hierarchy.classGroups || []).slice(0, 30).map(classGroup => ({
+      code: classGroup.code,
+      shift: classGroup.shift,
+    })),
+    subjects: (hierarchy.subjects || []).slice(0, 30).map(subject => ({
+      name: subject.name,
+      workload: subject.workload,
+    })),
+  };
+}
+
+async function authorizedInstitutionContext(user) {
+  const role = normalizeUniversityRole(user?.role);
+  if (role === 'coordination') {
+    const rows = await readQuery(`
+      match
+        $coordinator isa person, has username "${typeqlLiteral(user.username)}";
+        $scope isa institution-course-coordination, links (coordinator: $coordinator, course: $course),
+          has institution-status "approved";
+        $course isa institution-course, has institution-course-id $course_id, has academic-title $course_name;
+        institution-course-link(campus: $campus, course: $course);
+        $campus has academic-title $campus_name;
+        institution-campus-link(university: $university, campus: $campus);
+        $university has name $university_name;
+      fetch {
+        "course_id": $course_id,
+        "course_name": $course_name,
+        "campus_name": $campus_name,
+        "university_name": $university_name
+      };
+    `);
+    return [{
+      scope: 'assigned_courses',
+      courses: rows.slice(0, 30).map(row => ({
+        id: row.course_id,
+        name: row.course_name,
+        campus: row.campus_name,
+        university: row.university_name,
+      })),
+    }];
+  }
+
+  if (role === 'professor') {
+    const rows = await readQuery(`
+      match
+        $professor isa person, has username "${typeqlLiteral(user.username)}";
+        $assignment isa institution-professor-subject, links (professor: $professor, subject: $subject, semester: $semester),
+          has institution-status "active";
+        $subject has academic-title $subject_name;
+        $semester has institution-year $year, has institution-period-number $period;
+        try {
+          institution-class-subject(class-group: $class_group, subject: $subject);
+          institution-class-group-link(semester: $semester, class-group: $class_group);
+          $class_group has academic-code $class_code;
+        };
+      fetch {
+        "subject_name": $subject_name,
+        "year": $year,
+        "period": $period,
+        "class_code": $class_code
+      };
+    `);
+    return [{
+      scope: 'assigned_classes',
+      subjects: rows.slice(0, 30).map(row => ({
+        name: row.subject_name,
+        semester: `${row.year}/${row.period}`,
+        classCode: row.class_code || null,
+      })),
+    }];
+  }
+
+  if (!['super_admin', 'admin', 'secretary'].includes(role)) return [];
+
+  let universities = [];
+  if (role === 'super_admin') {
+    universities = await listUniversities();
+  } else {
+    const rows = await readQuery(`
+      match
+        $member isa person, has username "${typeqlLiteral(user.username)}";
+        $university isa educational-institute, has institution-id $id;
+        $membership isa institution-membership, links (member: $member, university: $university),
+          has institution-status "approved",
+          has institution-role $institution_role;
+      fetch { "id": $id, "institution_role": $institution_role };
+    `);
+    universities = [...new Set(rows
+      .filter(row => normalizeUniversityRole(row.institution_role) === role)
+      .map(row => row.id)
+      .filter(Boolean))].map(id => ({ id }));
+  }
+
+  const contexts = await Promise.all(
+    universities.slice(0, MAX_CONTEXT_INSTITUTIONS).map(async university => {
+      try {
+        return summarizeInstitutionHierarchy(await getUniversityHierarchy(university.id));
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return contexts.filter(Boolean);
+}
+
+function buildAuthorizedContext({ user, ava, institutionalContext, messages, selectedCourseId, intent, tone, area, difficulty }) {
   const courses = ava.courses || [];
   const selectedCourse = selectCourse(messages, courses, selectedCourseId);
   const pending = pendingActivities(courses);
@@ -134,6 +276,8 @@ function buildAuthorizedContext({ user, ava, messages, selectedCourseId, intent,
     difficulty,
     institution: ava.institution?.name || null,
     accessibleCourseCount: courses.length,
+    accessibleCourses: courses.slice(0, MAX_CONTEXT_COURSES).map(summarizeAccessibleCourse),
+    institutionStructure: institutionalContext,
     course: selectedCourse ? {
       name: selectedCourse.name,
       code: selectedCourse.code || null,
@@ -177,6 +321,13 @@ function buildAuthorizedContext({ user, ava, messages, selectedCourseId, intent,
       accessibleStudents: ava.teacherDashboard.totalStudents,
       pendingCorrections: ava.teacherDashboard.pendingCorrections,
     };
+    if (selectedCourse && ['professor', 'coordination'].includes(role)) {
+      context.management.selectedCourseStudents = (selectedCourse.students || []).slice(0, 50).map(student => ({
+        name: student.name,
+        username: student.username,
+        registration: student.registration,
+      }));
+    }
   }
 
   return { context, selectedCourse, pending: relevantPending };
@@ -206,8 +357,8 @@ function providerConfig() {
   const apiKey = process.env.RAI_AI_API_KEY || process.env.OPENAI_API_KEY || '';
   return {
     apiKey,
-    url: process.env.RAI_AI_API_URL || 'https://api.openai.com/v1/chat/completions',
-    model: process.env.RAI_AI_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    url: process.env.RAI_AI_API_URL || 'https://api.groq.com/openai/v1/chat/completions',
+    model: process.env.RAI_AI_MODEL || 'llama-3.3-70b-versatile',
     enabled: Boolean(apiKey),
   };
 }
@@ -262,21 +413,35 @@ function verifiedFallback({ context, selectedCourse, pending, providerError }) {
   return lines.join('\n\n');
 }
 
-export async function answerRai({ user, prompt, messages: requestedMessages = [], selectedCourseId = '' }) {
+export async function answerRai({ user, prompt, messages: requestedMessages = [], selectedCourseId = '', useWebSearch = true }) {
   const messages = sanitizeMessages(requestedMessages, prompt);
-  const ava = await getAvaState(user);
   const intent = detectIntent(messages);
   const tone = detectTone(messages, intent);
+  const [ava, institutionalContext, webResearch] = await Promise.all([
+    getAvaState(user),
+    authorizedInstitutionContext(user),
+    searchRaiPublicWeb({ prompt, intent, requested: useWebSearch }),
+  ]);
   const area = detectArea(messages, ava.courses || []);
   const difficulty = detectDifficulty(messages);
-  const scoped = buildAuthorizedContext({ user, ava, messages, selectedCourseId, intent, tone, area, difficulty });
+  const scoped = buildAuthorizedContext({
+    user,
+    ava,
+    institutionalContext,
+    messages,
+    selectedCourseId,
+    intent,
+    tone,
+    area,
+    difficulty,
+  });
   const systemPrompt = buildRaiSystemPrompt({
     profile: scoped.context.user.role,
-    difficulty,
     intent,
     tone,
     area,
     context: scoped.context,
+    webSources: webResearch.sources,
   });
 
   let generated;
@@ -304,11 +469,13 @@ export async function answerRai({ user, prompt, messages: requestedMessages = []
     profile: scoped.context.user.role,
     course: scoped.selectedCourse ? { id: scoped.selectedCourse.id, name: scoped.selectedCourse.name } : null,
     suggestions: suggestions({ intent, selectedCourse: scoped.selectedCourse, pending: scoped.pending }),
-    sources: sourceList(scoped.selectedCourse, scoped.pending),
+    sources: [...sourceList(scoped.selectedCourse, scoped.pending), ...webResearch.sources],
     contextUsed: {
       messageCount: messages.length,
       institution: scoped.context.institution,
       accessibleCourseCount: scoped.context.accessibleCourseCount,
+      institutionStructureCount: institutionalContext.length,
+      webSearch: webResearch.status,
     },
     generationError,
     generatedAt: new Date().toISOString(),
