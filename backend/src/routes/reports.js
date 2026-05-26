@@ -9,7 +9,7 @@ const { Pool } = require('pg');
 
 const router = Router();
 router.use(auth);
-router.use(requirePermission('reports:institution'));
+router.use(requirePermission('system:manage'));
 
 let pool = null;
 function getPool() {

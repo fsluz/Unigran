@@ -163,7 +163,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
           <textarea
             ref={textInputRef}
             className="composer-textarea"
-            placeholder={isPortfolioMode ? 'Conte o projeto com secoes, resultados e tecnologias...' : placeholder}
+            placeholder={isPortfolioMode ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...' : placeholder}
             value={text}
             onChange={e => setT(e.target.value)}
             rows={isPortfolioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
@@ -262,7 +262,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
               />
               <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-portfolio-help">Use a barra de formatacao para negrito, secoes, listas e links. Publica no feed e cria case automatico. Formatos: PDF, DOCX (ate 1MB).</span>
+            <span className="composer-portfolio-help">A vitrine mostra apenas fatos que voce documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (ate 1MB).</span>
           </div>
         )}
         <input

@@ -205,7 +205,7 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
                   </div>
                   <div className="profile-portfolio-count">
                     <strong>{portfolioItems.length}</strong>
-                    <span>cases</span>
+                    <span>projetos</span>
                   </div>
                 </div>
                 <div className="profile-portfolio-master-share">

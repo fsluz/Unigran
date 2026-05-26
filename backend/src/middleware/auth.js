@@ -16,6 +16,7 @@ export const ROLES = {
   user: 0,
   student: 10,
   moderator: 20,
+  social_admin: 25,
   secretary: 30,
   professor: 40,
   coordination: 50,
@@ -90,7 +91,7 @@ export function canModerate(user) {
 }
 
 export function canAdmin(user) {
-  return hasPermission(user, 'users:manage');
+  return hasPermission(user, 'users:platform_manage') || hasPermission(user, 'users:institution_manage');
 }
 
 export { requirePermission, requireRole, roleLevel };

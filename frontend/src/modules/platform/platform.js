@@ -159,6 +159,13 @@ export async function fetchUniversities(token) {
   return readJson(res, 'Erro ao carregar universidades');
 }
 
+export async function fetchAccessibleUniversities(token) {
+  const res = await apiFetch('/platform/v1/institutions/universities/accessible', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar instituicoes permitidas');
+}
+
 export async function fetchUniversity(token, universityId) {
   const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}`, {
     headers: authHeaders(token),

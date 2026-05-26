@@ -668,6 +668,8 @@ O backend consulta apenas o contexto academico autorizado para o usuario autenti
 
 O contexto interno e filtrado por escopo: estudante usa somente sua jornada; professor usa disciplinas e turmas atribuidas; coordenacao usa cursos sob responsabilidade; secretaria e admin usam apenas instituicoes vinculadas; super admin pode consultar a estrutura global. O historico permite continuidade da conversa, mas nao treina permanentemente o modelo com dados dos usuarios.
 
+No RBAC administrativo, `super_admin` e o admin global: cria instituicoes, nomeia administradores e acessa auditoria/dashboards globais. `admin` e institucional e opera apenas nas instituicoes com vinculo aprovado. `social_admin` administra logins e moderacao da rede social, sem receber acesso a estrutura academica institucional.
+
 Para complementar perguntas gerais com fontes publicas do Tavily Search, configure:
 
 ```env
@@ -835,9 +837,11 @@ O endpoint `/api/admin/power-bi` consolida indicadores como:
 | aluno / student / user | AVA, entregas, portfolio, rede social |
 | professor | materiais, atividades, correcao, feedback |
 | coordination | leitura academica, turmas, alunos em risco |
-| management | indicadores institucionais |
-| admin | usuarios, auditoria, BI |
-| super_admin | controle global |
+| secretary | matriculas, registros e documentos institucionais |
+| moderator | denuncias e moderacao de conteudo |
+| social_admin | logins e administracao da rede social |
+| admin | estrutura e usuarios da instituicao atribuida |
+| super_admin | controle global, instituicoes, admins, auditoria e BI |
 
 ### Privacidade
 

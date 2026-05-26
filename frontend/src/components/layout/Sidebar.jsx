@@ -144,12 +144,12 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
           </button>
         ))}
 
-        {(hasPermission(user, 'reports:institution') || hasPermission(user, 'audit:read')) && (
+        {(hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read')) && (
           <>
             <div className="sidebar-wide-section-label">
               <span>Administracao</span>
             </div>
-            {hasPermission(user, 'reports:institution') && <button
+            {hasPermission(user, 'system:manage') && <button
               className={`sidebar-wide-item ${isActive('masterBi') ? 'active' : ''}`}
               onClick={() => onNavigate('masterBi')}
             >
@@ -178,7 +178,7 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
               </span>
               <span className="sidebar-wide-label">Logs de Auditoria</span>
             </button>}
-            {hasPermission(user, 'reports:institution') && <button
+            {hasPermission(user, 'system:manage') && <button
               className={`sidebar-wide-item ${isActive('adminDashboard') ? 'active' : ''}`}
               onClick={() => onNavigate('adminDashboard')}
             >

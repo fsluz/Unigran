@@ -56,7 +56,9 @@ export function Toggle({ checked, onChange }) {
 
 //  RoleBadge 
 const ROLE_MAP = {
-  admin:     { label: 'Admin',     cls: 'role-admin' },
+  super_admin: { label: 'Admin Global', cls: 'role-admin' },
+  admin:     { label: 'Admin Institucional', cls: 'role-admin' },
+  social_admin: { label: 'Admin Social', cls: 'role-moderator' },
   moderator: { label: 'Mod',       cls: 'role-moderator' },
   professor: { label: 'Professor', cls: 'role-professor' },
   company:   { label: 'Empresa',   cls: 'role-company' },

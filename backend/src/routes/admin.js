@@ -1,8 +1,9 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { auth, normalizeRole } from '../middleware/auth.js';
-import { canManageUser, requirePermission } from '../modules/auth/rbac.js';
-import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
+import { encodeHash, readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
 import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
 
@@ -15,6 +16,7 @@ const router = Router();
 const RoleSchema = z.object({
   role: z.enum([
     'super_admin',
+    'social_admin',
     'admin',
     'coordination',
     'secretary',
@@ -23,6 +25,13 @@ const RoleSchema = z.object({
     'student',
     'user',
   ]),
+});
+
+const PlatformUserSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9_]+$/),
+  email: z.string().trim().email().transform(value => value.toLowerCase()),
+  password: z.string().min(6).max(120),
 });
 
 const BanSchema = z.object({
@@ -42,7 +51,7 @@ const ReportStatusSchema = z.object({
 
 router.use(auth);
 
-router.get('/users', requirePermission('users:read'), async (req, res) => {
+router.get('/users', requirePermission('users:platform_manage'), async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   try {
     const rows = await readQuery(`
@@ -76,22 +85,6 @@ router.get('/users', requirePermission('users:read'), async (req, res) => {
       }))
       .filter(user => !q || `${user.username} ${user.name} ${user.email}`.toLowerCase().includes(q));
 
-    if (normalizeRole(req.user.role) !== 'super_admin') {
-      const scoped = await readQuery(`
-        match
-          $actor isa person, has username "${typeqlLiteral(req.user.username)}";
-          $target isa person, has username $username;
-          $university isa educational-institute;
-          $actor_membership isa institution-membership, links (member: $actor, university: $university),
-            has institution-status "approved";
-          $target_membership isa institution-membership, links (member: $target, university: $university),
-            has institution-status "approved";
-        fetch { "username": $username };
-      `);
-      const visible = new Set(scoped.map(item => item.username));
-      users = users.filter(user => visible.has(user.username));
-    }
-
     res.json({ users });
   } catch (err) {
     console.error('[admin users]', err);
@@ -99,15 +92,49 @@ router.get('/users', requirePermission('users:read'), async (req, res) => {
   }
 });
 
-router.patch('/users/:username/role', requirePermission('permissions:manage'), async (req, res) => {
+router.post('/users', requirePermission('users:create'), async (req, res) => {
+  const parsed = PlatformUserSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  const { name, username, email, password } = parsed.data;
+  const hash = encodeHash(await bcrypt.hash(password, 12));
+  try {
+    await writeQuery(`
+      insert
+        $u isa person,
+          has username "${typeqlLiteral(username)}",
+          has name "${typeqlLiteral(name)}",
+          has email "${typeqlLiteral(email)}",
+          has password-hash "${hash}",
+          has is-active true,
+          has is-banned false,
+          has can-publish true,
+          has user-role "user",
+          has page-visibility "public",
+          has post-visibility "public";
+    `);
+    auditLog({ action: 'PLATFORM_USER_CREATED', category: 'ADMIN', actor: req.user?.username, target: username, ip: getIp(req), meta: { email, role: 'user' } });
+    res.status(201).json({ username, name, email, role: 'user', banned: false, canPublish: true, visibility: 'public' });
+  } catch (err) {
+    if (err.message?.includes('unique') || err.message?.includes('key')) {
+      return res.status(409).json({ error: 'Email ou username ja em uso' });
+    }
+    console.error('[admin create user]', err);
+    res.status(500).json({ error: 'Erro ao criar login' });
+  }
+});
+
+router.patch('/users/:username/role', requirePermission('users:platform_manage'), async (req, res) => {
   const parsed = RoleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const username = typeqlLiteral(req.params.username);
   const role = normalizeRole(parsed.data.role);
   try {
-    if (!(await canManageUser(req.user, role, req.params.username))) {
-      return res.status(403).json({ error: 'Cargo fora do seu escopo de administracao' });
+    const actorRole = normalizeRole(req.user?.role);
+    const maySetRole = hasPermission(req.user, 'permissions:manage')
+      || (actorRole === 'social_admin' && ['user', 'moderator'].includes(role));
+    if (!maySetRole) {
+      return res.status(403).json({ error: 'Cargo fora do seu escopo de administracao social' });
     }
     await writeQuery(`
       match
@@ -253,7 +280,7 @@ router.get('/audit-logs', requirePermission('audit:read'), async (req, res) => {
   }
 });
 
-router.get('/power-bi', requirePermission('reports:institution'), async (req, res) => {
+router.get('/power-bi', requirePermission('system:manage'), async (req, res) => {
   try {
     const [ava, typedbUsers, typedbPosts, typedbComments] = await Promise.all([
       getAvaPowerBiSnapshot(),

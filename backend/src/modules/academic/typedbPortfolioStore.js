@@ -108,7 +108,7 @@ function toSocialPortfolioItem(row) {
     description: summary,
     content: row.post_text || '',
     activityId: row.post_id,
-    activityTitle: 'Publicacao social para portfolio',
+    activityTitle: '',
     shareUrl: `/portfolio/${row.author_username}/${slug}`,
     externalUrl: '',
     externalKind: '',
