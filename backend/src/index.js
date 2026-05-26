@@ -21,6 +21,7 @@ import platformRouter      from './modules/index.js';
 import cryptoRouter        from './routes/crypto.js';
 import { setupSocket }     from './socket/handlers.js';
 import { auditRequests }    from './middleware/audit.js';
+import reportsRouter from './routes/reports.js';
 
 const app    = express();
 const server = createServer(app);
@@ -63,6 +64,7 @@ app.use('/api/realtime',      realtimeRouter);
 app.use('/api/data-export',   dataExportRouter);
 app.use('/api/platform',      platformRouter);
 app.use('/api/crypto',        cryptoRouter);
+app.use('/api/admin/reports', reportsRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
 

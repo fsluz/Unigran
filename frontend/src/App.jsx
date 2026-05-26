@@ -17,10 +17,12 @@ import PublicProfilePage  from './pages/PublicProfilePage';
 import FavoritesPage      from './pages/FavoritesPage';
 import ZuniPage           from './pages/ZuniPage';
 import AuditLogsPage       from './pages/AuditLogsPage';
+
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
 import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 
 function AppShell() {
   const { user, logout } = useAuth();
@@ -88,6 +90,9 @@ function AppShell() {
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
     auditLogs: user?.role === 'admin' ? <AuditLogsPage /> : <HomePage />,
+      adminDashboard: user?.role === 'admin'
+    ? <AdminDashboardPage />
+    : <HomePage />,
   };
 
   return (
