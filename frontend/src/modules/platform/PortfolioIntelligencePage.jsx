@@ -49,6 +49,48 @@ function projectKind(item = {}) {
   return 'Academico';
 }
 
+function explicitCaseFact(summary = '', labels = []) {
+  const lines = String(summary || '').split(/\r?\n/);
+  const expression = new RegExp(`^(?:#{1,3}\\s*)?(?:${labels.join('|')})\\s*:?\\s*(.*)$`, 'i');
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].trim().match(expression);
+    if (!match) continue;
+    if (match[1]?.trim()) return match[1].trim();
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const value = lines[next].trim();
+      if (!value) continue;
+      if (/^#{1,3}\s+/.test(value)) break;
+      return value.replace(/^[-*]\s+/, '').trim();
+    }
+  }
+  return '';
+}
+
+function evidenceLabel(project = {}) {
+  if (project.externalUrl) {
+    return {
+      web_app: 'Aplicacao publicada',
+      repository: 'Repositorio',
+      prototype: 'Prototipo',
+      drive: 'Arquivos',
+      article: 'Artigo',
+    }[project.externalKind] || 'Link externo';
+  }
+  if (project.documentUrl) return project.documentName || 'Documento anexado';
+  if (project.mediaUrl) return project.mediaType === 'video' ? 'Video anexado' : 'Imagem anexada';
+  return '';
+}
+
+function projectFacts(project = {}) {
+  return [
+    ['Problema', explicitCaseFact(project.summary, ['problema', 'desafio'])],
+    ['Resultado', explicitCaseFact(project.summary, ['resultado', 'impacto'])],
+    ['Complexidade', explicitCaseFact(project.summary, ['complexidade'])],
+    ['Disciplina', project.courseName || ''],
+    ['Evidencia', evidenceLabel(project)],
+  ].filter(([, value]) => value).slice(0, 3);
+}
+
 function richInline(text = '') {
   return String(text).split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, index) => {
     const bold = part.match(/^\*\*([^*]+)\*\*$/);
@@ -125,7 +167,7 @@ function SkillNode({ name, family, level, index }) {
 function RecruiterView({ score, projects, skills, resume }) {
   const insights = [
     ['Competencias', skills.length ? skills.slice(0, 5).map(item => item[0]).join(', ') : 'Nenhuma competencia inferida ainda.'],
-    ['Evidencias', `${projects.length} case(s) publicado(s) com dados vinculados ao portfolio.`],
+    ['Evidencias', `${projects.length} projeto(s) publicado(s) no portfolio.`],
     ['Curriculo', resume?.documentUrl ? 'Arquivo anexado ao portfolio.' : 'Nenhum curriculo anexado.'],
   ];
   return (
@@ -227,7 +269,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
             </p>
             <div className="portfolio-hero-tags">
               {courses[0]?.name && <span><GraduationCap size={14} /> {courses[0].name}</span>}
-              {projects.length > 0 && <span><MapPin size={14} /> {projects.length} case(s) publicado(s)</span>}
+              {projects.length > 0 && <span><MapPin size={14} /> {projects.length} projeto(s) publicado(s)</span>}
               <span><Code2 size={14} /> {skills.slice(0, 3).map(([name]) => name).join(', ') || 'Skills em analise'}</span>
             </div>
             <div className="portfolio-actions">
@@ -248,7 +290,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
       </section>
 
       <section className="portfolio-metrics-row">
-        <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="cases publicados" />
+        <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="publicados" />
         <Metric icon={BadgeCheck} label="Curriculo" value={resume?.documentUrl ? 1 : 0} hint="arquivo conectado" />
         <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? 0}%`} hint="progresso academico" />
         <Metric icon={Target} label="Score" value={score} hint="prontidao profissional" />
@@ -273,9 +315,9 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
         <div className="portfolio-section-head">
           <div>
             <span>Projetos</span>
-            <h2>Cases academicos</h2>
+            <h2>Projetos publicados</h2>
           </div>
-          <p>Entregas do AVA convertidas em projetos com problema, stack, resultado e link verificavel.</p>
+          <p>Cases mostram somente contexto declarado e evidencias realmente anexadas ou vinculadas.</p>
         </div>
         <div className="portfolio-project-toolbar">
           <label>
@@ -296,20 +338,20 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
               <motion.article key={project.id || project.activityId} className="portfolio-project-card" layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="portfolio-project-cover">
                   <span>{project.kind}</span>
-                  <strong>{project.externalKind === 'web_app' ? 'Deploy' : project.externalKind === 'repository' ? 'GitHub' : 'Case'}</strong>
+                  {evidenceLabel(project) && <strong>{evidenceLabel(project)}</strong>}
                 </div>
                 <div className="portfolio-project-body">
                   <small>{project.courseName || ''}</small>
                   <h3>{project.title || project.activityTitle}</h3>
                   {project.summary && <ProjectSummary text={project.summary} />}
-                  <div className="portfolio-case-facts">
-                    <span><b>Problema</b>{project.activityTitle || ''}</span>
-                    <span><b>Complexidade</b>{project.summary?.length > 160 ? 'Alta' : project.summary ? 'Media' : ''}</span>
-                    <span><b>Resultado</b>{project.externalUrl ? 'Link navegavel' : 'Entrega documentada'}</span>
-                  </div>
+                  {projectFacts(project).length > 0 && (
+                    <div className="portfolio-case-facts">
+                      {projectFacts(project).map(([label, value]) => <span key={label}><b>{label}</b>{value}</span>)}
+                    </div>
+                  )}
                   <div className="portfolio-card-actions">
                     {project.externalUrl && <a href={project.externalUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Abrir</a>}
-                    <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer"><GitBranch size={15} /> Ver case</a>
+                    <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer"><GitBranch size={15} /> Ver projeto</a>
                   </div>
                 </div>
               </motion.article>
@@ -318,7 +360,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
         </div>
         {!filteredProjects.length && (
           <div className="profile-portfolio-empty">
-            <strong>Nenhum case publicado ainda.</strong>
+            <strong>Nenhum projeto publicado ainda.</strong>
             <span>Crie uma postagem de portfolio ou publique uma entrega do AVA para alimentar esta area.</span>
           </div>
         )}

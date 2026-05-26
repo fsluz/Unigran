@@ -12,6 +12,7 @@ const PROFILE_GUIDANCE = {
   coordination: 'Priorize cursos coordenados, turmas, docentes e acompanhamento academico.',
   secretary: 'Priorize matriculas, registros e documentacao dentro do escopo autorizado.',
   moderator: 'Priorize comunidade e orientacao de uso; nao exponha informacoes academicas sensiveis.',
+  social_admin: 'Priorize acessos e moderacao da rede social; nao exponha gestao academica institucional.',
   admin: 'Priorize gestao da instituicao vinculada e processos academicos internos.',
   super_admin: 'Priorize governanca global, sem expor dados pessoais sem necessidade.',
 };

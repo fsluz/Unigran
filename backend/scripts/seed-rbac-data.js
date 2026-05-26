@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { DIRECT_ROLE_PERMISSIONS, ROLE_HIERARCHY } from '../src/modules/auth/rbac.js';
+import { DIRECT_ROLE_PERMISSIONS, ROLE_HIERARCHY, ROLE_INHERITANCE } from '../src/modules/auth/rbac.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../src/db/typedb.js';
 
 function safe(value) {
@@ -24,37 +24,39 @@ for (const permission of permissions) {
   }
 }
 
+for (const role of ROLE_HIERARCHY) {
+  await writeQuery(`
+    match
+      $role isa rbac-role, has rbac-role-key "${safe(role)}";
+      $link isa rbac-role-permission, links (role: $role, permission: $permission);
+    delete $link;
+  `);
+}
+
 for (const [role, rolePermissions] of Object.entries(DIRECT_ROLE_PERMISSIONS)) {
   for (const permission of rolePermissions) {
-    const linked = await exists(`
+    await writeQuery(`
       match
         $role isa rbac-role, has rbac-role-key "${safe(role)}";
         $permission isa rbac-permission, has rbac-permission-key "${safe(permission)}";
-        rbac-role-permission(role: $role, permission: $permission);
-      fetch { "role": { $role.* } };
+      insert $link isa rbac-role-permission, links (role: $role, permission: $permission);
     `);
-    if (!linked) {
-      await writeQuery(`
-        match
-          $role isa rbac-role, has rbac-role-key "${safe(role)}";
-          $permission isa rbac-permission, has rbac-permission-key "${safe(permission)}";
-        insert $link isa rbac-role-permission, links (role: $role, permission: $permission);
-      `);
-    }
   }
 }
 
-for (let index = 1; index < ROLE_HIERARCHY.length; index += 1) {
-  const child = ROLE_HIERARCHY[index];
-  const parent = ROLE_HIERARCHY[index - 1];
-  const linked = await exists(`
+// Replace inheritance edges so a previous linear hierarchy cannot keep
+// institutional admins linked to the social moderation branch.
+for (const child of ROLE_HIERARCHY) {
+  await writeQuery(`
     match
       $child isa rbac-role, has rbac-role-key "${safe(child)}";
-      $parent isa rbac-role, has rbac-role-key "${safe(parent)}";
-      rbac-role-inheritance(child: $child, parent: $parent);
-    fetch { "child": { $child.* } };
+      $inheritance isa rbac-role-inheritance, links (child: $child, parent: $parent);
+    delete $inheritance;
   `);
-  if (!linked) {
+}
+
+for (const [child, parents] of Object.entries(ROLE_INHERITANCE)) {
+  for (const parent of parents) {
     await writeQuery(`
       match
         $child isa rbac-role, has rbac-role-key "${safe(child)}";

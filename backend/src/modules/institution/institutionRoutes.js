@@ -6,6 +6,7 @@ import {
   requireInstitutionPermission,
   requirePermission,
   hasPermission,
+  canAccessInstitution,
 } from '../auth/rbac.js';
 import {
   approveMembership,
@@ -114,6 +115,18 @@ router.get('/universities', async (_req, res) => {
     res.json({ universities: await listUniversities() });
   } catch (err) {
     handleError(res, err, 'Erro ao listar universidades');
+  }
+});
+
+router.get('/universities/accessible', requirePermission('institutions:read'), async (req, res) => {
+  try {
+    const universities = await listUniversities();
+    const allowed = await Promise.all(universities.map(async university => (
+      (await canAccessInstitution(req.user, university.id, 'institutions:read')) ? university : null
+    )));
+    res.json({ universities: allowed.filter(Boolean) });
+  } catch (err) {
+    handleError(res, err, 'Erro ao listar universidades acessiveis');
   }
 });
 

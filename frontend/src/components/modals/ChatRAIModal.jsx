@@ -33,6 +33,7 @@ function roleLabel(role) {
     professor: 'professor',
     coordination: 'coordenacao',
     admin: 'admin',
+    social_admin: 'admin da rede social',
     super_admin: 'super admin',
   }[normalizeRole(role)] || 'usuario';
 }

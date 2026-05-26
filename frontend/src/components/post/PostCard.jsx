@@ -555,7 +555,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
                 )}
                 {portfolio.caseLink && (
                   <a className="portfolio-case-link" href={portfolio.caseLink}>
-                    Ver case completo
+                    Ver projeto completo
                   </a>
                 )}
               </div>

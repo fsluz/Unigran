@@ -52,8 +52,8 @@ const BASE_GROUPS = [
 ];
 
 const ADMIN_GROUP = {
-  title: 'Administracao',
-  items: [{ id: 'admin', icon: '', label: 'Painel Admin' }],
+  title: 'Rede Social',
+  items: [{ id: 'admin', icon: '', label: 'Admin da Rede' }],
 };
 
 function Section({ title, desc, children }) {
@@ -275,9 +275,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
-  const canReadUsers = hasPermission(user, 'users:read');
+  const canReadUsers = hasPermission(user, 'users:platform_manage');
+  const canCreateUsers = hasPermission(user, 'users:create');
   const canModerateReports = hasPermission(user, 'reports:read');
-  const canAssignRoles = hasPermission(user, 'permissions:manage');
+  const canAssignRoles = hasPermission(user, 'permissions:manage') || hasPermission(user, 'roles:social_assign');
+  const canAssignGlobalRoles = hasPermission(user, 'permissions:manage');
   const canSeeAdmin = canReadUsers || canModerateReports;
   const groups = [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
 
@@ -286,6 +288,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const [adminSearch, setAdminSearch] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState('');
+  const [newPlatformUser, setNewPlatformUser] = useState({ name: '', username: '', email: '', password: '' });
+  const [creatingPlatformUser, setCreatingPlatformUser] = useState(false);
 
   async function loadAdmin() {
     if (!token || !canSeeAdmin) return;
@@ -331,6 +335,27 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     if (!res.ok) throw new Error('Cargo falhou');
     setAdminUsers(list => list.map(u => u.username === username ? { ...u, role } : u));
     showToast('Cargo salvo', 'OK');
+  }
+
+  async function createPlatformLogin(event) {
+    event.preventDefault();
+    setCreatingPlatformUser(true);
+    try {
+      const res = await apiFetch('/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newPlatformUser),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Nao foi possivel criar o login');
+      setAdminUsers(list => [data, ...list]);
+      setNewPlatformUser({ name: '', username: '', email: '', password: '' });
+      showToast('Login criado na rede social', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar login', '!');
+    } finally {
+      setCreatingPlatformUser(false);
+    }
   }
 
   async function toggleBan(username, banned) {
@@ -941,7 +966,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
           {section === 'admin' && canSeeAdmin && (
             <>
-              <Section title="Painel Admin" desc="Usuarios, cargos, banimentos e denuncias">
+              <Section title="Administracao da Rede Social" desc="Logins da plataforma, moderacao e denuncias">
                 <div style={{
                   padding: 18,
                   borderRadius: 18,
@@ -951,9 +976,20 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   boxShadow: '0 18px 45px rgba(54, 102, 255, 0.28)',
                 }}>
                   <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 4 }}>Centro de controle</div>
-                  <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>Moderacao Unigran</div>
-                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>Controle usuarios. Veja riscos. Aja rapido.</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>Rede Social Unigran</div>
+                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>Crie acessos, modere conteudo e trate denuncias da comunidade.</div>
                 </div>
+
+                {canCreateUsers && (
+                  <form className="academic-form" onSubmit={createPlatformLogin} style={{ marginBottom: 18 }}>
+                    <strong>Criar login basico</strong>
+                    <input value={newPlatformUser.name} onChange={event => setNewPlatformUser(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome" required />
+                    <input value={newPlatformUser.username} onChange={event => setNewPlatformUser(prev => ({ ...prev, username: event.target.value }))} placeholder="Username" required />
+                    <input type="email" value={newPlatformUser.email} onChange={event => setNewPlatformUser(prev => ({ ...prev, email: event.target.value }))} placeholder="E-mail" required />
+                    <input type="password" value={newPlatformUser.password} onChange={event => setNewPlatformUser(prev => ({ ...prev, password: event.target.value }))} placeholder="Senha provisoria" minLength={6} required />
+                    <Button type="submit" disabled={creatingPlatformUser}>{creatingPlatformUser ? 'Criando...' : 'Criar login'}</Button>
+                  </form>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
                   {[
@@ -1033,13 +1069,14 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                           onChange={e => saveRole(u.username, e.target.value).catch(err => showToast(err.message, '!'))}
                           style={{ width: 190 }}
                         >
-                          {hasPermission(user, 'permissions:manage') && <option value="super_admin">SUPER_ADMIN</option>}
-                          {hasPermission(user, 'permissions:manage') && <option value="admin">ADMIN</option>}
-                          <option value="coordination">coordination</option>
-                          <option value="professor">professor</option>
-                          <option value="secretary">secretary</option>
+                          {canAssignGlobalRoles && <option value="super_admin">admin_global</option>}
+                          {canAssignGlobalRoles && <option value="social_admin">social_admin</option>}
+                          {canAssignGlobalRoles && <option value="admin">admin_institucional</option>}
+                          {canAssignGlobalRoles && <option value="coordination">coordination</option>}
+                          {canAssignGlobalRoles && <option value="professor">professor</option>}
+                          {canAssignGlobalRoles && <option value="secretary">secretary</option>}
                           <option value="moderator">moderator</option>
-                          <option value="student">student</option>
+                          {canAssignGlobalRoles && <option value="student">student</option>}
                           <option value="user">usuario</option>
                         </select>
                       )}
@@ -1056,7 +1093,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                 {!adminUsers.length && !adminLoading && <p style={{ color: 'var(--text-2)' }}>Nada aqui.</p>}
               </Section>
 
-              <Section title="Denuncias" desc="Fila para admin e moderador">
+              <Section title="Denuncias" desc="Fila para admin da rede social e moderador">
                 {adminReports.map(r => (
                   <Row key={r.id} title={r.reason || 'Denuncia'} sub={`${r.reporter || 'anon'} -> ${r.reported_user || r.post_id || 'alvo'} | ${r.status}`}>
                     <select

@@ -256,7 +256,7 @@ export async function createPostWithRules({ user, body, file }) {
       activityId: manualActivityId,
       title: portfolioTitle,
       summary: baseContent.slice(0, 4000),
-      activityTitle: 'Publicacao social para portfolio',
+      activityTitle: '',
       documentUrl: portfolioDocument?.url || '',
       documentName: portfolioDocument?.name || '',
       documentStorage: portfolioDocument?.storage || '',

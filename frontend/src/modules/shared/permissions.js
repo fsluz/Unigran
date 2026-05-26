@@ -11,6 +11,8 @@ const ROLE_ALIASES = {
   library: 'secretary',
   biblioteca: 'secretary',
   community_moderator: 'moderator',
+  admin_rede_social: 'social_admin',
+  social_administrator: 'social_admin',
   coordenacao: 'coordination',
   coordenacao_academica: 'coordination',
   coordinator: 'coordination',

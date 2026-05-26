@@ -131,17 +131,39 @@ function categoryLabel(category = '') {
   return labels[category] || 'Academico';
 }
 
-function projectComplexity(item = {}) {
-  const signalCount = [
-    item.externalUrl,
-    item.documentUrl,
-    item.summary && item.summary.length > 120,
-    item.externalKind === 'web_app',
-    item.externalKind === 'repository',
-  ].filter(Boolean).length;
-  if (signalCount >= 4) return 'Alta';
-  if (signalCount >= 2) return 'Media';
-  return 'Inicial';
+function explicitCaseFact(summary = '', labels = []) {
+  const lines = String(summary || '').split(/\r?\n/);
+  const expression = new RegExp(`^(?:#{1,3}\\s*)?(?:${labels.join('|')})\\s*:?\\s*(.*)$`, 'i');
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].trim().match(expression);
+    if (!match) continue;
+    if (match[1]?.trim()) return match[1].trim();
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const value = lines[next].trim();
+      if (!value) continue;
+      if (/^#{1,3}\s+/.test(value)) break;
+      return value.replace(/^[-*]\s+/, '').trim();
+    }
+  }
+  return '';
+}
+
+function projectEvidence(item = {}, externalUrl = item.externalUrl || '') {
+  if (externalUrl) return linkKindMeta(item.externalKind || 'other').label;
+  if (item.documentUrl) return item.documentName || 'Documento anexado';
+  if (item.mediaUrl) return item.mediaType === 'video' ? 'Video anexado' : 'Imagem anexada';
+  return '';
+}
+
+function projectFacts(item = {}, externalUrl = item.externalUrl || '') {
+  const facts = [
+    ['Problema', explicitCaseFact(item.summary, ['problema', 'desafio'])],
+    ['Resultado', explicitCaseFact(item.summary, ['resultado', 'impacto'])],
+    ['Complexidade', explicitCaseFact(item.summary, ['complexidade'])],
+    ['Disciplina', item.courseName || ''],
+    ['Evidencia', projectEvidence(item, externalUrl)],
+  ];
+  return facts.filter(([, value]) => value).slice(0, 3);
 }
 
 function wantsJson(req) {
@@ -204,6 +226,8 @@ function projectCard(item, req, highlighted = false) {
   const externalUrl = item.externalUrl || (item.documentStorage === 'external' ? item.documentUrl : '');
   const meta = linkKindMeta(item.externalKind || (externalUrl ? 'other' : ''));
   const category = projectCategory(item);
+  const evidence = projectEvidence(item, externalUrl);
+  const facts = projectFacts(item, externalUrl);
   const searchable = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.activityTitle || ''} ${categoryLabel(category)} ${(item.tags || []).join(' ')} ${(item.technologies || []).join(' ')}`;
   const chips = [
     item.courseName,
@@ -229,26 +253,22 @@ function projectCard(item, req, highlighted = false) {
     <article class="project-card ${highlighted ? 'highlighted' : ''}" id="${escapeHtml(item.activityId || item.id)}" data-category="${escapeHtml(category)}" data-search="${escapeHtml(searchable)}">
       <div class="project-cover">
         <span>${escapeHtml(categoryLabel(category))}</span>
-        <strong>${escapeHtml(projectComplexity(item))}</strong>
+        ${evidence ? `<strong>${escapeHtml(evidence)}</strong>` : ''}
       </div>
       <div class="project-body">
         <div class="project-head">
           <div>
-            <small>${escapeHtml(item.activityTitle || '')}</small>
+            <small>${escapeHtml(item.courseName || (item.projectType && item.projectType !== 'social' ? item.projectType : ''))}</small>
             <h3>${escapeHtml(item.title || item.activityTitle || '')}</h3>
           </div>
-          <em>${highlighted ? 'Case em destaque' : formatDate(item.updatedAt || item.createdAt)}</em>
+          <em>${highlighted ? 'Projeto em destaque' : formatDate(item.updatedAt || item.createdAt)}</em>
         </div>
         ${item.summary ? `<div class="project-summary">${renderProjectSummary(item.summary)}</div>` : ''}
-        <div class="case-grid">
-          <div><span>Problema</span><b>${escapeHtml(item.activityTitle || 'Desafio academico')}</b></div>
-          <div><span>Resultado</span><b>${externalUrl ? 'Link navegavel' : 'Entrega documentada'}</b></div>
-          <div><span>Complexidade</span><b>${escapeHtml(projectComplexity(item))}</b></div>
-        </div>
+        ${facts.length ? `<div class="case-grid">${facts.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</div>` : ''}
         ${chips.length ? `<div class="tech-row">${chips.slice(0, 10).map(chip => `<span>${escapeHtml(chip)}</span>`).join('')}</div>` : ''}
         ${external}
         <div class="project-actions">
-          <a class="project-link" href="${escapeHtml(link)}">Ver case</a>
+          <a class="project-link" href="${escapeHtml(link)}">Ver projeto</a>
           ${doc}
         </div>
       </div>
@@ -422,7 +442,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       <div class="recruiter-grid">
         <div class="recruiter-card feature">
           <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-            <div class="score-ring" style="--score:${Math.min(100, items.length * 20)}"><div><strong>${items.length}</strong><small>cases</small></div></div>
+            <div class="score-ring" style="--score:${Math.min(100, items.length * 20)}"><div><strong>${items.length}</strong><small>projetos</small></div></div>
             <div style="min-width:240px;flex:1">
               <small>Dados publicados</small>
               <h3 style="margin:6px 0 8px;font-size:30px">${escapeHtml(virtualResume.professionalTitle || courseNames[0] || 'Perfil academico em avaliacao')}</h3>
@@ -432,14 +452,14 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="insight-list">
             <div class="insight"><i></i><span><b>Fit tecnico:</b> ${escapeHtml(allSkillSignals.slice(0, 5).join(', ') || 'sem competencias cadastradas')}.</span></div>
             <div class="insight"><i></i><span><b>Evidencias:</b> ${items.length} projeto(s), ${resume ? 'curriculo estruturado' : 'curriculo pendente'} e portfolio publico compartilhavel.</span></div>
-            <div class="insight"><i></i><span><b>Recomendacao:</b> analisar os cases em destaque e abrir links navegaveis quando disponiveis.</span></div>
+            <div class="insight"><i></i><span><b>Recomendacao:</b> analisar projetos com evidencias anexadas e abrir links quando disponiveis.</span></div>
           </div>
         </div>
         <div class="recruiter-card">
           <small>Projetos em destaque</small>
-          <h3 style="margin:6px 0 12px;font-size:24px">Cases para abrir primeiro</h3>
+          <h3 style="margin:6px 0 12px;font-size:24px">Projetos para abrir primeiro</h3>
           <div class="insight-list">
-            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.slug}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || '')}</strong><small>${escapeHtml([project.courseName, projectComplexity(project)].filter(Boolean).join(' - '))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
+            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.slug}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || '')}</strong><small>${escapeHtml([project.courseName, projectEvidence(project)].filter(Boolean).join(' - '))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
           </div>
         </div>
       </div>

@@ -91,12 +91,12 @@ function AppShell() {
     favorites:     <FavoritesPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
     ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
-    masterBi:      hasPermission(user, 'reports:institution') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
+    masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
     auditLogs: hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage />,
-      adminDashboard: hasPermission(user, 'reports:institution')
+      adminDashboard: hasPermission(user, 'system:manage')
     ? <AdminDashboardPage />
     : <HomePage />,
   };

@@ -4,6 +4,7 @@ export const ROLE_HIERARCHY = [
   'user',
   'student',
   'moderator',
+  'social_admin',
   'secretary',
   'professor',
   'coordination',
@@ -18,6 +19,8 @@ export const ROLE_ALIASES = {
   aluno: 'student',
   estudante: 'student',
   community_moderator: 'moderator',
+  admin_rede_social: 'social_admin',
+  social_administrator: 'social_admin',
   administrativo: 'secretary',
   administrative: 'secretary',
   secretaria: 'secretary',
@@ -31,7 +34,8 @@ export const ROLE_ALIASES = {
   management: 'admin',
 };
 
-// Only incremental capabilities live here. Higher roles inherit every lower role.
+// Permissions are incremental. Academic administration and social moderation
+// are separate branches; only the global administrator inherits both.
 export const DIRECT_ROLE_PERMISSIONS = {
   user: [
     'platform:read',
@@ -55,6 +59,11 @@ export const DIRECT_ROLE_PERMISSIONS = {
     'users:flag',
     'messages:initiate',
   ],
+  social_admin: [
+    'users:platform_manage',
+    'users:create',
+    'roles:social_assign',
+  ],
   secretary: [
     'institutions:read',
     'users:read',
@@ -70,6 +79,7 @@ export const DIRECT_ROLE_PERMISSIONS = {
     'messages:initiate',
   ],
   coordination: [
+    'institutions:read',
     'courses:manage',
     'classes:manage',
     'academic:manage',
@@ -78,7 +88,7 @@ export const DIRECT_ROLE_PERMISSIONS = {
   admin: [
     'faculties:manage',
     'departments:manage',
-    'users:manage',
+    'users:institution_manage',
     'roles:assign',
     'reports:institution',
   ],
@@ -89,6 +99,18 @@ export const DIRECT_ROLE_PERMISSIONS = {
     'audit:manage',
     'system:manage',
   ],
+};
+
+export const ROLE_INHERITANCE = {
+  user: [],
+  student: ['user'],
+  moderator: ['user'],
+  social_admin: ['moderator'],
+  secretary: ['student'],
+  professor: ['student'],
+  coordination: ['professor'],
+  admin: ['coordination', 'secretary'],
+  super_admin: ['admin', 'social_admin'],
 };
 
 const LEGACY_PERMISSIONS = {
@@ -116,11 +138,15 @@ export function roleLevel(role) {
 }
 
 export function permissionsForRole(role) {
-  const level = roleLevel(role);
   const permissions = new Set();
-  ROLE_HIERARCHY.slice(0, level + 1).forEach(item => {
-    DIRECT_ROLE_PERMISSIONS[item].forEach(permission => permissions.add(permission));
-  });
+  const visited = new Set();
+  const collect = item => {
+    if (visited.has(item)) return;
+    visited.add(item);
+    (ROLE_INHERITANCE[item] || []).forEach(collect);
+    (DIRECT_ROLE_PERMISSIONS[item] || []).forEach(permission => permissions.add(permission));
+  };
+  collect(normalizeUniversityRole(role));
   return [...permissions];
 }
 

@@ -29,6 +29,7 @@ import {
   deleteInstitutionUniversity,
   enrollInstitutionStudent,
   fetchAva,
+  fetchAccessibleUniversities,
   fetchUniversities,
   fetchUniversity,
   linkInstitutionSubjectToClass,
@@ -42,8 +43,8 @@ const pageVariants = {
 };
 
 const roleLabels = {
-  super_admin: 'Super Admin',
-  admin: 'Administrador',
+  super_admin: 'Admin Global',
+  admin: 'Admin Institucional',
   coordination: 'Coordenacao',
   professor: 'Professor',
   secretary: 'Secretaria',
@@ -157,7 +158,9 @@ export default function AcademicPortalPage({ onOpenAva }) {
   }, [token, user?.permissions]);
 
   const loadInstitution = async (preferredId = selectedUniversityId) => {
-    const data = await fetchUniversities(token);
+    const data = hasPermission(user, 'institutions:read')
+      ? await fetchAccessibleUniversities(token)
+      : await fetchUniversities(token);
     const list = data.universities || [];
     setUniversities(list);
     const nextId = preferredId || list[0]?.id || '';
@@ -201,9 +204,9 @@ export default function AcademicPortalPage({ onOpenAva }) {
     { id: 'home', label: 'Inicio', icon: PanelsTopLeft, visible: true },
     { id: 'student', label: 'Aluno', icon: BookOpen, visible: hasPermission(user, 'academic:read') },
     { id: 'teacher', label: 'Professor', icon: GraduationCap, visible: canTeach },
-    { id: 'coordination', label: 'Coordenacao', icon: Users, visible: canCoordinate },
+    { id: 'coordination', label: role === 'admin' ? 'Gestao Institucional' : role === 'super_admin' ? 'Gestao Global' : 'Coordenacao', icon: Users, visible: canCoordinate },
     { id: 'management', label: 'Indicadores', icon: BarChart3, visible: canManage },
-  ].filter(tab => tab.visible), [user, canTeach, canCoordinate, canManage]);
+  ].filter(tab => tab.visible), [user, role, canTeach, canCoordinate, canManage]);
 
   const pendingCorrections = Number(teacherDashboard.pendingCorrections || 0);
   const enrolledStudents = courses.reduce((sum, course) => sum + (course.students?.length || 0), 0);
@@ -515,7 +518,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
               {universities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </form>
-          {!universities.length && <EmptyState>Nenhuma universidade cadastrada.</EmptyState>}
+          {!universities.length && (
+            <EmptyState>
+              {canManage && !canCreateInstitution
+                ? 'Nenhuma instituicao foi atribuida a este administrador. O admin global deve aprovar um vinculo institucional.'
+                : 'Nenhuma universidade cadastrada.'}
+            </EmptyState>
+          )}
         </PortalCard>
 
         {canCreateInstitution && (
