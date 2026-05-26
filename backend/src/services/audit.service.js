@@ -10,24 +10,68 @@ const { Pool } = require('pg');
 // Pool PostgreSQL (Supabase)
 // ---------------------------------------------------------------------------
 let pool = null;
+let tableReady = null;
+
+function cleanEnv(value = '') {
+  return String(value || '').trim().replace(/^['"]|['"]$/g, '');
+}
+
+function auditConnectionString() {
+  return cleanEnv(
+    process.env.AUDIT_DATABASE_URL
+    || process.env.SUPABASE_DATABASE_URL
+    || process.env.DATABASE_URL
+    || process.env.POSTGRES_URL,
+  );
+}
 
 function getPool() {
-  if (!pool && process.env.DB_HOST) {
-    pool = new Pool({
-      host:     process.env.DB_HOST,
-      port:     parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME     || 'postgres',
-      user:     process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      ssl:      { rejectUnauthorized: false },
-      max:      5,
-      idleTimeoutMillis: 30_000,
-    });
+  if (!pool) {
+    const connectionString = auditConnectionString();
+    const host = cleanEnv(process.env.DB_HOST);
+    if (!connectionString && !host) return null;
+
+    pool = connectionString
+      ? new Pool({
+          connectionString,
+          ssl: { rejectUnauthorized: false },
+          max: 5,
+          idleTimeoutMillis: 30_000,
+        })
+      : new Pool({
+          host,
+          port:     parseInt(process.env.DB_PORT || '5432'),
+          database: cleanEnv(process.env.DB_NAME) || 'postgres',
+          user:     cleanEnv(process.env.DB_USER),
+          password: cleanEnv(process.env.DB_PASSWORD),
+          ssl:      { rejectUnauthorized: false },
+          max:      5,
+          idleTimeoutMillis: 30_000,
+        });
     pool.on('error', err => {
       console.error('[audit] Erro no pool PostgreSQL:', err.message);
     });
   }
   return pool;
+}
+
+function ensureAuditTable(db) {
+  if (!tableReady) {
+    tableReady = db.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        timestamp TIMESTAMPTZ NOT NULL,
+        level TEXT NOT NULL,
+        category TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actor TEXT,
+        target TEXT,
+        ip TEXT,
+        meta JSONB DEFAULT '{}'::jsonb
+      );
+    `);
+  }
+  return tableReady;
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +121,7 @@ export function auditLog({
   const db = getPool();
 
   if (db) {
-    db.query(
+    ensureAuditTable(db).then(() => db.query(
       `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
@@ -91,7 +135,7 @@ export function auditLog({
         entry.ip,
         JSON.stringify(entry.meta),
       ]
-    ).catch(err => {
+    )).catch(err => {
       console.error('[audit] Falha ao gravar no Supabase:', err.message);
       writeAuditFallback(entry);
     });
@@ -114,6 +158,7 @@ export async function readAuditLogs(filters = {}) {
 
   if (db) {
     try {
+      await ensureAuditTable(db);
       const conditions = [];
       const values     = [];
       let   idx        = 1;

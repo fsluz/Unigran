@@ -2,6 +2,7 @@
 import { Avatar } from '../ui';
 import { useEffect, useState } from 'react';
 import { fetchConversations } from '../../services/conversations';
+import { fetchCommunities } from '../../services/communities';
 import UnigranLogo from './UnigranLogo';
 
 const NAV_TOP = [
@@ -42,12 +43,6 @@ const NAV_TOP = [
   )},
 ];
 
-const COMMUNITIES_FOLLOWED = [
-  { id: 'tec', label: 'Tecnologia', icon: 'TC', color: '#00A8FF', members: '2.541' },
-  { id: 'mus', label: 'Msica',     icon: 'MS', color: '#F59E0B', members: '3.102' },
-  { id: 'cul', label: 'Culinria',  icon: 'CL', color: '#F97316', members: '2.834' },
-];
-
 function Toggle({ value, onChange }) {
   return (
     <label className="toggle" style={{ cursor: 'pointer' }}>
@@ -70,6 +65,7 @@ function Toggle({ value, onChange }) {
 export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTheme }) {
   const { user, token } = useAuth();
   const [messageCount, setMessageCount] = useState(0);
+  const [followedCommunities, setFollowedCommunities] = useState([]);
 
   const isActive = (id) => !searchOpen && page === id;
 
@@ -78,6 +74,13 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
     fetchConversations(token)
       .then(items => setMessageCount((items || []).reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)))
       .catch(() => setMessageCount(0));
+  }, [token, page]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetchCommunities(token)
+      .then(items => setFollowedCommunities((items || []).filter(item => item.joined)))
+      .catch(() => setFollowedCommunities([]));
   }, [token, page]);
 
   return (
@@ -107,12 +110,29 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
           </button>
         ))}
 
+        {user?.role === 'admin' && (
+          <button
+            className={`sidebar-wide-item ${isActive('masterBi') ? 'active' : ''}`}
+            onClick={() => onNavigate('masterBi')}
+          >
+            <span className="sidebar-wide-icon">
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3v18h18"/>
+                <rect x="7" y="12" width="3" height="5" rx="1"/>
+                <rect x="12" y="8" width="3" height="9" rx="1"/>
+                <rect x="17" y="5" width="3" height="12" rx="1"/>
+              </svg>
+            </span>
+            <span className="sidebar-wide-label">Master BI</span>
+          </button>
+        )}
+
         {/* Communities section */}
         <div className="sidebar-wide-section-label">
           <span>Comunidades seguidas</span>
           <span className="sidebar-wide-plus">+</span>
         </div>
-        {COMMUNITIES_FOLLOWED.map(c => (
+        {followedCommunities.length ? followedCommunities.map(c => (
           <button
             key={c.id}
             className="sidebar-wide-comm"
@@ -122,11 +142,18 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
               {c.icon}
             </div>
             <div className="sidebar-comm-info">
-              <div className="sidebar-comm-name">{c.label}</div>
-              <div className="sidebar-comm-members">{c.members} membros</div>
+              <div className="sidebar-comm-name">{c.name || c.label}</div>
+              <div className="sidebar-comm-members">{Number(c.members || 0).toLocaleString()} membros</div>
             </div>
           </button>
-        ))}
+        )) : (
+          <div className="sidebar-wide-comm" style={{ cursor: 'default' }}>
+            <div className="sidebar-comm-info">
+              <div className="sidebar-comm-name">Nenhuma comunidade seguida</div>
+              <div className="sidebar-comm-members">Entre em comunidades reais para ve-las aqui.</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom: admin + settings + user */}

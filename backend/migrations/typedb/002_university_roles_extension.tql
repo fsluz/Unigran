@@ -1,0 +1,19 @@
+# The active schema currently limits user-role to social roles only.
+# Run this single redefine query in a TypeDB schema transaction.
+
+redefine
+user-role value string @values(
+  "admin",
+  "super_admin",
+  "management",
+  "coordination",
+  "administrative",
+  "secretary",
+  "library",
+  "moderator",
+  "community_moderator",
+  "professor",
+  "aluno",
+  "student",
+  "user"
+);

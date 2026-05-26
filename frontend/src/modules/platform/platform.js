@@ -61,6 +61,15 @@ export async function submitAvaActivity(token, activityId, payload) {
   return readJson(res, 'Erro ao enviar atividade');
 }
 
+export async function publishSubmissionToPortfolio(token, submissionId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/submissions/${submissionId}/portfolio`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload || {}),
+  });
+  return readJson(res, 'Erro ao publicar entrega no portfolio');
+}
+
 export async function uploadAvaDocument(token, file) {
   const body = new FormData();
   body.append('file', file);
@@ -99,6 +108,23 @@ export async function createTeacherMaterial(token, courseId, payload) {
   return readJson(res, 'Erro ao criar material');
 }
 
+export async function deleteTeacherMaterial(token, materialId) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/materials/${materialId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao excluir material');
+}
+
+export async function createAcademicCourse(token, payload) {
+  const res = await apiFetch('/platform/v1/ava/coordination/courses', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar disciplina');
+}
+
 export async function createTeacherActivity(token, courseId, payload) {
   const res = await apiFetch(`/platform/v1/ava/teacher/courses/${courseId}/activities`, {
     method: 'POST',
@@ -106,6 +132,153 @@ export async function createTeacherActivity(token, courseId, payload) {
     body: JSON.stringify(payload),
   });
   return readJson(res, 'Erro ao criar atividade');
+}
+
+export async function enrollAcademicStudent(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/coordination/courses/${courseId}/enrollments`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao matricular aluno');
+}
+
+export async function assignAcademicTeacher(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/coordination/courses/${courseId}/teacher`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao designar professor');
+}
+
+export async function fetchUniversities(token) {
+  const res = await apiFetch('/platform/v1/institutions/universities', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar universidades');
+}
+
+export async function fetchUniversity(token, universityId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}`, {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar universidade');
+}
+
+export async function createInstitutionUniversity(token, payload) {
+  const res = await apiFetch('/platform/v1/institutions/universities', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar universidade');
+}
+
+export async function createInstitutionCampus(token, universityId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/campuses`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar campus');
+}
+
+export async function createInstitutionCourse(token, universityId, campusId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/campuses/${campusId}/courses`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar curso');
+}
+
+export async function createInstitutionSemester(token, universityId, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/courses/${courseId}/semesters`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar semestre');
+}
+
+export async function createInstitutionClassGroup(token, universityId, semesterId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/semesters/${semesterId}/classes`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar turma');
+}
+
+export async function createInstitutionSubject(token, universityId, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/courses/${courseId}/subjects`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar disciplina');
+}
+
+export async function linkInstitutionSubjectToClass(token, universityId, classGroupId, subjectId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/subjects/${subjectId}`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao vincular disciplina a turma');
+}
+
+export async function createInstitutionAvaOffering(token, universityId, classGroupId, subjectId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/subjects/${subjectId}/ava-offering`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao abrir offering do AVA');
+}
+
+export async function enrollInstitutionStudent(token, universityId, classGroupId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/enrollments`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao matricular aluno na turma');
+}
+
+export async function assignInstitutionProfessor(token, universityId, semesterId, subjectId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/semesters/${semesterId}/subjects/${subjectId}/professors`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao vincular professor a disciplina');
+}
+
+export async function updateTeacherActivity(token, activityId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/activities/${activityId}`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao editar atividade');
+}
+
+export async function deleteTeacherActivity(token, activityId) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/activities/${activityId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao excluir atividade');
+}
+
+export async function saveTeacherAttendance(token, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/courses/${courseId}/attendance`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao registrar frequencia');
 }
 
 export async function fetchTeacherSubmissions(token) {
@@ -122,4 +295,11 @@ export async function gradeTeacherSubmission(token, submissionId, payload) {
     body: JSON.stringify(payload),
   });
   return readJson(res, 'Erro ao corrigir entrega');
+}
+
+export async function fetchPowerBiAnalytics(token) {
+  const res = await apiFetch('/admin/power-bi', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar Power BI interno');
 }

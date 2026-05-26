@@ -5,8 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
-import { getCallChannel, getConversationChannel, getPresenceChannel } from '../services/realtime';
-import { decryptMessage, decryptMessages, encryptMessage, publishOwnPublicKey } from '../services/e2ee';
+import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
+import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
@@ -16,6 +16,7 @@ export default function MessagesPage() {
   const { showToast } = useToast();
   const [conversations, setConversations] = useState([]);
   const [active, setActive] = useState(null);
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
@@ -40,6 +41,7 @@ export default function MessagesPage() {
   const [groupSettings, setGroupSettings] = useState({ title: '', description: '', picture: '' });
   const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [e2eeStatus, setE2eeStatus] = useState({ ready: false, missing: [], checked: false });
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -49,6 +51,7 @@ export default function MessagesPage() {
   const [ringtoneSrc, setRingtoneSrc] = useState(() => localStorage.getItem('unigran_call_ringtone') || callRingtone);
   const [, setClock] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [realtimeRevision, setRealtimeRevision] = useState(0);
   const fileInputRef = useRef(null);
   const typingTimerRef = useRef(null);
   const recorderRef = useRef(null);
@@ -140,6 +143,30 @@ export default function MessagesPage() {
     conv?.participant?.username,
   ].filter(Boolean);
 
+  const callRecipients = (conv = active) => [
+    ...(conv?.participants || []).map(person => person.username),
+    conv?.participant?.username,
+  ].filter(Boolean).filter(username => username !== user?.username);
+
+  const callChannelFor = (conversationId) => {
+    const channel = getCallChannel(token, conversationId);
+    if (active?.id === conversationId) callChannelRef.current = channel;
+    return channel;
+  };
+
+  const isMobileMessagesView = () => window.matchMedia('(max-width: 700px)').matches;
+
+  useEffect(() => {
+    if (!token || !active?.id) {
+      setE2eeStatus({ ready: false, missing: [], checked: false });
+      return;
+    }
+
+    getE2EEStatus({ token, usernames: participantUsernames(active) })
+      .then(setE2eeStatus)
+      .catch(() => setE2eeStatus({ ready: false, missing: [], checked: true }));
+  }, [token, active?.id, active?.participants, active?.participant?.username, user?.username]);
+
   useEffect(() => {
     if (!token) return;
     publishOwnPublicKey(token).catch(() => showToast('E2EE sem chave publica salva', '!'));
@@ -149,7 +176,7 @@ export default function MessagesPage() {
     fetchConversations(token)
       .then((loaded) => {
         setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
-        setActive(prev => prev || loaded[0] || null);
+        setActive(prev => prev || (isMobileMessagesView() ? null : (loaded[0] || null)));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
   }, [token, showToast]);
@@ -160,7 +187,7 @@ export default function MessagesPage() {
       fetchConversations(token)
         .then((loaded) => {
           setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
-          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (loaded[0] || null));
+          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (loaded[0] || null)));
         })
         .catch(() => null);
     }, 10000);
@@ -237,7 +264,7 @@ export default function MessagesPage() {
       channel.unsubscribe('message_edited', onEdited);
       channel.unsubscribe('message_deleted', onDeleted);
     };
-  }, [token, active?.id, user?.username]);
+  }, [token, active?.id, user?.username, realtimeRevision]);
 
   useEffect(() => {
     if (!token || !user?.username) return undefined;
@@ -258,7 +285,7 @@ export default function MessagesPage() {
       channel.presence.unsubscribe(refreshPresence);
       channel.presence.leave().catch(() => null);
     };
-  }, [token, user?.username, user?.profilePicture]);
+  }, [token, user?.username, user?.profilePicture, realtimeRevision]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -334,7 +361,52 @@ export default function MessagesPage() {
       channel.unsubscribe('call_accepted', onAccepted);
       channel.unsubscribe('call_end', onEnd);
     };
-  }, [token, active?.id, user?.username, incomingCall]);
+  }, [token, active?.id, user?.username, incomingCall, realtimeRevision]);
+
+  useEffect(() => {
+    if (!token || !user?.username) return undefined;
+    const channel = getUserCallChannel(token, user.username);
+    const onOffer = ({ data: payload }) => {
+      if (!payload?.conversationId || payload.from?.id === user.username) return;
+      if (payload.toDeviceId && payload.toDeviceId !== deviceIdRef.current) return;
+      setIncomingCall(payload);
+    };
+    const onAnswer = async ({ data }) => {
+      const { answer, callId } = data || {};
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
+      if (!pcRef.current || !answer) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+      setCall(prev => prev ? { ...prev, status: 'Conectado', remoteDeviceId: data?.fromDeviceId || prev.remoteDeviceId } : prev);
+    };
+    const onIce = async ({ data }) => {
+      const { candidate, callId, toDeviceId } = data || {};
+      if (toDeviceId && toDeviceId !== deviceIdRef.current) return;
+      if (callIdRef.current && callId && callIdRef.current !== callId) return;
+      if (!pcRef.current || !candidate) return;
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+    };
+    const onAccepted = ({ data }) => {
+      if (!incomingCall) return;
+      if (data?.callId === incomingCall.callId && data?.deviceId !== deviceIdRef.current) setIncomingCall(null);
+    };
+    const onEnd = ({ data }) => {
+      if (data?.toDeviceId && data.toDeviceId !== deviceIdRef.current) return;
+      if (data?.callId && callIdRef.current && data.callId !== callIdRef.current) return;
+      endCall(false);
+    };
+    channel.subscribe('call_offer', onOffer);
+    channel.subscribe('call_answer', onAnswer);
+    channel.subscribe('call_ice', onIce);
+    channel.subscribe('call_accepted', onAccepted);
+    channel.subscribe('call_end', onEnd);
+    return () => {
+      channel.unsubscribe('call_offer', onOffer);
+      channel.unsubscribe('call_answer', onAnswer);
+      channel.unsubscribe('call_ice', onIce);
+      channel.unsubscribe('call_accepted', onAccepted);
+      channel.unsubscribe('call_end', onEnd);
+    };
+  }, [token, user?.username, incomingCall, realtimeRevision]);
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
@@ -427,7 +499,10 @@ export default function MessagesPage() {
         const exists = prev.some(item => item.id === conversation.id);
         return exists ? prev : [conversation, ...prev];
       });
+      closeRealtime();
+      setRealtimeRevision(value => value + 1);
       setActive(conversation);
+      setMobileChatOpen(true);
       setTargetUsername('');
       setConversationSearch('');
       setNewConversationOpen(false);
@@ -451,7 +526,10 @@ export default function MessagesPage() {
       }
       const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants, picture });
       setConversations(prev => [conversation, ...prev]);
+      closeRealtime();
+      setRealtimeRevision(value => value + 1);
       setActive(conversation);
+      setMobileChatOpen(true);
       setSelectedGroupUsers([]);
       setGroupSearch('');
       setGroupFile(null);
@@ -500,6 +578,7 @@ export default function MessagesPage() {
       return next;
     });
     setActive(conversations.find(conv => conv.id !== id) || null);
+    setMobileChatOpen(false);
   };
 
   const removeMessage = async (messageId) => {
@@ -695,14 +774,20 @@ export default function MessagesPage() {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
     pc.onicecandidate = event => {
-      if (event.candidate) callChannelRef.current?.publish('call_ice', {
+      if (!event.candidate) return;
+      const payload = {
         conversationId,
         callId: callIdRef.current,
         candidate: event.candidate,
         toDeviceId: incomingCall?.fromDeviceId || call?.remoteDeviceId || null,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
+      };
+      callChannelFor(conversationId)?.publish('call_ice', payload).catch(() => null);
+      const recipients = incomingCall?.from?.id
+        ? [incomingCall.from.id]
+        : (call?.remoteUsername ? [call.remoteUsername] : callRecipients(active));
+      relayCallSignal(token, { event: 'call_ice', conversationId, recipients, payload }).catch(() => null);
     };
     pc.ontrack = event => {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
@@ -772,7 +857,7 @@ export default function MessagesPage() {
   };
 
   const startCall = async (kind) => {
-    if (!active?.id || !callChannelRef.current) return;
+    if (!active?.id) return;
     try {
       const stream = await requestCallStream(kind);
       if (!stream) return;
@@ -784,22 +869,24 @@ export default function MessagesPage() {
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      await callChannelRef.current.publish('call_offer', {
+      const payload = {
         conversationId: active.id,
         callId,
         kind,
         offer,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
-      setCall({ kind, status: 'Chamando...', conversationId: active.id, callId });
+      };
+      await callChannelFor(active.id).publish('call_offer', payload);
+      await relayCallSignal(token, { event: 'call_offer', conversationId: active.id, recipients: callRecipients(active), payload });
+      setCall({ kind, status: 'Chamando...', conversationId: active.id, callId, remoteUsername: callRecipients(active)[0] || null });
     } catch {
       showToast(kind === 'video' ? 'Camera negada' : 'Microfone negado', '!');
     }
   };
 
   const acceptCall = async () => {
-    if (!incomingCall || !callChannelRef.current) return;
+    if (!incomingCall) return;
     try {
       const stream = await requestCallStream(incomingCall.kind);
       if (!stream) return;
@@ -811,21 +898,26 @@ export default function MessagesPage() {
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      await callChannelRef.current.publish('call_accepted', {
+      const channel = callChannelFor(incomingCall.conversationId);
+      const acceptedPayload = {
         conversationId: incomingCall.conversationId,
         callId: incomingCall.callId,
         deviceId: deviceIdRef.current,
         by: { id: user?.username, displayName: user?.displayName || user?.username },
-      });
-      await callChannelRef.current.publish('call_answer', {
+      };
+      await channel.publish('call_accepted', acceptedPayload);
+      if (incomingCall.from?.id) await relayCallSignal(token, { event: 'call_accepted', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload: acceptedPayload });
+      const answerPayload = {
         conversationId: incomingCall.conversationId,
         callId: incomingCall.callId,
         answer,
         toDeviceId: incomingCall.fromDeviceId,
         from: { id: user?.username, displayName: user?.displayName || user?.username },
         fromDeviceId: deviceIdRef.current,
-      });
-      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId });
+      };
+      await channel.publish('call_answer', answerPayload);
+      if (incomingCall.from?.id) await relayCallSignal(token, { event: 'call_answer', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload: answerPayload });
+      setCall({ kind: incomingCall.kind, status: 'Conectado', conversationId: incomingCall.conversationId, callId: incomingCall.callId, remoteDeviceId: incomingCall.fromDeviceId, remoteUsername: incomingCall.from?.id || null });
       setIncomingCall(null);
     } catch {
       showToast('Falha na chamada', '!');
@@ -833,24 +925,32 @@ export default function MessagesPage() {
   };
 
   const rejectCall = () => {
-    if (incomingCall?.conversationId) callChannelRef.current?.publish('call_end', {
+    if (incomingCall?.conversationId) {
+      const payload = {
       conversationId: incomingCall.conversationId,
       callId: incomingCall.callId,
       toDeviceId: incomingCall.fromDeviceId,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
       fromDeviceId: deviceIdRef.current,
-    });
+      };
+      callChannelFor(incomingCall.conversationId)?.publish('call_end', payload).catch(() => null);
+      if (incomingCall.from?.id) relayCallSignal(token, { event: 'call_end', conversationId: incomingCall.conversationId, recipients: [incomingCall.from.id], payload }).catch(() => null);
+    }
     setIncomingCall(null);
   };
 
   const endCall = (emit = true) => {
-    if (emit && call?.conversationId) callChannelRef.current?.publish('call_end', {
+    if (emit && call?.conversationId) {
+      const payload = {
       conversationId: call.conversationId,
       callId: call.callId,
       toDeviceId: call.remoteDeviceId || null,
       from: { id: user?.username, displayName: user?.displayName || user?.username },
       fromDeviceId: deviceIdRef.current,
-    });
+      };
+      callChannelFor(call.conversationId)?.publish('call_end', payload).catch(() => null);
+      relayCallSignal(token, { event: 'call_end', conversationId: call.conversationId, recipients: call.remoteUsername ? [call.remoteUsername] : callRecipients(active), payload }).catch(() => null);
+    }
     pcRef.current?.close?.();
     pcRef.current = null;
     localStreamRef.current?.getTracks?.().forEach(track => track.stop());
@@ -952,6 +1052,7 @@ export default function MessagesPage() {
       if (username === user?.username) {
         setGroupSettingsOpen(false);
         setActive(null);
+        setMobileChatOpen(false);
       }
     } catch (err) {
       showToast(err.message || 'Erro ao remover', '!');
@@ -962,7 +1063,7 @@ export default function MessagesPage() {
     <div className="page-scroll">
       <audio ref={ringtoneRef} src={ringtoneSrc} loop preload="auto" />
       <Topbar title="Mensagens" />
-      <div className={`messages-shell ${active ? 'has-active' : ''}`}>
+      <div className={`messages-shell ${active ? 'has-active' : ''} ${mobileChatOpen ? 'mobile-chat-open' : ''}`}>
         <div className="conv-list">
           <div className="conv-list-head">
             <div className="messages-title-row">
@@ -1009,7 +1110,7 @@ export default function MessagesPage() {
               <button
                 key={conv.id}
                 className={`conv-item ${active?.id === conv.id ? 'active' : ''}`}
-                onClick={() => setActive(conv)}
+                onClick={() => { setActive(conv); setMobileChatOpen(true); }}
                 style={{ width: '100%', border: 'none', textAlign: 'left', background: 'transparent' }}
               >
                 <Avatar
@@ -1031,7 +1132,7 @@ export default function MessagesPage() {
         {active ? (
           <div className="chat-area">
             <div className="chat-head">
-              <button className="chat-back-btn" onClick={() => setActive(null)}>{'<'}</button>
+              <button className="chat-back-btn" onClick={() => setMobileChatOpen(false)} aria-label="Voltar para conversas">{'<'}</button>
               <Avatar
                 size={40}
                 src={conversationPhoto(active)}
@@ -1060,6 +1161,16 @@ export default function MessagesPage() {
                 </div>
               </div>
             </div>
+
+            {e2eeStatus.checked && (
+              <div className={`e2ee-banner ${e2eeStatus.ready ? 'ready' : 'warn'}`}>
+                {e2eeStatus.ready
+                  ? 'E2EE ativo. Novas mensagens seguem cifradas.'
+                  : e2eeStatus.missing.filter(name => name !== user?.username).length
+                    ? `E2EE aguardando chave: ${e2eeStatus.missing.filter(name => name !== user?.username).join(', ')}. Conversa antiga continua normal.`
+                    : 'E2EE criando sua chave. Conversa antiga continua normal.'}
+              </div>
+            )}
 
             <div className="chat-messages">
               {activeMessages.map(msg => {

@@ -218,6 +218,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   });
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [cryptoDevices, setCryptoDevices] = useState([]);
+  const [cryptoDevicesLoading, setCryptoDevicesLoading] = useState(false);
   const profileInputRef = useRef(null);
   const ringtoneInputRef = useRef(null);
   const [profileUploading, setProfileUploading] = useState(false);
@@ -309,6 +311,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   useEffect(() => {
     if (section === 'admin') loadAdmin();
   }, [section, adminSearch, token, canSeeAdmin]);
+
+  useEffect(() => {
+    if (section !== 'seguranca' || !token) return;
+    loadCryptoDevices();
+  }, [section, token]);
 
   async function saveRole(username, role) {
     const res = await apiFetch(`/admin/users/${username}/role`, {
@@ -584,6 +591,38 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     showToast('2FA desligado', 'OK');
   }
 
+  async function loadCryptoDevices() {
+    setCryptoDevicesLoading(true);
+    try {
+      const res = await apiFetch('/crypto/devices', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro aparelhos');
+      setCryptoDevices(data.devices || []);
+    } catch {
+      setCryptoDevices([]);
+    } finally {
+      setCryptoDevicesLoading(false);
+    }
+  }
+
+  async function revokeCryptoDevice(deviceId) {
+    if (!window.confirm('Remover aparelho da criptografia?')) return;
+    try {
+      const res = await apiFetch(`/crypto/devices/${encodeURIComponent(deviceId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro remover');
+      setCryptoDevices(list => list.map(device => device.device_id === deviceId ? { ...device, revoked: true } : device));
+      showToast('Aparelho removido', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro aparelho', '!');
+    }
+  }
+
   return (
     <div className="page-scroll">
       <Topbar title="Configuracoes" />
@@ -714,6 +753,26 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               <Row title="Sessao atual" sub="Este aparelho">
                 <span style={{ fontSize:11, background:'rgba(16,185,129,0.15)', color:'#10B981', padding:'3px 10px', borderRadius:20, fontWeight:700 }}>Atual</span>
               </Row>
+            </Section>
+            <Section title="Aparelhos E2EE" desc="Aparelhos que podem abrir novas mensagens protegidas">
+              {cryptoDevicesLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Carregando...</div>}
+              {!cryptoDevicesLoading && !cryptoDevices.length && (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhum aparelho registrado. Entre novamente apos criar schema.</div>
+              )}
+              {cryptoDevices.map(device => {
+                const revoked = device.revoked === true || String(device.revoked).toLowerCase() === 'true';
+                return (
+                  <Row
+                    key={device.device_id}
+                    title={device.name || 'Aparelho'}
+                    sub={revoked ? 'Removido' : `Ativo - ${device.last_seen || 'agora'}`}
+                  >
+                    {revoked
+                      ? <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inativo</span>
+                      : <Button variant="danger" size="sm" onClick={() => revokeCryptoDevice(device.device_id)}>Remover</Button>}
+                  </Row>
+                );
+              })}
             </Section>
             <div style={{ background:'var(--card)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:16, padding:22, boxShadow:'var(--shadow-sm)' }}>
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:15, color:'var(--danger)', marginBottom:14 }}>Aviso Zona de Perigo</div>
@@ -973,6 +1032,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                           <option value="moderator">moderator</option>
                           <option value="community_moderator">community_moderator</option>
                           <option value="professor">professor</option>
+                          <option value="coordination">coordination</option>
+                          <option value="management">management</option>
+                          <option value="administrative">administrative</option>
+                          <option value="secretary">secretary</option>
+                          <option value="library">library</option>
+                          <option value="aluno">aluno</option>
                           <option value="user">usuario</option>
                         </select>
                       )}

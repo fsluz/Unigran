@@ -49,6 +49,17 @@ async function conversationParticipants(conversationId) {
   }));
 }
 
+async function isConversationMember(conversationId, username) {
+  const rows = await readQuery(`
+    match
+      $person isa person, has username "${typeqlLiteral(username)}";
+      $conversation isa conversation, has conversation-id "${typeqlLiteral(conversationId)}";
+      conversation-participant(participant: $person, conversation: $conversation);
+    select $person, $conversation;
+  `);
+  return rows.length > 0;
+}
+
 function unpackMessageText(raw) {
   try {
     const parsed = JSON.parse(raw);
@@ -60,7 +71,7 @@ function unpackMessageText(raw) {
 
 function looksEncrypted(raw = '') {
   try {
-    return JSON.parse(raw)?.e2ee === 1;
+    return [1, 2].includes(JSON.parse(raw)?.e2ee);
   } catch (_) {
     return false;
   }
@@ -521,21 +532,37 @@ router.patch('/:id/read', auth, async (req, res) => {
   }
 });
 
-router.post('/:id/typing', auth, (req, res) => {
-  const map = typingByConversation.get(req.params.id) || new Map();
-  if (req.body?.typing === false) map.delete(req.user.username);
-  else map.set(req.user.username, Date.now() + 3500);
-  typingByConversation.set(req.params.id, map);
-  res.json({ typing: true });
+router.post('/:id/typing', auth, async (req, res) => {
+  try {
+    if (!(await isConversationMember(req.params.id, req.user.username))) {
+      return res.status(403).json({ error: 'Sem permissao' });
+    }
+    const map = typingByConversation.get(req.params.id) || new Map();
+    if (req.body?.typing === false) map.delete(req.user.username);
+    else map.set(req.user.username, Date.now() + 3500);
+    typingByConversation.set(req.params.id, map);
+    res.json({ typing: true });
+  } catch (err) {
+    console.error('[messages typing POST]', err);
+    res.status(500).json({ error: 'Erro ao atualizar digitacao' });
+  }
 });
 
-router.get('/:id/typing', auth, (req, res) => {
-  const now = Date.now();
-  const map = typingByConversation.get(req.params.id) || new Map();
-  for (const [username, expires] of map.entries()) {
-    if (expires < now) map.delete(username);
+router.get('/:id/typing', auth, async (req, res) => {
+  try {
+    if (!(await isConversationMember(req.params.id, req.user.username))) {
+      return res.status(403).json({ error: 'Sem permissao' });
+    }
+    const now = Date.now();
+    const map = typingByConversation.get(req.params.id) || new Map();
+    for (const [username, expires] of map.entries()) {
+      if (expires < now) map.delete(username);
+    }
+    res.json({ typing: [...map.keys()].filter(username => username !== req.user.username) });
+  } catch (err) {
+    console.error('[messages typing GET]', err);
+    res.status(500).json({ error: 'Erro ao buscar digitacao' });
   }
-  res.json({ typing: [...map.keys()].filter(username => username !== req.user.username) });
 });
 
 router.delete('/:convId/messages/:msgId', auth, async (req, res) => {

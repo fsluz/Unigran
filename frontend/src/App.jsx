@@ -20,6 +20,7 @@ import AuditLogsPage       from './pages/AuditLogsPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
+import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 
@@ -84,6 +85,7 @@ function AppShell() {
     favorites:     <FavoritesPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform.read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
     ava:           hasPermission(user, 'platform.read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
+    masterBi:      hasPermission(user, 'rbac.manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,

@@ -35,20 +35,6 @@ function attrBoolTrue(value) {
 
 export async function auth(req, res, next) {
   const header = req.headers.authorization;
-  const isDev = process.env.NODE_ENV !== 'production';
-  const mockUser = {
-    id: 'fabiohenrique',
-    username: 'fabiohenrique',
-    displayName: 'Fabio Henrique',
-    email: 'fabio@unigran.com.br',
-    role: 'admin',
-  };
-
-  if (isDev && header === 'Bearer mock-token-dev') {
-    req.user = mockUser;
-    return next();
-  }
-
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token nao fornecido' });
   }
@@ -63,7 +49,11 @@ export async function auth(req, res, next) {
           match
             $u isa person, has username "${typeqlLiteral(username)}";
             try { $u has is-banned $banned; };
-          fetch { "banned": $banned };
+            try { $u has user-role $role; };
+          fetch {
+            "banned": $banned,
+            "role": $role
+          };
         `);
         if (attrBoolTrue(rows[0]?.banned)) {
           auditLog({
@@ -75,9 +65,11 @@ export async function auth(req, res, next) {
           });
           return res.status(403).json({ error: 'Conta banida' });
         }
+        if (rows[0]?.role) {
+          req.user.role = normalizeRole(rows[0].role);
+        }
       } catch (err) {
-        if (!isDev) throw err;
-        console.warn('[auth] pulando checagem de banimento no dev:', err?.message || err);
+        throw err;
       }
     }
     next();

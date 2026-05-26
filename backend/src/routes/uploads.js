@@ -4,7 +4,7 @@ import { auth } from '../middleware/auth.js';
 import { createCloudinaryUploadSignature, uploadMediaBuffer } from '../services/cloudinary.service.js';
 import { uploadDocumentBuffer } from '../services/document.service.js';
 import { parseResumeFile } from '../services/resume.service.js';
-import { getPortfolioMlAnalysis, savePortfolioResume } from '../modules/academic/avaStore.js';
+import { getPortfolioMlAnalysis, savePortfolioResume } from '../modules/academic/typedbPortfolioStore.js';
 
 const router = Router();
 

@@ -53,6 +53,8 @@ export default function ZuniPage({ onOpenProfile }) {
   const moreRef = useRef(null);
   const feedRef = useRef(null);
   const wheelLockRef = useRef(0);
+  const touchStartRef = useRef(null);
+  const scrollLockRef = useRef(false);
   const videoRefs = useRef(new Map());
   const volumeRef = useRef(null);
 
@@ -167,7 +169,9 @@ export default function ZuniPage({ onOpenProfile }) {
     const index = posts.findIndex(post => post.id === activePostId);
     const next = posts[index + direction];
     if (!next) return;
+    scrollLockRef.current = true;
     document.querySelector(`.zuni-reel[data-post-id="${next.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => { scrollLockRef.current = false; }, 760);
   };
 
   const onZuniWheel = (event) => {
@@ -180,6 +184,28 @@ export default function ZuniPage({ onOpenProfile }) {
     event.preventDefault();
     wheelLockRef.current = now;
     scrollToNeighbor(event.deltaY > 0 ? 1 : -1);
+  };
+
+  const onZuniTouchStart = (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    touchStartRef.current = { y: touch.clientY, time: Date.now() };
+  };
+
+  const onZuniTouchMove = (event) => {
+    if (scrollLockRef.current) event.preventDefault();
+  };
+
+  const onZuniTouchEnd = (event) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches?.[0];
+    touchStartRef.current = null;
+    if (!start || !touch) return;
+    const delta = start.y - touch.clientY;
+    if (Math.abs(delta) < 42) return;
+    event.preventDefault();
+    if (scrollLockRef.current) return;
+    scrollToNeighbor(delta > 0 ? 1 : -1);
   };
 
   const toggleVolumePanel = () => {
@@ -224,7 +250,14 @@ export default function ZuniPage({ onOpenProfile }) {
     <div className="page-scroll zuni-shell">
       <Topbar title="Zuni" />
       <div className="zuni-page">
-        <main className="zuni-feed" ref={feedRef} onWheel={onZuniWheel}>
+        <main
+          className="zuni-feed"
+          ref={feedRef}
+          onWheel={onZuniWheel}
+          onTouchStart={onZuniTouchStart}
+          onTouchMove={onZuniTouchMove}
+          onTouchEnd={onZuniTouchEnd}
+        >
           {posts.length === 0 && !loading && (
             <div className="search-empty">Nenhum Zuni ainda.</div>
           )}

@@ -1,11 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { auth } from '../middleware/auth.js';
-import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
+import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 const router = Router();
 
 const PublicKeySchema = z.object({
+  publicKey: z.string().min(40).max(12000),
+});
+
+const DeviceKeySchema = z.object({
+  deviceId: z.string().min(8).max(160),
+  deviceName: z.string().min(1).max(120).optional(),
   publicKey: z.string().min(40).max(12000),
 });
 
@@ -51,6 +57,136 @@ router.post('/public-keys', auth, async (req, res) => {
   } catch (err) {
     console.error('[crypto public-keys POST]', err);
     res.status(500).json({ error: 'Erro ao buscar chaves' });
+  }
+});
+
+router.put('/devices/current', auth, async (req, res) => {
+  const parsed = DeviceKeySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Aparelho ou chave invalida' });
+
+  try {
+    const deviceId = typeqlLiteral(parsed.data.deviceId);
+    const name = typeqlLiteral(parsed.data.deviceName || 'Navegador');
+    const key = typeqlLiteral(parsed.data.publicKey);
+    const now = typeqlDatetime();
+    const existing = await readQuery(`
+      match
+        $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+        $device isa crypto-device, has crypto-device-id "${deviceId}";
+        crypto-device-owner(owner: $owner, device: $device);
+        try { $device has crypto-device-revoked $revoked; };
+      fetch { "revoked": $revoked };
+    `);
+
+    if (existing.length) {
+      if (existing[0].revoked === true || String(existing[0].revoked).toLowerCase() === 'true') {
+        return res.status(403).json({ error: 'Aparelho removido' });
+      }
+      await writeQuery(`
+        match
+          $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+          $device isa crypto-device, has crypto-device-id "${deviceId}";
+          crypto-device-owner(owner: $owner, device: $device);
+        update
+          $device has crypto-device-name "${name}";
+          $device has crypto-device-public-key "${key}";
+          $device has crypto-device-last-seen ${now};
+      `);
+    } else {
+      await writeQuery(`
+        match
+          $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+        insert
+          $device isa crypto-device,
+            has crypto-device-id "${deviceId}",
+            has crypto-device-name "${name}",
+            has crypto-device-public-key "${key}",
+            has crypto-device-created-at ${now},
+            has crypto-device-last-seen ${now},
+            has crypto-device-revoked false;
+          crypto-device-owner(owner: $owner, device: $device);
+      `);
+    }
+    res.json({ saved: true, deviceId: parsed.data.deviceId });
+  } catch (err) {
+    console.error('[crypto device PUT]', err);
+    res.status(500).json({ error: 'Erro ao salvar aparelho' });
+  }
+});
+
+router.post('/device-keys', auth, async (req, res) => {
+  const usernames = [...new Set((req.body?.usernames || []).map(item => String(item).replace(/^@/, '').trim()).filter(Boolean))];
+  if (!usernames.length) return res.json({ devices: {} });
+
+  try {
+    const rows = await Promise.all(usernames.map(username => readQuery(`
+      match
+        $owner isa person, has username "${typeqlLiteral(username)}";
+        $device isa crypto-device,
+          has crypto-device-id $device_id,
+          has crypto-device-public-key $key;
+        crypto-device-owner(owner: $owner, device: $device);
+        try { $device has crypto-device-name $name; };
+        try { $device has crypto-device-revoked $revoked; };
+      fetch {
+        "device_id": $device_id,
+        "key": $key,
+        "name": $name,
+        "revoked": $revoked
+      };
+    `).catch(() => [])));
+
+    const devices = {};
+    usernames.forEach((username, index) => {
+      devices[username] = rows[index]
+        .filter(device => device.revoked !== true && String(device.revoked).toLowerCase() !== 'true')
+        .map(device => ({ id: device.device_id, publicKey: device.key, name: device.name || 'Aparelho' }));
+    });
+    res.json({ devices });
+  } catch (err) {
+    console.error('[crypto device keys POST]', err);
+    res.status(500).json({ error: 'Erro ao buscar aparelhos' });
+  }
+});
+
+router.get('/devices', auth, async (req, res) => {
+  try {
+    const devices = await readQuery(`
+      match
+        $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+        $device isa crypto-device, has crypto-device-id $device_id;
+        crypto-device-owner(owner: $owner, device: $device);
+        try { $device has crypto-device-name $name; };
+        try { $device has crypto-device-last-seen $last_seen; };
+        try { $device has crypto-device-revoked $revoked; };
+      fetch {
+        "device_id": $device_id,
+        "name": $name,
+        "last_seen": $last_seen,
+        "revoked": $revoked
+      };
+    `);
+    res.json({ devices });
+  } catch (err) {
+    console.error('[crypto devices GET]', err);
+    res.status(500).json({ error: 'Erro ao listar aparelhos' });
+  }
+});
+
+router.delete('/devices/:deviceId', auth, async (req, res) => {
+  try {
+    await writeQuery(`
+      match
+        $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+        $device isa crypto-device, has crypto-device-id "${typeqlLiteral(req.params.deviceId)}";
+        crypto-device-owner(owner: $owner, device: $device);
+      update
+        $device has crypto-device-revoked true;
+    `);
+    res.json({ revoked: true });
+  } catch (err) {
+    console.error('[crypto device DELETE]', err);
+    res.status(500).json({ error: 'Erro ao remover aparelho' });
   }
 });
 

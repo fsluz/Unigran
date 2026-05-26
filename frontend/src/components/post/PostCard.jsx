@@ -41,36 +41,100 @@ function stripEmbedLinks(text = '') {
   return next.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+function cleanPortfolioSummary(text = '', link = '') {
+  return String(text || '')
+    .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
+    .replace(link, '')
+    .replace(/\/portfolio\/[^\s]+/gi, '')
+    .replace(/#PortfolioAcademico/gi, '')
+    .replace(/^Tecnologias:\s*.+$/gim, '')
+    .replace(/(?:\s*#[\p{L}\p{N}_-]+)+\s*$/u, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function getPortfolioPost(post) {
   if (post.portfolioItem) {
     const item = post.portfolioItem;
     return {
       title: item.title || 'Projeto de portfolio',
-      summary: item.summary || post.content || '',
-      link: item.externalUrl || item.shareUrl || '',
-      linkLabel: item.externalKind || 'Repositorio',
+      summary: cleanPortfolioSummary(item.summary || post.content || '', item.shareUrl || ''),
+      externalLink: item.externalUrl || '',
+      externalKind: item.externalKind || '',
+      caseLink: item.shareUrl || '',
       mediaUrl: item.mediaUrl || post.media?.url || '',
       mediaType: item.mediaType || post.media?.resource_type || '',
-      tags: extractPortfolioTags(post.content),
+      tags: extractPortfolioTags(`${item.summary || ''}\n${post.content || ''}`),
     };
   }
   const content = String(post.content || '');
   if (!content.includes('#PortfolioAcademico')) return null;
   const title = content.match(/portfolio academico:\s*(.+)/i)?.[1]?.split('\n')[0]?.trim() || 'Projeto de portfolio';
   const tags = extractPortfolioTags(content);
-  const link = (content.match(/https?:\/\/[^\s]+|\/portfolio\/[^\s]+/i) || [])[0] || '';
-  const summary = content
-    .replace(/Novo projeto no portfolio academico:.+/i, '')
-    .replace(/#PortfolioAcademico/gi, '')
-    .replace(/Tecnologias:.+/i, '')
-    .replace(link, '')
-    .trim();
-  return { title, summary, link, linkLabel: 'Repositorio', mediaUrl: post.media?.url || '', mediaType: post.media?.resource_type || '', tags };
+  const externalLink = (content.match(/https?:\/\/[^\s]+/i) || [])[0] || '';
+  const caseLink = (content.match(/\/portfolio\/[^\s]+/i) || [])[0] || '';
+  return {
+    title,
+    summary: cleanPortfolioSummary(content, externalLink),
+    externalLink,
+    externalKind: externalLink ? 'other' : '',
+    caseLink,
+    mediaUrl: post.media?.url || '',
+    mediaType: post.media?.resource_type || '',
+    tags,
+  };
 }
 
 function extractPortfolioTags(content = '') {
   const line = String(content).match(/Tecnologias:\s*(.+)/i)?.[1] || '';
-  return line.split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 8);
+  const explicit = line.split(',').map(tag => tag.trim()).filter(Boolean);
+  const hashtags = [...String(content).matchAll(/#([\p{L}\p{N}_-]+)/gu)]
+    .map(match => match[1])
+    .filter(tag => tag.toLowerCase() !== 'portfolioacademico');
+  return [...new Set([...explicit, ...hashtags])].slice(0, 8);
+}
+
+function formatPortfolioInline(text = '') {
+  return String(text).split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, index) => {
+    const bold = part.match(/^\*\*([^*]+)\*\*$/);
+    if (bold) return <strong key={index}>{bold[1]}</strong>;
+    const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+    if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
+    return <span key={index}>{part}</span>;
+  });
+}
+
+function PortfolioDescription({ text }) {
+  const lines = String(text || '').split(/\r?\n/);
+  const nodes = [];
+  let paragraph = [];
+  let bullets = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    nodes.push(<p key={`p-${nodes.length}`}>{paragraph.map((line, index) => <span key={index}>{formatPortfolioInline(line)}{index < paragraph.length - 1 && <br />}</span>)}</p>);
+    paragraph = [];
+  };
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    nodes.push(<ul key={`ul-${nodes.length}`}>{bullets.map((line, index) => <li key={index}>{formatPortfolioInline(line)}</li>)}</ul>);
+    bullets = [];
+  };
+  for (const line of lines) {
+    if (!line.trim()) { flushParagraph(); flushBullets(); continue; }
+    if (/^#{1,3}\s+/.test(line)) {
+      flushParagraph(); flushBullets();
+      nodes.push(<h4 key={`h-${nodes.length}`}>{formatPortfolioInline(line.replace(/^#{1,3}\s+/, ''))}</h4>);
+    } else if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      bullets.push(line.replace(/^[-*]\s+/, ''));
+    } else {
+      flushBullets();
+      paragraph.push(line);
+    }
+  }
+  flushParagraph();
+  flushBullets();
+  return <div className="portfolio-post-description">{nodes}</div>;
 }
 
 function portfolioLinkMeta(url = '', fallback = '') {
@@ -283,7 +347,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
   const embeds = getEmbeds(post.content || '');
   const portfolio = getPortfolioPost(post);
-  const portfolioLink = portfolio?.link ? portfolioLinkMeta(portfolio.link, portfolio.linkLabel) : null;
+  const portfolioLink = portfolio?.externalLink ? portfolioLinkMeta(portfolio.externalLink, portfolio.externalKind) : null;
   const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
 
   const toggleLike = () => {
@@ -455,7 +519,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
                 ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
                   <AutoPauseVideo src={portfolio.mediaUrl} className="portfolio-preview-image" muted playsInline controls />
                 ) : portfolioLink ? (
-                  <PortfolioLinkPreview meta={portfolioLink} url={portfolio.link} />
+                  <PortfolioLinkPreview meta={portfolioLink} url={portfolio.externalLink} />
                 ) : (
                   <>
                     <div className="portfolio-window-dots"><span /><span /><span /></div>
@@ -473,19 +537,24 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               <div className="portfolio-post-body">
                 <div className="portfolio-post-label">Portfolio</div>
                 <h3>{portfolio.title}</h3>
-                {portfolio.summary && <p>{portfolio.summary}</p>}
+                {portfolio.summary && <PortfolioDescription text={portfolio.summary} />}
                 {portfolio.tags.length > 0 && (
                   <div className="portfolio-post-tags">
                     {portfolio.tags.map(tag => <span key={tag}>{tag}</span>)}
                   </div>
                 )}
-                {portfolio.link && (
-                  <a className={`portfolio-post-link is-${portfolioLink?.tone || 'generic'}`} href={portfolio.link.startsWith('/') ? portfolio.link : portfolio.link} target={portfolio.link.startsWith('/') ? '_self' : '_blank'} rel="noreferrer">
+                {portfolio.externalLink && (
+                  <a className={`portfolio-post-link is-${portfolioLink?.tone || 'generic'}`} href={portfolio.externalLink} target="_blank" rel="noreferrer">
                     <span>
-                      <b>{portfolioLink?.title || portfolio.linkLabel || 'Link do projeto'}</b>
-                      <small>{portfolioLink?.subtitle || portfolio.link.replace(/^https?:\/\//, '')}</small>
+                      <b>{portfolioLink?.title || 'Link do projeto'}</b>
+                      <small>{portfolioLink?.subtitle || portfolio.externalLink.replace(/^https?:\/\//, '')}</small>
                     </span>
-                    <em>{portfolioLink?.label || portfolio.linkLabel || 'Abrir'}</em>
+                    <em>{portfolioLink?.label || 'Abrir'}</em>
+                  </a>
+                )}
+                {portfolio.caseLink && (
+                  <a className="portfolio-case-link" href={portfolio.caseLink}>
+                    Ver case completo
                   </a>
                 )}
               </div>

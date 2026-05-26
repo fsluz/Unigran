@@ -19,7 +19,6 @@ import {
 import { assertSafeMediaUrl, uploadMediaBuffer } from './cloudinary.service.js';
 import { uploadDocumentBuffer } from './document.service.js';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
-import { saveManualPortfolioItem } from '../modules/academic/avaStore.js';
 
 const createPostSchema = z.object({
   content: z.string().optional().default(''),
@@ -29,6 +28,9 @@ const createPostSchema = z.object({
   portfolioTitle: z.string().optional(),
   portfolioLink: z.string().optional().default(''),
   portfolioLinkKind: z.enum(['web_app', 'repository', 'prototype', 'drive', 'article', 'other']).optional(),
+  portfolioTags: z.string().optional().default('[]'),
+  portfolioTechnologies: z.string().optional().default('[]'),
+  portfolioProjectType: z.string().trim().max(80).optional().default('academic'),
 });
 
 const createCommentSchema = z.object({
@@ -86,6 +88,50 @@ function normalizeExternalUrl(url = '') {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+function slugify(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'portfolio';
+}
+
+function parseStringList(value) {
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    return String(value || '').split(',');
+  }
+  return [];
+}
+
+function normalizeStringList(value) {
+  return [...new Set(parseStringList(value)
+    .map(item => String(item || '').trim().replace(/^#/, ''))
+    .filter(Boolean)
+    .slice(0, 12))];
+}
+
+async function generateUniquePortfolioSlug(username, title) {
+  const base = slugify(title);
+  const rows = await readQuery(`
+    match
+      $author isa person, has username "${typeqlLiteral(username)}";
+      $post isa post, has portfolio-slug $slug;
+      posting(page: $author, post: $post);
+    fetch { "slug": $slug };
+  `).catch(() => []);
+  const used = new Set(rows.map(row => row.slug).filter(Boolean));
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
 export async function getFeed({ user, limit = 20, offset = 0, feed = '' }) {
   return listFeed({ viewerUsername: user?.username, limit, offset, feed });
 }
@@ -119,10 +165,17 @@ export async function createPostWithRules({ user, body, file }) {
   const baseContent = String(parsed.data.content || '').replace(/^\s+|\s+$/g, '');
   const portfolioExternalUrl = normalizeExternalUrl(parsed.data.portfolioLink);
   const manualActivityId = isPortfolio ? `social-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : '';
-  const portfolioTitle = String(parsed.data.portfolioTitle || '').trim() || baseContent.slice(0, 80) || 'Projeto academico';
-  const portfolioShareUrl = isPortfolio ? `/portfolio/${user.username}/${manualActivityId}` : '';
+  const portfolioTitle = String(parsed.data.portfolioTitle || '').trim();
+  if (isPortfolio && !portfolioTitle) {
+    return { error: 'Titulo do portfolio obrigatorio', status: 400 };
+  }
+  const portfolioSlug = isPortfolio ? await generateUniquePortfolioSlug(user.username, portfolioTitle) : '';
+  const portfolioTags = isPortfolio ? normalizeStringList(parsed.data.portfolioTags) : [];
+  const portfolioTechnologies = isPortfolio ? normalizeStringList(parsed.data.portfolioTechnologies || parsed.data.portfolioTags) : [];
+  const portfolioProjectType = isPortfolio ? String(parsed.data.portfolioProjectType || 'academic').trim() : '';
+  const portfolioShareUrl = isPortfolio ? `/portfolio/${user.username}/${portfolioSlug}` : '';
   const portfolioIntro = isPortfolio
-    ? `Novo projeto no portfolio academico: ${portfolioTitle}\n\n${baseContent || 'Projeto publicado para recrutadores avaliarem evidencias, links e documento.'}\n\n${portfolioShareUrl} #PortfolioAcademico`
+    ? `Portfolio academico: ${portfolioTitle}${baseContent ? `\n\n${baseContent}` : ''}\n\n${portfolioShareUrl} #PortfolioAcademico`
     : baseContent;
   const content = `${portfolioIntro}${isZuni ? ' #Zuni' : ''}`.replace(/^\s+|\s+$/g, '');
   if (hasAdultText(content)) {
@@ -180,10 +233,10 @@ export async function createPostWithRules({ user, body, file }) {
 
   let portfolioItem = null;
   if (isPortfolio) {
-    portfolioItem = await saveManualPortfolioItem(user, {
+    portfolioItem = {
       activityId: manualActivityId,
       title: portfolioTitle,
-      summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+      summary: baseContent.slice(0, 4000),
       activityTitle: 'Publicacao social para portfolio',
       documentUrl: portfolioDocument?.url || '',
       documentName: portfolioDocument?.name || '',
@@ -193,14 +246,18 @@ export async function createPostWithRules({ user, body, file }) {
       externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
       externalLabel: portfolioExternalUrl ? 'Link do projeto' : '',
       shareUrl: portfolioShareUrl,
+      slug: portfolioSlug,
+      tags: portfolioTags,
+      technologies: portfolioTechnologies,
+      projectType: portfolioProjectType,
       postId: created.id,
-    });
+    };
     annotatePortfolioPost({
       postId: created.id,
       metadata: {
         portfolioId: manualActivityId,
         title: portfolioTitle,
-        summary: baseContent.slice(0, 280) || 'Projeto publicado pela rede social academica.',
+        summary: baseContent.slice(0, 4000),
         shareUrl: portfolioShareUrl,
         externalUrl: portfolioExternalUrl,
         externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
@@ -210,6 +267,10 @@ export async function createPostWithRules({ user, body, file }) {
         documentPath: portfolioDocument?.path || '',
         mediaUrl: media?.url || '',
         mediaType: media?.resource_type || '',
+        slug: portfolioSlug,
+        tags: portfolioTags,
+        technologies: portfolioTechnologies,
+        projectType: portfolioProjectType,
       },
     }).catch(err => {
       console.error('[portfolio typedb metadata]', err.message);

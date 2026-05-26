@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { auth, normalizeRole, requireAtLeast } from '../middleware/auth.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
+import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
 
 function getIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -11,7 +12,22 @@ function getIp(req) {
 const router = Router();
 
 const RoleSchema = z.object({
-  role: z.enum(['admin', 'moderator', 'community_moderator', 'professor', 'user', 'ADMIN']),
+  role: z.enum([
+    'super_admin',
+    'admin',
+    'management',
+    'coordination',
+    'administrative',
+    'secretary',
+    'library',
+    'moderator',
+    'community_moderator',
+    'professor',
+    'aluno',
+    'student',
+    'user',
+    'ADMIN',
+  ]),
 });
 
 const BanSchema = z.object({
@@ -221,6 +237,107 @@ router.get('/audit-logs', requireAtLeast('admin'), async (req, res) => {
   } catch (err) {
     console.error('[audit-logs]', err);
     res.status(500).json({ error: 'Erro ao ler logs' });
+  }
+});
+
+router.get('/power-bi', requireAtLeast('admin'), async (req, res) => {
+  try {
+    const [ava, typedbUsers, typedbPosts, typedbComments] = await Promise.all([
+      getAvaPowerBiSnapshot(),
+      readQuery(`
+        match
+          $u isa person, has username $username;
+          try { $u has name $name; };
+          try { $u has user-role $role; };
+          try { $u has can-publish $can_publish; };
+        fetch {
+          "username": $username,
+          "name": $name,
+          "role": $role,
+          "can_publish": $can_publish
+        };
+      `).catch(() => []),
+      readQuery(`
+        match
+          $p isa post, has post-id $id;
+          try { $p has creation-timestamp $created_at; };
+          try { $p has post-content $content; };
+          try { $p has portfolio-id $portfolio_id; };
+        fetch {
+          "id": $id,
+          "created_at": $created_at,
+          "content": $content,
+          "portfolio_id": $portfolio_id
+        };
+      `).catch(() => []),
+      readQuery(`
+        match
+          $c isa comment, has comment-id $id;
+          try { $c has creation-timestamp $created_at; };
+        fetch {
+          "id": $id,
+          "created_at": $created_at
+        };
+      `).catch(() => []),
+    ]);
+
+    const socialPosts = typedbPosts.length;
+    const portfolioPosts = typedbPosts.filter(post => post.portfolio_id).length;
+    const activeAuthors = new Set([
+      ...ava.submissions.map(item => item.username),
+      ...ava.portfolio.map(item => item.username),
+    ]).size;
+    const interactions = typedbComments.length + ava.kpis.submissions + ava.kpis.completedMaterials;
+    const engagementPerPost = socialPosts ? Number((interactions / socialPosts).toFixed(1)) : interactions;
+    const conversion = ava.kpis.submissions ? Math.round((ava.kpis.portfolioItems / ava.kpis.submissions) * 100) : 0;
+
+    auditLog({ action: 'POWER_BI_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
+    res.json({
+      generatedAt: new Date().toISOString(),
+      repoReference: 'https://github.com/v-cerqueira/Power-Bi',
+      source: {
+        primary: 'TypeDB',
+        secondary: 'TypeDB academic relations',
+        note: 'Endpoint de BI interno consome as entidades sociais e academicas persistidas no TypeDB.',
+      },
+      kpis: {
+        users: typedbUsers.length || ava.dimensions.students,
+        activeAuthors,
+        socialPosts,
+        comments: typedbComments.length,
+        interactions,
+        engagementPerPost,
+        portfolioItems: ava.kpis.portfolioItems,
+        resumes: ava.kpis.resumes,
+        submissions: ava.kpis.submissions,
+        averageProgress: ava.kpis.averageProgress,
+        portfolioConversion: conversion,
+        portfolioPosts,
+      },
+      courses: ava.byCourse,
+      recentPortfolio: ava.portfolio,
+      recentSubmissions: ava.submissions,
+      people: typedbUsers.slice(0, 20),
+      rai: {
+        signal: engagementPerPost > 18 ? 'Rede aquecida' : engagementPerPost > 8 ? 'Ritmo saudavel' : 'Precisa ativacao',
+        risk: activeAuthors < 4 ? 'Participacao concentrada' : 'Distribuicao saudavel',
+        forecast30d: Math.round((interactions || ava.kpis.submissions || 1) * 1.18),
+        actions: [
+          'Promover cases de portfolio com maior potencial profissional.',
+          'Ativar desafios por curso para elevar publicacoes verificaveis.',
+          'Priorizar alunos com curriculo e projeto conectado a stack real.',
+        ],
+      },
+      modelGuidance: {
+        entities: ['person', 'post', 'comment', 'course', 'activity', 'submission', 'portfolio-item', 'resume'],
+        relationships: ['authorship', 'course-enrollment', 'activity-submission', 'portfolio-publication', 'skill-evidence'],
+        indexes: ['username', 'post-id', 'creation-timestamp', 'course-id', 'portfolio-id'],
+        normalization: 'Manter eventos sociais, academicos e portfolio em entidades separadas; gerar agregados por API/cache para BI.',
+      },
+    });
+  } catch (err) {
+    console.error('[admin power bi]', err);
+    res.status(500).json({ error: 'Erro ao carregar Power BI interno' });
   }
 });
 

@@ -1,0 +1,2 @@
+define
+academic-material owns academic-document-path @card(0..1);

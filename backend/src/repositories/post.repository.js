@@ -335,6 +335,10 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         documentPath: attrs['portfolio-document-path'] || '',
         mediaUrl: attrs['portfolio-media-url'] || '',
         mediaType: attrs['portfolio-media-type'] || '',
+        slug: attrs['portfolio-slug'] || portfolioId,
+        tags: attrs['portfolio-tags'] || '',
+        technologies: attrs['portfolio-technologies'] || '',
+        projectType: attrs['portfolio-project-type'] || '',
       } : null,
       _comments: comments.map((comment) => {
         const commentAuthorProfile = profilesMap.get(comment?.author?.username || '');
@@ -478,6 +482,10 @@ export async function annotatePortfolioPost({ postId, metadata = {} }) {
   add('portfolio-document-path', metadata.documentPath);
   add('portfolio-media-url', metadata.mediaUrl);
   add('portfolio-media-type', metadata.mediaType);
+  add('portfolio-slug', metadata.slug);
+  add('portfolio-tags', Array.isArray(metadata.tags) ? JSON.stringify(metadata.tags) : metadata.tags);
+  add('portfolio-technologies', Array.isArray(metadata.technologies) ? JSON.stringify(metadata.technologies) : metadata.technologies);
+  add('portfolio-project-type', metadata.projectType);
 
   if (!attrs.length) return false;
 
@@ -636,6 +644,10 @@ export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
         documentPath: attrs['portfolio-document-path'] || '',
         mediaUrl: attrs['portfolio-media-url'] || '',
         mediaType: attrs['portfolio-media-type'] || '',
+        slug: attrs['portfolio-slug'] || portfolioId,
+        tags: attrs['portfolio-tags'] || '',
+        technologies: attrs['portfolio-technologies'] || '',
+        projectType: attrs['portfolio-project-type'] || '',
       } : null,
       _comments: comments,
     };

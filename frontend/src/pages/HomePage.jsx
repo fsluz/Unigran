@@ -12,26 +12,7 @@ import { Avatar } from '../components/ui';
 import { followUser, unfollowUser } from '../services/users';
 import { joinCommunity } from '../services/communities';
 
-const TRENDING = [
-  { tag: 'tecnologia', count: '0' },
-  { tag: 'programacao', count: '0' },
-  { tag: 'unigran', count: '0' },
-  { tag: 'estudos', count: '0' },
-  { tag: 'carreira', count: '0' },
-];
 const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
-
-const SUGGESTED_COMMUNITIES = [
-  { icon: 'IA', name: 'IA & Machine Learning', members: 3219, color: '#16A34A' },
-  { icon: 'RA', name: 'Grupo React Avancado', members: 892, color: '#8B5CF6' },
-  { icon: 'TD', name: 'TypeDB Researchers', members: 234, color: '#0891B2' },
-];
-
-const SUGGESTED_PEOPLE = [
-  { avatar: 'LF', name: 'Luisa Ferreira', mutual: 'Ana Carolina', color: '#EC4899' },
-  { avatar: 'RM', name: 'Rafael Mendes', mutual: 'Prof. Santos', color: '#00A8FF' },
-  { avatar: 'PD', name: 'Priscila Duarte', mutual: 'Fabio Henrique', color: '#F59E0B' },
-];
 
 export default function HomePage({ onOpenProfile }) {
   const { token } = useAuth();
@@ -64,7 +45,7 @@ export default function HomePage({ onOpenProfile }) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([tag, count]) => ({ tag, count: String(count) }));
-    return serverTrends.length ? serverTrends : (dynamic.length ? dynamic : TRENDING);
+    return serverTrends.length ? serverTrends : dynamic;
   }, [posts, serverTrends]);
 
   useEffect(() => {
@@ -112,8 +93,9 @@ export default function HomePage({ onOpenProfile }) {
     }
   };
 
-  const handleNewPost = async ({ content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind }) => {
-    const created = await createPost({ token, content, file, postType, portfolioTitle, portfolioLink, portfolioLinkKind });
+  const handleNewPost = async (payload) => {
+    const created = await createPost({ token, ...payload });
+    const { postType } = payload;
     if (postType === 'zuni-post') {
       showToast('Short publicado no Zuni', 'OK');
       return;
@@ -257,7 +239,7 @@ export default function HomePage({ onOpenProfile }) {
         <aside className="right-panel">
           <div className="panel-card" style={{ marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Tendencias</div>
-            {trending.map((item, i) => (
+            {trending.length ? trending.map((item, i) => (
               <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < trending.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div>
                   <button onClick={() => openTrend(item.tag)} style={{ border: 0, background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>#{item.tag}</button>
@@ -265,12 +247,12 @@ export default function HomePage({ onOpenProfile }) {
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10 }}>#{i + 1}</span>
               </div>
-            ))}
+            )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma tendencia real encontrada.</div>}
           </div>
 
           <div className="panel-card" style={{ marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Sugeridas para voce</div>
-            {(suggestedCommunities.length ? suggestedCommunities : SUGGESTED_COMMUNITIES).map(com => (
+            {suggestedCommunities.length ? suggestedCommunities.map(com => (
               <div key={com.id || com.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: `${com.color || 'var(--accent)'}22`, color: com.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0, border: '1px solid var(--border)' }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -279,12 +261,12 @@ export default function HomePage({ onOpenProfile }) {
                 </div>
                 <button onClick={() => handleJoinCommunity(com)} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, padding: '5px 12px', fontSize: 11, fontWeight: 700 }}>Entrar</button>
               </div>
-            ))}
+            )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma comunidade sugerida pelo servidor.</div>}
           </div>
 
           <div className="panel-card">
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Pessoas sugeridas</div>
-            {(suggestedPeople.length ? suggestedPeople : SUGGESTED_PEOPLE).map((person, i, arr) => (
+            {suggestedPeople.length ? suggestedPeople.map((person, i, arr) => (
               <div key={person.username || person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
                 <button onClick={() => person.username && onOpenProfile?.(person.username)} style={{ border: 0, background: 'transparent', padding: 0 }}>
                   <Avatar size={40} src={person.profilePicture || null} name={person.displayName || person.name || person.username} initials={person.avatar || (person.displayName || person.name || '?').slice(0, 2)} />
@@ -297,7 +279,7 @@ export default function HomePage({ onOpenProfile }) {
                   {person.following ? 'Seguindo' : 'Seguir'}
                 </button>
               </div>
-            ))}
+            )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma sugestao real de pessoa encontrada.</div>}
           </div>
         </aside>
       </div>

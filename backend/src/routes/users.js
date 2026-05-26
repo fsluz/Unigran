@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
-import { getPortfolioMlAnalysis, getPortfolioResume, listPublicPortfolioItems } from '../modules/academic/avaStore.js';
+import { getPortfolioMlAnalysis, getPortfolioResume, listPublicPortfolioItems } from '../modules/academic/typedbPortfolioStore.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
 const router = Router();

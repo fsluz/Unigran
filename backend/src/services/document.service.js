@@ -101,3 +101,27 @@ export async function uploadDocumentBuffer({ file, user, folder = 'submissions' 
     size: file.size || file.buffer.length,
   };
 }
+
+export async function deleteDocumentObject({ storage, path }) {
+  if (storage !== 'supabase' || !path) return false;
+  if (!isSupabaseDocumentsConfigured()) {
+    const err = new Error('Supabase Storage nao configurado para excluir documento.');
+    err.statusCode = 503;
+    throw err;
+  }
+  const { key, bucket } = supabaseConfig();
+  const baseUrl = supabaseBaseUrl();
+  const response = await fetch(`${baseUrl}/storage/v1/object/${encodeURIComponent(bucket)}/${path}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      apikey: key,
+    },
+  });
+  if (!response.ok) {
+    const err = new Error(await response.text().catch(() => 'Falha ao excluir documento do Supabase'));
+    err.statusCode = response.status;
+    throw err;
+  }
+  return true;
+}

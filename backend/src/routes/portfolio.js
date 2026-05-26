@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
-import { getPortfolioResume, getPublicPortfolioItem, listPublicPortfolioItems } from '../modules/academic/avaStore.js';
+import {
+  getPortfolioResume,
+  getPublicPortfolioItem,
+  listAllPublicPortfolioItems,
+  listPublicPortfolioItems,
+} from '../modules/academic/typedbPortfolioStore.js';
 
 const router = Router();
 
@@ -43,10 +48,11 @@ async function getPublicProfile(username) {
   `).catch(() => []);
 
   const row = rows[0] || {};
+  if (!rows.length) return null;
   return {
     username,
     displayName: row.name || username,
-    bio: row.bio || 'Portfolio academico com projetos, entregas e evolucao profissional.',
+    bio: row.bio || '',
     profilePicture: row.profile_picture || '',
     coverPicture: row.cover_picture || '',
   };
@@ -63,13 +69,11 @@ function initials(name = '') {
 }
 
 function inferSkills(items) {
-  const base = ['Pesquisa', 'Comunicacao', 'Projetos', 'Documentacao', 'Aprendizado continuo'];
-  const text = items.map(item => `${item.title} ${item.summary} ${item.courseName}`).join(' ').toLowerCase();
-  const skills = [...base];
-  if (text.includes('software') || text.includes('program')) skills.push('Engenharia de Software', 'React', 'Produto Digital');
-  if (text.includes('dados') || text.includes('sql')) skills.push('Banco de Dados', 'Analise de Dados');
-  if (text.includes('ia') || text.includes('inteligencia')) skills.push('IA Aplicada', 'Automacao');
-  if (text.includes('design')) skills.push('Design de Interacao', 'UX');
+  const skills = items.flatMap(item => [
+    ...(item.tags || []),
+    ...(item.technologies || []),
+    item.projectType,
+  ]);
   return [...new Set(skills)].slice(0, 10);
 }
 
@@ -140,12 +144,74 @@ function projectComplexity(item = {}) {
   return 'Inicial';
 }
 
+function wantsJson(req) {
+  return req.path.startsWith('/api/') || req.originalUrl.startsWith('/api/') || req.get('accept')?.includes('application/json');
+}
+
+function cleanProjectSummary(text = '') {
+  return String(text || '')
+    .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
+    .replace(/\/portfolio\/[^\s]+/gi, '')
+    .replace(/#PortfolioAcademico/gi, '')
+    .replace(/^Tecnologias:\s*.+$/gim, '')
+    .replace(/(?:\s*#[\p{L}\p{N}_-]+)+\s*$/u, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function richInline(text = '') {
+  return escapeHtml(text).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
+function renderProjectSummary(text = '') {
+  const lines = cleanProjectSummary(text).split(/\r?\n/);
+  const blocks = [];
+  let paragraph = [];
+  let bullets = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push(`<p>${paragraph.map(line => richInline(line)).join('<br>')}</p>`);
+    paragraph = [];
+  };
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    blocks.push(`<ul>${bullets.map(line => `<li>${richInline(line)}</li>`).join('')}</ul>`);
+    bullets = [];
+  };
+  for (const line of lines) {
+    if (!line.trim()) {
+      flushParagraph();
+      flushBullets();
+    } else if (/^#{1,3}\s+/.test(line)) {
+      flushParagraph();
+      flushBullets();
+      blocks.push(`<h4>${richInline(line.replace(/^#{1,3}\s+/, ''))}</h4>`);
+    } else if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      bullets.push(line.replace(/^[-*]\s+/, ''));
+    } else {
+      flushBullets();
+      paragraph.push(line);
+    }
+  }
+  flushParagraph();
+  flushBullets();
+  return blocks.join('');
+}
+
 function projectCard(item, req, highlighted = false) {
-  const link = absoluteUrl(req, normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.activityId}`));
+  const link = absoluteUrl(req, normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.slug}`));
   const externalUrl = item.externalUrl || (item.documentStorage === 'external' ? item.documentUrl : '');
   const meta = linkKindMeta(item.externalKind || (externalUrl ? 'other' : ''));
   const category = projectCategory(item);
-  const searchable = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.activityTitle || ''} ${categoryLabel(category)}`;
+  const searchable = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.activityTitle || ''} ${categoryLabel(category)} ${(item.tags || []).join(' ')} ${(item.technologies || []).join(' ')}`;
+  const chips = [
+    item.courseName,
+    categoryLabel(category),
+    item.projectType,
+    ...(item.tags || []),
+    ...(item.technologies || []),
+  ].filter(Boolean);
   const external = externalUrl
     ? `<a class="link-preview-card" href="${escapeHtml(externalUrl)}" target="_blank" rel="noreferrer">
         <span>${escapeHtml(meta.icon)}</span>
@@ -168,24 +234,18 @@ function projectCard(item, req, highlighted = false) {
       <div class="project-body">
         <div class="project-head">
           <div>
-            <small>${escapeHtml(item.activityTitle || 'Entrega academica')}</small>
-            <h3>${escapeHtml(item.title || item.activityTitle || 'Projeto academico')}</h3>
+            <small>${escapeHtml(item.activityTitle || '')}</small>
+            <h3>${escapeHtml(item.title || item.activityTitle || '')}</h3>
           </div>
           <em>${highlighted ? 'Case em destaque' : formatDate(item.updatedAt || item.createdAt)}</em>
         </div>
-        <p>${escapeHtml(item.summary || 'Trabalho academico publicado como portfolio profissional.')}</p>
+        ${item.summary ? `<div class="project-summary">${renderProjectSummary(item.summary)}</div>` : ''}
         <div class="case-grid">
           <div><span>Problema</span><b>${escapeHtml(item.activityTitle || 'Desafio academico')}</b></div>
           <div><span>Resultado</span><b>${externalUrl ? 'Link navegavel' : 'Entrega documentada'}</b></div>
           <div><span>Complexidade</span><b>${escapeHtml(projectComplexity(item))}</b></div>
         </div>
-        <div class="tech-row">
-          <span>${escapeHtml(item.courseName || 'Academico')}</span>
-          <span>${escapeHtml(categoryLabel(category))}</span>
-          <span>Portfolio</span>
-          <span>AVA</span>
-          ${item.externalKind === 'web_app' ? '<span>App ao vivo</span>' : ''}
-        </div>
+        ${chips.length ? `<div class="tech-row">${chips.slice(0, 10).map(chip => `<span>${escapeHtml(chip)}</span>`).join('')}</div>` : ''}
         ${external}
         <div class="project-actions">
           <a class="project-link" href="${escapeHtml(link)}">Ver case</a>
@@ -196,17 +256,64 @@ function projectCard(item, req, highlighted = false) {
   `;
 }
 
+function renderPortfolioIndexPage(req, items) {
+  const pageUrl = absoluteUrl(req, '/portfolio');
+  const title = 'Portfolios academicos';
+  const description = items.length
+    ? 'Portfolios academicos publicados por usuarios reais da plataforma.'
+    : 'Nenhum portfolio academico publicado ainda.';
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${escapeHtml(pageUrl)}" />
+  <style>
+    body{margin:0;font-family:Inter,system-ui,sans-serif;background:#080a12;color:#f8fbff}
+    main{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:34px 0 70px}
+    a{color:inherit}.top{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:22px}
+    h1{margin:0;font-size:clamp(34px,6vw,64px);letter-spacing:0}.muted{color:#aeb8d5;line-height:1.6}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .card{display:grid;gap:12px;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:rgba(255,255,255,.07);text-decoration:none}
+    .thumb{aspect-ratio:16/9;border-radius:12px;background:#111827;object-fit:cover;width:100%}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}.chips span{font-size:12px;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#dce7ff}
+    .empty{min-height:260px;display:grid;place-items:center;text-align:center;border:1px solid rgba(255,255,255,.14);border-radius:18px;color:#aeb8d5}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="top">
+      <div><h1>Portfolios academicos</h1><p class="muted">${escapeHtml(description)}</p></div>
+      <strong>${items.length} publicado(s)</strong>
+    </section>
+    ${items.length ? `<section class="grid">${items.map(item => `
+      <a class="card" href="${escapeHtml(normalizePortfolioPath(item.shareUrl || `/portfolio/${item.authorUsername}/${item.slug}`))}">
+        ${item.thumbnail ? `<img class="thumb" src="${escapeHtml(item.thumbnail)}" alt="">` : '<div class="thumb"></div>'}
+        <div>
+          <small class="muted">@${escapeHtml(item.authorUsername)}</small>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p class="muted">${escapeHtml(item.description || item.summary || '')}</p>
+        </div>
+        <div class="chips">${[...item.tags, ...item.technologies].slice(0, 6).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>
+      </a>`).join('')}</section>` : '<section class="empty">Nenhum portfolio publicado ainda.</section>'}
+  </main>
+</body>
+</html>`;
+}
+
 function renderPortfolioPage({ req, profile, items, focusItem = null, resume = null }) {
-  const pageUrl = absoluteUrl(req, `/portfolio/${profile.username}`);
-  const title = `${profile.displayName} - Portfolio Academico`;
-  const description = `${profile.displayName} apresenta projetos academicos, habilidades, certificados e evolucao profissional.`;
+  const pageUrl = absoluteUrl(req, focusItem ? `/portfolio/${profile.username}/${focusItem.slug}` : `/portfolio/${profile.username}`);
+  const title = focusItem ? `${focusItem.title} - ${profile.displayName}` : `${profile.displayName} - Portfolio Academico`;
+  const description = focusItem?.description || focusItem?.summary || (items.length ? `${profile.displayName} possui ${items.length} portfolio(s) publicado(s).` : `${profile.displayName} ainda nao publicou portfolios.`);
   const featured = focusItem || items[0] || null;
   const skills = inferSkills(items);
-  const institution = featured?.institution?.name || items[0]?.institution?.name || 'UNIGRAN';
+  const institution = featured?.institution?.name || items[0]?.institution?.name || '';
   const courseNames = [...new Set(items.map(item => item.courseName).filter(Boolean))];
-  const completion = Math.min(96, 42 + items.length * 12);
-  const certCount = Math.max(1, Math.min(8, items.length + 1));
-  const hours = 40 + items.length * 28;
   const ml = {};
   const virtualResume = resume?.virtualResume || {};
   const resumeContacts = virtualResume.contacts || {};
@@ -215,7 +322,6 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
   const resumeTools = virtualResume.tools || [];
   const resumeLinks = resumeContacts.links || resume?.links || [];
   const allSkillSignals = [...new Set([...skills, ...resumeHardSkills])].slice(0, 16);
-  const professionalScore = Math.min(98, Math.round(56 + items.length * 9 + resumeHardSkills.length * 2 + (resume ? 8 : 0)));
   const featuredProjects = items.slice(0, 3);
   const contactEmail = (resumeContacts.emails || resume?.emails || [])[0] || '';
   const contactPhone = (resumeContacts.phones || resume?.phones || [])[0] || '';
@@ -248,7 +354,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
     .avatar{width:108px;height:108px;border-radius:28px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));font-size:34px;font-weight:950;box-shadow:0 18px 46px rgba(0,168,255,.2);background-size:cover;background-position:center}.identity-card h2{margin:0;font-size:26px}.identity-card p{margin:4px 0 0;color:var(--muted);line-height:1.55}.availability{display:flex;align-items:center;gap:8px;color:#c7f9d4;font-weight:850}.availability i{width:9px;height:9px;border-radius:999px;background:var(--green);box-shadow:0 0 18px var(--green)}.stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat{padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.06)}.stat strong{display:block;font-size:28px}.stat span{color:var(--muted);font-size:12px;font-weight:800;text-transform:uppercase}
     .section{margin-top:22px;padding:24px;border:1px solid var(--line);border-radius:26px;background:rgba(255,255,255,.065);backdrop-filter:blur(22px);box-shadow:0 18px 58px rgba(0,0,0,.18)}.section-head{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:18px}.section small{color:var(--accent-2);font-weight:950;text-transform:uppercase;letter-spacing:.1em}.section h2{margin:6px 0 0;font-size:clamp(26px,4vw,42px)}.section p{color:var(--muted);line-height:1.65}
     .recruiter-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}.recruiter-card{position:relative;overflow:hidden;padding:18px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.045))}.recruiter-card.feature{background:radial-gradient(circle at 100% 0,rgba(0,168,255,.20),transparent 35%),linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.045))}.score-ring{display:grid;place-items:center;width:148px;height:148px;border-radius:999px;background:conic-gradient(var(--accent-2) calc(var(--score)*1%),rgba(255,255,255,.12) 0);box-shadow:0 20px 60px rgba(0,168,255,.16)}.score-ring div{display:grid;place-items:center;width:112px;height:112px;border-radius:inherit;background:#090b19}.score-ring strong{font-size:34px}.insight-list{display:grid;gap:9px;margin-top:12px}.insight{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:11px;border:1px solid rgba(255,255,255,.11);border-radius:14px;background:rgba(255,255,255,.055)}.insight i{width:9px;height:9px;border-radius:999px;margin-top:5px;background:var(--accent-2);box-shadow:0 0 18px var(--accent-2)}.quick-stack{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.quick-stack span{padding:8px 10px;border:1px solid rgba(0,168,255,.22);border-radius:999px;background:rgba(0,168,255,.08);font-size:12px;font-weight:900}.contact-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.contact-strip a,.contact-strip span{display:grid;gap:3px;min-height:72px;padding:12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.06);text-decoration:none}.contact-strip b{font-size:13px}.contact-strip small{overflow:hidden;color:var(--muted);text-overflow:ellipsis;white-space:nowrap}
-    .project-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;margin-bottom:16px}.project-search{height:46px;border:1px solid rgba(0,168,255,.24);border-radius:15px;padding:0 14px;background:rgba(255,255,255,.07);color:var(--text);outline:none}.project-search:focus{border-color:rgba(0,168,255,.58);box-shadow:0 0 0 4px rgba(0,168,255,.09)}.filter-row{display:flex;flex-wrap:wrap;gap:8px}.filter-btn{height:46px;border:1px solid var(--line);border-radius:14px;padding:0 13px;background:rgba(255,255,255,.06);color:var(--muted);font-weight:900;cursor:pointer}.filter-btn.active{border-color:rgba(0,168,255,.44);background:linear-gradient(135deg,rgba(124,58,237,.26),rgba(0,168,255,.16));color:#fff}.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.project-card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.07);box-shadow:0 18px 50px rgba(0,0,0,.18);transition:transform .22s,border-color .22s,box-shadow .22s}.project-card.is-hidden{display:none}.project-card:hover{transform:translateY(-6px);border-color:rgba(0,168,255,.42);box-shadow:0 28px 84px rgba(0,168,255,.14)}.project-card.highlighted{grid-column:1/-1}.project-cover{display:flex;align-items:flex-start;justify-content:space-between;min-height:158px;padding:18px;background:radial-gradient(circle at 80% 18%,rgba(0,168,255,.34),transparent 34%),linear-gradient(135deg,rgba(124,58,237,.26),rgba(255,255,255,.04))}.project-cover span,.project-cover strong{padding:7px 10px;border-radius:999px;background:rgba(7,9,20,.42);backdrop-filter:blur(10px);font-size:12px}.project-body{padding:18px}.project-head{display:flex;justify-content:space-between;gap:12px}.project-head small{letter-spacing:.06em}.project-head h3{margin:6px 0 0;font-size:23px}.project-head em{height:28px;padding:7px 10px;border-radius:999px;background:rgba(34,197,94,.12);color:#b9fac9;font-size:11px;font-style:normal;font-weight:950;white-space:nowrap}.case-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.case-grid div{padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:rgba(255,255,255,.05)}.case-grid span{display:block;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase}.case-grid b{display:block;margin-top:3px;font-size:12px}.tech-row{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0}.tech-row span{padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:#dce7ff;background:rgba(255,255,255,.06);font-size:12px;font-weight:850}.project-actions{display:flex;gap:9px;flex-wrap:wrap}.project-link{display:inline-flex;align-items:center;min-height:38px;padding:0 13px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));text-decoration:none;font-size:13px;font-weight:950}.project-link.ghost{border:1px solid var(--line);background:rgba(255,255,255,.07)}
+    .project-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;margin-bottom:16px}.project-search{height:46px;border:1px solid rgba(0,168,255,.24);border-radius:15px;padding:0 14px;background:rgba(255,255,255,.07);color:var(--text);outline:none}.project-search:focus{border-color:rgba(0,168,255,.58);box-shadow:0 0 0 4px rgba(0,168,255,.09)}.filter-row{display:flex;flex-wrap:wrap;gap:8px}.filter-btn{height:46px;border:1px solid var(--line);border-radius:14px;padding:0 13px;background:rgba(255,255,255,.06);color:var(--muted);font-weight:900;cursor:pointer}.filter-btn.active{border-color:rgba(0,168,255,.44);background:linear-gradient(135deg,rgba(124,58,237,.26),rgba(0,168,255,.16));color:#fff}.project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.project-card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.07);box-shadow:0 18px 50px rgba(0,0,0,.18);transition:transform .22s,border-color .22s,box-shadow .22s}.project-card.is-hidden{display:none}.project-card:hover{transform:translateY(-6px);border-color:rgba(0,168,255,.42);box-shadow:0 28px 84px rgba(0,168,255,.14)}.project-card.highlighted{grid-column:1/-1}.project-cover{display:flex;align-items:flex-start;justify-content:space-between;min-height:158px;padding:18px;background:radial-gradient(circle at 80% 18%,rgba(0,168,255,.34),transparent 34%),linear-gradient(135deg,rgba(124,58,237,.26),rgba(255,255,255,.04))}.project-cover span,.project-cover strong{padding:7px 10px;border-radius:999px;background:rgba(7,9,20,.42);backdrop-filter:blur(10px);font-size:12px}.project-body{padding:18px}.project-summary{display:grid;gap:9px;margin-top:12px;color:var(--muted);line-height:1.65}.project-summary p,.project-summary ul{margin:0}.project-summary ul{display:grid;gap:4px;padding-left:20px}.project-summary h4{margin:3px 0 0;color:var(--text);font-size:14px}.project-summary strong{color:var(--text)}.project-head{display:flex;justify-content:space-between;gap:12px}.project-head small{letter-spacing:.06em}.project-head h3{margin:6px 0 0;font-size:23px}.project-head em{height:28px;padding:7px 10px;border-radius:999px;background:rgba(34,197,94,.12);color:#b9fac9;font-size:11px;font-style:normal;font-weight:950;white-space:nowrap}.case-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.case-grid div{padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:rgba(255,255,255,.05)}.case-grid span{display:block;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase}.case-grid b{display:block;margin-top:3px;font-size:12px}.tech-row{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0}.tech-row span{padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:#dce7ff;background:rgba(255,255,255,.06);font-size:12px;font-weight:850}.project-actions{display:flex;gap:9px;flex-wrap:wrap}.project-link{display:inline-flex;align-items:center;min-height:38px;padding:0 13px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));text-decoration:none;font-size:13px;font-weight:950}.project-link.ghost{border:1px solid var(--line);background:rgba(255,255,255,.07)}
     .link-preview-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;margin:14px 0;padding:13px;border:1px solid rgba(0,168,255,.22);border-radius:17px;background:linear-gradient(135deg,rgba(0,168,255,.12),rgba(124,58,237,.08));text-decoration:none;transition:transform .2s,border-color .2s,background .2s}.link-preview-card:hover{transform:translateY(-2px);border-color:rgba(0,168,255,.44);background:linear-gradient(135deg,rgba(0,168,255,.18),rgba(124,58,237,.12))}.link-preview-card>span{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-2));font-size:11px;font-weight:950;box-shadow:0 14px 30px rgba(0,168,255,.18)}.link-preview-card strong{display:block;color:var(--text);font-size:15px}.link-preview-card small{display:block;overflow:hidden;color:var(--muted);font-size:12px;text-overflow:ellipsis;white-space:nowrap}.link-preview-card em{color:#dce7ff;font-size:12px;font-style:normal;font-weight:950;white-space:nowrap}
     .profile-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.skill-cloud{display:flex;flex-wrap:wrap;gap:9px}.skill{position:relative;overflow:hidden;padding:12px 14px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.07);font-weight:850}.skill:after{content:"";position:absolute;left:0;bottom:0;height:2px;width:72%;background:linear-gradient(90deg,var(--accent),var(--accent-2))}.metric-list{display:grid;gap:10px}.metric{display:grid;gap:7px;padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.06)}.metric span{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}.bar{height:8px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden}.bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent-2));box-shadow:0 0 24px rgba(0,168,255,.4)}
     .timeline{position:relative;display:grid;gap:12px}.timeline:before{content:"";position:absolute;left:16px;top:8px;bottom:8px;width:2px;background:linear-gradient(var(--accent),var(--accent-2))}.time-item{position:relative;margin-left:42px;padding:16px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.06)}.time-item:before{content:"";position:absolute;left:-33px;top:20px;width:14px;height:14px;border-radius:999px;background:var(--accent-2);box-shadow:0 0 22px var(--accent-2)}.time-item h3{margin:0}.time-item span{color:var(--muted);font-size:13px}
@@ -274,13 +380,13 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
     <section class="hero">
       <div class="hero-main">
         <div class="badge-row">
-          <span class="badge hot">${escapeHtml(institution)}</span>
+          ${institution ? `<span class="badge hot">${escapeHtml(institution)}</span>` : ''}
           <span class="badge">Portfolio verificavel</span>
           <span class="badge">Disponivel para networking</span>
         </div>
         <h1>${escapeHtml(profile.displayName)}</h1>
-        <p class="headline">${escapeHtml(courseNames[0] || 'Aluno UNIGRAN')} criando projetos academicos com mentalidade de produto, pesquisa e impacto profissional.</p>
-        <p class="bio">${escapeHtml(profile.bio)}</p>
+        ${courseNames[0] ? `<p class="headline">${escapeHtml(courseNames[0])}</p>` : ''}
+        ${profile.bio ? `<p class="bio">${escapeHtml(profile.bio)}</p>` : ''}
         <div class="hero-ctas">
           <a class="btn primary" href="#projetos">Ver projetos</a>
           ${featured?.externalUrl ? `<a class="btn" href="${escapeHtml(featured.externalUrl)}" target="_blank" rel="noreferrer">${escapeHtml(linkKindMeta(featured.externalKind).action)} destaque</a>` : featured?.documentUrl ? `<a class="btn" href="${escapeHtml(featured.documentUrl)}" target="_blank" rel="noreferrer">Abrir entrega destaque</a>` : ''}
@@ -300,9 +406,9 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="availability"><i></i> Aberto para oportunidades academicas e profissionais</div>
           <div class="stat-grid">
             <div class="stat"><strong>${items.length}</strong><span>Projetos</span></div>
-            <div class="stat"><strong>${completion}%</strong><span>Progresso</span></div>
-            <div class="stat"><strong>${hours}h</strong><span>Horas</span></div>
-            <div class="stat"><strong>${certCount}</strong><span>Selos</span></div>
+            <div class="stat"><strong>${resume ? 1 : 0}</strong><span>Curriculo</span></div>
+            <div class="stat"><strong>${contactEmail ? 1 : 0}</strong><span>Email</span></div>
+            <div class="stat"><strong>${resumeLinks.length}</strong><span>Links</span></div>
           </div>
         </div>
       </aside>
@@ -316,15 +422,15 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       <div class="recruiter-grid">
         <div class="recruiter-card feature">
           <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-            <div class="score-ring" style="--score:${professionalScore}"><div><strong>${professionalScore}</strong><small>/100</small></div></div>
+            <div class="score-ring" style="--score:${Math.min(100, items.length * 20)}"><div><strong>${items.length}</strong><small>cases</small></div></div>
             <div style="min-width:240px;flex:1">
-              <small>Indice de prontidao</small>
+              <small>Dados publicados</small>
               <h3 style="margin:6px 0 8px;font-size:30px">${escapeHtml(virtualResume.professionalTitle || courseNames[0] || 'Perfil academico em avaliacao')}</h3>
               <p>Perfil comercial organizado por projetos, curriculo, competencias e evidencias publicas para avaliacao profissional.</p>
             </div>
           </div>
           <div class="insight-list">
-            <div class="insight"><i></i><span><b>Fit tecnico:</b> ${escapeHtml(allSkillSignals.slice(0, 5).join(', ') || 'skills em classificacao')}.</span></div>
+            <div class="insight"><i></i><span><b>Fit tecnico:</b> ${escapeHtml(allSkillSignals.slice(0, 5).join(', ') || 'sem competencias cadastradas')}.</span></div>
             <div class="insight"><i></i><span><b>Evidencias:</b> ${items.length} projeto(s), ${resume ? 'curriculo estruturado' : 'curriculo pendente'} e portfolio publico compartilhavel.</span></div>
             <div class="insight"><i></i><span><b>Recomendacao:</b> analisar os cases em destaque e abrir links navegaveis quando disponiveis.</span></div>
           </div>
@@ -333,7 +439,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <small>Projetos em destaque</small>
           <h3 style="margin:6px 0 12px;font-size:24px">Cases para abrir primeiro</h3>
           <div class="insight-list">
-            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.activityId}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || 'Projeto')}</strong><small>${escapeHtml(project.courseName || 'Academico')} - ${escapeHtml(projectComplexity(project))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
+            ${featuredProjects.map(project => `<a class="link-preview-card" href="${escapeHtml(absoluteUrl(req, normalizePortfolioPath(project.shareUrl || `/portfolio/${project.authorUsername}/${project.slug}`)))}"><span>${escapeHtml(categoryLabel(projectCategory(project)).slice(0, 3).toUpperCase())}</span><div><strong>${escapeHtml(project.title || project.activityTitle || '')}</strong><small>${escapeHtml([project.courseName, projectComplexity(project)].filter(Boolean).join(' - '))}</small></div><em>Ver</em></a>`).join('') || '<p>Nenhum projeto publicado ainda.</p>'}
           </div>
         </div>
       </div>
@@ -366,7 +472,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         ${items.map(item => projectCard(item, req, focusItem && item.activityId === focusItem.activityId)).join('')}
       </div>
     </section>` : `
-    <section class="section empty"><div><small>Portfolio em construcao</small><h2>Nenhum projeto publicado ainda</h2><p>Quando o aluno publicar uma entrega pelo AVA, ela aparecera aqui como case profissional.</p></div></section>`}
+    <section class="section empty"><div><small>Portfolio em construcao</small><h2>Nenhum projeto publicado ainda</h2><p>Nenhum dado real foi encontrado para este perfil.</p></div></section>`}
 
     <section class="section" id="skills">
       <div class="section-head">
@@ -374,10 +480,8 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         <p>Resumo pensado para recrutadores entenderem rapidamente potencial, stack e maturidade academica.</p>
       </div>
       <div class="profile-grid">
-        <div class="skill-cloud">${skills.map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('')}</div>
+        <div class="skill-cloud">${skills.map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma competencia real cadastrada nos projetos.</p>'}</div>
         <div class="metric-list">
-          <div class="metric"><span><b>Progresso do curso</b><b>${completion}%</b></span><div class="bar"><i style="width:${completion}%"></i></div></div>
-          <div class="metric"><span><b>Consistencia academica</b><b>92%</b></span><div class="bar"><i style="width:92%"></i></div></div>
           <div class="metric"><span><b>Portfolio publico</b><b>${Math.min(100, items.length * 25)}%</b></span><div class="bar"><i style="width:${Math.min(100, items.length * 25)}%"></i></div></div>
         </div>
       </div>
@@ -421,17 +525,17 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="virtual-resume-card">
             <small>Hard skills</small>
             <h4>Competencias tecnicas</h4>
-            <div class="skill-cloud">${resumeHardSkills.slice(0, 12).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Em leitura</span>'}</div>
+            <div class="skill-cloud">${resumeHardSkills.slice(0, 12).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma hard skill identificada no curriculo.</p>'}</div>
           </div>
           <div class="virtual-resume-card">
             <small>Soft skills</small>
             <h4>Comportamental</h4>
-            <div class="skill-cloud">${resumeSoftSkills.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Comunicacao</span><span class="skill">Organizacao</span>'}</div>
+            <div class="skill-cloud">${resumeSoftSkills.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma soft skill identificada no curriculo.</p>'}</div>
           </div>
           <div class="virtual-resume-card">
             <small>Ferramentas</small>
             <h4>Stack de apoio</h4>
-            <div class="skill-cloud">${resumeTools.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Portfolio</span><span class="skill">AVA</span>'}</div>
+            <div class="skill-cloud">${resumeTools.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma ferramenta identificada no curriculo.</p>'}</div>
           </div>
         </div>
         <div class="virtual-resume-card">
@@ -471,7 +575,6 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       </div>
       <div class="timeline">
         ${items.slice(0, 5).map(item => `<div class="time-item"><span>${escapeHtml(formatDate(item.updatedAt || item.createdAt))}</span><h3>${escapeHtml(item.title || item.activityTitle)}</h3><p>${escapeHtml(item.courseName || 'Atividade academica')}</p></div>`).join('')}
-        <div class="time-item"><span>Atual</span><h3>Portfolio academico publicado</h3><p>Vitrine compartilhavel pronta para networking e processos seletivos.</p></div>
       </div>
     </section>
 
@@ -480,11 +583,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         <div><small>Certificados e selos</small><h2>Credenciais academicas</h2></div>
         <p>Blocos visuais para certificados, atividades complementares e conquistas verificaveis.</p>
       </div>
-      <div class="cert-grid">
-        <div class="cert"><span>Selo digital</span><strong>Portfolio UNIGRAN</strong><p>Perfil academico publico.</p></div>
-        <div class="cert"><span>Competencia</span><strong>Projetos aplicados</strong><p>Entregas conectadas a disciplinas.</p></div>
-        <div class="cert"><span>Presenca</span><strong>Networking academico</strong><p>Compartilhavel com empresas.</p></div>
-      </div>
+      <div class="empty"><p>Nenhuma credencial real cadastrada para este perfil.</p></div>
     </section>
 
     <section class="footer-cta">
@@ -528,6 +627,18 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
 </html>`;
 }
 
+router.get('/', async (req, res) => {
+  try {
+    const items = await listAllPublicPortfolioItems();
+    if (wantsJson(req)) return res.json({ portfolios: items });
+    res.type('html').send(renderPortfolioIndexPage(req, items));
+  } catch (err) {
+    console.error('[portfolio list]', err);
+    if (wantsJson(req)) return res.status(500).json({ error: 'Erro ao carregar portfolios' });
+    res.status(500).send('Erro ao carregar portfolios');
+  }
+});
+
 router.get('/:username', async (req, res) => {
   try {
     const [profile, items, resume] = await Promise.all([
@@ -535,6 +646,11 @@ router.get('/:username', async (req, res) => {
       listPublicPortfolioItems(req.params.username),
       getPortfolioResume(req.params.username),
     ]);
+    if (!profile) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Usuario nao encontrado' });
+      return res.status(404).send('Usuario nao encontrado');
+    }
+    if (wantsJson(req)) return res.json({ profile, portfolios: items, resume });
     res.type('html').send(renderPortfolioPage({ req, profile, items, resume }));
   } catch (err) {
     console.error('[portfolio public page]', err);
@@ -542,15 +658,23 @@ router.get('/:username', async (req, res) => {
   }
 });
 
-router.get('/:username/:activityId', async (req, res) => {
+router.get('/:username/:slug', async (req, res) => {
   try {
     const [profile, item, items, resume] = await Promise.all([
       getPublicProfile(req.params.username),
-      getPublicPortfolioItem(req.params.username, req.params.activityId),
+      getPublicPortfolioItem(req.params.username, req.params.slug),
       listPublicPortfolioItems(req.params.username),
       getPortfolioResume(req.params.username),
     ]);
-    if (!item) return res.status(404).send('Portfolio nao encontrado');
+    if (!profile) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Usuario nao encontrado' });
+      return res.status(404).send('Usuario nao encontrado');
+    }
+    if (!item) {
+      if (wantsJson(req)) return res.status(404).json({ error: 'Portfolio nao encontrado' });
+      return res.status(404).send('Portfolio nao encontrado');
+    }
+    if (wantsJson(req)) return res.json({ portfolio: item, profile });
     res.type('html').send(renderPortfolioPage({ req, profile, items: items.length ? items : [item], focusItem: item, resume }));
   } catch (err) {
     console.error('[portfolio public item]', err);
