@@ -105,6 +105,31 @@ function Stat({ label, value, hint, icon: Icon }) {
   );
 }
 
+function generateSlug(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function optionalValue(value = '') {
+  const clean = String(value || '').trim();
+  return clean || undefined;
+}
+
+function isValidUrl(value) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
 export default function AcademicPortalPage({ onOpenAva }) {
   const { user, token } = useAuth();
   const { showToast } = useToast();
@@ -224,11 +249,49 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
   const createUniversity = async (event) => {
     event.preventDefault();
+    const name = universityDraft.name.trim();
+    if (!name) {
+      showToast('Informe o nome da universidade.', '!');
+      return;
+    }
+
+    const cnpj = universityDraft.cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14) {
+      showToast('Informe um CNPJ valido com 14 digitos.', '!');
+      return;
+    }
+
+    const logo = optionalValue(universityDraft.logo);
+    if (!isValidUrl(logo)) {
+      showToast('Informe uma URL valida para o logo ou deixe o campo vazio.', '!');
+      return;
+    }
+
+    const payload = {
+      name,
+      slug: generateSlug(universityDraft.slug || name),
+      cnpj,
+      logo,
+      description: optionalValue(universityDraft.description),
+      status: universityDraft.status,
+    };
+
+    console.info('[institution] Criando universidade', {
+      name: payload.name,
+      slug: payload.slug,
+      hasCnpj: Boolean(payload.cnpj),
+      hasLogo: Boolean(payload.logo),
+      hasDescription: Boolean(payload.description),
+    });
+
     try {
-      await refreshInstitution(await createInstitutionUniversity(token, universityDraft));
+      await refreshInstitution(await createInstitutionUniversity(token, payload));
       setUniversityDraft({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
       showToast('Universidade criada', 'OK');
     } catch (err) {
+      console.error('[institution] Erro ao criar universidade', err);
+      console.error('[institution] Status da API', err?.status);
+      console.error('[institution] Resposta da API', err?.data);
       showToast(err.message || 'Erro ao criar universidade', '!');
     }
   };

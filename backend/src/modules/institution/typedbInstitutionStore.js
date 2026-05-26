@@ -116,13 +116,13 @@ export async function listUniversities() {
 
 export async function createUniversity(user, payload) {
   const slug = slugify(payload.slug || payload.name);
-  const duplicate = await readQuery(`
-    match
-      $university isa educational-institute;
-      { $university has institution-slug "${safe(slug)}"; } or { $university has institution-cnpj "${safe(payload.cnpj)}"; };
-    fetch { "university": { $university.* } };
-  `);
-  if (duplicate.length) throw appError('Universidade ja cadastrada com este slug ou CNPJ', 409);
+  const universities = await listUniversities();
+  if (universities.some(university => university.slug === slug)) {
+    throw appError('Ja existe uma universidade cadastrada com este slug.', 409);
+  }
+  if (universities.some(university => String(university.cnpj || '').replace(/\D/g, '') === payload.cnpj)) {
+    throw appError('Ja existe uma universidade cadastrada com este CNPJ.', 409);
+  }
 
   const id = `university-${uuid()}`;
   const createdAt = now();

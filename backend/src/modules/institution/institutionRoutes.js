@@ -32,14 +32,40 @@ import {
 
 const router = Router();
 
-const UniversitySchema = z.object({
-  name: z.string().trim().min(3).max(180),
-  slug: z.string().trim().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
-  cnpj: z.string().trim().min(14).max(18),
-  logo: z.string().trim().url().optional().or(z.literal('')),
-  description: z.string().trim().max(3000).optional().or(z.literal('')),
+function slugify(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function optionalText(value) {
+  if (typeof value !== 'string') return value;
+  return value.trim() || undefined;
+}
+
+const UniversityFieldsSchema = z.object({
+  name: z.string({ required_error: 'Informe o nome da universidade.' }).trim().min(3, 'Informe um nome com pelo menos 3 caracteres.').max(180),
+  slug: z.preprocess(
+    value => slugify(value) || undefined,
+    z.string().min(2, 'Informe um slug valido.').max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Informe um slug valido.').optional(),
+  ),
+  cnpj: z.preprocess(
+    value => String(value || '').replace(/\D/g, ''),
+    z.string().regex(/^\d{14}$/, 'Informe um CNPJ valido com 14 digitos.'),
+  ),
+  logo: z.preprocess(
+    optionalText,
+    z.string().url('Informe uma URL valida para o logo ou deixe o campo vazio.').optional(),
+  ),
+  description: z.preprocess(optionalText, z.string().max(3000).optional()),
   status: z.enum(['pending', 'approved', 'inactive']).optional(),
 });
+
+const UniversitySchema = UniversityFieldsSchema.transform(value => ({ ...value, slug: value.slug || slugify(value.name) }));
 
 const CampusSchema = z.object({
   name: z.string().trim().min(2).max(160),
@@ -92,7 +118,12 @@ const ProfessorSubjectSchema = z.object({
   username: z.string().trim().min(3).max(80),
 });
 
-const UniversityUpdateSchema = UniversitySchema.partial().refine(
+const UniversityUpdateSchema = z.object({
+  name: z.string().trim().min(3).max(180).optional(),
+  logo: z.string().trim().url().optional().or(z.literal('')),
+  description: z.string().trim().max(3000).optional().or(z.literal('')),
+  status: z.enum(['pending', 'approved', 'inactive']).optional(),
+}).refine(
   value => Object.keys(value).length > 0,
   'Informe pelo menos um campo para atualizar',
 );
@@ -107,7 +138,16 @@ const MembershipRoleSchema = z.object({
 
 function handleError(res, err, fallback) {
   console.error(`[institution] ${fallback}`, err);
-  return res.status(err.statusCode || 500).json({ error: err.message || fallback });
+  const message = err.statusCode ? err.message : fallback;
+  return res.status(err.statusCode || 500).json({ message, error: message });
+}
+
+function invalidRequest(res, parsed, fallback) {
+  const errors = parsed.error.flatten();
+  const message = errors.formErrors[0]
+    || Object.values(errors.fieldErrors).flat().find(Boolean)
+    || fallback;
+  return res.status(400).json({ message, errors });
 }
 
 router.get('/universities', async (_req, res) => {
@@ -132,11 +172,26 @@ router.get('/universities/accessible', requirePermission('institutions:read'), a
 
 router.post('/universities', requirePermission('institutions:create'), async (req, res) => {
   const parsed = UniversitySchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  if (!parsed.success) {
+    console.warn('[institution] Criacao de universidade rejeitada', {
+      name: typeof req.body?.name === 'string' ? req.body.name.trim() : '',
+      slug: typeof req.body?.slug === 'string' ? req.body.slug.trim() : '',
+      cnpjDigits: String(req.body?.cnpj || '').replace(/\D/g, '').length,
+      errors: parsed.error.flatten(),
+    });
+    return invalidRequest(res, parsed, 'Dados invalidos para criar universidade.');
+  }
   try {
+    console.info('[institution] Criando universidade validada', {
+      name: parsed.data.name,
+      slug: parsed.data.slug,
+      hasCnpj: Boolean(parsed.data.cnpj),
+      hasLogo: Boolean(parsed.data.logo),
+      hasDescription: Boolean(parsed.data.description),
+    });
     res.status(201).json(await createUniversity(req.user, parsed.data));
   } catch (err) {
-    handleError(res, err, 'Erro ao criar universidade');
+    handleError(res, err, 'Nao foi possivel criar a universidade. Verifique a migration institucional TypeDB.');
   }
 });
 

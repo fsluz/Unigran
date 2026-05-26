@@ -1,4 +1,10 @@
-import { apiFetch, authHeaders } from '../../utils/api';
+import { apiFetch, authHeaders, formatApiError } from '../../utils/api';
+
+function apiErrorMessage(data, fallbackMessage) {
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message;
+  if (typeof data?.detail === 'string' && data.detail.trim()) return data.detail;
+  return formatApiError(data?.error, fallbackMessage || 'Erro na requisicao.');
+}
 
 async function readJson(res, fallbackMessage) {
   const text = await res.text();
@@ -13,7 +19,10 @@ async function readJson(res, fallbackMessage) {
   }
 
   if (!res.ok) {
-    throw new Error(data.error || fallbackMessage || `Erro HTTP ${res.status}`);
+    const error = new Error(apiErrorMessage(data, fallbackMessage || `Erro HTTP ${res.status}`));
+    error.status = res.status;
+    error.data = data;
+    throw error;
   }
 
   return data;
