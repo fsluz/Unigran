@@ -298,6 +298,25 @@
           ]
         }
       }
+    },
+    "GabrielaOzoio": {
+      "xp": 860,
+      "level": 2,
+      "completedMaterials": [],
+      "awardedActivities": [],
+      "submissions": [],
+      "notifications": [
+        {
+          "id": "welcome-GabrielaOzoio",
+          "title": "Bem-vindo ao novo AVA",
+          "body": "Seu campus academico agora centraliza disciplinas, materiais, atividades e forum.",
+          "createdAt": "2026-05-26T01:02:29.969Z",
+          "read": false
+        }
+      ],
+      "institutionId": "unigran",
+      "portfolio": [],
+      "resume": null
     }
   },
   "institutions": [
