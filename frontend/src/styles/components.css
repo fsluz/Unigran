@@ -1831,8 +1831,6 @@
 .auth-footer { margin-top: 18px; text-align: center; font-size: 13px; color: var(--text-muted); }
 .auth-footer a { color: var(--accent); font-weight: 500; cursor: pointer; }
 .auth-footer a:hover { text-decoration: underline; }
-.auth-demo-box { margin-top: 14px; padding: 12px; background: var(--page-bg); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); }
-.auth-demo-box strong { color: var(--text-2); display: block; margin-bottom: 4px; }
 
 /*  NOTIFICATIONS  */
 .notif-item {

@@ -166,7 +166,7 @@ export async function listAllPublicPortfolioItems() {
 
 export async function getPublicPortfolioItem(username, slug) {
   const items = await listPublicPortfolioItems(username);
-  return items.find(item => item.slug === slug || item.activityId === slug) || null;
+  return items.find(item => item.slug === slug) || null;
 }
 
 export async function getPortfolioMlAnalysis(username) {

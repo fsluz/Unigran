@@ -218,9 +218,8 @@ export default function ProfilePage({ onNavigate }) {
     }
   };
 
-  const deletePost = id => {
+  const deletePost = (id) => {
     setPosts(prev => prev.filter(p => p.id !== id));
-    showToast('Post excludo', 'Excludo');
   };
 
   const achievements = [
@@ -231,7 +230,6 @@ export default function ProfilePage({ onNavigate }) {
 
   const editPost = (id, newText) => {
     setPosts(prev => prev.map(p => p.id === id ? { ...p, content: newText, edited: true } : p));
-    showToast('Post editado!', '');
   };
 
   const filteredPosts = posts.filter(p => {
@@ -453,13 +451,6 @@ export default function ProfilePage({ onNavigate }) {
                 <div style={{ color: 'var(--accent)', fontSize: 13 }}>{post.url}</div>
               </a>
             ))}
-          </div>
-        )}
-
-        {tab === 'Atividades' && (
-          <div style={{ textAlign: 'center', padding: '50px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}></div>
-            <div style={{ fontSize: 15 }}>Histrico de atividades em breve.</div>
           </div>
         )}
 

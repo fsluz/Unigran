@@ -108,6 +108,14 @@ export async function createTeacherMaterial(token, courseId, payload) {
   return readJson(res, 'Erro ao criar material');
 }
 
+export async function deleteTeacherMaterial(token, materialId) {
+  const res = await apiFetch(`/platform/v1/ava/teacher/materials/${materialId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao excluir material');
+}
+
 export async function createTeacherActivity(token, courseId, payload) {
   const res = await apiFetch(`/platform/v1/ava/teacher/courses/${courseId}/activities`, {
     method: 'POST',

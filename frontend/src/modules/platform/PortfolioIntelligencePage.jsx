@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Zap,
 } from 'lucide-react';
 import { fetchAva } from './platform';
 
@@ -124,6 +123,11 @@ function SkillNode({ name, family, level, index }) {
 }
 
 function RecruiterView({ score, projects, skills, resume }) {
+  const insights = [
+    ['Competencias', skills.length ? skills.slice(0, 5).map(item => item[0]).join(', ') : 'Nenhuma competencia inferida ainda.'],
+    ['Evidencias', `${projects.length} case(s) publicado(s) com dados vinculados ao portfolio.`],
+    ['Curriculo', resume?.documentUrl ? 'Arquivo anexado ao portfolio.' : 'Nenhum curriculo anexado.'],
+  ];
   return (
     <section className="portfolio-section recruiter-mode" id="recruiter">
       <div className="portfolio-section-head">
@@ -146,12 +150,7 @@ function RecruiterView({ score, projects, skills, resume }) {
           </div>
         </div>
         <div className="recruiter-insight-stack">
-          {[
-            ['Fit tecnico', skills.slice(0, 5).map(item => item[0]).join(', ')],
-            ['Evidencias', `${projects.length} cases com disciplina, stack e entrega conectada.`],
-            ['Postura', 'Boa organizacao de entregas e evolucao academica consistente.'],
-            ['Proxima acao', 'Abrir o case principal e validar repositorio, Figma ou deploy.'],
-          ].map(([title, text]) => (
+          {insights.map(([title, text]) => (
             <div key={title} className="recruiter-insight">
               <i />
               <div>
@@ -227,15 +226,14 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
               Projetos, competencias, curriculo e evidencias academicas organizados para recrutadores.
             </p>
             <div className="portfolio-hero-tags">
-              <span><GraduationCap size={14} /> ADS - 5 semestre</span>
-              <span><MapPin size={14} /> Dourados / Remoto</span>
-              <span><Zap size={14} /> Disponivel para estagio</span>
+              {courses[0]?.name && <span><GraduationCap size={14} /> {courses[0].name}</span>}
+              {projects.length > 0 && <span><MapPin size={14} /> {projects.length} case(s) publicado(s)</span>}
               <span><Code2 size={14} /> {skills.slice(0, 3).map(([name]) => name).join(', ') || 'Skills em analise'}</span>
             </div>
             <div className="portfolio-actions">
               <a className="btn btn-primary" href="#recruiter">Recruiter View <ArrowUpRight size={16} /></a>
               <a className="btn btn-secondary" href={publicPortfolioLink(user, projects[0])} target="_blank" rel="noreferrer">Abrir vitrine publica</a>
-              <button className="btn btn-secondary"><Download size={16} /> PDF</button>
+              {resume?.documentUrl && <a className="btn btn-secondary" href={resume.documentUrl} target="_blank" rel="noreferrer"><Download size={16} /> Curriculo</a>}
             </div>
           </div>
           <aside className="portfolio-identity-panel">
@@ -251,7 +249,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
 
       <section className="portfolio-metrics-row">
         <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="cases publicados" />
-        <Metric icon={BadgeCheck} label="Certificados" value={0} hint="credenciais reais cadastradas" />
+        <Metric icon={BadgeCheck} label="Curriculo" value={resume?.documentUrl ? 1 : 0} hint="arquivo conectado" />
         <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? 0}%`} hint="progresso academico" />
         <Metric icon={Target} label="Score" value={score} hint="prontidao profissional" />
       </section>
@@ -342,7 +340,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
             <FileText size={22} />
             <h3>{resume?.virtualResume?.professionalTitle || 'Curriculo estruturado aguardando upload'}</h3>
             <p>{resume?.virtualResume?.about || 'Envie PDF ou DOCX no perfil para estruturar objetivo, contatos, skills e experiencias.'}</p>
-            <button className="btn btn-secondary"><Download size={15} /> Baixar PDF</button>
+            {resume?.documentUrl && <a className="btn btn-secondary" href={resume.documentUrl} target="_blank" rel="noreferrer"><Download size={15} /> Baixar arquivo</a>}
           </div>
           <div className="resume-evidence-list">
             {(resumeMode === 'compact' ? projects.slice(0, 3) : projects).map(project => (
@@ -374,7 +372,7 @@ export default function PortfolioIntelligencePage({ user, token, portfolioItems,
               <p>{project.courseName || 'Marco profissional'} - {projectKind(project)}</p>
             </motion.div>
           ))}
-          <div className="portfolio-time-item final"><span>Agora</span><strong>Portfolio pronto para recrutamento</strong><p>Recruiter View, curriculo conectado e evidencias verificaveis.</p></div>
+          {!projects.length && <div className="portfolio-time-item"><strong>Nenhum marco publicado.</strong><p>Publique uma entrega no AVA para iniciar a timeline.</p></div>}
         </div>
       </section>
 

@@ -6,6 +6,7 @@ import {
   createForumPost,
   createTeacherActivity,
   createTeacherMaterial,
+  deleteTeacherMaterial,
   enrollStudentInCourse,
   assignTeacherToCourse,
   deleteTeacherActivity,
@@ -33,6 +34,7 @@ const SubmissionSchema = z.object({
   documentUrl: z.string().trim().url().optional().or(z.literal('')),
   documentName: z.string().trim().max(180).optional().or(z.literal('')),
   documentStorage: z.enum(['supabase', 'external']).optional(),
+  documentPath: z.string().trim().max(500).optional().or(z.literal('')),
   publishToPortfolio: z.boolean().optional(),
   portfolioTitle: z.string().trim().max(180).optional().or(z.literal('')),
   portfolioSummary: z.string().trim().max(1000).optional().or(z.literal('')),
@@ -46,6 +48,7 @@ const MaterialSchema = z.object({
   url: z.string().trim().url().optional().or(z.literal('')),
   documentName: z.string().trim().max(180).optional().or(z.literal('')),
   storage: z.enum(['supabase', 'external']).optional().or(z.literal('')),
+  documentPath: z.string().trim().max(500).optional().or(z.literal('')),
 });
 
 const ActivitySchema = z.object({
@@ -77,7 +80,7 @@ const AttendanceSchema = z.object({
   topic: z.string().trim().min(2).max(160),
   entries: z.array(z.object({
     studentId: z.string().trim().min(1).max(80),
-    status: z.enum(['present', 'absent', 'justified']),
+    status: z.enum(['present', 'absent', 'late', 'justified']),
     justification: z.string().trim().max(240).optional().or(z.literal('')),
   })).min(1),
 });
@@ -183,6 +186,17 @@ router.post('/teacher/courses/:courseId/materials', requirePermission('academic.
   } catch (err) {
     console.error('[ava teacher material]', err);
     res.status(500).json({ error: 'Erro ao criar material' });
+  }
+});
+
+router.delete('/teacher/materials/:materialId', requirePermission('academic.teacher.manage'), async (req, res) => {
+  try {
+    const state = await deleteTeacherMaterial(req.user, req.params.materialId);
+    if (!state) return res.status(404).json({ error: 'Material nao encontrado' });
+    res.json(state);
+  } catch (err) {
+    console.error('[ava teacher delete material]', err);
+    res.status(500).json({ error: 'Erro ao excluir material' });
   }
 });
 

@@ -33,6 +33,7 @@ import {
   createForumPost,
   createTeacherActivity,
   createTeacherMaterial,
+  deleteTeacherMaterial,
   deleteTeacherActivity,
   fetchAva,
   fetchTeacherSubmissions,
@@ -85,13 +86,25 @@ function publicPortfolioLink(path = '') {
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${normalized}`;
 }
 
-const ROLE_MODULES = [
-  { id: 'teacher', title: 'Professor', permission: 'academic.teacher.manage', icon: BookOpen, metric: '23', items: ['Atividades', 'Notas', 'Presenca', 'Correcao'] },
-  { id: 'student', title: 'Aluno', permission: 'academic.student.read', icon: Trophy, metric: '82%', items: ['Notas', 'Faltas', 'Entregas', 'Portfolio'] },
-];
-
-function ModuleOverview({ user }) {
-  const visible = ROLE_MODULES.filter(item => hasPermission(user, item.permission));
+function ModuleOverview({ user, summary, teacherDashboard }) {
+  const visible = [
+    {
+      id: 'teacher',
+      title: 'Professor',
+      permission: 'academic.teacher.manage',
+      icon: BookOpen,
+      metric: String(teacherDashboard?.pendingCorrections || 0),
+      items: ['Atividades', 'Notas', 'Presenca', 'Correcao'],
+    },
+    {
+      id: 'student',
+      title: 'Aluno',
+      permission: 'academic.student.read',
+      icon: Trophy,
+      metric: `${summary?.averageProgress || 0}%`,
+      items: ['Notas', 'Faltas', 'Entregas', 'Portfolio'],
+    },
+  ].filter(item => hasPermission(user, item.permission));
   return (
     <section className="ava-module-overview">
       {visible.map(module => (
@@ -206,6 +219,27 @@ export default function CampusPage({ onBackToPortal }) {
   const visibleForum = useMemo(() => (
     (selectedCourse?.forum || []).filter(post => matchesSearch(post.author, post.content, post.role, ...(post.comments || []).map(comment => comment.content)))
   ), [selectedCourse, searchNeedle]);
+  const attendanceSessions = useMemo(() => {
+    const sessions = new Map();
+    for (const record of selectedCourse?.attendanceRecords || []) {
+      if (!sessions.has(record.id)) sessions.set(record.id, { id: record.id, date: record.date, topic: record.topic });
+    }
+    return [...sessions.values()].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  }, [selectedCourse]);
+
+  useEffect(() => {
+    if (!canTeach || !selectedCourse) return;
+    const records = (selectedCourse.attendanceRecords || []).filter(record => record.date === attendanceDate);
+    if (records.length) {
+      setAttendanceTopic(records[0].topic || '');
+      setAttendanceDrafts(Object.fromEntries(records.map(record => [
+        record.studentId,
+        { status: record.status || 'present', justification: record.justification || '' },
+      ])));
+    } else {
+      setAttendanceDrafts({});
+    }
+  }, [canTeach, selectedCourse, attendanceDate]);
 
   const replaceAva = (next, message) => {
     setAva(next);
@@ -242,6 +276,7 @@ export default function CampusPage({ onBackToPortal }) {
         documentUrl: document?.url || '',
         documentName: document?.name || '',
         documentStorage: document?.storage || (draft.attachmentUrl ? 'external' : undefined),
+        documentPath: document?.path || '',
         publishToPortfolio: false,
       });
       const updatedActivity = next.courses
@@ -339,6 +374,7 @@ export default function CampusPage({ onBackToPortal }) {
         url: document?.url || teacherMaterial.url || '',
         documentName: document?.name || '',
         storage: document?.storage || (teacherMaterial.url ? 'external' : ''),
+        documentPath: document?.path || '',
       });
       setTeacherMaterial({ title: '', type: 'pdf', duration: '15 min', required: true, url: '', file: null });
       replaceAva(next, 'Material publicado');
@@ -346,6 +382,15 @@ export default function CampusPage({ onBackToPortal }) {
       showToast(err.message || 'Erro ao criar material', '!');
     } finally {
       setTeacherMaterialSaving(false);
+    }
+  };
+
+  const handleDeleteMaterial = async (material) => {
+    if (!window.confirm(`Excluir material "${material.title}"?`)) return;
+    try {
+      replaceAva(await deleteTeacherMaterial(token, material.id), 'Material excluido');
+    } catch (err) {
+      showToast(err.message || 'Erro ao excluir material', '!');
     }
   };
 
@@ -469,8 +514,8 @@ export default function CampusPage({ onBackToPortal }) {
             <input value={avaSearch} onChange={event => setAvaSearch(event.target.value)} placeholder="Buscar aulas, atividades, materiais e forum..." />
             <kbd><Command size={12} /> K</kbd>
           </div>
-          <button><Bot size={16} /> RAi</button>
-          <button><Bell size={16} /> {summary.notifications ?? 0}</button>
+          <span><Bot size={16} /> RAi disponivel no painel lateral</span>
+          <span><Bell size={16} /> {summary.notifications ?? 0} notificacoes</span>
           {onBackToPortal && <button onClick={onBackToPortal}><ArrowLeft size={16} /> Portal</button>}
         </section>
 
@@ -514,7 +559,7 @@ export default function CampusPage({ onBackToPortal }) {
           <MetricCard label="Proxima entrega" value={summary.nextActivity ? formatDate(summary.nextActivity.due) : 'Livre'} hint={summary.nextActivity?.title || 'sem pendencias'} />
         </section>
 
-        <ModuleOverview user={user} />
+        <ModuleOverview user={user} summary={summary} teacherDashboard={teacherDashboard} />
 
         <section className="ava-layout">
           <aside className="ava-course-rail">
@@ -664,9 +709,14 @@ export default function CampusPage({ onBackToPortal }) {
                           <p>{material.required ? 'Material obrigatorio' : 'Complementar'}</p>
                           {material.url && <a className="ava-document-link" href={material.url} target="_blank" rel="noreferrer">Abrir material</a>}
                         </div>
-                        <button className="btn btn-secondary" onClick={() => handleMaterial(material)}>
-                          {material.completed ? <><CheckCircle2 size={15} /> Reabrir</> : <><BookOpen size={15} /> Concluir</>}
-                        </button>
+                        <div className="ava-form-actions">
+                          {!canTeach && (
+                            <button className="btn btn-secondary" onClick={() => handleMaterial(material)}>
+                              {material.completed ? <><CheckCircle2 size={15} /> Reabrir</> : <><BookOpen size={15} /> Concluir</>}
+                            </button>
+                          )}
+                          {canTeach && <button className="btn btn-secondary" onClick={() => handleDeleteMaterial(material)}><Trash2 size={15} /> Excluir</button>}
+                        </div>
                       </motion.article>
                     ))}
                   </motion.div>
@@ -745,7 +795,7 @@ export default function CampusPage({ onBackToPortal }) {
                                     ...prev,
                                     [activity.id]: { ...draft, attachmentLabel: event.target.value },
                                   }))}
-                                  placeholder="Rotulo opcional: App ao vivo, GitHub, Demo..."
+                                  placeholder="Rotulo opcional: App publicado, GitHub, Artigo..."
                                 />
                               </div>
                             </div>
@@ -803,6 +853,16 @@ export default function CampusPage({ onBackToPortal }) {
                           <input type="date" value={attendanceDate} onChange={event => setAttendanceDate(event.target.value)} />
                           <input value={attendanceTopic} onChange={event => setAttendanceTopic(event.target.value)} placeholder="Conteudo da aula" />
                         </div>
+                        {attendanceSessions.length > 0 && (
+                          <div className="ava-attendance-history">
+                            {attendanceSessions.map(session => (
+                              <button type="button" key={session.id} onClick={() => { setAttendanceDate(session.date); setAttendanceTopic(session.topic); }}>
+                                <span>{session.topic}<small>{session.date}</small></span>
+                                <strong>Editar</strong>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <div className="ava-attendance-list">
                           {(selectedCourse.students || []).map(student => {
                             const draft = attendanceDrafts[student.id] || { status: 'present', justification: '' };
@@ -812,6 +872,7 @@ export default function CampusPage({ onBackToPortal }) {
                                 <select value={draft.status} onChange={event => setAttendanceDrafts(prev => ({ ...prev, [student.id]: { ...draft, status: event.target.value } }))}>
                                   <option value="present">Presente</option>
                                   <option value="absent">Falta</option>
+                                  <option value="late">Atraso</option>
                                   <option value="justified">Justificada</option>
                                 </select>
                                 <input value={draft.justification} onChange={event => setAttendanceDrafts(prev => ({ ...prev, [student.id]: { ...draft, justification: event.target.value } }))} placeholder="Justificativa (opcional)" />
@@ -826,7 +887,7 @@ export default function CampusPage({ onBackToPortal }) {
                         <div className="ava-panel-title"><span>Frequencia</span><h3>{selectedCourse.attendance}% de presenca</h3></div>
                         <div className="ava-attendance-history">
                           {(selectedCourse.attendanceRecords || []).map(record => (
-                            <div key={record.id}><span>{record.topic}<small>{record.date}</small></span><strong className={record.status}>{record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificada' : 'Falta'}</strong>{record.justification && <small>{record.justification}</small>}</div>
+                            <div key={record.id}><span>{record.topic}<small>{record.date}</small></span><strong className={record.status}>{record.status === 'present' ? 'Presente' : record.status === 'justified' ? 'Justificada' : record.status === 'late' ? 'Atraso' : 'Falta'}</strong>{record.justification && <small>{record.justification}</small>}</div>
                           ))}
                           {!selectedCourse.attendanceRecords?.length && <EmptyState text="Nenhum registro de frequencia ainda." />}
                         </div>

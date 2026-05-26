@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { annotatePortfolioPost, createPost, listUserPosts } from '../../repositories/post.repository.js';
 import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../../db/typedb.js';
+import { deleteDocumentObject } from '../../services/document.service.js';
 
 function usernameOf(user) {
   return user?.username || user?.id || '';
@@ -146,6 +147,7 @@ async function readMaterials(offeringId, user) {
       url: attr(material, 'academic-url'),
       documentName: attr(material, 'academic-document-name'),
       storage: attr(material, 'academic-document-storage'),
+      documentPath: attr(material, 'academic-document-path'),
       completed: Boolean(attr(attrs(row, 'completion'), 'academic-status')),
     };
   });
@@ -475,6 +477,7 @@ export async function submitActivity(user, activityId, payload) {
   const optional = [
     payload.documentName && `has academic-document-name "${safe(payload.documentName)}"`,
     payload.documentStorage && `has academic-document-storage "${safe(payload.documentStorage)}"`,
+    payload.documentPath && `has academic-document-path "${safe(payload.documentPath)}"`,
     payload.attachmentKind && `has academic-external-kind "${safe(payload.attachmentKind)}"`,
     payload.attachmentLabel && `has academic-external-label "${safe(payload.attachmentLabel)}"`,
   ].filter(Boolean);
@@ -618,6 +621,7 @@ export async function createTeacherMaterial(user, courseId, payload) {
     payload.url && `has academic-url "${safe(payload.url)}"`,
     payload.documentName && `has academic-document-name "${safe(payload.documentName)}"`,
     payload.storage && `has academic-document-storage "${safe(payload.storage)}"`,
+    payload.documentPath && `has academic-document-path "${safe(payload.documentPath)}"`,
     payload.duration && `has academic-duration "${safe(payload.duration)}"`,
   ].filter(Boolean);
   await writeQuery(`
@@ -632,6 +636,36 @@ export async function createTeacherMaterial(user, courseId, payload) {
         has academic-status "published",
         has academic-required ${payload.required !== false}${optional.length ? `,\n        ${optional.join(',\n        ')}` : ''};
       $link isa academic-offering-material, links (offering: $offering, material: $material);
+  `);
+  return getAvaState(user);
+}
+
+export async function deleteTeacherMaterial(user, materialId) {
+  const rows = await readQuery(`
+    match
+      $material isa academic-material, has academic-material-id "${safe(materialId)}";
+      $offering isa academic-course-offering;
+      $link isa academic-offering-material, links (offering: $offering, material: $material);
+      ${authorizationMatch(user)}
+    fetch { "material": { $material.* } };
+  `);
+  if (!rows.length) return null;
+  const material = attrs(rows[0], 'material');
+  await deleteDocumentObject({
+    storage: attr(material, 'academic-document-storage'),
+    path: attr(material, 'academic-document-path'),
+  });
+  await writeQuery(`
+    match
+      $material isa academic-material, has academic-material-id "${safe(materialId)}";
+      $completion isa academic-material-completion, links (material: $material, student: $student);
+    delete $completion;
+  `).catch(() => null);
+  await writeQuery(`
+    match
+      $material isa academic-material, has academic-material-id "${safe(materialId)}";
+      $link isa academic-offering-material, links (material: $material, offering: $offering);
+    delete $link; $material;
   `);
   return getAvaState(user);
 }
@@ -768,27 +802,92 @@ export async function deleteTeacherActivity(user, activityId) {
 
 export async function saveAttendance(user, courseId, payload) {
   if (!(await teacherCanManage(user, courseId))) return null;
-  const sessionId = `attendance-${uuid()}`;
-  await writeQuery(`
+  const validStudents = await readQuery(`
     match
       $course isa academic-course, has academic-course-id "${safe(courseId)}";
       $offering isa academic-course-offering, links (course: $course, institution: $institution);
-    insert
-      $session isa academic-attendance-session,
-        has academic-attendance-session-id "${sessionId}",
-        has academic-date ${payload.date},
-        has academic-title "${safe(payload.topic)}";
-      $link isa academic-offering-attendance, links (offering: $offering, session: $session);
+      $student isa person, has username $username;
+      academic-enrollment(student: $student, offering: $offering);
+    fetch { "username": $username };
   `);
-  for (const entry of payload.entries) {
+  const roster = new Set(validStudents.map(row => row.username));
+  if (payload.entries.some(entry => !roster.has(entry.studentId))) return null;
+
+  const previous = await readQuery(`
+    match
+      $course isa academic-course, has academic-course-id "${safe(courseId)}";
+      $offering isa academic-course-offering, links (course: $course, institution: $institution);
+      $session isa academic-attendance-session, has academic-date ${payload.date}, has academic-attendance-session-id $id;
+      academic-offering-attendance(offering: $offering, session: $session);
+    fetch { "id": $id };
+  `);
+  const sessionId = previous[0]?.id || `attendance-${uuid()}`;
+  if (previous.length) {
     await writeQuery(`
+      match $session isa academic-attendance-session, has academic-attendance-session-id "${safe(sessionId)}";
+      update $session has academic-title "${safe(payload.topic)}";
+    `);
+  } else {
+    await writeQuery(`
+      match
+        $course isa academic-course, has academic-course-id "${safe(courseId)}";
+        $offering isa academic-course-offering, links (course: $course, institution: $institution);
+      insert
+        $session isa academic-attendance-session,
+          has academic-attendance-session-id "${sessionId}",
+          has academic-date ${payload.date},
+          has academic-title "${safe(payload.topic)}";
+        $link isa academic-offering-attendance, links (offering: $offering, session: $session);
+    `);
+  }
+  for (const entry of payload.entries) {
+    const existing = await readQuery(`
       match
         $session isa academic-attendance-session, has academic-attendance-session-id "${sessionId}";
         $student isa person, has username "${safe(entry.studentId)}";
-      insert
+        $entry isa academic-attendance-entry, links (session: $session, student: $student);
+      fetch { "entry": { $entry.* } };
+    `);
+    if (existing.length) {
+      await writeQuery(`
+        match
+          $session isa academic-attendance-session, has academic-attendance-session-id "${sessionId}";
+          $student isa person, has username "${safe(entry.studentId)}";
+          $entry isa academic-attendance-entry, links (session: $session, student: $student);
+        update
+          $entry has academic-status "${safe(entry.status)}";
+          $entry has academic-justification "${safe(entry.justification || '')}";
+      `);
+    } else {
+      await writeQuery(`
+        match
+          $session isa academic-attendance-session, has academic-attendance-session-id "${sessionId}";
+          $student isa person, has username "${safe(entry.studentId)}";
+        insert
         $entry isa academic-attendance-entry, links (session: $session, student: $student),
           has academic-status "${safe(entry.status)}",
           has academic-justification "${safe(entry.justification || '')}";
+      `);
+    }
+    const attendanceRows = await readQuery(`
+      match
+        $course isa academic-course, has academic-course-id "${safe(courseId)}";
+        $offering isa academic-course-offering, links (course: $course, institution: $institution);
+        $session isa academic-attendance-session;
+        academic-offering-attendance(offering: $offering, session: $session);
+        $student isa person, has username "${safe(entry.studentId)}";
+        $attendance isa academic-attendance-entry, links (session: $session, student: $student), has academic-status $status;
+      fetch { "status": $status };
+    `);
+    const attended = attendanceRows.filter(row => ['present', 'late', 'justified'].includes(row.status)).length;
+    const rate = attendanceRows.length ? (attended / attendanceRows.length) * 100 : 100;
+    await writeQuery(`
+      match
+        $course isa academic-course, has academic-course-id "${safe(courseId)}";
+        $offering isa academic-course-offering, links (course: $course, institution: $institution);
+        $student isa person, has username "${safe(entry.studentId)}";
+        $enrollment isa academic-enrollment, links (student: $student, offering: $offering);
+      update $enrollment has academic-attendance-rate ${rate.toFixed(2)};
     `);
   }
   return getAvaState(user);
