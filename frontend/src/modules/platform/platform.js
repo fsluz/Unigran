@@ -262,6 +262,13 @@ export async function enrollInstitutionStudent(token, universityId, classGroupId
   return readJson(res, 'Erro ao matricular aluno na turma');
 }
 
+export async function searchInstitutionUsers(token, universityId, query) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/users/search?q=${encodeURIComponent(query)}`, {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao pesquisar usuarios');
+}
+
 export async function assignInstitutionProfessor(token, universityId, semesterId, subjectId, payload) {
   const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/semesters/${semesterId}/subjects/${subjectId}/professors`, {
     method: 'POST',

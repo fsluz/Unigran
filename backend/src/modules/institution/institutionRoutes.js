@@ -26,6 +26,7 @@ import {
   listMemberships,
   listUniversities,
   requestMembership,
+  searchInstitutionUsers,
   setMembershipRole,
   updateUniversity,
 } from './typedbInstitutionStore.js';
@@ -45,6 +46,22 @@ function slugify(value = '') {
 function optionalText(value) {
   if (typeof value !== 'string') return value;
   return value.trim() || undefined;
+}
+
+const classDays = ['Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado', 'Domingo'];
+
+function isStandardClassSchedule(value) {
+  const expression = new RegExp(`^(${classDays.join('|')}) - (\\d{2}:\\d{2}) as (\\d{2}:\\d{2}) \\(([1-8]) aulas x 45 min\\)$`);
+  const match = String(value || '').match(expression);
+  if (!match) return false;
+  const toMinutes = time => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : -1;
+  };
+  const start = toMinutes(match[2]);
+  const end = toMinutes(match[3]);
+  const lessonCount = Number(match[4]);
+  return start >= 0 && end >= 0 && (end - start + (24 * 60)) % (24 * 60) === lessonCount * 45;
 }
 
 const UniversityFieldsSchema = z.object({
@@ -104,14 +121,16 @@ const AvaOfferingSchema = z.object({
   code: z.string().trim().min(2).max(40).transform(value => value.toUpperCase()),
   description: z.string().trim().max(3000).optional().or(z.literal('')),
   period: z.string().trim().min(3).max(40),
-  schedule: z.string().trim().min(2).max(120),
+  schedule: z.string().trim().max(120).refine(
+    isStandardClassSchedule,
+    'Informe dia, horario e de 1 a 8 aulas por periodo, com 45 minutos cada.',
+  ),
   room: z.string().trim().min(2).max(120),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
 const EnrollmentSchema = z.object({
   username: z.string().trim().min(3).max(80),
-  registration: z.string().trim().min(2).max(60),
 });
 
 const ProfessorSubjectSchema = z.object({
@@ -134,6 +153,10 @@ const CoordinatorCourseSchema = z.object({
 
 const MembershipRoleSchema = z.object({
   role: z.enum(['admin', 'coordination', 'professor', 'secretary', 'moderator', 'student']),
+});
+
+const InstitutionUserSearchSchema = z.object({
+  q: z.string().trim().min(2).max(80),
 });
 
 function handleError(res, err, fallback) {
@@ -359,6 +382,16 @@ router.post('/universities/:universityId/memberships/requests', async (req, res)
     res.status(201).json(await requestMembership(req.user, req.params.universityId, parsed.data));
   } catch (err) {
     handleError(res, err, 'Erro ao solicitar vinculo institucional');
+  }
+});
+
+router.get('/universities/:universityId/users/search', requireInstitutionPermission('institutions:read'), async (req, res) => {
+  const parsed = InstitutionUserSearchSchema.safeParse({ q: req.query.q });
+  if (!parsed.success) return res.json({ users: [] });
+  try {
+    res.json({ users: await searchInstitutionUsers(req.params.universityId, parsed.data.q) });
+  } catch (err) {
+    handleError(res, err, 'Erro ao pesquisar usuarios');
   }
 });
 

@@ -485,7 +485,54 @@ export async function createAvaOfferingForClassSubject(universityId, classGroupI
       $subject_link isa academic-offering-subject-link, links (offering: $offering, subject: $subject);
       $class_link isa academic-offering-class-group-link, links (offering: $offering, class-group: $class_group);
   `);
+  const enrolledStudents = await readQuery(`
+    match
+      $class_group isa institution-class-group, has institution-class-group-id "${safe(classGroupId)}";
+      $enrollment isa institution-enrollment, links (student: $student, class-group: $class_group);
+      $student isa person, has username $username;
+    fetch { "username": $username };
+  `);
+  for (const student of enrolledStudents) {
+    await ensureAcademicEnrollment(
+      offeringId,
+      student.username,
+      await automaticRegistrationForStudent(universityId, student.username),
+    );
+  }
   return getUniversityHierarchy(universityId);
+}
+
+async function automaticRegistrationForStudent(universityId, username) {
+  const university = await ensureUniversity(universityId);
+  const universitySlug = attr(attrs(university, 'university'), 'institution-slug', universityId);
+  const institutionCode = slugify(universitySlug).replace(/-/g, '').slice(0, 6).toUpperCase() || 'INST';
+  const studentCode = String(username || '').replace(/[^a-zA-Z0-9_]/g, '').slice(0, 18).toUpperCase() || 'ALUNO';
+  return `${institutionCode}-${new Date().getFullYear()}-${studentCode}`;
+}
+
+async function ensureAcademicEnrollment(offeringId, username, registration) {
+  const legacyExists = await readQuery(`
+    match
+      $student isa person, has username "${safe(username)}";
+      $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+      academic-enrollment(student: $student, offering: $offering);
+    fetch { "offering": { $offering.* } };
+  `);
+  if (legacyExists.length) return;
+  await writeQuery(`
+    match
+      $student isa person, has username "${safe(username)}";
+      $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+    insert
+      $legacy_enrollment isa academic-enrollment, links (student: $student, offering: $offering),
+        has academic-enrollment-id "enrollment-${uuid()}",
+        has academic-registration "${safe(registration)}",
+        has academic-status "active",
+        has academic-score 0.0,
+        has academic-attendance-rate 100.0,
+        has academic-risk "Regular",
+        has academic-datetime ${now()};
+  `);
 }
 
 export async function enrollStudentInClassGroup(universityId, classGroupId, payload) {
@@ -504,6 +551,7 @@ export async function enrollStudentInClassGroup(universityId, classGroupId, payl
   `);
   if (!classRows.length) throw appError('Semestre da turma nao encontrado', 404);
   const semesterId = attr(attrs(classRows[0], 'semester'), 'institution-semester-id');
+  const registration = await automaticRegistrationForStudent(universityId, payload.username);
   const existing = await readQuery(`
     match
       $student isa person, has username "${safe(payload.username)}";
@@ -536,30 +584,12 @@ export async function enrollStudentInClassGroup(universityId, classGroupId, payl
   `);
   for (const row of offerings) {
     const offeringId = attr(attrs(row, 'offering'), 'academic-offering-id');
-    const legacyExists = await readQuery(`
-      match
-        $student isa person, has username "${safe(payload.username)}";
-        $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
-        academic-enrollment(student: $student, offering: $offering);
-      fetch { "offering": { $offering.* } };
-    `);
-    if (legacyExists.length) continue;
-    await writeQuery(`
-      match
-        $student isa person, has username "${safe(payload.username)}";
-        $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
-      insert
-        $legacy_enrollment isa academic-enrollment, links (student: $student, offering: $offering),
-          has academic-enrollment-id "enrollment-${uuid()}",
-          has academic-registration "${safe(payload.registration)}",
-          has academic-status "active",
-          has academic-score 0.0,
-          has academic-attendance-rate 100.0,
-          has academic-risk "Regular",
-          has academic-datetime ${now()};
-    `);
+    await ensureAcademicEnrollment(offeringId, payload.username, registration);
   }
-  return getUniversityHierarchy(universityId);
+  return {
+    ...(await getUniversityHierarchy(universityId)),
+    enrollment: { username: payload.username, registration },
+  };
 }
 
 export async function assignProfessorToSubjectSemester(universityId, semesterId, subjectId, payload) {
@@ -690,6 +720,27 @@ export async function listMemberships(universityId) {
     status: row.status,
     campusId: row.campus_id || '',
   }));
+}
+
+export async function searchInstitutionUsers(universityId, query) {
+  await ensureUniversity(universityId);
+  const term = String(query || '').trim().toLowerCase();
+  if (term.length < 2) return [];
+  const rows = await readQuery(`
+    match
+      $person isa person, has username $username;
+      try { $person has name $name; };
+      try { $person has user-role $role; };
+    fetch { "username": $username, "name": $name, "role": $role };
+  `);
+  return rows
+    .map(row => ({
+      username: row.username,
+      name: row.name || row.username,
+      role: row.role || 'user',
+    }))
+    .filter(person => `${person.username} ${person.name}`.toLowerCase().includes(term))
+    .slice(0, 8);
 }
 
 export async function approveMembership(universityId, membershipId) {

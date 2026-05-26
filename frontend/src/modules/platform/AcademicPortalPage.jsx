@@ -35,6 +35,7 @@ import {
   linkInstitutionSubjectToClass,
   updateInstitutionMembershipRole,
   requestInstitutionMembership,
+  searchInstitutionUsers,
 } from './platform';
 
 const pageVariants = {
@@ -73,6 +74,71 @@ function PortalCard({ title, text, icon: Icon = Activity, tone = 'default', chil
 
 function EmptyState({ children }) {
   return <div className="academic-table-list"><div><span>{children}</span></div></div>;
+}
+
+function AcademicUserPicker({ token, universityId, value, onChange, placeholder }) {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const query = String(value || '').trim();
+
+  useEffect(() => {
+    if (!universityId || query.length < 2) {
+      setResults([]);
+      setLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const data = await searchInstitutionUsers(token, universityId, query);
+        if (active) setResults(data.users || []);
+      } catch {
+        if (active) setResults([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [token, universityId, query]);
+
+  return (
+    <div className="academic-user-picker">
+      <input
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+        placeholder={placeholder}
+        autoComplete="off"
+        required
+      />
+      {focused && query.length >= 2 && (
+        <div className="academic-search-results">
+          {loading && <div><small>Pesquisando usuario...</small></div>}
+          {!loading && !results.length && <div><small>Nenhum usuario encontrado.</small></div>}
+          {!loading && results.map(person => (
+            <button
+              key={person.username}
+              type="button"
+              onMouseDown={event => event.preventDefault()}
+              onClick={() => {
+                onChange(person.username);
+                setFocused(false);
+              }}
+            >
+              <span>{person.name}</span>
+              <small>@{person.username} - {roleLabels[normalizeRole(person.role)] || person.role}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function DisciplinesList({ courses, loading, onOpenAva }) {
@@ -139,6 +205,38 @@ function isValidUrl(value) {
   }
 }
 
+const CLASS_DURATION_MINUTES = 45;
+const DEFAULT_LESSONS_PER_PERIOD = 4;
+const MAX_LESSONS_PER_PERIOD = 8;
+const WEEK_DAYS = [
+  { value: 'monday', label: 'Segunda-feira' },
+  { value: 'tuesday', label: 'Terca-feira' },
+  { value: 'wednesday', label: 'Quarta-feira' },
+  { value: 'thursday', label: 'Quinta-feira' },
+  { value: 'friday', label: 'Sexta-feira' },
+  { value: 'saturday', label: 'Sabado' },
+  { value: 'sunday', label: 'Domingo' },
+];
+
+function addMinutesToTime(value = '', minutes = CLASS_DURATION_MINUTES) {
+  if (!/^\d{2}:\d{2}$/.test(value)) return '';
+  const [hours, currentMinutes] = value.split(':').map(Number);
+  if (hours > 23 || currentMinutes > 59) return '';
+  const totalMinutes = (hours * 60 + currentMinutes + minutes) % (24 * 60);
+  const endHours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+  const endMinutes = String(totalMinutes % 60).padStart(2, '0');
+  return `${endHours}:${endMinutes}`;
+}
+
+function buildClassSchedule(day, startTime, lessonCount = DEFAULT_LESSONS_PER_PERIOD) {
+  const dayLabel = WEEK_DAYS.find(item => item.value === day)?.label;
+  const classes = Number(lessonCount);
+  const validCount = Number.isInteger(classes) && classes >= 1 && classes <= MAX_LESSONS_PER_PERIOD;
+  const endTime = validCount ? addMinutesToTime(startTime, classes * CLASS_DURATION_MINUTES) : '';
+  if (!dayLabel || !endTime) return '';
+  return `${dayLabel} - ${startTime} as ${endTime} (${classes} aulas x ${CLASS_DURATION_MINUTES} min)`;
+}
+
 export default function AcademicPortalPage({ onOpenAva }) {
   const { user, token } = useAuth();
   const { showToast } = useToast();
@@ -162,11 +260,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
     code: '',
     description: '',
     period: '2026.1',
-    schedule: '',
+    scheduleDay: '',
+    scheduleStart: '',
+    lessonCount: DEFAULT_LESSONS_PER_PERIOD,
     room: '',
     color: '#2563eb',
   });
-  const [studentDraft, setStudentDraft] = useState({ classGroupId: '', username: '', registration: '' });
+  const [studentDraft, setStudentDraft] = useState({ classGroupId: '', username: '' });
   const [professorDraft, setProfessorDraft] = useState({ semesterId: '', subjectId: '', username: '' });
   const [coordinatorDraft, setCoordinatorDraft] = useState({ courseId: '', username: '' });
 
@@ -378,11 +478,28 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const openAvaOffering = async (event) => {
     event.preventDefault();
     if (!selectedUniversityId || !offeringDraft.classGroupId || !offeringDraft.subjectId) return;
+    const { scheduleDay, scheduleStart, lessonCount, ...offeringFields } = offeringDraft;
+    const schedule = buildClassSchedule(scheduleDay, scheduleStart, lessonCount);
+    if (!schedule) {
+      showToast('Informe dia, horario inicial e quantidade de aulas validos.', '!');
+      return;
+    }
     try {
       await refreshInstitution(await linkInstitutionSubjectToClass(token, selectedUniversityId, offeringDraft.classGroupId, offeringDraft.subjectId));
-      await refreshInstitution(await createInstitutionAvaOffering(token, selectedUniversityId, offeringDraft.classGroupId, offeringDraft.subjectId, offeringDraft));
+      await refreshInstitution(await createInstitutionAvaOffering(token, selectedUniversityId, offeringDraft.classGroupId, offeringDraft.subjectId, {
+        ...offeringFields,
+        schedule,
+      }));
       await reload();
-      setOfferingDraft(prev => ({ ...prev, code: '', description: '', schedule: '', room: '' }));
+      setOfferingDraft(prev => ({
+        ...prev,
+        code: '',
+        description: '',
+        scheduleDay: '',
+        scheduleStart: '',
+        lessonCount: DEFAULT_LESSONS_PER_PERIOD,
+        room: '',
+      }));
       showToast('Offering AVA aberta', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao abrir offering do AVA', '!');
@@ -393,10 +510,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
     event.preventDefault();
     if (!selectedUniversityId || !studentDraft.classGroupId) return;
     try {
-      await refreshInstitution(await enrollInstitutionStudent(token, selectedUniversityId, studentDraft.classGroupId, studentDraft));
+      const data = await enrollInstitutionStudent(token, selectedUniversityId, studentDraft.classGroupId, studentDraft);
+      await refreshInstitution(data);
       await reload();
-      setStudentDraft(prev => ({ ...prev, username: '', registration: '' }));
-      showToast('Aluno matriculado', 'OK');
+      setStudentDraft(prev => ({ ...prev, username: '' }));
+      showToast(`Aluno matriculado. Matricula: ${data.enrollment?.registration || 'gerada automaticamente'}`, 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao matricular aluno', '!');
     }
@@ -710,7 +828,31 @@ export default function AcademicPortalPage({ onOpenAva }) {
             </select>
             <input value={offeringDraft.code} onChange={event => setOfferingDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da offering, ex: ESW-301" required />
             <input value={offeringDraft.period} onChange={event => setOfferingDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo, ex: 2026.1" required />
-            <input value={offeringDraft.schedule} onChange={event => setOfferingDraft(prev => ({ ...prev, schedule: event.target.value }))} placeholder="Horario" required />
+            <select value={offeringDraft.scheduleDay} onChange={event => setOfferingDraft(prev => ({ ...prev, scheduleDay: event.target.value }))} required>
+              <option value="">Dia da aula</option>
+              {WEEK_DAYS.map(day => <option key={day.value} value={day.value}>{day.label}</option>)}
+            </select>
+            <input
+              type="time"
+              value={offeringDraft.scheduleStart}
+              onChange={event => setOfferingDraft(prev => ({ ...prev, scheduleStart: event.target.value }))}
+              aria-label="Horario inicial da aula"
+              required
+            />
+            <input
+              type="number"
+              min={1}
+              max={MAX_LESSONS_PER_PERIOD}
+              value={offeringDraft.lessonCount}
+              onChange={event => setOfferingDraft(prev => ({ ...prev, lessonCount: event.target.value }))}
+              placeholder="Aulas por periodo"
+              aria-label="Quantidade de aulas por periodo"
+              required
+            />
+            <div className="academic-schedule-summary" aria-live="polite">
+              <strong>{offeringDraft.lessonCount || 0} aulas de {CLASS_DURATION_MINUTES} minutos por periodo</strong>
+              <small>{buildClassSchedule(offeringDraft.scheduleDay, offeringDraft.scheduleStart, offeringDraft.lessonCount) || 'Selecione dia, hora inicial e quantidade de aulas.'}</small>
+            </div>
             <input value={offeringDraft.room} onChange={event => setOfferingDraft(prev => ({ ...prev, room: event.target.value }))} placeholder="Sala ou ambiente" required />
             <button className="btn btn-primary" disabled={!classGroups.length || !subjects.length}>Abrir no AVA</button>
           </form>
@@ -722,8 +864,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <option value="">Turma do aluno</option>
               {classGroups.map(item => <option key={item.id} value={item.id}>{item.code}</option>)}
             </select>
-            <input value={studentDraft.username} onChange={event => setStudentDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do aluno" required />
-            <input value={studentDraft.registration} onChange={event => setStudentDraft(prev => ({ ...prev, registration: event.target.value }))} placeholder="Matricula" required />
+            <AcademicUserPicker
+              token={token}
+              universityId={selectedUniversityId}
+              value={studentDraft.username}
+              onChange={username => setStudentDraft(prev => ({ ...prev, username }))}
+              placeholder="Pesquise o aluno por nome ou username"
+            />
             <button className="btn btn-primary" disabled={!classGroups.length}>Matricular aluno</button>
           </form>
           <form className="academic-form" onSubmit={assignProfessor}>
@@ -735,7 +882,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <option value="">Disciplina</option>
               {subjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <input value={professorDraft.username} onChange={event => setProfessorDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do professor" required />
+            <AcademicUserPicker
+              token={token}
+              universityId={selectedUniversityId}
+              value={professorDraft.username}
+              onChange={username => setProfessorDraft(prev => ({ ...prev, username }))}
+              placeholder="Pesquise o professor por nome ou username"
+            />
             <button className="btn btn-primary" disabled={!semesters.length || !subjects.length}>Vincular professor</button>
           </form>
           {canAssignRoles && (
@@ -744,7 +897,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
                 <option value="">Curso coordenado</option>
                 {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
-              <input value={coordinatorDraft.username} onChange={event => setCoordinatorDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do coordenador" required />
+              <AcademicUserPicker
+                token={token}
+                universityId={selectedUniversityId}
+                value={coordinatorDraft.username}
+                onChange={username => setCoordinatorDraft(prev => ({ ...prev, username }))}
+                placeholder="Pesquise o coordenador por nome ou username"
+              />
               <button className="btn btn-primary" disabled={!institutionCourses.length}>Atribuir coordenador</button>
             </form>
           )}
