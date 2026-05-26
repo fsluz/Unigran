@@ -109,11 +109,52 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// ─── Rate limiting em memória (por IP) ───────────────────────────────────────
+const loginAttempts = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
+const LOGIN_MAX_TRIES = 10;
+
+function getRateKey(req) {
+  return getIp(req) || 'unknown';
+}
+
+function checkRateLimit(req) {
+  const key   = getRateKey(req);
+  const now   = Date.now();
+  const entry = loginAttempts.get(key) || { count: 0, firstAt: now };
+  if (now - entry.firstAt > LOGIN_WINDOW_MS) {
+    loginAttempts.set(key, { count: 1, firstAt: now });
+    return false;
+  }
+  if (entry.count >= LOGIN_MAX_TRIES) return true;
+  loginAttempts.set(key, { count: entry.count + 1, firstAt: entry.firstAt });
+  return false;
+}
+
+function resetRateLimit(req) {
+  loginAttempts.delete(getRateKey(req));
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of loginAttempts.entries()) {
+    if (now - entry.firstAt > LOGIN_WINDOW_MS) loginAttempts.delete(key);
+  }
+}, LOGIN_WINDOW_MS);
+
 router.post('/login', async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const { email, password } = parsed.data;
+  const ip = getIp(req);
+
+  // Bloquear IPs com muitas tentativas
+  if (checkRateLimit(req)) {
+    auditLog({ action: 'LOGIN_BLOCKED', category: 'AUTH', actor: 'anonymous', ip, meta: { email, reason: 'rate_limit' }, level: 'ALERT' });
+    return res.status(429).json({ error: 'Muitas tentativas. Tente novamente em 15 minutos.' });
+  }
+
   try {
     const rows = await readQuery(`
       match
@@ -137,19 +178,22 @@ router.post('/login', async (req, res) => {
       };
     `);
     if (!rows.length || !rows[0].password_hash) {
-      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip: getIp(req), meta: { email, reason: 'user_not_found' }, level: 'WARN' });
+      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip, meta: { email, reason: 'user_not_found' }, level: 'WARN' });
       return res.status(401).json({ error: 'Credenciais invalidas' });
     }
 
     const row = rows[0];
+
+    // Banimento verificado ANTES da senha — conta banida não entra de jeito nenhum
+    if (attrBoolTrue(row.banned)) {
+      auditLog({ action: 'LOGIN_BLOCKED', category: 'AUTH', actor: row.username || email, ip, meta: { email, reason: 'banned' }, level: 'ALERT' });
+      return res.status(403).json({ error: 'Conta banida' });
+    }
+
     const ok = await bcrypt.compare(password, decodeHash(row.password_hash));
     if (!ok) {
-      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip: getIp(req), meta: { email, reason: 'wrong_password' }, level: 'WARN' });
+      auditLog({ action: 'LOGIN_FAILED', category: 'AUTH', actor: 'anonymous', ip, meta: { email, reason: 'wrong_password' }, level: 'WARN' });
       return res.status(401).json({ error: 'Credenciais invalidas' });
-    }
-    if (attrBoolTrue(row.banned)) {
-      auditLog({ action: 'LOGIN_BLOCKED', category: 'AUTH', actor: row.username || email, ip: getIp(req), meta: { email, reason: 'banned' }, level: 'ALERT' });
-      return res.status(403).json({ error: 'Conta banida' });
     }
     const username = row.username || email.split('@')[0] || 'user';
     const twoFactor = await readTwoFactorByUsername(username);
@@ -168,7 +212,8 @@ router.post('/login', async (req, res) => {
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
     };
-    auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip: getIp(req), meta: { email, role: payload.role } });
+    resetRateLimit(req); // login bem-sucedido — zera o contador do IP
+    auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
     res.json({ token: sign(payload), user: payload });
   } catch (err) {
     console.error('[login]', err);

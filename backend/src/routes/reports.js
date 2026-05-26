@@ -43,15 +43,14 @@ router.get('/overview', async (req, res) => {
                 fetch { "id": $id };
             `),
             readQuery(`
-                match $c isa community, has community-name $name;
-                fetch { "name": $name };
+                match $g isa group, has group-id $gid;
+                fetch { "gid": $gid };
             `),
         ]);
 
         // FIX: usersRows.status era comparado incorretamente
         const users        = usersRows.status        === 'fulfilled' ? usersRows.value        : [];
         const posts        = postsRows.status        === 'fulfilled' ? postsRows.value        : [];
-        // FIX: .values -> .value
         const communities  = communitiesRows.status  === 'fulfilled' ? communitiesRows.value  : [];
 
         const totalUsers  = users.length;
