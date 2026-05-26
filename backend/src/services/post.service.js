@@ -1,6 +1,5 @@
 ﻿import { z } from 'zod';
 import {
-  annotatePortfolioPost,
   createComment,
   createPost,
   deletePostById,
@@ -223,12 +222,31 @@ export async function createPostWithRules({ user, body, file }) {
   }
 
   const postType = isZuni ? 'video-post' : (isPortfolio ? 'text-post' : (parsed.data.postType || inferPostType(media)));
+  const portfolioMetadata = isPortfolio ? {
+    portfolioId: manualActivityId,
+    title: portfolioTitle,
+    summary: baseContent.slice(0, 4000),
+    shareUrl: portfolioShareUrl,
+    externalUrl: portfolioExternalUrl,
+    externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
+    documentUrl: portfolioDocument?.url || '',
+    documentName: portfolioDocument?.name || '',
+    documentStorage: portfolioDocument?.storage || '',
+    documentPath: portfolioDocument?.path || '',
+    mediaUrl: media?.url || '',
+    mediaType: media?.resource_type || '',
+    slug: portfolioSlug,
+    tags: portfolioTags,
+    technologies: portfolioTechnologies,
+    projectType: portfolioProjectType,
+  } : null;
   const created = await createPost({
     authorUsername: user.username,
     postType,
     content,
     media,
     communityId: body?.communityId || null,
+    portfolioMetadata,
   });
 
   let portfolioItem = null;
@@ -252,29 +270,6 @@ export async function createPostWithRules({ user, body, file }) {
       projectType: portfolioProjectType,
       postId: created.id,
     };
-    annotatePortfolioPost({
-      postId: created.id,
-      metadata: {
-        portfolioId: manualActivityId,
-        title: portfolioTitle,
-        summary: baseContent.slice(0, 4000),
-        shareUrl: portfolioShareUrl,
-        externalUrl: portfolioExternalUrl,
-        externalKind: inferPortfolioLinkKind(portfolioExternalUrl, parsed.data.portfolioLinkKind),
-        documentUrl: portfolioDocument?.url || '',
-        documentName: portfolioDocument?.name || '',
-        documentStorage: portfolioDocument?.storage || '',
-        documentPath: portfolioDocument?.path || '',
-        mediaUrl: media?.url || '',
-        mediaType: media?.resource_type || '',
-        slug: portfolioSlug,
-        tags: portfolioTags,
-        technologies: portfolioTechnologies,
-        projectType: portfolioProjectType,
-      },
-    }).catch(err => {
-      console.error('[portfolio typedb metadata]', err.message);
-    });
   }
 
   if (isZuni) {

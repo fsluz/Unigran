@@ -433,6 +433,7 @@ export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) 
 }
 
 function portfolioAttributeLines(metadata = {}) {
+  metadata = metadata || {};
   const attrs = [];
   const add = (type, value) => {
     if (value === undefined || value === null || value === '') return;

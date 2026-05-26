@@ -25,6 +25,36 @@ function attrs(row, name) {
   return row?.[name] || {};
 }
 
+function slugify(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'portfolio';
+}
+
+function cleanPortfolioText(value = '') {
+  return String(value || '')
+    .replace(/\/portfolio\/[^\s]+/gi, '')
+    .replace(/#PortfolioAcademico/gi, '')
+    .replace(/^Portfolio academico:\s*[^\n]+\n*/i, '')
+    .replace(/^Novo case academico publicado:\s*[^\n]+\n*/i, '')
+    .trim();
+}
+
+function titleFromPortfolioText(value = '') {
+  return String(value || '').match(/^Portfolio academico:\s*(.+)$/im)?.[1]?.trim()
+    || String(value || '').match(/^Novo case academico publicado:\s*(.+)$/im)?.[1]?.trim()
+    || 'Post de portfolio';
+}
+
+function slugFromPortfolioText(value = '', username = '', fallback = '') {
+  const escaped = String(username || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = String(value || '').match(new RegExp(`/portfolio/${escaped}/([^\\s]+)`, 'i'));
+  return match?.[1]?.replace(/[),.;]+$/, '') || slugify(fallback);
+}
+
 function toPortfolioItem(row) {
   const post = attrs(row, 'post');
   const slug = post['portfolio-slug'] || post['portfolio-id'] || row.post_id;
@@ -52,6 +82,46 @@ function toPortfolioItem(row) {
     tags: normalizeList(post['portfolio-tags']),
     technologies: normalizeList(post['portfolio-technologies']),
     projectType: post['portfolio-project-type'] || 'academic',
+    createdAt: row.created_at,
+    updatedAt: row.created_at,
+    postId: row.post_id,
+    authorUsername: row.author_username,
+    author: {
+      username: row.author_username,
+      displayName: row.author_name || row.author_username,
+      profilePicture: row.author_profile_picture || '',
+    },
+  };
+}
+
+function toSocialPortfolioItem(row) {
+  const title = titleFromPortfolioText(row.post_text);
+  const slug = slugFromPortfolioText(row.post_text, row.author_username, `${title}-${row.post_id}`);
+  const summary = cleanPortfolioText(row.post_text);
+  return {
+    id: row.post_id,
+    userId: row.author_username,
+    username: row.author_username,
+    title,
+    slug,
+    summary,
+    description: summary,
+    content: row.post_text || '',
+    activityId: row.post_id,
+    activityTitle: 'Publicacao social para portfolio',
+    shareUrl: `/portfolio/${row.author_username}/${slug}`,
+    externalUrl: '',
+    externalKind: '',
+    documentUrl: '',
+    documentName: '',
+    documentStorage: '',
+    documentPath: '',
+    mediaUrl: row.post_image || row.post_video || '',
+    mediaType: row.post_video ? 'video' : (row.post_image ? 'image' : ''),
+    thumbnail: row.post_image || '',
+    tags: normalizeList(String(row.post_text || '').match(/(?:^|\s)#([\p{L}\p{N}_-]+)/gu)?.map(tag => tag.replace(/^#/, '')).filter(tag => tag.toLowerCase() !== 'portfolioacademico') || []),
+    technologies: [],
+    projectType: 'social',
     createdAt: row.created_at,
     updatedAt: row.created_at,
     postId: row.post_id,
@@ -94,6 +164,46 @@ async function readPortfolioRows(username = '') {
       "post": { $post.* }
     };
   `);
+}
+
+async function readLegacySocialPortfolioRows(username = '') {
+  const userMatch = username
+    ? `$author isa person, has username "${safe(username)}", has username $author_username, has name $author_name;`
+    : '$author isa person, has username $author_username, has name $author_name;';
+
+  const rows = await readQuery(`
+    match
+      ${userMatch}
+      $post isa post,
+        has post-id $post_id,
+        has post-text $post_text,
+        has creation-timestamp $created_at;
+      posting(page: $author, post: $post);
+      try { $author has profile-picture $author_profile_picture; };
+      try { $post has post-image $post_image; };
+      try { $post has post-video $post_video; };
+    fetch {
+      "post_id": $post_id,
+      "created_at": $created_at,
+      "post_text": $post_text,
+      "post_image": $post_image,
+      "post_video": $post_video,
+      "author_username": $author_username,
+      "author_name": $author_name,
+      "author_profile_picture": $author_profile_picture
+    };
+  `);
+  return rows.filter(row => String(row.post_text || '').includes('#PortfolioAcademico'));
+}
+
+function uniquePortfolioItems(items = []) {
+  const seen = new Set();
+  return items.filter(item => {
+    const key = item.postId || item.id || item.slug;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function savePortfolioResume(user, payload) {
@@ -151,16 +261,26 @@ export async function getPortfolioResume(username) {
 }
 
 export async function listPublicPortfolioItems(username) {
-  const rows = await readPortfolioRows(username);
-  return rows
-    .map(toPortfolioItem)
+  const [rows, legacyRows] = await Promise.all([
+    readPortfolioRows(username),
+    readLegacySocialPortfolioRows(username),
+  ]);
+  return uniquePortfolioItems([
+    ...rows.map(toPortfolioItem),
+    ...legacyRows.map(toSocialPortfolioItem),
+  ])
     .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
 }
 
 export async function listAllPublicPortfolioItems() {
-  const rows = await readPortfolioRows();
-  return rows
-    .map(toPortfolioItem)
+  const [rows, legacyRows] = await Promise.all([
+    readPortfolioRows(),
+    readLegacySocialPortfolioRows(),
+  ]);
+  return uniquePortfolioItems([
+    ...rows.map(toPortfolioItem),
+    ...legacyRows.map(toSocialPortfolioItem),
+  ])
     .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
 }
 
