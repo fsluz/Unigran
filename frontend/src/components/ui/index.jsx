@@ -68,15 +68,30 @@ export function RoleBadge({ role }) {
 }
 
 //  Modal 
-export function Modal({ title, onClose, children, footer, maxWidth = 540 }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  maxWidth = 540,
+  hideHeader = false,
+  className = '',
+  bodyClassName = '',
+  backdropClassName = '',
+}) {
   return (
-    <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box" style={{ maxWidth }}>
-        <div className="modal-header">
-          <span className="modal-title">{title}</span>
-          <button className="modal-close" onClick={onClose}></button>
-        </div>
-        <div className="modal-body">{children}</div>
+    <div
+      className={`modal-backdrop${backdropClassName ? ` ${backdropClassName}` : ''}`}
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
+      <div className={`modal-box${className ? ` ${className}` : ''}`} style={{ maxWidth }}>
+        {!hideHeader && (
+          <div className="modal-header">
+            <span className="modal-title">{title}</span>
+            <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">×</button>
+          </div>
+        )}
+        <div className={`modal-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>

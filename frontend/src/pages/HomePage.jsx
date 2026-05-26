@@ -284,7 +284,13 @@ export default function HomePage({ onOpenProfile }) {
         </aside>
       </div>
 
-      {openPost && <PostDetailModal post={openPost} onClose={() => setOpenPost(null)} />}
+      {openPost && (
+        <PostDetailModal
+          post={openPost}
+          onClose={() => setOpenPost(null)}
+          onOpenProfile={onOpenProfile}
+        />
+      )}
     </div>
   );
 }
