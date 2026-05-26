@@ -91,7 +91,7 @@ function ModuleOverview({ user, summary, teacherDashboard }) {
     {
       id: 'teacher',
       title: 'Professor',
-      permission: 'academic.teacher.manage',
+      permission: 'academic:publish',
       icon: BookOpen,
       metric: String(teacherDashboard?.pendingCorrections || 0),
       items: ['Atividades', 'Notas', 'Presenca', 'Correcao'],
@@ -99,7 +99,7 @@ function ModuleOverview({ user, summary, teacherDashboard }) {
     {
       id: 'student',
       title: 'Aluno',
-      permission: 'academic.student.read',
+      permission: 'academic:read',
       icon: Trophy,
       metric: `${summary?.averageProgress || 0}%`,
       items: ['Notas', 'Faltas', 'Entregas', 'Portfolio'],
@@ -136,7 +136,9 @@ export default function CampusPage({ onBackToPortal }) {
   const [forumText, setForumText] = useState('');
   const [commentDrafts, setCommentDrafts] = useState({});
   const [prompt, setPrompt] = useState('');
-  const [rai, setRai] = useState(null);
+  const [raiMessages, setRaiMessages] = useState([]);
+  const [raiLoading, setRaiLoading] = useState(false);
+  const [raiError, setRaiError] = useState('');
   const [teacherMaterial, setTeacherMaterial] = useState({ title: '', type: 'pdf', duration: '15 min', required: true, url: '', file: null });
   const [teacherMaterialSaving, setTeacherMaterialSaving] = useState(false);
   const [teacherSubmissions, setTeacherSubmissions] = useState([]);
@@ -159,7 +161,7 @@ export default function CampusPage({ onBackToPortal }) {
   const [portfolioPublishing, setPortfolioPublishing] = useState(false);
 
   const role = normalizeRole(user?.role);
-  const canTeach = hasPermission(user, 'academic.teacher.manage');
+  const canTeach = hasPermission(user, 'academic:publish');
 
   const loadTeacherSubmissions = async () => {
     if (!canTeach) return;
@@ -350,13 +352,29 @@ export default function CampusPage({ onBackToPortal }) {
   const handleAskRai = async (event) => {
     event.preventDefault();
     if (!prompt.trim()) return;
+    const message = { id: `user-${Date.now()}`, role: 'user', content: prompt.trim() };
+    const conversation = [...raiMessages, message];
+    setRaiMessages(conversation);
+    setPrompt('');
+    setRaiError('');
+    setRaiLoading(true);
     try {
-      const response = await askRai(token, `${selectedCourse?.name || 'AVA'}: ${prompt.trim()}`);
-      setRai(response);
-      setPrompt('');
+      const response = await askRai(
+        token,
+        message.content,
+        conversation.slice(-18).map(item => ({ role: item.role, content: item.content })),
+        selectedCourse?.id || '',
+      );
+      setRaiMessages(current => [...current, {
+        id: `rai-${Date.now()}`,
+        role: 'assistant',
+        content: response.answer,
+        meta: response,
+      }]);
     } catch (err) {
-      showToast(err.message || 'Erro na RAi', '!');
+      setRaiError(err.message || 'Erro ao consultar o RAi.');
     }
+    setRaiLoading(false);
   };
 
   const handleCreateMaterial = async (event) => {
@@ -1056,24 +1074,29 @@ export default function CampusPage({ onBackToPortal }) {
               <div className="campus-panel-head">
                 <div>
                   <span>RAi</span>
-                  <h2>Assistente de estudos</h2>
+                  <h2>Suporte academico 24/7</h2>
                 </div>
                 <Bot size={18} />
               </div>
               <form className="campus-rai-form" onSubmit={handleAskRai}>
-                <input value={prompt} onChange={event => setPrompt(event.target.value)} placeholder="Pergunte sobre a disciplina" />
-                <button className="btn btn-primary">Enviar</button>
+                <input value={prompt} onChange={event => setPrompt(event.target.value)} placeholder="Pergunte sobre a disciplina" disabled={raiLoading} />
+                <button className="btn btn-primary" disabled={raiLoading || !prompt.trim()}>Enviar</button>
               </form>
-              {rai && (
-                <div className="campus-rai-answer">
-                  <strong>{rai.assistant} {rai.mode ? `- ${rai.mode}` : ''}</strong>
-                  <p>{rai.answer}</p>
-                  {rai.suggestions?.map(item => <span key={item}>{item}</span>)}
-                  {rai.sources?.length > 0 && (
-                    <small>{rai.sources.length} fonte(s) academica(s) consultada(s)</small>
-                  )}
-                </div>
-              )}
+              <div className="campus-rai-thread">
+                {raiMessages.length === 0 && <small>Converse sobre a disciplina atual; o RAi considera as mensagens anteriores.</small>}
+                {raiMessages.map(message => (
+                  <div key={message.id} className={`campus-rai-answer ${message.role}`}>
+                    <strong>{message.role === 'assistant' ? 'RAi' : 'Voce'}</strong>
+                    <p>{message.content}</p>
+                    {message.meta?.suggestions?.map(item => <span key={item}>{item}</span>)}
+                    {message.meta?.sources?.length > 0 && (
+                      <small>{message.meta.sources.length} fonte(s) academica(s) consultada(s)</small>
+                    )}
+                  </div>
+                ))}
+                {raiLoading && <div className="campus-rai-pending"><Bot size={14} /> Analisando conversa e disciplina...</div>}
+                {raiError && <div className="campus-rai-error">{raiError}</div>}
+              </div>
             </div>
 
             <div className="campus-panel">

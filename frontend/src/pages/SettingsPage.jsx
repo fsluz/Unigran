@@ -6,6 +6,7 @@ import Topbar from '../components/layout/Topbar';
 import { apiFetch } from '../utils/api';
 import { uploadMedia } from '../services/posts';
 import ImageCropModal from '../components/media/ImageCropModal';
+import { hasPermission } from '../modules/shared/permissions';
 
 function SidebarToggle({ value, onChange }) {
   return (
@@ -274,7 +275,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     }
   }
 
-  const canSeeAdmin = ['admin', 'moderator'].includes(user?.role);
+  const canReadUsers = hasPermission(user, 'users:read');
+  const canModerateReports = hasPermission(user, 'reports:read');
+  const canAssignRoles = hasPermission(user, 'permissions:manage');
+  const canSeeAdmin = canReadUsers || canModerateReports;
   const groups = [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
 
   const [adminUsers, setAdminUsers] = useState([]);
@@ -289,16 +293,17 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
     setAdminError('');
     try {
       const [usersRes, reportsRes] = await Promise.all([
-        apiFetch(`/admin/users?q=${encodeURIComponent(adminSearch)}`, {
+        canReadUsers ? apiFetch(`/admin/users?q=${encodeURIComponent(adminSearch)}`, {
           headers: { Authorization: `Bearer ${token}` },
-        }),
-        apiFetch('/admin/reports', {
+        }) : Promise.resolve(null),
+        canModerateReports ? apiFetch('/admin/reports', {
           headers: { Authorization: `Bearer ${token}` },
-        }),
+        }) : Promise.resolve(null),
       ]);
-      const usersData = await usersRes.json().catch(() => ({}));
-      const reportsData = await reportsRes.json().catch(() => ({}));
-      if (!usersRes.ok) throw new Error(usersData.error || 'Erro admin');
+      const usersData = usersRes ? await usersRes.json().catch(() => ({})) : { users: [] };
+      const reportsData = reportsRes ? await reportsRes.json().catch(() => ({})) : { reports: [] };
+      if (usersRes && !usersRes.ok) throw new Error(usersData.error || 'Erro admin');
+      if (reportsRes && !reportsRes.ok) throw new Error(reportsData.error || 'Erro admin');
       setAdminUsers(usersData.users || []);
       setAdminReports(reportsData.reports || []);
     } catch (err) {
@@ -1021,24 +1026,20 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                         <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>@{u.username} {u.email ? `| ${u.email}` : ''}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {['admin', 'super_admin'].includes(user?.role) && (
+                      {canAssignRoles && (
                         <select
                           className="form-input"
                           value={u.role}
                           onChange={e => saveRole(u.username, e.target.value).catch(err => showToast(err.message, '!'))}
                           style={{ width: 190 }}
                         >
-                          <option value="super_admin">SUPER_ADMIN</option>
-                          <option value="admin">ADMIN</option>
-                          <option value="moderator">moderator</option>
-                          <option value="community_moderator">community_moderator</option>
-                          <option value="professor">professor</option>
+                          {hasPermission(user, 'permissions:manage') && <option value="super_admin">SUPER_ADMIN</option>}
+                          {hasPermission(user, 'permissions:manage') && <option value="admin">ADMIN</option>}
                           <option value="coordination">coordination</option>
-                          <option value="management">management</option>
-                          <option value="administrative">administrative</option>
+                          <option value="professor">professor</option>
                           <option value="secretary">secretary</option>
-                          <option value="library">library</option>
-                          <option value="aluno">aluno</option>
+                          <option value="moderator">moderator</option>
+                          <option value="student">student</option>
                           <option value="user">usuario</option>
                         </select>
                       )}

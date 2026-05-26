@@ -100,7 +100,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/materials/:materialId/complete', async (req, res) => {
+router.post('/materials/:materialId/complete', requirePermission('academic:read'), async (req, res) => {
   try {
     const state = await setMaterialCompletion(req.user, req.params.materialId, req.body?.completed !== false);
     if (!state) return res.status(404).json({ error: 'Material nao encontrado' });
@@ -111,7 +111,7 @@ router.post('/materials/:materialId/complete', async (req, res) => {
   }
 });
 
-router.post('/activities/:activityId/submissions', async (req, res) => {
+router.post('/activities/:activityId/submissions', requirePermission('submissions:create'), async (req, res) => {
   const parsed = SubmissionSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -125,7 +125,7 @@ router.post('/activities/:activityId/submissions', async (req, res) => {
   }
 });
 
-router.post('/submissions/:submissionId/portfolio', async (req, res) => {
+router.post('/submissions/:submissionId/portfolio', requirePermission('submissions:create'), async (req, res) => {
   const parsed = PortfolioPublishSchema.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -139,7 +139,7 @@ router.post('/submissions/:submissionId/portfolio', async (req, res) => {
   }
 });
 
-router.post('/courses/:courseId/forum', async (req, res) => {
+router.post('/courses/:courseId/forum', requirePermission('posts:create'), async (req, res) => {
   const parsed = TextSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -153,7 +153,7 @@ router.post('/courses/:courseId/forum', async (req, res) => {
   }
 });
 
-router.post('/courses/:courseId/forum/:postId/comments', async (req, res) => {
+router.post('/courses/:courseId/forum/:postId/comments', requirePermission('posts:create'), async (req, res) => {
   const parsed = TextSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -167,7 +167,7 @@ router.post('/courses/:courseId/forum/:postId/comments', async (req, res) => {
   }
 });
 
-router.get('/teacher/submissions', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.get('/teacher/submissions', requirePermission('academic:grade'), async (req, res) => {
   try {
     res.json({ submissions: await listTeacherSubmissions(req.user) });
   } catch (err) {
@@ -176,7 +176,7 @@ router.get('/teacher/submissions', requirePermission('academic.teacher.manage'),
   }
 });
 
-router.post('/teacher/courses/:courseId/materials', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.post('/teacher/courses/:courseId/materials', requirePermission('academic:publish'), async (req, res) => {
   const parsed = MaterialSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -202,7 +202,7 @@ const CourseSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
 });
 
-router.delete('/teacher/materials/:materialId', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.delete('/teacher/materials/:materialId', requirePermission('academic:publish'), async (req, res) => {
   try {
     const state = await deleteTeacherMaterial(req.user, req.params.materialId);
     if (!state) return res.status(404).json({ error: 'Material nao encontrado' });
@@ -213,7 +213,7 @@ router.delete('/teacher/materials/:materialId', requirePermission('academic.teac
   }
 });
 
-router.post('/coordination/courses', requirePermission('academic.coordination.read'), async (req, res) => {
+router.post('/coordination/courses', requirePermission('courses:create'), async (req, res) => {
   return res.status(410).json({
     error: 'Use /api/platform/v1/institutions para criar universidade, campus, curso, semestre, turma, disciplina e abrir a offering do AVA.',
   });
@@ -229,7 +229,7 @@ router.post('/coordination/courses', requirePermission('academic.coordination.re
   }
 });
 
-router.post('/coordination/courses/:courseId/enrollments', requirePermission('academic.coordination.read'), async (req, res) => {
+router.post('/coordination/courses/:courseId/enrollments', requirePermission('enrollments:create'), async (req, res) => {
   return res.status(410).json({
     error: 'Use /api/platform/v1/institutions/universities/:universityId/classes/:classGroupId/enrollments.',
   });
@@ -245,7 +245,7 @@ router.post('/coordination/courses/:courseId/enrollments', requirePermission('ac
   }
 });
 
-router.put('/coordination/courses/:courseId/teacher', requirePermission('academic.coordination.read'), async (req, res) => {
+router.put('/coordination/courses/:courseId/teacher', requirePermission('users:approve'), async (req, res) => {
   return res.status(410).json({
     error: 'Use /api/platform/v1/institutions/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors.',
   });
@@ -261,7 +261,7 @@ router.put('/coordination/courses/:courseId/teacher', requirePermission('academi
   }
 });
 
-router.post('/teacher/courses/:courseId/activities', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.post('/teacher/courses/:courseId/activities', requirePermission('academic:publish'), async (req, res) => {
   const parsed = ActivitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -275,7 +275,7 @@ router.post('/teacher/courses/:courseId/activities', requirePermission('academic
   }
 });
 
-router.put('/teacher/activities/:activityId', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.put('/teacher/activities/:activityId', requirePermission('academic:publish'), async (req, res) => {
   const parsed = ActivitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -288,7 +288,7 @@ router.put('/teacher/activities/:activityId', requirePermission('academic.teache
   }
 });
 
-router.delete('/teacher/activities/:activityId', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.delete('/teacher/activities/:activityId', requirePermission('academic:publish'), async (req, res) => {
   try {
     const result = await deleteTeacherActivity(req.user, req.params.activityId);
     if (result.conflict) return res.status(409).json({ error: 'Atividade com entregas nao pode ser excluida' });
@@ -300,7 +300,7 @@ router.delete('/teacher/activities/:activityId', requirePermission('academic.tea
   }
 });
 
-router.put('/teacher/courses/:courseId/attendance', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.put('/teacher/courses/:courseId/attendance', requirePermission('academic:progress'), async (req, res) => {
   const parsed = AttendanceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -313,7 +313,7 @@ router.put('/teacher/courses/:courseId/attendance', requirePermission('academic.
   }
 });
 
-router.patch('/teacher/submissions/:submissionId', requirePermission('academic.teacher.manage'), async (req, res) => {
+router.patch('/teacher/submissions/:submissionId', requirePermission('academic:grade'), async (req, res) => {
   const parsed = GradeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 

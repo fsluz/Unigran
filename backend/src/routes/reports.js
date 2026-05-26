@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { auth, requireAtLeast } from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
+import { requirePermission } from '../modules/auth/rbac.js';
 import { readQuery } from '../db/typedb.js'
 import { createRequire } from 'module';
 
@@ -8,7 +9,7 @@ const { Pool } = require('pg');
 
 const router = Router();
 router.use(auth);
-router.use(requireAtLeast('admin'));
+router.use(requirePermission('reports:institution'));
 
 let pool = null;
 function getPool() {

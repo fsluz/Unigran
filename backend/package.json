@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "db:migrate:typedb": "node scripts/apply-typedb-migrations.js",
+    "db:seed:rbac": "node scripts/seed-rbac-data.js",
     "db:seed:catalog": "node scripts/seed-academic-data.js",
     "db:seed:academic": "node scripts/seed-complete-platform-data.js"
   },

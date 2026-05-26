@@ -15,6 +15,7 @@ import {
   unreactToPost,
   unsavePost,
 } from '../repositories/post.repository.js';
+import { hasPermission } from '../modules/auth/rbac.js';
 import { assertSafeMediaUrl, uploadMediaBuffer } from './cloudinary.service.js';
 import { uploadDocumentBuffer } from './document.service.js';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
@@ -347,7 +348,7 @@ export async function deletePostWithRules({ user, postId }) {
   return deletePostById({
     username: user.username,
     postId,
-    canModerate: ['admin', 'moderator'].includes(user.role),
+    canModerate: hasPermission(user, 'posts:moderate'),
   });
 }
 

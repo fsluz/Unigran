@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireInstitutionRole, requirePermission } from '../auth/rbac.js';
+import {
+  requireClassPermission,
+  requireCoursePermission,
+  requireInstitutionPermission,
+  requirePermission,
+  hasPermission,
+} from '../auth/rbac.js';
 import {
   approveMembership,
+  assignCoordinatorToCourse,
   assignProfessorToSubjectSemester,
   createCampus,
   createClassGroup,
@@ -10,6 +17,7 @@ import {
   createSemester,
   createSubject,
   createUniversity,
+  deactivateUniversity,
   createAvaOfferingForClassSubject,
   enrollStudentInClassGroup,
   getUniversityHierarchy,
@@ -17,6 +25,8 @@ import {
   listMemberships,
   listUniversities,
   requestMembership,
+  setMembershipRole,
+  updateUniversity,
 } from './typedbInstitutionStore.js';
 
 const router = Router();
@@ -81,6 +91,19 @@ const ProfessorSubjectSchema = z.object({
   username: z.string().trim().min(3).max(80),
 });
 
+const UniversityUpdateSchema = UniversitySchema.partial().refine(
+  value => Object.keys(value).length > 0,
+  'Informe pelo menos um campo para atualizar',
+);
+
+const CoordinatorCourseSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+});
+
+const MembershipRoleSchema = z.object({
+  role: z.enum(['admin', 'coordination', 'professor', 'secretary', 'moderator', 'student']),
+});
+
 function handleError(res, err, fallback) {
   console.error(`[institution] ${fallback}`, err);
   return res.status(err.statusCode || 500).json({ error: err.message || fallback });
@@ -94,7 +117,7 @@ router.get('/universities', async (_req, res) => {
   }
 });
 
-router.post('/universities', requirePermission('institution.create'), async (req, res) => {
+router.post('/universities', requirePermission('institutions:create'), async (req, res) => {
   const parsed = UniversitySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -104,7 +127,7 @@ router.post('/universities', requirePermission('institution.create'), async (req
   }
 });
 
-router.get('/universities/:universityId', async (req, res) => {
+router.get('/universities/:universityId', requireInstitutionPermission('institutions:read'), async (req, res) => {
   try {
     res.json(await getUniversityHierarchy(req.params.universityId));
   } catch (err) {
@@ -112,7 +135,7 @@ router.get('/universities/:universityId', async (req, res) => {
   }
 });
 
-router.post('/universities/:universityId/campuses', requireInstitutionRole('university_admin'), async (req, res) => {
+router.post('/universities/:universityId/campuses', requireInstitutionPermission('faculties:create'), async (req, res) => {
   const parsed = CampusSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -122,7 +145,7 @@ router.post('/universities/:universityId/campuses', requireInstitutionRole('univ
   }
 });
 
-router.post('/universities/:universityId/campuses/:campusId/courses', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/campuses/:campusId/courses', requireInstitutionPermission('courses:create'), async (req, res) => {
   const parsed = CourseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -132,7 +155,7 @@ router.post('/universities/:universityId/campuses/:campusId/courses', requireIns
   }
 });
 
-router.post('/universities/:universityId/courses/:courseId/semesters', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/courses/:courseId/semesters', requireCoursePermission('courses:update'), async (req, res) => {
   const parsed = SemesterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -142,7 +165,7 @@ router.post('/universities/:universityId/courses/:courseId/semesters', requireIn
   }
 });
 
-router.post('/universities/:universityId/semesters/:semesterId/classes', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/semesters/:semesterId/classes', requireInstitutionPermission('classes:create'), async (req, res) => {
   const parsed = ClassGroupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -152,7 +175,7 @@ router.post('/universities/:universityId/semesters/:semesterId/classes', require
   }
 });
 
-router.post('/universities/:universityId/courses/:courseId/subjects', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/courses/:courseId/subjects', requireCoursePermission('courses:update'), async (req, res) => {
   const parsed = SubjectSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -162,7 +185,7 @@ router.post('/universities/:universityId/courses/:courseId/subjects', requireIns
   }
 });
 
-router.put('/universities/:universityId/classes/:classGroupId/subjects/:subjectId', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.put('/universities/:universityId/classes/:classGroupId/subjects/:subjectId', requireClassPermission('classes:update'), async (req, res) => {
   try {
     res.json(await linkSubjectToClassGroup(req.params.universityId, req.params.classGroupId, req.params.subjectId));
   } catch (err) {
@@ -170,7 +193,7 @@ router.put('/universities/:universityId/classes/:classGroupId/subjects/:subjectI
   }
 });
 
-router.post('/universities/:universityId/classes/:classGroupId/subjects/:subjectId/ava-offering', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/classes/:classGroupId/subjects/:subjectId/ava-offering', requireClassPermission('classes:update'), async (req, res) => {
   const parsed = AvaOfferingSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -185,7 +208,7 @@ router.post('/universities/:universityId/classes/:classGroupId/subjects/:subject
   }
 });
 
-router.post('/universities/:universityId/classes/:classGroupId/enrollments', requireInstitutionRole('university_admin', 'secretary'), async (req, res) => {
+router.post('/universities/:universityId/classes/:classGroupId/enrollments', requireClassPermission('enrollments:create'), async (req, res) => {
   const parsed = EnrollmentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -195,7 +218,7 @@ router.post('/universities/:universityId/classes/:classGroupId/enrollments', req
   }
 });
 
-router.post('/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors', requireInstitutionRole('university_admin', 'coordinator'), async (req, res) => {
+router.post('/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors', requireInstitutionPermission('users:approve'), async (req, res) => {
   const parsed = ProfessorSubjectSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -210,6 +233,34 @@ router.post('/universities/:universityId/semesters/:semesterId/subjects/:subject
   }
 });
 
+router.patch('/universities/:universityId', requirePermission('institutions:update'), async (req, res) => {
+  const parsed = UniversityUpdateSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(await updateUniversity(req.params.universityId, parsed.data));
+  } catch (err) {
+    handleError(res, err, 'Erro ao atualizar universidade');
+  }
+});
+
+router.delete('/universities/:universityId', requirePermission('institutions:delete'), async (req, res) => {
+  try {
+    res.json(await deactivateUniversity(req.params.universityId));
+  } catch (err) {
+    handleError(res, err, 'Erro ao desativar universidade');
+  }
+});
+
+router.put('/universities/:universityId/courses/:courseId/coordinator', requirePermission('roles:assign'), requireCoursePermission('courses:update'), async (req, res) => {
+  const parsed = CoordinatorCourseSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(await assignCoordinatorToCourse(req.params.universityId, req.params.courseId, parsed.data));
+  } catch (err) {
+    handleError(res, err, 'Erro ao atribuir coordenador ao curso');
+  }
+});
+
 router.post('/universities/:universityId/memberships/requests', async (req, res) => {
   const parsed = MembershipRequestSchema.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -220,7 +271,7 @@ router.post('/universities/:universityId/memberships/requests', async (req, res)
   }
 });
 
-router.get('/universities/:universityId/memberships', requireInstitutionRole('university_admin', 'secretary'), async (req, res) => {
+router.get('/universities/:universityId/memberships', requireInstitutionPermission('users:read'), async (req, res) => {
   try {
     res.json({ memberships: await listMemberships(req.params.universityId) });
   } catch (err) {
@@ -228,11 +279,24 @@ router.get('/universities/:universityId/memberships', requireInstitutionRole('un
   }
 });
 
-router.patch('/universities/:universityId/memberships/:membershipId/approve', requireInstitutionRole('university_admin', 'secretary'), async (req, res) => {
+router.patch('/universities/:universityId/memberships/:membershipId/approve', requireInstitutionPermission('enrollments:update'), async (req, res) => {
   try {
     res.json({ memberships: await approveMembership(req.params.universityId, req.params.membershipId) });
   } catch (err) {
     handleError(res, err, 'Erro ao aprovar vinculo institucional');
+  }
+});
+
+router.patch('/universities/:universityId/memberships/:membershipId/role', requireInstitutionPermission('roles:assign'), async (req, res) => {
+  const parsed = MembershipRoleSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  if (parsed.data.role === 'admin' && !hasPermission(req.user, 'permissions:manage')) {
+    return res.status(403).json({ error: 'Somente super_admin pode nomear administradores' });
+  }
+  try {
+    res.json({ memberships: await setMembershipRole(req.params.universityId, req.params.membershipId, parsed.data.role) });
+  } catch (err) {
+    handleError(res, err, 'Erro ao definir papel institucional');
   }
 });
 

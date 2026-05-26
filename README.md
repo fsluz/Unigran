@@ -651,6 +651,20 @@ npm run preview
 | POST | `/api/platform/v1/ai/assistant` | Assistente RAi |
 | GET | `/api/platform/v1/ava` | Estado do AVA |
 
+#### RAi Assistente
+
+O RAi recebe a mensagem atual e o historico recente da conversa:
+
+```json
+{
+  "prompt": "Tenho prova hoje de algoritmos",
+  "messages": [{ "role": "user", "content": "Curso Sistemas de Informacao" }],
+  "selectedCourseId": "curso-opcional"
+}
+```
+
+O backend consulta apenas o contexto academico autorizado para o usuario autenticado, detecta perfil, intencao, tom, area e dificuldade, e gera a resposta usando o prompt base do RAi. Para habilitar a conversa generativa, configure `RAI_AI_API_KEY`, `RAI_AI_API_URL` e `RAI_AI_MODEL` com um endpoint OpenAI-compatible. Sem provedor, o RAi informa somente fatos recuperados do portal, sem inventar orientacoes.
+
 ### AVA
 
 | Metodo | Rota | Descricao |

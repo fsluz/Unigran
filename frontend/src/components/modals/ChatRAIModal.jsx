@@ -1,249 +1,163 @@
-import { useState } from 'react';
-import { X, Send, Loader } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader, Send, Trash2, X } from 'lucide-react';
 import { askRai } from '../../modules/platform/platform';
 import { CHAT_CONFIG } from '../../config/integrations';
+import { normalizeRole } from '../../modules/shared/permissions';
 
-export default function ChatRAIModal({ isOpen, onClose, token }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: 'Olá! Sou a RAi, sua assistente acadêmica. Como posso ajudar você hoje?',
-      timestamp: new Date(),
-    },
-  ]);
+function storageKey(user) {
+  return `unigran:rai:conversation:${user?.username || 'session'}`;
+}
+
+function readConversation(user) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKey(user)) || '[]');
+    return Array.isArray(stored) ? stored.slice(-30) : [];
+  } catch {
+    return [];
+  }
+}
+
+function transcript(messages) {
+  return messages
+    .filter(message => ['user', 'assistant'].includes(message.role))
+    .slice(-18)
+    .map(message => ({ role: message.role, content: message.content }));
+}
+
+function roleLabel(role) {
+  return {
+    user: 'usuario',
+    student: 'aluno',
+    moderator: 'moderador',
+    secretary: 'secretaria',
+    professor: 'professor',
+    coordination: 'coordenacao',
+    admin: 'admin',
+    super_admin: 'super admin',
+  }[normalizeRole(role)] || 'usuario';
+}
+
+export default function ChatRAIModal({ isOpen, onClose, token, user }) {
+  const [messages, setMessages] = useState(() => readConversation(user));
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const messagesEndRef = useRef(null);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  useEffect(() => {
+    setMessages(readConversation(user));
+  }, [user?.username]);
 
-    const userMessage = input.trim();
+  useEffect(() => {
+    localStorage.setItem(storageKey(user), JSON.stringify(messages.slice(-30)));
+  }, [messages, user?.username]);
+
+  useEffect(() => {
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading, isOpen]);
+
+  const handleSendMessage = async (event) => {
+    event.preventDefault();
+    const prompt = input.trim();
+    if (!prompt || loading) return;
+
+    const userMessage = { id: `user-${Date.now()}`, role: 'user', content: prompt };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput('');
-
-    // Add user message
-    const newUserMessage = {
-      id: `msg-user-${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, newUserMessage]);
-
-    // Get AI response
+    setError('');
     setLoading(true);
     try {
-      const response = await askRai(token, userMessage);
-      const assistantMessage = {
-        id: `msg-asst-${Date.now()}`,
+      const response = await askRai(token, prompt, transcript(nextMessages));
+      setMessages(current => [...current, {
+        id: `rai-${Date.now()}`,
         role: 'assistant',
-        content: response.answer || 'Desculpe, não consegui processar sua pergunta.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      const errorMessage = {
-        id: `msg-error-${Date.now()}`,
-        role: 'assistant',
-        content: 'Desculpe, houve um erro ao processar sua pergunta. Tente novamente.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+        content: response.answer,
+        meta: response,
+      }]);
+    } catch (requestError) {
+      setError(requestError.message || 'Nao foi possivel falar com o RAi agora.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearConversation = () => {
+    setMessages([]);
+    setError('');
+    localStorage.removeItem(storageKey(user));
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        className="modal-overlay"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 9998,
-          animation: 'fadeIn 0.2s ease-out',
-        }}
-      />
-
-      {/* Modal */}
-      <div
-        className="chat-rai-modal"
-        style={{
-          position: 'fixed',
-          bottom: 20,
-          right: 20,
-          width: 'min(500px, 90vw)',
-          height: 'min(600px, 85vh)',
-          background: '#fff',
-          borderRadius: 'var(--radius)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          zIndex: 9999,
-          animation: 'slideInUp 0.3s ease-out',
-          border: '1px solid var(--border)',
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            background: 'linear-gradient(135deg, var(--accent), #00A8FF)',
-            color: '#fff',
-            borderRadius: 'var(--radius) var(--radius) 0 0',
-          }}
-        >
+      <div className="modal-overlay" onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', zIndex: 9998,
+      }} />
+      <section className="chat-rai-modal rai-chat-modal" aria-label="Conversa com RAi Assistente">
+        <header className="rai-chat-header">
           <div>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{CHAT_CONFIG.RAI.name}</div>
-            <div style={{ fontSize: 12, opacity: 0.9, marginTop: 2 }}>{CHAT_CONFIG.RAI.subtitle}</div>
+            <strong>{CHAT_CONFIG.RAI.name}</strong>
+            <small>{CHAT_CONFIG.RAI.subtitle} | Perfil: {roleLabel(user?.role)}</small>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: '#fff',
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
+          <div className="rai-chat-actions">
+            <button type="button" onClick={clearConversation} title="Nova conversa" disabled={loading}>
+              <Trash2 size={17} />
+            </button>
+            <button type="button" onClick={onClose} title="Fechar">
+              <X size={20} />
+            </button>
+          </div>
+        </header>
 
-        {/* Messages Area */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            background: 'var(--page-bg)',
-          }}
-        >
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  maxWidth: '80%',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-secondary)',
-                  color: msg.role === 'user' ? '#fff' : 'var(--text)',
-                  fontSize: 14,
-                  lineHeight: 1.4,
-                  wordWrap: 'break-word',
-                }}
-              >
-                {msg.content}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Processando...</span>
+        <div className="rai-chat-messages" aria-live="polite">
+          {messages.length === 0 && (
+            <div className="rai-chat-intro">
+              <strong>Rede Artificial Inteligente</strong>
+              <p>Posso ajudar com estudo, atividades, prazos e uso do portal usando seu contexto autorizado.</p>
+              <small>Conte o que voce precisa. Eu levo esta conversa em conta nas proximas respostas.</small>
             </div>
           )}
+          {messages.map(message => (
+            <article key={message.id} className={`rai-message ${message.role}`}>
+              <p>{message.content}</p>
+              {message.role === 'assistant' && message.meta && (
+                <>
+                  <small>{message.meta.intent} | {message.meta.tone} | {message.meta.mode}</small>
+                  {message.meta.sources?.length > 0 && (
+                    <small>{message.meta.sources.length} fonte(s) academica(s) autorizada(s) consultada(s)</small>
+                  )}
+                </>
+              )}
+            </article>
+          ))}
+          {loading && (
+            <div className="rai-chat-loading">
+              <Loader size={16} />
+              <span>RAi analisando sua conversa e contexto...</span>
+            </div>
+          )}
+          {error && <div className="rai-chat-error">{error}</div>}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <form
-          onSubmit={handleSendMessage}
-          style={{
-            padding: '12px',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            gap: 8,
-            alignItems: 'flex-end',
-          }}
-        >
-          <input
-            type="text"
+        <form className="rai-chat-form" onSubmit={handleSendMessage}>
+          <textarea
+            rows={2}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite sua pergunta..."
+            onChange={event => setInput(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' && !event.shiftKey) handleSendMessage(event);
+            }}
+            placeholder="Ex.: Tenho prova de algoritmos hoje as 19h. Como priorizo a revisao?"
             disabled={loading}
-            style={{
-              flex: 1,
-              padding: '10px 12px',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: 14,
-              fontFamily: 'inherit',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text)',
-              outline: 'none',
-            }}
           />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            style={{
-              background: 'var(--accent)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              padding: '10px 12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: loading || !input.trim() ? 0.5 : 1,
-            }}
-          >
-            <Send size={16} />
+          <button type="submit" disabled={loading || !input.trim()} aria-label="Enviar para RAi">
+            <Send size={17} />
           </button>
         </form>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      </section>
     </>
   );
 }

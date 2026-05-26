@@ -2,6 +2,7 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, RoleBadge, Modal, Button } from '../ui';
 import { createComment } from '../../services/posts';
+import { hasPermission } from '../../modules/shared/permissions';
 
 const EMOJI_OPTIONS = [];
 
@@ -62,7 +63,7 @@ export default function PostDetailModal({ post, onClose }) {
   const deleteComment = id => setComments(prev => prev.filter(c => c.id !== id));
 
   const canDeleteComment = (comment) =>
-    user?.id === comment.authorId || user?.role === 'admin' || user?.displayName === comment.author.displayName;
+    user?.id === comment.authorId || hasPermission(user, 'posts:moderate') || user?.displayName === comment.author.displayName;
 
   return (
     <Modal title="Post" onClose={onClose}>

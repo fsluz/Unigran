@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
-import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
+import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
 import { getPortfolioMlAnalysis, getPortfolioResume, listPublicPortfolioItems } from '../modules/academic/typedbPortfolioStore.js';
 import { listLikedPosts, listReposts, listUserPosts } from '../repositories/post.repository.js';
 
@@ -113,7 +114,7 @@ router.get('/:id/posts', auth, async (req, res) => {
 });
 
 router.get('/:id/liked-posts', auth, async (req, res) => {
-  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+  if (req.user.username !== req.params.id && !hasPermission(req.user, 'system:manage')) {
     return res.status(403).json({ error: 'Sem permissao' });
   }
   try {
@@ -146,7 +147,7 @@ router.get('/:id/portfolio', auth, async (req, res) => {
 
     const stats = await getFollowStats(req.params.id, req.user.username);
     const isOwner = req.user.username === req.params.id;
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+    const isAdmin = hasPermission(req.user, 'posts:moderate');
     const visibility = rows[0]?.visibility || 'public';
     if (visibility === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
       return res.json({ portfolio: [], private: true });
@@ -206,7 +207,7 @@ router.get('/:id', auth, async (req, res) => {
     }
     const stats = await getFollowStats(req.params.id, req.user.username);
     const isOwner = req.user.username === req.params.id;
-    const isAdmin = req.user.role === 'admin' || req.user.role === 'moderator';
+    const isAdmin = hasPermission(req.user, 'posts:moderate');
     if ((row.visibility || 'public') === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
       return res.json({
         user: {
@@ -253,7 +254,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 router.put('/:id', auth, async (req, res) => {
-  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+  if (req.user.username !== req.params.id && !hasPermission(req.user, 'system:manage')) {
     return res.status(403).json({ error: 'Sem permissao' });
   }
 
@@ -446,7 +447,7 @@ router.post('/:id/follow', auth, async (req, res) => {
 
 router.post('/:id/follow-requests/:requester/accept', auth, async (req, res) => {
   try {
-    if (req.user.username !== req.params.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Sem permissao' });
+    if (req.user.username !== req.params.id && !hasPermission(req.user, 'system:manage')) return res.status(403).json({ error: 'Sem permissao' });
     await writeQuery(`
       match
         $requester isa person, has username "${typeqlLiteral(req.params.requester)}";
@@ -475,7 +476,7 @@ router.post('/:id/follow-requests/:requester/accept', auth, async (req, res) => 
 
 router.delete('/:id/follow-requests/:requester', auth, async (req, res) => {
   try {
-    if (req.user.username !== req.params.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Sem permissao' });
+    if (req.user.username !== req.params.id && !hasPermission(req.user, 'system:manage')) return res.status(403).json({ error: 'Sem permissao' });
     await writeQuery(`
       match
         $recipient isa person, has username "${typeqlLiteral(req.params.id)}";
@@ -559,7 +560,7 @@ router.get('/:id/following', auth, async (req, res) => {
 });
 
 router.delete('/:id/followers/:followerId', auth, async (req, res) => {
-  if (req.user.username !== req.params.id && req.user.role !== 'admin') {
+  if (req.user.username !== req.params.id && !hasPermission(req.user, 'system:manage')) {
     return res.status(403).json({ error: 'Sem permissao' });
   }
   try {
@@ -586,7 +587,7 @@ router.delete('/:id/block', auth, async (_req, res) => {
   res.json({ blocked: false });
 });
 
-router.post('/:id/ban', auth, requireRole('admin'), async (req, res) => {
+router.post('/:id/ban', auth, requirePermission('posts:moderate'), async (req, res) => {
   try {
     await writeQuery(`
       match

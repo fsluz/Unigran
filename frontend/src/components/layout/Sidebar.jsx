@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchConversations } from '../../services/conversations';
 import { fetchCommunities } from '../../services/communities';
 import UnigranLogo from './UnigranLogo';
+import { hasPermission } from '../../modules/shared/permissions';
 
 const SOCIAL_NAV = [
   { id: 'home',          label: 'Inicio',        icon: () => (
@@ -132,7 +133,7 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
         <div className="sidebar-wide-section-label">
           <span>Portal academico</span>
         </div>
-        {PORTAL_NAV.map(item => (
+        {hasPermission(user, 'platform:read') && PORTAL_NAV.map(item => (
           <button
             key={item.id}
             className={`sidebar-wide-item ${isActive(item.id) ? 'active' : ''}`}
@@ -143,12 +144,12 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
           </button>
         ))}
 
-        {user?.role === 'admin' && (
+        {(hasPermission(user, 'reports:institution') || hasPermission(user, 'audit:read')) && (
           <>
             <div className="sidebar-wide-section-label">
               <span>Administracao</span>
             </div>
-            <button
+            {hasPermission(user, 'reports:institution') && <button
               className={`sidebar-wide-item ${isActive('masterBi') ? 'active' : ''}`}
               onClick={() => onNavigate('masterBi')}
             >
@@ -161,8 +162,8 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
                 </svg>
               </span>
               <span className="sidebar-wide-label">Master BI</span>
-            </button>
-            <button
+            </button>}
+            {hasPermission(user, 'audit:read') && <button
               className={`sidebar-wide-item ${isActive('auditLogs') ? 'active' : ''}`}
               onClick={() => onNavigate('auditLogs')}
             >
@@ -176,8 +177,8 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
                 </svg>
               </span>
               <span className="sidebar-wide-label">Logs de Auditoria</span>
-            </button>
-            <button
+            </button>}
+            {hasPermission(user, 'reports:institution') && <button
               className={`sidebar-wide-item ${isActive('adminDashboard') ? 'active' : ''}`}
               onClick={() => onNavigate('adminDashboard')}
             >
@@ -190,7 +191,7 @@ export default function Sidebar({ page, onNavigate, searchOpen, dark, onToggleTh
                 </svg>
               </span>
               <span className="sidebar-wide-label">Painel de Gestao</span>
-            </button>
+            </button>}
           </>
         )}
       </div>

@@ -5232,6 +5232,232 @@ img, video { max-width: 100%; }
   margin-top: 16px;
   flex-wrap: wrap;
 }
+.campus-rai-thread { display: grid; gap: 10px; max-height: 390px; overflow-y: auto; padding-top: 12px; }
+.campus-rai-thread > small { color: var(--text-muted); line-height: 1.5; }
+.campus-rai-answer { white-space: pre-wrap; }
+.campus-rai-answer.user { margin-left: 28px; border-color: rgba(106,0,244,.22); background: var(--accent-light); }
+.campus-rai-answer.user strong { color: var(--accent); }
+.campus-rai-pending,
+.campus-rai-error { padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.45; }
+.campus-rai-pending { display: flex; align-items: center; gap: 7px; color: var(--text-muted); background: var(--page-bg); }
+.campus-rai-error { color: var(--red); background: rgba(239,68,68,.1); }
+
+.rai-chat-modal {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+  width: min(510px, calc(100vw - 32px));
+  height: min(650px, calc(100vh - 36px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 22px 66px rgba(0,0,0,.3);
+}
+.rai-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #00a8ff);
+}
+.rai-chat-header strong { display: block; font-size: 15px; }
+.rai-chat-header small { display: block; margin-top: 3px; opacity: .9; font-size: 12px; }
+.rai-chat-actions { display: flex; gap: 4px; }
+.rai-chat-actions button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+.rai-chat-actions button:hover { background: rgba(255,255,255,.18); }
+.rai-chat-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--page-bg);
+}
+.rai-chat-intro {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text-muted);
+}
+.rai-chat-intro strong { display: block; margin-bottom: 6px; color: var(--text); }
+.rai-chat-intro p { margin: 0 0 8px; line-height: 1.5; }
+.rai-message {
+  max-width: 88%;
+  padding: 11px 13px;
+  border-radius: 5px 15px 15px 15px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.rai-message.user {
+  align-self: flex-end;
+  border: 0;
+  border-radius: 15px 15px 5px 15px;
+  color: #fff;
+  background: var(--accent);
+}
+.rai-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; font-size: 14px; }
+.rai-message small { display: block; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
+.rai-message.user small { color: rgba(255,255,255,.85); }
+.rai-chat-loading,
+.rai-chat-error { padding: 10px 12px; border-radius: 12px; font-size: 13px; }
+.rai-chat-loading { display: flex; gap: 8px; align-items: center; color: var(--text-muted); }
+.rai-chat-loading svg { animation: raiSpin 1s linear infinite; }
+.rai-chat-error { color: var(--red); background: rgba(239,68,68,.1); }
+.rai-chat-form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+.rai-chat-form textarea {
+  flex: 1;
+  resize: none;
+  min-height: 45px;
+  max-height: 108px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  font: inherit;
+  color: var(--text);
+  background: var(--page-bg);
+}
+.rai-chat-form textarea:focus { outline: 2px solid var(--accent-light); border-color: var(--accent); }
+.rai-chat-form button {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+}
+.rai-chat-form button:disabled { opacity: .48; cursor: default; }
+@keyframes raiSpin { to { transform: rotate(360deg); } }
+@media (max-width: 580px) {
+  .rai-chat-modal { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: min(680px, calc(100vh - 16px)); }
+}
+
+.portal-entry {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 22px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(30, 64, 175, .44), rgba(4, 8, 30, .96) 52%),
+    #04081e;
+}
+
+.portal-entry-svg {
+  width: min(62vh, 78vw, 620px);
+  height: min(62vh, 78vw, 620px);
+  filter: drop-shadow(0 0 36px rgba(56, 189, 248, .32));
+}
+
+.portal-entry-halo {
+  animation: portal-pulse 1.35s ease-out both;
+  transform-origin: center;
+}
+
+.portal-entry-rings {
+  stroke-width: 3;
+  stroke-dasharray: 15 12;
+  animation: portal-orbit 1.35s cubic-bezier(.18, .8, .3, 1) both;
+  transform-origin: center;
+}
+
+.portal-entry-stars {
+  animation: portal-stars 1.2s ease-in-out infinite alternate;
+}
+
+.portal-entry-glyph {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: portal-mark .75s .18s ease-out both;
+}
+
+.portal-entry-copy {
+  display: grid;
+  gap: 7px;
+  text-align: center;
+  letter-spacing: .04em;
+  animation: portal-copy .55s .25s ease-out both;
+}
+
+.portal-entry-copy strong {
+  font-size: clamp(22px, 4vw, 32px);
+}
+
+.portal-entry-copy span {
+  font-size: clamp(12px, 2vw, 14px);
+  color: rgba(224, 242, 254, .72);
+  text-transform: capitalize;
+}
+
+@keyframes portal-pulse {
+  0% { opacity: 0; transform: scale(.36); }
+  45% { opacity: 1; transform: scale(1); }
+  100% { opacity: .24; transform: scale(1.65); }
+}
+
+@keyframes portal-orbit {
+  from { opacity: 0; transform: rotate(-25deg) scale(.62); }
+  to { opacity: .92; transform: rotate(155deg) scale(1.08); }
+}
+
+@keyframes portal-stars {
+  from { opacity: .25; transform: scale(.94); }
+  to { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes portal-mark {
+  from { opacity: 0; transform: scale(.75); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes portal-copy {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-entry-halo,
+  .portal-entry-rings,
+  .portal-entry-stars,
+  .portal-entry-glyph,
+  .portal-entry-copy {
+    animation-duration: .01ms;
+  }
+}
 
 @media (max-width: 1050px) {
   .portfolio-hero-grid,.recruiter-grid-premium,.resume-console-grid,.portfolio-bi-grid { grid-template-columns: 1fr; }

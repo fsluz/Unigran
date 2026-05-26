@@ -12,6 +12,7 @@ import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUse
 import ImageCropModal from '../components/media/ImageCropModal';
 import ImageLightbox from '../components/media/ImageLightbox';
 import PortfolioIntelligencePage from '../modules/platform/PortfolioIntelligencePage';
+import { normalizeRole } from '../modules/shared/permissions';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
@@ -272,7 +273,7 @@ export default function ProfilePage({ onNavigate }) {
               <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
                 Editar Perfil
               </Button>
-              {user.role === 'admin' && <span className="tag">Admin</span>}
+              {normalizeRole(user.role) !== 'user' && <span className="tag">{normalizeRole(user.role)}</span>}
             </div>
           </div>
 
@@ -460,7 +461,7 @@ export default function ProfilePage({ onNavigate }) {
               ['', 'Email',       user.email],
               ['', 'Telefone',    user.phone],
               ['', 'Instituio', user.institution.split('*')[1]?.trim() || 'UNIGRAN'],
-              ['', 'Funo',     user.role === 'admin' ? 'Administrador' : user.role === 'moderator' ? 'Moderador' : 'Usuario'],
+              ['', 'Funcao',   normalizeRole(user.role)],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>

@@ -29,11 +29,11 @@ export async function fetchPlatformDashboard(token) {
   return readJson(res, 'Erro ao carregar dashboard');
 }
 
-export async function askRai(token, prompt) {
+export async function askRai(token, prompt, messages = [], selectedCourseId = '') {
   const res = await apiFetch('/platform/v1/ai/assistant', {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, messages, selectedCourseId }),
   });
   return readJson(res, 'Erro ao conversar com a RAi');
 }
@@ -253,6 +253,58 @@ export async function assignInstitutionProfessor(token, universityId, semesterId
     body: JSON.stringify(payload),
   });
   return readJson(res, 'Erro ao vincular professor a disciplina');
+}
+
+export async function updateInstitutionUniversity(token, universityId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao atualizar universidade');
+}
+
+export async function deleteInstitutionUniversity(token, universityId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao desativar universidade');
+}
+
+export async function assignInstitutionCoordinator(token, universityId, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/courses/${courseId}/coordinator`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao atribuir coordenador ao curso');
+}
+
+export async function approveInstitutionMembership(token, universityId, membershipId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/memberships/${membershipId}/approve`, {
+    method: 'PATCH',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao aprovar vinculo');
+}
+
+export async function updateInstitutionMembershipRole(token, universityId, membershipId, role) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/memberships/${membershipId}/role`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ role }),
+  });
+  return readJson(res, 'Erro ao definir papel institucional');
+}
+
+export async function requestInstitutionMembership(token, universityId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/memberships/requests`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ role: 'student' }),
+  });
+  return readJson(res, 'Erro ao solicitar matricula');
 }
 
 export async function updateTeacherActivity(token, activityId, payload) {

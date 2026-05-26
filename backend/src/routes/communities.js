@@ -1,13 +1,14 @@
 ﻿import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
-import { auth, requireAtLeast, requireRole } from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
+import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
 import { listCommunityPosts } from '../repositories/post.repository.js';
 
 const router = Router();
 
-function rankAllowsModeration(rank, userRole) {
-  return rank === 'admin' || rank === 'professor' || ['admin', 'moderator'].includes(userRole);
+function rankAllowsModeration(rank, user) {
+  return rank === 'admin' || rank === 'moderator' || hasPermission(user, 'posts:moderate');
 }
 
 async function getCommunityRank({ communityId, username }) {
@@ -191,7 +192,7 @@ router.patch('/:id', auth, async (req, res) => {
   if (!updates.length) return res.status(400).json({ error: 'Nada para salvar' });
   try {
     const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
-    if (!rankAllowsModeration(myRank, req.user.role)) return res.status(403).json({ error: 'Sem permissao' });
+    if (!rankAllowsModeration(myRank, req.user)) return res.status(403).json({ error: 'Sem permissao' });
     await writeQuery(`
       match
         $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
@@ -209,7 +210,7 @@ router.post('/:id/members/:uid', auth, async (req, res) => {
   const now = typeqlDatetime();
   try {
     const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
-    if (!rankAllowsModeration(myRank, req.user.role)) return res.status(403).json({ error: 'Sem permissao' });
+    if (!rankAllowsModeration(myRank, req.user)) return res.status(403).json({ error: 'Sem permissao' });
     await writeQuery(`
       match
         $member isa person, has username "${typeqlLiteral(req.params.uid)}";
@@ -243,7 +244,7 @@ router.delete('/:id/join', auth, async (req, res) => {
 });
 
 /* DELETE /api/communities/:id  admin only */
-router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
+router.delete('/:id', auth, requirePermission('posts:moderate'), async (req, res) => {
   try {
     await writeQuery(`
       match
@@ -258,12 +259,12 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
 /* PUT /api/communities/:id/members/:uid */
 router.put('/:id/members/:uid', auth, async (req, res) => {
   const { rank } = req.body || {};
-  if (!['admin', 'professor', 'moderator', 'member'].includes(rank)) {
+  if (!['admin', 'moderator', 'member'].includes(rank)) {
     return res.status(400).json({ error: 'Cargo invalido' });
   }
   try {
     const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
-    if (!rankAllowsModeration(myRank, req.user.role)) {
+    if (!rankAllowsModeration(myRank, req.user)) {
       return res.status(403).json({ error: 'Sem permissao' });
     }
     await writeQuery(`
@@ -284,7 +285,7 @@ router.put('/:id/members/:uid', auth, async (req, res) => {
 router.delete('/:id/members/:uid', auth, async (req, res) => {
   try {
     const myRank = await getCommunityRank({ communityId: req.params.id, username: req.user.username });
-    if (!rankAllowsModeration(myRank, req.user.role)) {
+    if (!rankAllowsModeration(myRank, req.user)) {
       return res.status(403).json({ error: 'Sem permissao' });
     }
     await writeQuery(`
@@ -302,7 +303,7 @@ router.delete('/:id/members/:uid', auth, async (req, res) => {
   }
 });
 
-router.patch('/:id/moderation', auth, requireAtLeast('community_moderator'), async (req, res) => {
+router.patch('/:id/moderation', auth, requirePermission('posts:moderate'), async (req, res) => {
   const { visibility, description } = req.body || {};
   const updates = [];
   if (visibility === 'public' || visibility === 'private') updates.push(`$g has page-visibility "${visibility}";`);

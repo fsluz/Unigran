@@ -84,8 +84,20 @@ export const CONFIG = {
 
 ### RAi Assistant
 - **Endpoint:** `POST /api/platform/v1/ai/assistant`
-- **Body:** `{ prompt: string }`
-- **Response:** `{ answer: string, sources?: array }`
+- **Body:** `{ prompt: string, messages?: Array<{ role: 'user' | 'assistant', content: string }>, selectedCourseId?: string }`
+- **Response:** `{ answer: string, intent: string, tone: string, profile: string, sources?: array, contextUsed?: object }`
+
+O modal envia o historico recente da conversa, e o painel do AVA envia tambem a disciplina selecionada. O backend recupera somente dados permitidos ao usuario autenticado e os inclui no contexto do RAi.
+
+Para respostas conversacionais, configure no backend um provedor OpenAI-compatible:
+
+```env
+RAI_AI_API_KEY=
+RAI_AI_API_URL=https://api.openai.com/v1/chat/completions
+RAI_AI_MODEL=gpt-4o-mini
+```
+
+Sem `RAI_AI_API_KEY`, a API continua consultando o contexto real do portal, mas retorna apenas fatos verificados e informa que o motor conversacional nao esta configurado.
 
 ## Features
 

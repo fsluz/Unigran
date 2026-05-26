@@ -2,31 +2,29 @@ import jwt from 'jsonwebtoken';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, typeqlLiteral } from '../db/typedb.js';
 import { auditLog } from '../services/audit.service.js';
-import { normalizeUniversityRole, requirePermission } from '../modules/auth/rbac.js';
+import {
+  hasPermission,
+  normalizeUniversityRole,
+  permissionsForRole,
+  requireHierarchyLevel,
+  requirePermission,
+  requireRole,
+  roleLevel,
+} from '../modules/auth/rbac.js';
 
 export const ROLES = {
-  admin: 50,
-  super_admin: 60,
-  management: 50,
-  coordination: 45,
-  administrative: 40,
-  secretary: 40,
-  library: 30,
-  moderator: 40,
-  community_moderator: 30,
-  professor: 20,
-  aluno: 10,
+  user: 0,
   student: 10,
-  user: 10,
+  moderator: 20,
+  secretary: 30,
+  professor: 40,
+  coordination: 50,
+  admin: 60,
+  super_admin: 70,
 };
 
 export function normalizeRole(role) {
-  const normalized = normalizeUniversityRole(role);
-  return ROLES[normalized] ? normalized : 'user';
-}
-
-export function roleLevel(role) {
-  return ROLES[normalizeRole(role)] || 0;
+  return normalizeUniversityRole(role);
 }
 
 function attrBoolTrue(value) {
@@ -72,6 +70,7 @@ export async function auth(req, res, next) {
         throw err;
       }
     }
+    req.user.permissions = permissionsForRole(req.user.role);
     next();
   } catch (err) {
     if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
@@ -82,32 +81,16 @@ export async function auth(req, res, next) {
   }
 }
 
-export function requireRole(...roles) {
-  const allowed = roles.map(normalizeRole);
-  return (req, res, next) => {
-    if (!allowed.includes(normalizeRole(req.user?.role))) {
-      return res.status(403).json({ error: 'Permissao insuficiente' });
-    }
-    next();
-  };
-}
-
 export function requireAtLeast(role) {
-  const min = roleLevel(role);
-  return (req, res, next) => {
-    if (roleLevel(req.user?.role) < min) {
-      return res.status(403).json({ error: 'Permissao insuficiente' });
-    }
-    next();
-  };
+  return requireHierarchyLevel(role);
 }
 
 export function canModerate(user) {
-  return roleLevel(user?.role) >= ROLES.moderator;
+  return hasPermission(user, 'posts:moderate');
 }
 
 export function canAdmin(user) {
-  return normalizeRole(user?.role) === 'admin';
+  return hasPermission(user, 'users:manage');
 }
 
-export { requirePermission };
+export { requirePermission, requireRole, roleLevel };

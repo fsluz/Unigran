@@ -152,6 +152,35 @@ export async function createUniversity(user, payload) {
   return getUniversityHierarchy(id);
 }
 
+export async function updateUniversity(universityId, payload) {
+  await ensureUniversity(universityId);
+  const updates = [
+    payload.name && `$university has name "${safe(payload.name)}";`,
+    payload.logo !== undefined && `$university has institution-logo "${safe(payload.logo)}";`,
+    payload.description !== undefined && `$university has institution-description "${safe(payload.description)}";`,
+    payload.status && `$university has institution-status "${safe(payload.status)}";`,
+    `$university has institution-updated-at ${now()};`,
+  ].filter(Boolean);
+  await writeQuery(`
+    match $university isa educational-institute, has institution-id "${safe(universityId)}";
+    update
+      ${updates.join('\n      ')}
+  `);
+  return getUniversityHierarchy(universityId);
+}
+
+export async function deactivateUniversity(universityId) {
+  await ensureUniversity(universityId);
+  await writeQuery(`
+    match $university isa educational-institute, has institution-id "${safe(universityId)}";
+    update
+      $university has institution-status "inactive";
+      $university has is-active false;
+      $university has institution-updated-at ${now()};
+  `);
+  return { id: universityId, status: 'inactive', deleted: true };
+}
+
 async function ensureUniversity(universityId) {
   const rows = await readQuery(`
     match
@@ -664,9 +693,11 @@ export async function approveMembership(universityId, membershipId) {
       $university isa educational-institute, has institution-id "${safe(universityId)}";
       $membership isa institution-membership, links (university: $university, member: $member),
         has institution-membership-id "${safe(membershipId)}",
+        has institution-role $role,
         has institution-status $old_status,
         has institution-updated-at $old_updated;
-    fetch { "membership": { $membership.* } };
+      $member has username $username;
+    fetch { "membership": { $membership.* }, "role": $role, "username": $username };
   `);
   if (!rows.length) throw appError('Vinculo institucional nao encontrado', 404);
   await writeQuery(`
@@ -683,5 +714,75 @@ export async function approveMembership(universityId, membershipId) {
       $membership has institution-status "approved";
       $membership has institution-updated-at ${now()};
   `);
+  if (rows[0].role === 'student') {
+    await writeQuery(`
+      match $member isa person, has username "${safe(rows[0].username)}", has user-role "user";
+      update $member has user-role "student";
+    `).catch(() => null);
+  }
   return listMemberships(universityId);
+}
+
+export async function setMembershipRole(universityId, membershipId, role) {
+  const rows = await readQuery(`
+    match
+      $university isa educational-institute, has institution-id "${safe(universityId)}";
+      $member isa person, has username $username;
+      $membership isa institution-membership, links (university: $university, member: $member),
+        has institution-membership-id "${safe(membershipId)}",
+        has institution-role $old_role;
+    fetch { "username": $username, "role": $old_role };
+  `);
+  if (!rows.length) throw appError('Vinculo institucional nao encontrado', 404);
+  await writeQuery(`
+    match
+      $university isa educational-institute, has institution-id "${safe(universityId)}";
+      $member isa person, has username "${safe(rows[0].username)}";
+      $membership isa institution-membership, links (university: $university, member: $member),
+        has institution-membership-id "${safe(membershipId)}",
+        has institution-role $old_role;
+    delete $membership has institution-role $old_role;
+    insert $membership has institution-role "${safe(role)}";
+  `);
+  await writeQuery(`
+    match $member isa person, has username "${safe(rows[0].username)}";
+    update $member has user-role "${safe(role)}";
+  `);
+  return listMemberships(universityId);
+}
+
+export async function assignCoordinatorToCourse(universityId, courseId, payload) {
+  await assertCourseInUniversity(universityId, courseId);
+  const candidate = await readQuery(`
+    match
+      $coordinator isa person, has username "${safe(payload.username)}", has user-role $role;
+      $university isa educational-institute, has institution-id "${safe(universityId)}";
+      $membership isa institution-membership, links (member: $coordinator, university: $university),
+        has institution-status "approved";
+    fetch { "role": $role };
+  `);
+  if (!candidate.length || !['coordination', 'coordinator'].includes(String(candidate[0].role || '').toLowerCase())) {
+    throw appError('Coordenador precisa ter role coordination e vinculo aprovado nesta instituicao', 400);
+  }
+  const assigned = await readQuery(`
+    match
+      $coordinator isa person, has username "${safe(payload.username)}";
+      $course isa institution-course, has institution-course-id "${safe(courseId)}";
+      $scope isa institution-course-coordination, links (coordinator: $coordinator, course: $course);
+    fetch { "scope": { $scope.* } };
+  `);
+  if (!assigned.length) {
+    const createdAt = now();
+    await writeQuery(`
+      match
+        $coordinator isa person, has username "${safe(payload.username)}";
+        $course isa institution-course, has institution-course-id "${safe(courseId)}";
+      insert
+        $scope isa institution-course-coordination, links (coordinator: $coordinator, course: $course),
+          has institution-status "approved",
+          has institution-created-at ${createdAt},
+          has institution-updated-at ${createdAt};
+    `);
+  }
+  return { universityId, courseId, username: payload.username, role: 'coordination', status: 'approved' };
 }

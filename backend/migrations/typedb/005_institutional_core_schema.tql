@@ -14,14 +14,12 @@ attribute institution-description, value string;
 attribute institution-status, value string @values("pending", "approved", "inactive");
 attribute institution-membership-id, value string;
 attribute institution-role, value string @values(
-  "university_admin",
-  "coordinator",
+  "admin",
+  "coordination",
   "professor",
   "secretary",
-  "library",
   "student",
-  "moderator",
-  "community_moderator"
+  "moderator"
 );
 attribute institution-campus-id, value string;
 attribute institution-course-id, value string;

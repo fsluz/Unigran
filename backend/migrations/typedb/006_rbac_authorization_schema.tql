@@ -1,0 +1,67 @@
+# RBAC catalog and scoped authorization links.
+# The role catalog is populated by scripts/seed-rbac-data.js after this schema is applied.
+# Legacy institution values remain accepted only so existing memberships can be migrated safely.
+
+redefine
+institution-role value string @values(
+  "admin",
+  "coordination",
+  "professor",
+  "secretary",
+  "student",
+  "moderator",
+  "university_admin",
+  "coordinator",
+  "library",
+  "community_moderator"
+);
+
+define
+attribute rbac-role-key, value string;
+attribute rbac-permission-key, value string;
+attribute rbac-module, value string;
+attribute rbac-level, value integer;
+attribute rbac-scope-type, value string @values("global", "institution", "course", "class");
+attribute rbac-scope-id, value string;
+attribute rbac-assignment-status, value string @values("active", "inactive");
+
+entity rbac-role,
+  owns rbac-role-key @key,
+  owns rbac-level,
+  plays rbac-role-permission:role,
+  plays rbac-role-inheritance:child,
+  plays rbac-role-inheritance:parent,
+  plays user-rbac-role:role;
+
+entity rbac-permission,
+  owns rbac-permission-key @key,
+  owns rbac-module,
+  plays rbac-role-permission:permission;
+
+relation rbac-role-permission,
+  relates role,
+  relates permission;
+
+relation rbac-role-inheritance,
+  relates child,
+  relates parent;
+
+relation user-rbac-role,
+  relates user,
+  relates role,
+  owns rbac-scope-type,
+  owns rbac-scope-id @card(0..1),
+  owns rbac-assignment-status;
+
+relation institution-course-coordination,
+  relates coordinator,
+  relates course,
+  owns institution-status,
+  owns institution-created-at,
+  owns institution-updated-at;
+
+person
+  plays user-rbac-role:user,
+  plays institution-course-coordination:coordinator;
+
+institution-course plays institution-course-coordination:course;

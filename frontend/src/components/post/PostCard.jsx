@@ -6,6 +6,7 @@ import { relativeTime } from '../../utils/time';
 import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
 import { apiFetch, authHeaders } from '../../utils/api';
 import ImageLightbox from '../media/ImageLightbox';
+import { hasPermission } from '../../modules/shared/permissions';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -344,7 +345,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const [lightbox, setLightbox] = useState(null);
 
   const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
-  const canDelete = Boolean(onDelete) && (isOwner || user?.role === 'admin' || user?.role === 'moderator');
+  const canDelete = Boolean(onDelete) && (isOwner || hasPermission(user, 'posts:moderate'));
   const embeds = getEmbeds(post.content || '');
   const portfolio = getPortfolioPost(post);
   const portfolioLink = portfolio?.externalLink ? portfolioLinkMeta(portfolio.externalLink, portfolio.externalKind) : null;
@@ -449,7 +450,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const menuItems = [
     ...(isOwner && onEdit ? [{ icon: '', label: 'Editar post', onClick: () => setEditing(true) }] : []),
     ...(canDelete ? [{ icon: 'x', label: 'Excluir post', danger: true, onClick: deleteCurrentPost }] : []),
-    ...(user?.role === 'admin' && !isOwner ? [{ icon: 'x', label: 'Banir usuario', danger: true, onClick: () => banAuthor().catch(err => showToast(err.message, '!')) }] : []),
+    ...(hasPermission(user, 'posts:moderate') && !isOwner ? [{ icon: 'x', label: 'Banir usuario', danger: true, onClick: () => banAuthor().catch(err => showToast(err.message, '!')) }] : []),
     'sep',
     { icon: '', label: 'Reportar', onClick: async () => { await reportPost({ token, postId: post.id }).catch(() => null); showToast('Post reportado', ''); } },
   ];

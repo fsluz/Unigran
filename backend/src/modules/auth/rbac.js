@@ -1,86 +1,281 @@
 import { readQuery, typeqlLiteral } from '../../db/typedb.js';
 
+export const ROLE_HIERARCHY = [
+  'user',
+  'student',
+  'moderator',
+  'secretary',
+  'professor',
+  'coordination',
+  'admin',
+  'super_admin',
+];
+
 export const ROLE_ALIASES = {
   ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
   USER: 'user',
-  admin: 'admin',
-  super_admin: 'super_admin',
-  user: 'user',
-  estudante: 'aluno',
+  aluno: 'student',
+  estudante: 'student',
+  community_moderator: 'moderator',
+  administrativo: 'secretary',
+  administrative: 'secretary',
+  secretaria: 'secretary',
+  library: 'secretary',
+  biblioteca: 'secretary',
   coordenacao: 'coordination',
   coordenacao_academica: 'coordination',
-  administrativo: 'administrative',
-  secretaria: 'secretary',
-  biblioteca: 'library',
-  gestao: 'management',
+  coordinator: 'coordination',
+  university_admin: 'admin',
+  gestao: 'admin',
+  management: 'admin',
 };
 
-export const PERMISSIONS = {
-  'platform.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
-  'academic.student.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'academic.teacher.manage': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'academic.coordination.read': ['coordination', 'management', 'admin', 'super_admin'],
-  'institution.manage': ['management', 'admin', 'super_admin'],
-  'institution.create': ['super_admin'],
-  'secretary.manage': ['administrative', 'secretary', 'management', 'admin', 'super_admin'],
-  'library.manage': ['library', 'management', 'admin', 'super_admin'],
-  'analytics.read': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'ai.use': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
-  'rbac.manage': ['admin', 'super_admin'],
+// Only incremental capabilities live here. Higher roles inherit every lower role.
+export const DIRECT_ROLE_PERMISSIONS = {
+  user: [
+    'platform:read',
+    'posts:read',
+    'posts:create',
+    'profile:update',
+    'enrollments:request',
+  ],
+  student: [
+    'academic:read',
+    'courses:read',
+    'classes:read',
+    'submissions:create',
+    'enrollments:read',
+  ],
+  moderator: [
+    'posts:moderate',
+    'reports:read',
+    'reports:update',
+    'reports:resolve',
+    'users:flag',
+    'messages:initiate',
+  ],
+  secretary: [
+    'institutions:read',
+    'users:read',
+    'enrollments:manage',
+    'documents:manage',
+    'academic:update',
+  ],
+  professor: [
+    'classes:manage',
+    'academic:publish',
+    'academic:grade',
+    'academic:progress',
+    'messages:initiate',
+  ],
+  coordination: [
+    'courses:manage',
+    'classes:manage',
+    'academic:manage',
+    'users:approve',
+  ],
+  admin: [
+    'faculties:manage',
+    'departments:manage',
+    'users:manage',
+    'roles:assign',
+    'reports:institution',
+  ],
+  super_admin: [
+    'institutions:manage',
+    'roles:manage',
+    'permissions:manage',
+    'audit:manage',
+    'system:manage',
+  ],
+};
+
+const LEGACY_PERMISSIONS = {
+  'platform.read': 'platform:read',
+  'academic.student.read': 'academic:read',
+  'academic.teacher.manage': 'academic:publish',
+  'academic.coordination.read': 'academic:manage',
+  'institution.manage': 'faculties:manage',
+  'institution.create': 'institutions:create',
+  'secretary.manage': 'enrollments:manage',
+  'analytics.read': 'reports:institution',
+  'ai.use': 'platform:read',
+  'rbac.manage': 'permissions:manage',
 };
 
 export function normalizeUniversityRole(role) {
   const raw = String(role || 'user').trim();
-  return ROLE_ALIASES[raw] || raw;
+  const lower = raw.toLowerCase();
+  const normalized = ROLE_ALIASES[raw] || ROLE_ALIASES[lower] || lower;
+  return ROLE_HIERARCHY.includes(normalized) ? normalized : 'user';
 }
 
-export function hasPermission(userOrRole, permission) {
+export function roleLevel(role) {
+  return ROLE_HIERARCHY.indexOf(normalizeUniversityRole(role));
+}
+
+export function permissionsForRole(role) {
+  const level = roleLevel(role);
+  const permissions = new Set();
+  ROLE_HIERARCHY.slice(0, level + 1).forEach(item => {
+    DIRECT_ROLE_PERMISSIONS[item].forEach(permission => permissions.add(permission));
+  });
+  return [...permissions];
+}
+
+function canonicalPermission(permission) {
+  return LEGACY_PERMISSIONS[permission] || permission;
+}
+
+export function hasPermission(userOrRole, requestedPermission) {
+  const permission = canonicalPermission(requestedPermission);
   const role = typeof userOrRole === 'string' ? userOrRole : userOrRole?.role;
-  const normalized = normalizeUniversityRole(role);
-  const allowed = PERMISSIONS[permission] || [];
-  return allowed.includes(normalized);
+  const permissions = Array.isArray(userOrRole?.permissions)
+    ? userOrRole.permissions
+    : permissionsForRole(role);
+  if (permissions.includes(permission)) return true;
+  const [resource] = permission.split(':');
+  return permissions.includes(`${resource}:manage`);
 }
 
 export function requirePermission(permission) {
   return (req, res, next) => {
     if (!hasPermission(req.user, permission)) {
-      return res.status(403).json({ error: 'Permissao insuficiente', permission });
+      return res.status(403).json({ error: 'Permissao insuficiente', permission: canonicalPermission(permission) });
     }
-    next();
+    return next();
   };
 }
 
-export function permissionsForRole(role) {
-  return Object.keys(PERMISSIONS).filter(permission => hasPermission(role, permission));
+export function requireRole(...roles) {
+  const allowed = roles.map(normalizeUniversityRole);
+  return (req, res, next) => {
+    if (!allowed.includes(normalizeUniversityRole(req.user?.role))) {
+      return res.status(403).json({ error: 'Permissao insuficiente' });
+    }
+    return next();
+  };
 }
 
-export function requireInstitutionRole(...roles) {
-  const allowed = roles.map(role => String(role || '').trim().toLowerCase());
-  return async (req, res, next) => {
-    if (normalizeUniversityRole(req.user?.role) === 'super_admin') return next();
-    const universityId = req.params?.universityId || req.body?.universityId;
-    if (!universityId || !req.user?.username) {
-      return res.status(403).json({ error: 'Vinculo institucional obrigatorio' });
+export function requireHierarchyLevel(role) {
+  const minimum = roleLevel(role);
+  return (req, res, next) => {
+    if (roleLevel(req.user?.role) < minimum) {
+      return res.status(403).json({ error: 'Permissao insuficiente' });
     }
+    return next();
+  };
+}
 
+async function approvedInstitutionRoles(username, universityId) {
+  return readQuery(`
+    match
+      $member isa person, has username "${typeqlLiteral(username)}";
+      $university isa educational-institute, has institution-id "${typeqlLiteral(universityId)}";
+      $membership isa institution-membership, links (member: $member, university: $university),
+        has institution-role $role,
+        has institution-status "approved";
+    fetch { "role": $role };
+  `);
+}
+
+export async function canAccessInstitution(user, institutionId, permission = 'institutions:read') {
+  if (!hasPermission(user, permission)) return false;
+  if (normalizeUniversityRole(user?.role) === 'super_admin') return true;
+  if (!institutionId || !user?.username) return false;
+  const memberships = await approvedInstitutionRoles(user.username, institutionId);
+  return memberships.some(row => hasPermission(normalizeUniversityRole(row.role), permission));
+}
+
+export async function canAccessCourse(user, institutionId, courseId, permission = 'courses:read') {
+  if (!(await canAccessInstitution(user, institutionId, permission))) return false;
+  if (normalizeUniversityRole(user?.role) !== 'coordination' || !courseId) return true;
+  const rows = await readQuery(`
+    match
+      $member isa person, has username "${typeqlLiteral(user.username)}";
+      $course isa institution-course, has institution-course-id "${typeqlLiteral(courseId)}";
+      $scope isa institution-course-coordination, links (coordinator: $member, course: $course),
+        has institution-status "approved";
+    fetch { "scope": { $scope.* } };
+  `);
+  return rows.length > 0;
+}
+
+export async function canAccessClass(user, institutionId, classId, permission = 'classes:read') {
+  if (!(await canAccessInstitution(user, institutionId, permission))) return false;
+  if (normalizeUniversityRole(user?.role) !== 'professor' || !classId) return true;
+  const rows = await readQuery(`
+    match
+      $professor isa person, has username "${typeqlLiteral(user.username)}";
+      $class isa institution-class-group, has institution-class-group-id "${typeqlLiteral(classId)}";
+      institution-class-subject(class-group: $class, subject: $subject);
+      institution-professor-subject(professor: $professor, subject: $subject, semester: $semester),
+        has institution-status "active";
+    fetch { "class": { $class.* } };
+  `);
+  return rows.length > 0;
+}
+
+export async function canManageUser(currentUser, targetRole, targetUsername) {
+  const actorRole = normalizeUniversityRole(currentUser?.role);
+  const normalizedTargetRole = normalizeUniversityRole(targetRole);
+  if (actorRole === 'super_admin') return true;
+  if (actorRole !== 'admin' || roleLevel(normalizedTargetRole) >= roleLevel('admin')) return false;
+  if (!targetUsername || !currentUser?.username) return false;
+  const rows = await readQuery(`
+    match
+      $actor isa person, has username "${typeqlLiteral(currentUser.username)}";
+      $target isa person, has username "${typeqlLiteral(targetUsername)}";
+      $university isa educational-institute;
+      $actor_membership isa institution-membership, links (member: $actor, university: $university),
+        has institution-role $actor_role, has institution-status "approved";
+      $target_membership isa institution-membership, links (member: $target, university: $university),
+        has institution-status "approved";
+    fetch { "role": $actor_role };
+  `);
+  return rows.some(row => normalizeUniversityRole(row.role) === 'admin');
+}
+
+export function requireInstitutionPermission(permission) {
+  return async (req, res, next) => {
     try {
-      const rows = await readQuery(`
-        match
-          $member isa person, has username "${typeqlLiteral(req.user.username)}";
-          $university isa educational-institute, has institution-id "${typeqlLiteral(universityId)}";
-          $membership isa institution-membership, links (member: $member, university: $university),
-            has institution-role $role,
-            has institution-status "approved";
-        fetch { "role": $role };
-      `);
-      const role = rows.map(row => String(row.role || '').toLowerCase()).find(item => allowed.includes(item));
-      if (!role) return res.status(403).json({ error: 'Permissao institucional insuficiente' });
-      req.institutionMembership = { universityId, role };
+      const institutionId = req.params?.universityId || req.body?.universityId;
+      if (!(await canAccessInstitution(req.user, institutionId, permission))) {
+        return res.status(403).json({ error: 'Permissao institucional insuficiente', permission });
+      }
       return next();
     } catch (err) {
       console.error('[institution rbac]', err);
       return res.status(503).json({ error: 'Nao foi possivel validar o vinculo institucional' });
+    }
+  };
+}
+
+export function requireCoursePermission(permission) {
+  return async (req, res, next) => {
+    try {
+      if (!(await canAccessCourse(req.user, req.params.universityId, req.params.courseId, permission))) {
+        return res.status(403).json({ error: 'Curso fora do escopo autorizado', permission });
+      }
+      return next();
+    } catch (err) {
+      console.error('[course rbac]', err);
+      return res.status(503).json({ error: 'Nao foi possivel validar o escopo do curso' });
+    }
+  };
+}
+
+export function requireClassPermission(permission) {
+  return async (req, res, next) => {
+    try {
+      if (!(await canAccessClass(req.user, req.params.universityId, req.params.classGroupId, permission))) {
+        return res.status(403).json({ error: 'Turma fora do escopo autorizado', permission });
+      }
+      return next();
+    } catch (err) {
+      console.error('[class rbac]', err);
+      return res.status(503).json({ error: 'Nao foi possivel validar o escopo da turma' });
     }
   };
 }

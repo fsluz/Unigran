@@ -16,6 +16,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
 import {
   assignInstitutionProfessor,
+  assignInstitutionCoordinator,
+  approveInstitutionMembership,
   createInstitutionAvaOffering,
   createInstitutionCampus,
   createInstitutionClassGroup,
@@ -23,11 +25,15 @@ import {
   createInstitutionSemester,
   createInstitutionSubject,
   createInstitutionUniversity,
+  updateInstitutionUniversity,
+  deleteInstitutionUniversity,
   enrollInstitutionStudent,
   fetchAva,
   fetchUniversities,
   fetchUniversity,
   linkInstitutionSubjectToClass,
+  updateInstitutionMembershipRole,
+  requestInstitutionMembership,
 } from './platform';
 
 const pageVariants = {
@@ -38,12 +44,12 @@ const pageVariants = {
 const roleLabels = {
   super_admin: 'Super Admin',
   admin: 'Administrador',
-  management: 'Gestao Institucional',
   coordination: 'Coordenacao',
   professor: 'Professor',
-  aluno: 'Aluno',
+  secretary: 'Secretaria',
+  moderator: 'Moderador',
   student: 'Aluno',
-  user: 'Aluno',
+  user: 'Usuario',
 };
 
 function PortalCard({ title, text, icon: Icon = Activity, tone = 'default', children }) {
@@ -109,6 +115,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [institutionData, setInstitutionData] = useState(null);
   const [selectedUniversityId, setSelectedUniversityId] = useState('');
   const [universityDraft, setUniversityDraft] = useState({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
+  const [universityEdit, setUniversityEdit] = useState({ name: '', description: '', logo: '', status: 'approved' });
   const [campusDraft, setCampusDraft] = useState({ name: '', city: '', state: '' });
   const [courseDraft, setCourseDraft] = useState({ campusId: '', name: '', degreeType: 'bachelor', duration: 8 });
   const [semesterDraft, setSemesterDraft] = useState({ courseId: '', year: new Date().getFullYear(), period: 1, active: true });
@@ -126,6 +133,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   });
   const [studentDraft, setStudentDraft] = useState({ classGroupId: '', username: '', registration: '' });
   const [professorDraft, setProfessorDraft] = useState({ semesterId: '', subjectId: '', username: '' });
+  const [coordinatorDraft, setCoordinatorDraft] = useState({ courseId: '', username: '' });
 
   const reload = async () => {
     setLoading(true);
@@ -141,8 +149,12 @@ export default function AcademicPortalPage({ onOpenAva }) {
   };
 
   useEffect(() => {
-    reload();
-  }, [token]);
+    if (hasPermission(user, 'academic:read')) reload();
+    else {
+      setLoading(false);
+      setError('');
+    }
+  }, [token, user?.permissions]);
 
   const loadInstitution = async (preferredId = selectedUniversityId) => {
     const data = await fetchUniversities(token);
@@ -150,7 +162,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     setUniversities(list);
     const nextId = preferredId || list[0]?.id || '';
     setSelectedUniversityId(nextId);
-    if (nextId) setInstitutionData(await fetchUniversity(token, nextId));
+    if (nextId && hasPermission(user, 'institutions:read')) setInstitutionData(await fetchUniversity(token, nextId));
     else setInstitutionData(null);
   };
 
@@ -161,20 +173,33 @@ export default function AcademicPortalPage({ onOpenAva }) {
     });
   }, [token]);
 
+  useEffect(() => {
+    const university = institutionData?.university;
+    if (!university) return;
+    setUniversityEdit({
+      name: university.name || '',
+      description: university.description || '',
+      logo: university.logo || '',
+      status: university.status || 'approved',
+    });
+  }, [institutionData?.university?.id]);
+
   const role = normalizeRole(user?.role);
   const courses = ava?.courses || [];
   const summary = ava?.summary || {};
   const teacherDashboard = ava?.teacherDashboard || {};
   const portfolio = ava?.portfolio || [];
   const institution = ava?.institution;
-  const canTeach = hasPermission(user, 'academic.teacher.manage');
-  const canCoordinate = hasPermission(user, 'academic.coordination.read');
-  const canManage = hasPermission(user, 'institution.manage');
-  const canCreateInstitution = hasPermission(user, 'institution.create');
+  const canTeach = hasPermission(user, 'academic:publish');
+  const canCoordinate = hasPermission(user, 'academic:manage');
+  const canManage = hasPermission(user, 'reports:institution');
+  const canCreateInstitution = hasPermission(user, 'institutions:create');
+  const canAssignRoles = hasPermission(user, 'roles:assign');
+  const canStudy = hasPermission(user, 'academic:read');
 
   const tabs = useMemo(() => [
     { id: 'home', label: 'Inicio', icon: PanelsTopLeft, visible: true },
-    { id: 'student', label: 'Aluno', icon: BookOpen, visible: hasPermission(user, 'academic.student.read') },
+    { id: 'student', label: 'Aluno', icon: BookOpen, visible: hasPermission(user, 'academic:read') },
     { id: 'teacher', label: 'Professor', icon: GraduationCap, visible: canTeach },
     { id: 'coordination', label: 'Coordenacao', icon: Users, visible: canCoordinate },
     { id: 'management', label: 'Indicadores', icon: BarChart3, visible: canManage },
@@ -315,8 +340,83 @@ export default function AcademicPortalPage({ onOpenAva }) {
     }
   };
 
+  const updateSelectedUniversity = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId) return;
+    try {
+      await refreshInstitution(await updateInstitutionUniversity(token, selectedUniversityId, universityEdit));
+      showToast('Universidade atualizada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao atualizar universidade', '!');
+    }
+  };
+
+  const deactivateSelectedUniversity = async () => {
+    if (!selectedUniversityId || !window.confirm('Desativar esta universidade?')) return;
+    try {
+      await deleteInstitutionUniversity(token, selectedUniversityId);
+      await loadInstitution('');
+      showToast('Universidade desativada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao desativar universidade', '!');
+    }
+  };
+
+  const assignCoordinator = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !coordinatorDraft.courseId) return;
+    try {
+      await assignInstitutionCoordinator(token, selectedUniversityId, coordinatorDraft.courseId, coordinatorDraft);
+      setCoordinatorDraft(prev => ({ ...prev, username: '' }));
+      showToast('Coordenador atribuido ao curso', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao atribuir coordenador', '!');
+    }
+  };
+
+  const approveMembership = async (membershipId) => {
+    try {
+      const result = await approveInstitutionMembership(token, selectedUniversityId, membershipId);
+      setInstitutionData(prev => ({ ...prev, memberships: result.memberships || [] }));
+      showToast('Vinculo aprovado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao aprovar vinculo', '!');
+    }
+  };
+
+  const changeMembershipRole = async (membershipId, nextRole) => {
+    try {
+      const result = await updateInstitutionMembershipRole(token, selectedUniversityId, membershipId, nextRole);
+      setInstitutionData(prev => ({ ...prev, memberships: result.memberships || [] }));
+      showToast('Papel institucional atualizado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao definir papel', '!');
+    }
+  };
+
+  const requestEnrollment = async () => {
+    if (!selectedUniversityId) return;
+    try {
+      await requestInstitutionMembership(token, selectedUniversityId);
+      showToast('Solicitacao enviada para aprovacao', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao solicitar matricula', '!');
+    }
+  };
+
   const renderSummary = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
+      {!canStudy && (
+        <PortalCard title="Solicitar acesso academico" text="Escolha uma instituicao e aguarde aprovacao para acessar turmas e materiais." tone="wide" icon={GraduationCap}>
+          <form className="academic-form" onSubmit={event => { event.preventDefault(); requestEnrollment(); }}>
+            <select value={selectedUniversityId} onChange={event => setSelectedUniversityId(event.target.value)} required>
+              <option value="">Selecione uma instituicao</option>
+              {universities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <button className="btn btn-primary" disabled={!selectedUniversityId}>Solicitar matricula</button>
+          </form>
+        </PortalCard>
+      )}
       <PortalCard title="Resumo academico" text="Indicadores calculados a partir das disciplinas acessiveis no TypeDB." tone="wide" icon={Activity}>
         <div className="academic-metric-grid">
           <Stat label="Disciplinas" value={String(courses.length)} hint="vinculos ativos" icon={BookOpen} />
@@ -401,6 +501,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     const semesters = institutionData?.semesters || [];
     const classGroups = institutionData?.classGroups || [];
     const subjects = institutionData?.subjects || [];
+    const memberships = institutionData?.memberships || [];
     return (
       <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
         <PortalCard title="Universidade" text="Selecione a raiz institucional persistida no TypeDB." tone="wide" icon={GraduationCap}>
@@ -426,6 +527,22 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <input value={universityDraft.logo} onChange={event => setUniversityDraft(prev => ({ ...prev, logo: event.target.value }))} placeholder="URL do logo Cloudinary (opcional)" />
               <textarea value={universityDraft.description} onChange={event => setUniversityDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
               <button className="btn btn-primary">Criar universidade</button>
+            </form>
+          </PortalCard>
+        )}
+        {canCreateInstitution && institutionData?.university && (
+          <PortalCard title="Administrar universidade" text="Edicao e desativacao sao exclusivas do controle global." tone="wide" icon={GraduationCap}>
+            <form className="academic-form" onSubmit={updateSelectedUniversity}>
+              <input value={universityEdit.name} onChange={event => setUniversityEdit(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome" required />
+              <input value={universityEdit.logo} onChange={event => setUniversityEdit(prev => ({ ...prev, logo: event.target.value }))} placeholder="URL do logo" />
+              <textarea value={universityEdit.description} onChange={event => setUniversityEdit(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
+              <select value={universityEdit.status} onChange={event => setUniversityEdit(prev => ({ ...prev, status: event.target.value }))}>
+                <option value="approved">approved</option>
+                <option value="pending">pending</option>
+                <option value="inactive">inactive</option>
+              </select>
+              <button className="btn btn-primary">Salvar universidade</button>
+              <button className="btn btn-secondary" type="button" onClick={deactivateSelectedUniversity}>Desativar universidade</button>
             </form>
           </PortalCard>
         )}
@@ -532,6 +649,38 @@ export default function AcademicPortalPage({ onOpenAva }) {
             <input value={professorDraft.username} onChange={event => setProfessorDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do professor" required />
             <button className="btn btn-primary" disabled={!semesters.length || !subjects.length}>Vincular professor</button>
           </form>
+          {canAssignRoles && (
+            <form className="academic-form" onSubmit={assignCoordinator}>
+              <select value={coordinatorDraft.courseId} onChange={event => setCoordinatorDraft(prev => ({ ...prev, courseId: event.target.value }))} required>
+                <option value="">Curso coordenado</option>
+                {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+              <input value={coordinatorDraft.username} onChange={event => setCoordinatorDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do coordenador" required />
+              <button className="btn btn-primary" disabled={!institutionCourses.length}>Atribuir coordenador</button>
+            </form>
+          )}
+          {memberships.length > 0 && (
+            <div className="academic-table-list">
+              {memberships.map(member => (
+                <div key={member.id}>
+                  <span>{member.name}<small>@{member.username} - {member.status}</small></span>
+                  {member.status !== 'approved' && hasPermission(user, 'enrollments:update') && (
+                    <button className="btn btn-secondary" onClick={() => approveMembership(member.id)}>Aprovar</button>
+                  )}
+                  {canAssignRoles && member.status === 'approved' && (
+                    <select value={member.role} onChange={event => changeMembershipRole(member.id, event.target.value)}>
+                      {hasPermission(user, 'permissions:manage') && <option value="admin">admin</option>}
+                      <option value="coordination">coordination</option>
+                      <option value="professor">professor</option>
+                      <option value="secretary">secretary</option>
+                      <option value="moderator">moderator</option>
+                      <option value="student">student</option>
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </PortalCard>
       </motion.section>
     );
@@ -583,9 +732,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <p>Ola, {user?.displayName || user?.username}. Os dados desta area sao carregados das suas relacoes academicas persistidas.</p>
             </div>
             <div className="academic-hero-actions">
-              <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>
-                Entrar no AVA <ArrowUpRight size={16} />
-              </button>
+              {canStudy && (
+                <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>
+                  Entrar no AVA <ArrowUpRight size={16} />
+                </button>
+              )}
             </div>
           </section>
           {content()}

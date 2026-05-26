@@ -6,6 +6,7 @@ import PostComposer from '../post/PostComposer';
 import PostCard from '../post/PostCard';
 import { fetchCommunityPosts } from '../../services/communities';
 import { createPost } from '../../services/posts';
+import { hasPermission } from '../../modules/shared/permissions';
 
 export default function CommunityDetail({ community, onBack, onUpdate }) {
   const { token, user } = useAuth();
@@ -13,7 +14,7 @@ export default function CommunityDetail({ community, onBack, onUpdate }) {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
-  const isPlatformAdmin = user?.role === 'admin';
+  const isPlatformAdmin = hasPermission(user, 'posts:moderate');
   const isCommunityAdmin = community.role === 'admin';
   const canSeeContent = community.joined || community.type === 'public';
 

@@ -1,40 +1,68 @@
-export const ROLE_ALIASES = {
+import { useAuth } from '../../contexts/AuthContext';
+
+const ROLE_ALIASES = {
   ADMIN: 'admin',
   SUPER_ADMIN: 'super_admin',
   USER: 'user',
-  admin: 'admin',
-  super_admin: 'super_admin',
-  user: 'user',
-  estudante: 'aluno',
+  aluno: 'student',
+  estudante: 'student',
+  administrative: 'secretary',
+  administrativo: 'secretary',
+  library: 'secretary',
+  biblioteca: 'secretary',
+  community_moderator: 'moderator',
   coordenacao: 'coordination',
   coordenacao_academica: 'coordination',
-  administrativo: 'administrative',
-  secretaria: 'secretary',
-  biblioteca: 'library',
-  gestao: 'management',
+  coordinator: 'coordination',
+  management: 'admin',
+  gestao: 'admin',
+  university_admin: 'admin',
 };
 
-export const PERMISSIONS = {
-  'platform.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
-  'academic.student.read': ['aluno', 'student', 'user', 'professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'academic.teacher.manage': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'academic.coordination.read': ['coordination', 'management', 'admin', 'super_admin'],
-  'institution.manage': ['management', 'admin', 'super_admin'],
-  'institution.create': ['super_admin'],
-  'secretary.manage': ['administrative', 'secretary', 'management', 'admin', 'super_admin'],
-  'library.manage': ['library', 'management', 'admin', 'super_admin'],
-  'analytics.read': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
-  'ai.use': ['aluno', 'student', 'user', 'professor', 'coordination', 'administrative', 'secretary', 'library', 'management', 'admin', 'super_admin'],
-  'rbac.manage': ['admin', 'super_admin'],
+const LEGACY_PERMISSIONS = {
+  'platform.read': 'platform:read',
+  'academic.student.read': 'academic:read',
+  'academic.teacher.manage': 'academic:publish',
+  'academic.coordination.read': 'academic:manage',
+  'institution.manage': 'faculties:manage',
+  'institution.create': 'institutions:create',
+  'secretary.manage': 'enrollments:manage',
+  'analytics.read': 'reports:institution',
+  'ai.use': 'platform:read',
+  'rbac.manage': 'permissions:manage',
 };
+
+function canonicalPermission(permission) {
+  return LEGACY_PERMISSIONS[permission] || permission;
+}
 
 export function normalizeRole(role) {
   const raw = String(role || 'user').trim();
-  return ROLE_ALIASES[raw] || raw;
+  return ROLE_ALIASES[raw] || ROLE_ALIASES[raw.toLowerCase()] || raw.toLowerCase();
 }
 
-export function hasPermission(userOrRole, permission) {
-  const role = normalizeRole(typeof userOrRole === 'string' ? userOrRole : userOrRole?.role);
-  const allowed = PERMISSIONS[permission] || [];
-  return allowed.includes(role);
+export function hasPermission(user, requestedPermission) {
+  const permission = canonicalPermission(requestedPermission);
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  if (permissions.includes(permission)) return true;
+  const [resource] = permission.split(':');
+  return permissions.includes(`${resource}:manage`);
+}
+
+export function hasRole(user, role) {
+  return normalizeRole(user?.role) === normalizeRole(role);
+}
+
+export function canAccess(user, permission) {
+  return hasPermission(user, permission);
+}
+
+export function usePermission(permission) {
+  const { user } = useAuth();
+  return hasPermission(user, permission);
+}
+
+export function useRole(role) {
+  const { user } = useAuth();
+  return hasRole(user, role);
 }

@@ -3,13 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { readQuery, writeQuery, typeqlDatetime, typeqlLiteral } from '../db/typedb.js';
 import { auth } from '../middleware/auth.js';
 import { getOnlineUsers, markUserOnline } from '../socket/handlers.js';
+import { hasPermission } from '../modules/auth/rbac.js';
 
 const router = Router();
 const typingByConversation = new Map();
-
-function roleCanMessage(role) {
-  return ['admin', 'moderator', 'professor', 'recruiter'].includes(role);
-}
 
 function packMessageText({ content, author, media = null, readBy = [], edited = false }) {
   return JSON.stringify({ v: 2, content, author, media, readBy, edited });
@@ -79,7 +76,7 @@ function looksEncrypted(raw = '') {
 
 async function canMessage({ fromUser, toUsername }) {
   if (fromUser.username === toUsername) return { ok: false, reason: 'Nao pode enviar mensagem para si mesmo' };
-  if (roleCanMessage(fromUser.role)) return { ok: true };
+  if (hasPermission(fromUser, 'messages:initiate')) return { ok: true };
 
   const safeFrom = typeqlLiteral(fromUser.username);
   const safeTo = typeqlLiteral(toUsername);

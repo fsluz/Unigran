@@ -50,7 +50,7 @@ function navigateNotification(notification) {
 }
 
 export default function Topbar({ title, left, right }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [showChatGPTMaker, setShowChatGPTMaker] = useState(false);
   const [showChatRAI, setShowChatRAI] = useState(false);
@@ -271,7 +271,7 @@ export default function Topbar({ title, left, right }) {
 
       {/* Chat Modals */}
       <ChatGPTMakerModal isOpen={showChatGPTMaker} onClose={() => setShowChatGPTMaker(false)} />
-      <ChatRAIModal isOpen={showChatRAI} onClose={() => setShowChatRAI(false)} token={token} />
+      <ChatRAIModal isOpen={showChatRAI} onClose={() => setShowChatRAI(false)} token={token} user={user} />
     </div>
   );
 }

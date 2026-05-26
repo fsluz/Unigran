@@ -5,15 +5,10 @@ redefine
 user-role value string @values(
   "admin",
   "super_admin",
-  "management",
   "coordination",
-  "administrative",
   "secretary",
-  "library",
   "moderator",
-  "community_moderator",
   "professor",
-  "aluno",
   "student",
   "user"
 );

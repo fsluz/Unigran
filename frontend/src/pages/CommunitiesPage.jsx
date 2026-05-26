@@ -18,6 +18,7 @@ import {
   removeCommunityMember,
   updateCommunity,
 } from '../services/communities';
+import { hasPermission } from '../modules/shared/permissions';
 
 function normalizeCommunity(item, index = 0) {
   const colors = ['#00A8FF', '#7C3AED', '#16A34A', '#F59E0B', '#8B5CF6', '#F97316'];
@@ -46,7 +47,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
   const [form, setForm] = useState({ name: '', description: '', type: 'public' });
   const [manageForm, setManageForm] = useState({ description: '', picture: '' });
 
-  const canManage = ['admin', 'professor', 'moderator'].includes(activeCommunity?.role) || ['admin', 'moderator'].includes(user?.role);
+  const canManage = ['admin', 'moderator'].includes(activeCommunity?.role) || hasPermission(user, 'posts:moderate');
 
   const loadCommunities = () => {
     fetchCommunities(token)

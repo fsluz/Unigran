@@ -16,7 +16,7 @@ function roleOf(user) {
 }
 
 function isAcademicManager(user) {
-  return ['coordination', 'management', 'admin', 'super_admin'].includes(roleOf(user));
+  return ['coordination', 'admin', 'super_admin'].includes(roleOf(user));
 }
 
 function safe(value) {
@@ -65,7 +65,13 @@ function numberValue(value, fallback = 0) {
 
 function authorizationMatch(user, offering = '$offering') {
   const username = safe(usernameOf(user));
-  if (isAcademicManager(user)) return '';
+  if (roleOf(user) === 'super_admin') return '';
+  if (roleOf(user) === 'admin') {
+    return `$viewer isa person, has username "${username}"; $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; { $membership has institution-role "university_admin"; } or { $membership has institution-role "admin"; };`;
+  }
+  if (roleOf(user) === 'coordination') {
+    return `$viewer isa person, has username "${username}"; $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; $subject isa institution-subject; academic-offering-subject-link(offering: ${offering}, subject: $subject); $managed_course isa institution-course; institution-subject-link(course: $managed_course, subject: $subject); $scope isa institution-course-coordination, links (coordinator: $viewer, course: $managed_course), has institution-status "approved";`;
+  }
   if (roleOf(user) === 'professor') {
     return `$viewer isa person, has username "${username}"; academic-teaching-assignment(teacher: $viewer, offering: ${offering});`;
   }
@@ -1007,7 +1013,7 @@ export async function gradeSubmission(user, submissionId, payload) {
 }
 
 export async function getAvaPowerBiSnapshot() {
-  const systemUser = { role: 'admin', username: '__analytics__' };
+  const systemUser = { role: 'super_admin', username: '__analytics__' };
   const courses = await buildCourses(systemUser);
   const submissions = await listTeacherSubmissions(systemUser);
   const completedRows = await readQuery(`

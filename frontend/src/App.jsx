@@ -23,12 +23,20 @@ import CampusPage          from './modules/platform/CampusPage';
 import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import PortalEntryTransition from './components/layout/PortalEntryTransition';
+
+function portalLandingPage(user) {
+  if (hasPermission(user, 'audit:read')) return 'masterBi';
+  if (hasPermission(user, 'reports:institution')) return 'adminDashboard';
+  return 'campus';
+}
 
 function AppShell() {
   const { user, logout } = useAuth();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
   const [authView, setAuthView] = useState('login');
+  const [enteringPortal, setEnteringPortal] = useState(false);
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : false;
@@ -40,6 +48,10 @@ function AppShell() {
   }, [dark]);
 
   const navigate = (id) => {
+    if (id === 'campus' && hasPermission(user, 'platform:read')) {
+      setEnteringPortal(true);
+      return;
+    }
     setPage(id);
   };
 
@@ -83,14 +95,14 @@ function AppShell() {
     communities:   <CommunitiesPage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
     favorites:     <FavoritesPage onOpenProfile={openProfile} />,
-    campus:        hasPermission(user, 'platform.read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
-    ava:           hasPermission(user, 'platform.read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
-    masterBi:      hasPermission(user, 'rbac.manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
+    campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
+    ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
+    masterBi:      hasPermission(user, 'reports:institution') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
-    auditLogs: user?.role === 'admin' ? <AuditLogsPage /> : <HomePage />,
-      adminDashboard: user?.role === 'admin'
+    auditLogs: hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage />,
+      adminDashboard: hasPermission(user, 'reports:institution')
     ? <AdminDashboardPage />
     : <HomePage />,
   };
@@ -104,6 +116,15 @@ function AppShell() {
         onToggleTheme={() => setDark(d => !d)}
       />
       {pages[page] ?? <HomePage />}
+      {enteringPortal && (
+        <PortalEntryTransition
+          role={user.role}
+          onComplete={() => {
+            setEnteringPortal(false);
+            setPage(portalLandingPage(user));
+          }}
+        />
+      )}
     </div>
   );
 }

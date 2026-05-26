@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
 import { normalizeRole } from '../middleware/auth.js';
+import { permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
 import { sendPasswordResetCode } from '../services/email.service.js';
@@ -97,7 +98,7 @@ router.post('/register', async (req, res) => {
           has page-visibility "public",
           has post-visibility "public";
     `);
-    const payload = { id: username, username, email, role: 'user', displayName: name, phone: phone || null };
+    const payload = { id: username, username, email, role: 'user', permissions: permissionsForRole('user'), displayName: name, phone: phone || null };
     auditLog({ action: 'REGISTER', category: 'AUTH', actor: username, target: username, ip: getIp(req), meta: { email } });
     res.status(201).json({ token: sign(payload), user: payload });
   } catch (err) {
@@ -209,6 +210,7 @@ router.post('/login', async (req, res) => {
       displayName: row.name || username,
       email,
       role: normalizeRole(row.role),
+      permissions: permissionsForRole(normalizeRole(row.role)),
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
     };
@@ -268,6 +270,7 @@ router.post('/google', async (req, res) => {
       displayName: row.name || name,
       email,
       role: normalizeRole(row.role),
+      permissions: permissionsForRole(normalizeRole(row.role)),
     };
     res.json({ token: sign(payload), user: payload });
   } catch (err) {
@@ -331,6 +334,7 @@ router.get('/me', async (req, res) => {
         displayName: row.name || decoded.displayName,
         email: row.email || decoded.email,
         role: normalizeRole(row.role || decoded.role),
+        permissions: permissionsForRole(normalizeRole(row.role || decoded.role)),
         phone: row.phone || null,
         profilePicture: row.profile_picture || decoded.profilePicture || null,
         coverPicture: row.cover_picture || decoded.coverPicture || null,

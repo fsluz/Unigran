@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { auth, normalizeRole, requireAtLeast } from '../middleware/auth.js';
+import { auth, normalizeRole } from '../middleware/auth.js';
+import { canManageUser, requirePermission } from '../modules/auth/rbac.js';
 import { readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
 import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
@@ -15,18 +16,12 @@ const RoleSchema = z.object({
   role: z.enum([
     'super_admin',
     'admin',
-    'management',
     'coordination',
-    'administrative',
     'secretary',
-    'library',
     'moderator',
-    'community_moderator',
     'professor',
-    'aluno',
     'student',
     'user',
-    'ADMIN',
   ]),
 });
 
@@ -46,9 +41,8 @@ const ReportStatusSchema = z.object({
 });
 
 router.use(auth);
-router.use(requireAtLeast('moderator'));
 
-router.get('/users', async (req, res) => {
+router.get('/users', requirePermission('users:read'), async (req, res) => {
   const q = String(req.query.q || '').trim().toLowerCase();
   try {
     const rows = await readQuery(`
@@ -70,7 +64,7 @@ router.get('/users', async (req, res) => {
         "visibility": $visibility
       };
     `);
-    const users = rows
+    let users = rows
       .map(row => ({
         username: row.username,
         name: row.name || row.username,
@@ -82,6 +76,22 @@ router.get('/users', async (req, res) => {
       }))
       .filter(user => !q || `${user.username} ${user.name} ${user.email}`.toLowerCase().includes(q));
 
+    if (normalizeRole(req.user.role) !== 'super_admin') {
+      const scoped = await readQuery(`
+        match
+          $actor isa person, has username "${typeqlLiteral(req.user.username)}";
+          $target isa person, has username $username;
+          $university isa educational-institute;
+          $actor_membership isa institution-membership, links (member: $actor, university: $university),
+            has institution-status "approved";
+          $target_membership isa institution-membership, links (member: $target, university: $university),
+            has institution-status "approved";
+        fetch { "username": $username };
+      `);
+      const visible = new Set(scoped.map(item => item.username));
+      users = users.filter(user => visible.has(user.username));
+    }
+
     res.json({ users });
   } catch (err) {
     console.error('[admin users]', err);
@@ -89,13 +99,16 @@ router.get('/users', async (req, res) => {
   }
 });
 
-router.patch('/users/:username/role', requireAtLeast('admin'), async (req, res) => {
+router.patch('/users/:username/role', requirePermission('permissions:manage'), async (req, res) => {
   const parsed = RoleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const username = typeqlLiteral(req.params.username);
   const role = normalizeRole(parsed.data.role);
   try {
+    if (!(await canManageUser(req.user, role, req.params.username))) {
+      return res.status(403).json({ error: 'Cargo fora do seu escopo de administracao' });
+    }
     await writeQuery(`
       match
         $u isa person, has username "${username}";
@@ -110,7 +123,7 @@ router.patch('/users/:username/role', requireAtLeast('admin'), async (req, res) 
   }
 });
 
-router.patch('/users/:username/ban', async (req, res) => {
+router.patch('/users/:username/ban', requirePermission('posts:moderate'), async (req, res) => {
   const parsed = BanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -140,7 +153,7 @@ router.patch('/users/:username/ban', async (req, res) => {
   }
 });
 
-router.patch('/users/:username/restrictions', async (req, res) => {
+router.patch('/users/:username/restrictions', requirePermission('posts:moderate'), async (req, res) => {
   const parsed = RestrictionSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -173,7 +186,7 @@ router.patch('/users/:username/restrictions', async (req, res) => {
   }
 });
 
-router.get('/reports', async (_req, res) => {
+router.get('/reports', requirePermission('reports:read'), async (_req, res) => {
   try {
     const reports = await readQuery(`
       match
@@ -198,7 +211,7 @@ router.get('/reports', async (_req, res) => {
   }
 });
 
-router.patch('/reports/:id', async (req, res) => {
+router.patch('/reports/:id', requirePermission('reports:update'), async (req, res) => {
   const parsed = ReportStatusSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
@@ -225,7 +238,7 @@ router.patch('/reports/:id', async (req, res) => {
 });
 
 // GET /api/admin/audit-logs — apenas admins
-router.get('/audit-logs', requireAtLeast('admin'), async (req, res) => {
+router.get('/audit-logs', requirePermission('audit:read'), async (req, res) => {
   try {
     const { category, action, actor, level, from, to, limit } = req.query;
 
@@ -240,7 +253,7 @@ router.get('/audit-logs', requireAtLeast('admin'), async (req, res) => {
   }
 });
 
-router.get('/power-bi', requireAtLeast('admin'), async (req, res) => {
+router.get('/power-bi', requirePermission('reports:institution'), async (req, res) => {
   try {
     const [ava, typedbUsers, typedbPosts, typedbComments] = await Promise.all([
       getAvaPowerBiSnapshot(),
