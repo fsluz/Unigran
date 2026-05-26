@@ -432,42 +432,11 @@ export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) 
   return posts.filter(post => String(post.content || '').toLowerCase().includes(needle)).slice(0, limit);
 }
 
-export async function createPost({ authorUsername, postType, content, media, communityId }) {
-  const postId = uuid();
-  const now = typeqlDatetime();
-  const safeUser = typeqlLiteral(authorUsername);
-  const safeContent = typeqlLiteral(content || '');
-
-  const attributes = [
-    `has post-id "${postId}"`,
-    `has creation-timestamp ${now}`,
-    `has post-visibility "public"`,
-  ];
-  if (content) attributes.push(`has post-text "${safeContent}"`);
-  if (media?.resource_type === 'video') attributes.push(`has post-video "${typeqlLiteral(media.url)}"`);
-  else if (media?.url) attributes.push(`has post-image "${typeqlLiteral(media.url)}"`);
-
-  // FIXED: removed the space between relation labels and role-player lists in insert stage.
-  await writeQuery(`
-    match $author isa person, has username "${safeUser}";
-    ${communityId ? `$group isa group, has group-id "${typeqlLiteral(communityId)}";` : ''}
-    insert
-      $post isa ${postType},
-        ${attributes.join(',\n        ')};
-      posting(page: $author, post: $post);
-      ${communityId ? 'posting(page: $group, post: $post);' : ''}
-  `);
-
-  cache.clear();
-  return { id: postId, time: now };
-}
-
-export async function annotatePortfolioPost({ postId, metadata = {} }) {
-  const safePost = typeqlLiteral(postId);
+function portfolioAttributeLines(metadata = {}) {
   const attrs = [];
   const add = (type, value) => {
     if (value === undefined || value === null || value === '') return;
-    attrs.push(`$post has ${type} "${typeqlLiteral(value)}"`);
+    attrs.push(`has ${type} "${typeqlLiteral(value)}"`);
   };
 
   add('portfolio-id', metadata.portfolioId);
@@ -486,6 +455,43 @@ export async function annotatePortfolioPost({ postId, metadata = {} }) {
   add('portfolio-tags', Array.isArray(metadata.tags) ? JSON.stringify(metadata.tags) : metadata.tags);
   add('portfolio-technologies', Array.isArray(metadata.technologies) ? JSON.stringify(metadata.technologies) : metadata.technologies);
   add('portfolio-project-type', metadata.projectType);
+  return attrs;
+}
+
+export async function createPost({ authorUsername, postType, content, media, communityId, portfolioMetadata = null }) {
+  const postId = uuid();
+  const now = typeqlDatetime();
+  const safeUser = typeqlLiteral(authorUsername);
+  const safeContent = typeqlLiteral(content || '');
+
+  const attributes = [
+    `has post-id "${postId}"`,
+    `has creation-timestamp ${now}`,
+    `has post-visibility "public"`,
+  ];
+  if (content) attributes.push(`has post-text "${safeContent}"`);
+  if (media?.resource_type === 'video') attributes.push(`has post-video "${typeqlLiteral(media.url)}"`);
+  else if (media?.url) attributes.push(`has post-image "${typeqlLiteral(media.url)}"`);
+  attributes.push(...portfolioAttributeLines(portfolioMetadata));
+
+  // FIXED: removed the space between relation labels and role-player lists in insert stage.
+  await writeQuery(`
+    match $author isa person, has username "${safeUser}";
+    ${communityId ? `$group isa group, has group-id "${typeqlLiteral(communityId)}";` : ''}
+    insert
+      $post isa ${postType},
+        ${attributes.join(',\n        ')};
+      posting(page: $author, post: $post);
+      ${communityId ? 'posting(page: $group, post: $post);' : ''}
+  `);
+
+  cache.clear();
+  return { id: postId, time: now };
+}
+
+export async function annotatePortfolioPost({ postId, metadata = {} }) {
+  const safePost = typeqlLiteral(postId);
+  const attrs = portfolioAttributeLines(metadata).map(line => `$post ${line}`);
 
   if (!attrs.length) return false;
 

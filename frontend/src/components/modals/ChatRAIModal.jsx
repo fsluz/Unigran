@@ -81,7 +81,7 @@ export default function ChatRAIModal({ isOpen, onClose, token }) {
         style={{
           position: 'fixed',
           bottom: 20,
-          left: 20,
+          right: 20,
           width: 'min(500px, 90vw)',
           height: 'min(600px, 85vh)',
           background: '#fff',

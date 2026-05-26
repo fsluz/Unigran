@@ -76,7 +76,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que voce esta
         portfolioLinkKind,
         portfolioTags,
         portfolioTechnologies: portfolioTags,
-        portfolioProjectType: 'academic',
+        portfolioProjectType: 'social',
       });
       setT('');
       setPortfolioTitle('');

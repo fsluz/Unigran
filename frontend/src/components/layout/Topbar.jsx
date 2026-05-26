@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchNotifications, markAllAsRead } from '../../services/notifications';
+import { fetchNotifications, markAllAsRead, markAsRead } from '../../services/notifications';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
 import UnigranLogo from './UnigranLogo';
@@ -27,6 +27,26 @@ function NotifDot({ children }) {
       {children}
     </div>
   );
+}
+
+function navigateNotification(notification) {
+  if (notification.type === 'academic-feedback') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'ava' }));
+    return;
+  }
+  if (notification.type === 'message') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'messages' }));
+    return;
+  }
+  if (notification.type === 'story') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'zuni' }));
+    return;
+  }
+  if (notification.actor) {
+    window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: notification.actor }));
+    return;
+  }
+  window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'home' }));
 }
 
 export default function Topbar({ title, left, right }) {
@@ -90,6 +110,17 @@ export default function Topbar({ title, left, right }) {
       await markAllAsRead(token);
     } catch {
       setNotifications(before);
+    }
+  };
+
+  const openNotification = async (notification) => {
+    setShowNotif(false);
+    setNotifications(prev => prev.filter(item => item.id !== notification.id));
+    navigateNotification(notification);
+    try {
+      await markAsRead(token, notification.id);
+    } catch {
+      fetchNotifications(token).then(setNotifications).catch(() => {});
     }
   };
 
@@ -211,7 +242,13 @@ export default function Topbar({ title, left, right }) {
               <div className="notif-popout-list">
                 {notifications.length === 0 && <div className="search-empty">Nenhuma notificacao.</div>}
                 {notifications.map(n => (
-                  <div key={n.id} className="notif-popout-item unread">
+                  <button
+                    key={n.id}
+                    type="button"
+                    className="notif-popout-item unread"
+                    onClick={() => openNotification(n)}
+                    style={{ width: '100%', border: 0, textAlign: 'left' }}
+                  >
                     <NotifDot>{(n.type || 'UN').slice(0, 2).toUpperCase()}</NotifDot>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="notif-popout-text">
@@ -220,7 +257,7 @@ export default function Topbar({ title, left, right }) {
                       <div className="notif-popout-time">{n.time}</div>
                     </div>
                     <div className="notif-unread-dot" />
-                  </div>
+                  </button>
                 ))}
               </div>
 

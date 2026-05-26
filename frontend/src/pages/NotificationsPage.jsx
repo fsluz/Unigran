@@ -15,6 +15,26 @@ function iconFor(type) {
   return '*';
 }
 
+function navigateNotification(notification) {
+  if (notification.type === 'academic-feedback') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'ava' }));
+    return;
+  }
+  if (notification.type === 'message') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'messages' }));
+    return;
+  }
+  if (notification.type === 'story') {
+    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'zuni' }));
+    return;
+  }
+  if (notification.actor) {
+    window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: notification.actor }));
+    return;
+  }
+  window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'home' }));
+}
+
 export default function NotificationsPage() {
   const { token, user } = useAuth();
   const { showToast } = useToast();
@@ -99,7 +119,7 @@ export default function NotificationsPage() {
                 className={`notif-item ${n.read ? '' : 'unread'}`}
                 onClick={() => {
                   if (!n.read) readOne(n.id);
-                  if (n.actor) window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: n.actor }));
+                  navigateNotification(n);
                 }}
                 style={{ width: '100%', textAlign: 'left', background: n.read ? 'transparent' : 'var(--accent-light)', border: 'none' }}
               >

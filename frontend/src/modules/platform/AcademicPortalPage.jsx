@@ -170,6 +170,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const canTeach = hasPermission(user, 'academic.teacher.manage');
   const canCoordinate = hasPermission(user, 'academic.coordination.read');
   const canManage = hasPermission(user, 'institution.manage');
+  const canCreateInstitution = hasPermission(user, 'institution.create');
 
   const tabs = useMemo(() => [
     { id: 'home', label: 'Inicio', icon: PanelsTopLeft, visible: true },
@@ -416,7 +417,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
           {!universities.length && <EmptyState>Nenhuma universidade cadastrada.</EmptyState>}
         </PortalCard>
 
-        {role === 'super_admin' && (
+        {canCreateInstitution && (
           <PortalCard title="Criar universidade" text="Cria a raiz institucional; voce aplica a migration TypeDB manualmente antes de usar." tone="wide" icon={GraduationCap}>
             <form className="academic-form" onSubmit={createUniversity}>
               <input value={universityDraft.name} onChange={event => setUniversityDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da universidade" required />

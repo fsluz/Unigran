@@ -1,6 +1,10 @@
 export const ROLE_ALIASES = {
   ADMIN: 'admin',
+  SUPER_ADMIN: 'super_admin',
   USER: 'user',
+  admin: 'admin',
+  super_admin: 'super_admin',
+  user: 'user',
   estudante: 'aluno',
   coordenacao: 'coordination',
   coordenacao_academica: 'coordination',
@@ -16,6 +20,7 @@ export const PERMISSIONS = {
   'academic.teacher.manage': ['professor', 'coordination', 'management', 'admin', 'super_admin'],
   'academic.coordination.read': ['coordination', 'management', 'admin', 'super_admin'],
   'institution.manage': ['management', 'admin', 'super_admin'],
+  'institution.create': ['super_admin'],
   'secretary.manage': ['administrative', 'secretary', 'management', 'admin', 'super_admin'],
   'library.manage': ['library', 'management', 'admin', 'super_admin'],
   'analytics.read': ['professor', 'coordination', 'management', 'admin', 'super_admin'],

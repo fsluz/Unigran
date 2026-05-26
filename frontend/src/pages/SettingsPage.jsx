@@ -1021,13 +1021,14 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                         <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>@{u.username} {u.email ? `| ${u.email}` : ''}</div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {user?.role === 'admin' && (
+                      {['admin', 'super_admin'].includes(user?.role) && (
                         <select
                           className="form-input"
                           value={u.role}
                           onChange={e => saveRole(u.username, e.target.value).catch(err => showToast(err.message, '!'))}
                           style={{ width: 190 }}
                         >
+                          <option value="super_admin">SUPER_ADMIN</option>
                           <option value="admin">ADMIN</option>
                           <option value="moderator">moderator</option>
                           <option value="community_moderator">community_moderator</option>
