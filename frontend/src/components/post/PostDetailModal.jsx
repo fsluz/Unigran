@@ -3,8 +3,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Avatar, RoleBadge, Modal, Button } from '../ui';
 import { createComment } from '../../services/posts';
 import { hasPermission } from '../../modules/shared/permissions';
+import '../../styles/comments-modal.css';
 
-const EMOJI_OPTIONS = [];
+const EMOJI_OPTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '✨', '💯', '🚀'];
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -67,35 +68,38 @@ export default function PostDetailModal({ post, onClose }) {
 
   return (
     <Modal title="Post" onClose={onClose}>
-      {/* Post header */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'flex-start' }}>
-        <Avatar initials={post.author.avatar} size={42} />
-        <div>
-          <div className="post-author-name">
-            {post.author.displayName}
-            <RoleBadge role={post.author.role} />
+      <div className="modal-comments-wrapper">
+        {/* Post header */}
+        <div className="modal-comments-header">
+          <div className="post-header">
+            <Avatar initials={post.author.avatar} size={42} />
+            <div className="author-info">
+              <div className="post-author-name">
+                {post.author.displayName}
+                <RoleBadge role={post.author.role} />
+              </div>
+              <div className="post-author-sub">@{post.author.username} - {post.time}</div>
+            </div>
           </div>
-          <div className="post-author-sub">@{post.author.username} - {post.time}</div>
         </div>
-      </div>
 
-      {/* Post content */}
-      <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', marginBottom: 14 }}>
-        {formatContent(post.content)}
-      </p>
+        {/* Post content */}
+        <div className="modal-comments-content">
+          {formatContent(post.content)}
+        </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 18, fontSize: 13, color: 'var(--text-muted)', paddingBottom: 14, marginBottom: 14, borderBottom: '1px solid var(--border)' }}>
-        <span> {post.likes} curtidas</span>
-        <span>{post.comments} comentarios</span>
-      </div>
+        {/* Stats */}
+        <div className="modal-comments-stats">
+          <span>{post.likes}</span> curtidas
+          <span>{post.comments}</span> comentarios
+        </div>
 
-      {/* Comments */}
-      <div className="comment-list">
-        {comments.map(c => {
-          const expanded = expandedComment === c.id;
-          return (
-            <div key={c.id} className={`comment-row ${expanded ? 'expanded' : 'collapsed'}`}>
+        {/* Comments */}
+        <div className="comment-list-container">
+          {comments.map(c => {
+            const expanded = expandedComment === c.id;
+            return (
+              <div key={c.id} className={`comment-row ${expanded ? 'expanded' : 'collapsed'}`}>
               <Avatar initials={c.author.avatar} size={32} />
               <div className="comment-body">
                 <button
@@ -175,6 +179,7 @@ export default function PostDetailModal({ post, onClose }) {
           onKeyDown={e => e.key === 'Enter' && addComment()}
         />
         <button className="comment-send-btn" onClick={addComment}></button>
+      </div>
       </div>
     </Modal>
   );

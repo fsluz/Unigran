@@ -10,6 +10,7 @@ import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publish
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
+import '../styles/mobile-chat.css';
 
 export default function MessagesPage() {
   const { token, user } = useAuth();
