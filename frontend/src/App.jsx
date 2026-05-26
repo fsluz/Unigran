@@ -25,12 +25,6 @@ import { hasPermission }   from './modules/shared/permissions';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
-function portalLandingPage(user) {
-  if (hasPermission(user, 'audit:read')) return 'masterBi';
-  if (hasPermission(user, 'reports:institution')) return 'adminDashboard';
-  return 'campus';
-}
-
 function AppShell() {
   const { user, logout } = useAuth();
   const [page, setPage]         = useState('home');
@@ -121,7 +115,7 @@ function AppShell() {
           role={user.role}
           onComplete={() => {
             setEnteringPortal(false);
-            setPage(portalLandingPage(user));
+            setPage('campus');
           }}
         />
       )}

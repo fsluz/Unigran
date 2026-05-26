@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 export default function PortalEntryTransition({ role, onComplete }) {
   const reduceMotion = useReducedMotion();
-  const duration = reduceMotion ? 250 : 1450;
+  const duration = reduceMotion ? 400 : 2300;
 
   useEffect(() => {
     const timer = window.setTimeout(onComplete, duration);
