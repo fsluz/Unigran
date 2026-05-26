@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requirePermission } from '../auth/rbac.js';
 import {
+  createAcademicCourse,
   createForumComment,
   createForumPost,
   createTeacherActivity,
@@ -189,6 +190,18 @@ router.post('/teacher/courses/:courseId/materials', requirePermission('academic.
   }
 });
 
+const CourseSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  code: z.string().trim().min(2).max(30).transform(value => value.toUpperCase()),
+  description: z.string().trim().max(3000).optional().or(z.literal('')),
+  period: z.string().trim().min(3).max(30),
+  schedule: z.string().trim().min(2).max(120),
+  room: z.string().trim().min(2).max(120),
+  institutionCode: z.string().trim().min(2).max(60).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  tags: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
+});
+
 router.delete('/teacher/materials/:materialId', requirePermission('academic.teacher.manage'), async (req, res) => {
   try {
     const state = await deleteTeacherMaterial(req.user, req.params.materialId);
@@ -197,6 +210,19 @@ router.delete('/teacher/materials/:materialId', requirePermission('academic.teac
   } catch (err) {
     console.error('[ava teacher delete material]', err);
     res.status(500).json({ error: 'Erro ao excluir material' });
+  }
+});
+
+router.post('/coordination/courses', requirePermission('academic.coordination.read'), async (req, res) => {
+  const parsed = CourseSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    const state = await createAcademicCourse(req.user, parsed.data);
+    if (!state) return res.status(403).json({ error: 'Permissao insuficiente' });
+    res.status(201).json(state);
+  } catch (err) {
+    console.error('[ava coordination course]', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao criar disciplina' });
   }
 });
 

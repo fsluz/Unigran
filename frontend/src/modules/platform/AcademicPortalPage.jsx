@@ -14,7 +14,7 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
-import { assignAcademicTeacher, enrollAcademicStudent, fetchAva } from './platform';
+import { assignAcademicTeacher, createAcademicCourse, enrollAcademicStudent, fetchAva } from './platform';
 
 const pageVariants = {
   initial: { opacity: 0, y: 18 },
@@ -93,6 +93,15 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [activeTab, setActiveTab] = useState('home');
   const [enrollmentDraft, setEnrollmentDraft] = useState({ courseId: '', username: '', name: '', registration: '' });
   const [teacherDraft, setTeacherDraft] = useState({ courseId: '', username: '', name: '' });
+  const [courseDraft, setCourseDraft] = useState({
+    title: '',
+    code: '',
+    description: '',
+    period: '2026.1',
+    schedule: '',
+    room: '',
+    tags: '',
+  });
 
   const reload = async () => {
     setLoading(true);
@@ -155,6 +164,21 @@ export default function AcademicPortalPage({ onOpenAva }) {
       showToast('Professor designado', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao designar professor', '!');
+    }
+  };
+
+  const createCourse = async (event) => {
+    event.preventDefault();
+    try {
+      const payload = {
+        ...courseDraft,
+        tags: courseDraft.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      };
+      setAva(await createAcademicCourse(token, payload));
+      setCourseDraft({ title: '', code: '', description: '', period: '2026.1', schedule: '', room: '', tags: '' });
+      showToast('Disciplina criada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar disciplina', '!');
     }
   };
 
@@ -240,6 +264,18 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
   const renderCoordination = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
+      <PortalCard title="Criar disciplina" text="Cria a disciplina e sua oferta ativa no TypeDB." tone="wide" icon={BookOpen}>
+        <form className="academic-form" onSubmit={createCourse}>
+          <input value={courseDraft.title} onChange={event => setCourseDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Nome da disciplina" required />
+          <input value={courseDraft.code} onChange={event => setCourseDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo, ex: ESW-301" required />
+          <textarea value={courseDraft.description} onChange={event => setCourseDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
+          <input value={courseDraft.period} onChange={event => setCourseDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo, ex: 2026.1" required />
+          <input value={courseDraft.schedule} onChange={event => setCourseDraft(prev => ({ ...prev, schedule: event.target.value }))} placeholder="Horario, ex: Segunda - 19:00" required />
+          <input value={courseDraft.room} onChange={event => setCourseDraft(prev => ({ ...prev, room: event.target.value }))} placeholder="Sala ou ambiente" required />
+          <input value={courseDraft.tags} onChange={event => setCourseDraft(prev => ({ ...prev, tags: event.target.value }))} placeholder="Tags separadas por virgula" />
+          <button className="btn btn-primary">Criar disciplina</button>
+        </form>
+      </PortalCard>
       <PortalCard title="Matricular aluno" text="O username deve existir na base de usuarios." icon={Users}>
         <form className="academic-form" onSubmit={createEnrollment}>
           <select value={enrollmentDraft.courseId} onChange={event => setEnrollmentDraft(prev => ({ ...prev, courseId: event.target.value }))}>

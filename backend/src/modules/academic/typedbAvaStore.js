@@ -640,6 +640,21 @@ export async function createTeacherMaterial(user, courseId, payload) {
   return getAvaState(user);
 }
 
+async function generateCourseId(title) {
+  const base = slugify(title);
+  let candidate = base;
+  let suffix = 2;
+  while (true) {
+    const rows = await readQuery(`
+      match $course isa academic-course, has academic-course-id "${safe(candidate)}";
+      fetch { "course": { $course.* } };
+    `);
+    if (!rows.length) return candidate;
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+}
+
 export async function deleteTeacherMaterial(user, materialId) {
   const rows = await readQuery(`
     match
@@ -666,6 +681,52 @@ export async function deleteTeacherMaterial(user, materialId) {
       $material isa academic-material, has academic-material-id "${safe(materialId)}";
       $link isa academic-offering-material, links (material: $material, offering: $offering);
     delete $link; $material;
+  `);
+  return getAvaState(user);
+}
+
+export async function createAcademicCourse(user, payload) {
+  if (!isAcademicManager(user)) return null;
+  const institutionCode = payload.institutionCode || 'unigran';
+  const existingCode = await readQuery(`
+    match $course isa academic-course, has academic-code "${safe(payload.code)}";
+    fetch { "course": { $course.* } };
+  `);
+  if (existingCode.length) {
+    const err = new Error('Ja existe uma disciplina com este codigo');
+    err.statusCode = 409;
+    throw err;
+  }
+  const institution = await readQuery(`
+    match $institution isa educational-institute, has academic-institution-code "${safe(institutionCode)}";
+    fetch { "institution": { $institution.* } };
+  `);
+  if (!institution.length) {
+    const err = new Error('Instituicao academica nao encontrada');
+    err.statusCode = 404;
+    throw err;
+  }
+  const id = await generateCourseId(payload.title);
+  const offeringId = `${id}-${slugify(payload.period)}`;
+  const tags = (payload.tags || [])
+    .map(tag => String(tag || '').trim())
+    .filter(Boolean)
+    .map(tag => `has academic-tag "${safe(tag)}"`);
+  await writeQuery(`
+    match $institution isa educational-institute, has academic-institution-code "${safe(institutionCode)}";
+    insert
+      $course isa academic-course,
+        has academic-course-id "${id}",
+        has academic-code "${safe(payload.code)}",
+        has academic-title "${safe(payload.title)}",
+        has academic-description "${safe(payload.description || '')}",
+        has academic-color "${safe(payload.color || '#2563eb')}"${tags.length ? `,\n        ${tags.join(',\n        ')}` : ''};
+      $offering isa academic-course-offering, links (institution: $institution, course: $course),
+        has academic-offering-id "${offeringId}",
+        has academic-period "${safe(payload.period)}",
+        has academic-schedule "${safe(payload.schedule)}",
+        has academic-room "${safe(payload.room)}",
+        has academic-status "active";
   `);
   return getAvaState(user);
 }
