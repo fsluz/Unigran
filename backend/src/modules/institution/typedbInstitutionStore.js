@@ -137,7 +137,6 @@ export async function createUniversity(user, payload) {
     match $creator isa person, has username "${safe(user.username)}";
     insert
       $university isa university,
-        has id "${id}",
         has username "${safe(slug)}",
         has name "${safe(payload.name)}",
         has academic-institution-code "${safe(slug)}",

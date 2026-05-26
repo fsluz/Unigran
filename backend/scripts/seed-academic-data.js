@@ -57,8 +57,6 @@ async function ensureInstitution() {
   await writeQuery(`
     insert
       $institution isa university,
-        has id "institution-unigran",
-        has page-id "unigran",
         has username "unigran",
         has name "UNIGRAN",
         has academic-institution-code "unigran",
