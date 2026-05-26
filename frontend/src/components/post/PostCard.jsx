@@ -629,14 +629,24 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         <button
           className="post-action-btn"
           onClick={async () => {
-            const next = !showComments;
-            setShowComments(next);
-            if (next) {
+            // If modal callback exists, open the detail modal (preferred)
+            if (onOpenDetail) {
               const loaded = onLoadComments
                 ? await onLoadComments(post.id)
                 : await fetchComments({ token, postId: post.id });
-              setComments(loaded || []);
-              setCommentsCount((loaded || []).length);
+              const postWithComments = { ...post, _comments: loaded || [] };
+              onOpenDetail(postWithComments);
+            } else {
+              // Fallback to inline comments
+              const next = !showComments;
+              setShowComments(next);
+              if (next) {
+                const loaded = onLoadComments
+                  ? await onLoadComments(post.id)
+                  : await fetchComments({ token, postId: post.id });
+                setComments(loaded || []);
+                setCommentsCount((loaded || []).length);
+              }
             }
           }}
           style={{ color: showComments ? 'var(--accent)' : undefined }}
