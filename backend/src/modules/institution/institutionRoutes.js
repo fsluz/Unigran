@@ -150,6 +150,26 @@ function invalidRequest(res, parsed, fallback) {
   return res.status(400).json({ message, errors });
 }
 
+function creationFailureMessage(err) {
+  const detail = String(err?.message || '').toLowerCase();
+  if (['invalid credential', 'authentication error', '[aut1]'].some(term => detail.includes(term))) {
+    return 'Nao foi possivel autenticar no TypeDB. Verifique as credenciais configuradas no backend.';
+  }
+  const schemaError = [
+    'university',
+    'institution-id',
+    'institution-slug',
+    'institution-cnpj',
+    'institution-university-creator',
+  ].some(label => detail.includes(label))
+    && ['schema', 'not found', 'undefined', 'unresolved', 'does not exist', 'invalid type'].some(term => detail.includes(term));
+
+  if (schemaError) {
+    return 'Schema institucional ausente ou incompleto. Aplique a migration 005_institutional_core_schema.tql antes da 006.';
+  }
+  return 'Erro ao criar universidade. Consulte os logs do backend para identificar a causa.';
+}
+
 router.get('/universities', async (_req, res) => {
   try {
     res.json({ universities: await listUniversities() });
@@ -191,7 +211,7 @@ router.post('/universities', requirePermission('institutions:create'), async (re
     });
     res.status(201).json(await createUniversity(req.user, parsed.data));
   } catch (err) {
-    handleError(res, err, 'Nao foi possivel criar a universidade. Verifique a migration institucional TypeDB.');
+    handleError(res, err, creationFailureMessage(err));
   }
 });
 

@@ -591,7 +591,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         </PortalCard>
 
         {canCreateInstitution && (
-          <PortalCard title="Criar universidade" text="Cria a raiz institucional; voce aplica a migration TypeDB manualmente antes de usar." tone="wide" icon={GraduationCap}>
+          <PortalCard title="Criar universidade" text="Cria a raiz institucional no TypeDB configurado para este portal." tone="wide" icon={GraduationCap}>
             <form className="academic-form" onSubmit={createUniversity}>
               <input value={universityDraft.name} onChange={event => setUniversityDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da universidade" required />
               <input value={universityDraft.slug} onChange={event => setUniversityDraft(prev => ({ ...prev, slug: event.target.value }))} placeholder="Slug opcional" />
