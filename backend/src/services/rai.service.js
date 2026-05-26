@@ -198,7 +198,7 @@ async function authorizedInstitutionContext(user) {
       match
         $professor isa person, has username "${typeqlLiteral(user.username)}";
         $assignment isa institution-professor-subject, links (professor: $professor, subject: $subject, semester: $semester),
-          has institution-status "active";
+          has institution-status "approved";
         $subject has academic-title $subject_name;
         $semester has institution-year $year, has institution-period-number $period;
         try {

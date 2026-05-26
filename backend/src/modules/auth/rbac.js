@@ -237,7 +237,7 @@ export async function canAccessClass(user, institutionId, classId, permission = 
       $class isa institution-class-group, has institution-class-group-id "${typeqlLiteral(classId)}";
       institution-class-subject(class-group: $class, subject: $subject);
       institution-professor-subject(professor: $professor, subject: $subject, semester: $semester),
-        has institution-status "active";
+        has institution-status "approved";
     fetch { "class": { $class.* } };
   `);
   return rows.length > 0;

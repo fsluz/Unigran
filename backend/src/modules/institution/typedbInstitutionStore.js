@@ -569,7 +569,7 @@ export async function enrollStudentInClassGroup(universityId, classGroupId, payl
         $semester isa institution-semester, has institution-semester-id "${safe(semesterId)}";
       insert
         $enrollment isa institution-enrollment, links (student: $student, class-group: $class_group, semester: $semester),
-          has institution-status "active",
+          has institution-status "approved",
           has institution-created-at ${createdAt},
           has institution-updated-at ${createdAt};
     `);
@@ -617,7 +617,7 @@ export async function assignProfessorToSubjectSemester(universityId, semesterId,
         $semester isa institution-semester, has institution-semester-id "${safe(semesterId)}";
       insert
         $assignment isa institution-professor-subject, links (professor: $professor, subject: $subject, semester: $semester),
-          has institution-status "active",
+          has institution-status "approved",
           has institution-created-at ${createdAt},
           has institution-updated-at ${createdAt};
     `);
