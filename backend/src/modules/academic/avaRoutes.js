@@ -214,6 +214,9 @@ router.delete('/teacher/materials/:materialId', requirePermission('academic.teac
 });
 
 router.post('/coordination/courses', requirePermission('academic.coordination.read'), async (req, res) => {
+  return res.status(410).json({
+    error: 'Use /api/platform/v1/institutions para criar universidade, campus, curso, semestre, turma, disciplina e abrir a offering do AVA.',
+  });
   const parsed = CourseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -227,6 +230,9 @@ router.post('/coordination/courses', requirePermission('academic.coordination.re
 });
 
 router.post('/coordination/courses/:courseId/enrollments', requirePermission('academic.coordination.read'), async (req, res) => {
+  return res.status(410).json({
+    error: 'Use /api/platform/v1/institutions/universities/:universityId/classes/:classGroupId/enrollments.',
+  });
   const parsed = EnrollmentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -240,6 +246,9 @@ router.post('/coordination/courses/:courseId/enrollments', requirePermission('ac
 });
 
 router.put('/coordination/courses/:courseId/teacher', requirePermission('academic.coordination.read'), async (req, res) => {
+  return res.status(410).json({
+    error: 'Use /api/platform/v1/institutions/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors.',
+  });
   const parsed = TeacherAssignmentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {

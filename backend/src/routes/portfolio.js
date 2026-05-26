@@ -69,13 +69,11 @@ function initials(name = '') {
 }
 
 function inferSkills(items) {
-  const base = ['Pesquisa', 'Comunicacao', 'Projetos', 'Documentacao', 'Aprendizado continuo'];
-  const text = items.map(item => `${item.title} ${item.summary} ${item.courseName}`).join(' ').toLowerCase();
-  const skills = [...base];
-  if (text.includes('software') || text.includes('program')) skills.push('Engenharia de Software', 'React', 'Produto Digital');
-  if (text.includes('dados') || text.includes('sql')) skills.push('Banco de Dados', 'Analise de Dados');
-  if (text.includes('ia') || text.includes('inteligencia')) skills.push('IA Aplicada', 'Automacao');
-  if (text.includes('design')) skills.push('Design de Interacao', 'UX');
+  const skills = items.flatMap(item => [
+    ...(item.tags || []),
+    ...(item.technologies || []),
+    item.projectType,
+  ]);
   return [...new Set(skills)].slice(0, 10);
 }
 
@@ -432,7 +430,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
             </div>
           </div>
           <div class="insight-list">
-            <div class="insight"><i></i><span><b>Fit tecnico:</b> ${escapeHtml(allSkillSignals.slice(0, 5).join(', ') || 'skills em classificacao')}.</span></div>
+            <div class="insight"><i></i><span><b>Fit tecnico:</b> ${escapeHtml(allSkillSignals.slice(0, 5).join(', ') || 'sem competencias cadastradas')}.</span></div>
             <div class="insight"><i></i><span><b>Evidencias:</b> ${items.length} projeto(s), ${resume ? 'curriculo estruturado' : 'curriculo pendente'} e portfolio publico compartilhavel.</span></div>
             <div class="insight"><i></i><span><b>Recomendacao:</b> analisar os cases em destaque e abrir links navegaveis quando disponiveis.</span></div>
           </div>
@@ -482,7 +480,7 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
         <p>Resumo pensado para recrutadores entenderem rapidamente potencial, stack e maturidade academica.</p>
       </div>
       <div class="profile-grid">
-        <div class="skill-cloud">${skills.map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('')}</div>
+        <div class="skill-cloud">${skills.map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma competencia real cadastrada nos projetos.</p>'}</div>
         <div class="metric-list">
           <div class="metric"><span><b>Portfolio publico</b><b>${Math.min(100, items.length * 25)}%</b></span><div class="bar"><i style="width:${Math.min(100, items.length * 25)}%"></i></div></div>
         </div>
@@ -527,12 +525,12 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
           <div class="virtual-resume-card">
             <small>Hard skills</small>
             <h4>Competencias tecnicas</h4>
-            <div class="skill-cloud">${resumeHardSkills.slice(0, 12).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Em leitura</span>'}</div>
+            <div class="skill-cloud">${resumeHardSkills.slice(0, 12).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma hard skill identificada no curriculo.</p>'}</div>
           </div>
           <div class="virtual-resume-card">
             <small>Soft skills</small>
             <h4>Comportamental</h4>
-            <div class="skill-cloud">${resumeSoftSkills.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<span class="skill">Comunicacao</span><span class="skill">Organizacao</span>'}</div>
+            <div class="skill-cloud">${resumeSoftSkills.slice(0, 8).map(skill => `<span class="skill">${escapeHtml(skill)}</span>`).join('') || '<p>Nenhuma soft skill identificada no curriculo.</p>'}</div>
           </div>
           <div class="virtual-resume-card">
             <small>Ferramentas</small>
@@ -577,7 +575,6 @@ function renderPortfolioPage({ req, profile, items, focusItem = null, resume = n
       </div>
       <div class="timeline">
         ${items.slice(0, 5).map(item => `<div class="time-item"><span>${escapeHtml(formatDate(item.updatedAt || item.createdAt))}</span><h3>${escapeHtml(item.title || item.activityTitle)}</h3><p>${escapeHtml(item.courseName || 'Atividade academica')}</p></div>`).join('')}
-        <div class="time-item"><span>Atual</span><h3>Portfolio academico publicado</h3><p>Vitrine compartilhavel pronta para networking e processos seletivos.</p></div>
       </div>
     </section>
 

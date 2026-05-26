@@ -152,6 +152,109 @@ export async function assignAcademicTeacher(token, courseId, payload) {
   return readJson(res, 'Erro ao designar professor');
 }
 
+export async function fetchUniversities(token) {
+  const res = await apiFetch('/platform/v1/institutions/universities', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar universidades');
+}
+
+export async function fetchUniversity(token, universityId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}`, {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar universidade');
+}
+
+export async function createInstitutionUniversity(token, payload) {
+  const res = await apiFetch('/platform/v1/institutions/universities', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar universidade');
+}
+
+export async function createInstitutionCampus(token, universityId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/campuses`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar campus');
+}
+
+export async function createInstitutionCourse(token, universityId, campusId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/campuses/${campusId}/courses`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar curso');
+}
+
+export async function createInstitutionSemester(token, universityId, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/courses/${courseId}/semesters`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar semestre');
+}
+
+export async function createInstitutionClassGroup(token, universityId, semesterId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/semesters/${semesterId}/classes`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar turma');
+}
+
+export async function createInstitutionSubject(token, universityId, courseId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/courses/${courseId}/subjects`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar disciplina');
+}
+
+export async function linkInstitutionSubjectToClass(token, universityId, classGroupId, subjectId) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/subjects/${subjectId}`, {
+    method: 'PUT',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao vincular disciplina a turma');
+}
+
+export async function createInstitutionAvaOffering(token, universityId, classGroupId, subjectId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/subjects/${subjectId}/ava-offering`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao abrir offering do AVA');
+}
+
+export async function enrollInstitutionStudent(token, universityId, classGroupId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/classes/${classGroupId}/enrollments`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao matricular aluno na turma');
+}
+
+export async function assignInstitutionProfessor(token, universityId, semesterId, subjectId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/semesters/${semesterId}/subjects/${subjectId}/professors`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao vincular professor a disciplina');
+}
+
 export async function updateTeacherActivity(token, activityId, payload) {
   const res = await apiFetch(`/platform/v1/ava/teacher/activities/${activityId}`, {
     method: 'PUT',

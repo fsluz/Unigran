@@ -69,9 +69,7 @@ export async function auth(req, res, next) {
           req.user.role = normalizeRole(rows[0].role);
         }
       } catch (err) {
-        const isDev = process.env.NODE_ENV !== 'production';
-        if (!isDev) throw err;
-        console.warn('[auth] pulando checagem de banimento no dev:', err?.message || err);
+        throw err;
       }
     }
     next();

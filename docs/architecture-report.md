@@ -1,95 +1,180 @@
-# Relatorio tecnico da arquitetura existente
+# UNIGRAM - Diagnostico da Fase 1
 
-Data da analise: 2026-05-20.
+Data da auditoria: 2026-05-25.
 
-## Stack atual
+## Escopo desta fase
 
-- Frontend: React 18, Vite 5, CSS global, estado local com hooks e contextos.
-- Backend: Node.js, Express, Socket.io, Zod, JWT, bcrypt, multer, Cloudinary, Nodemailer, Ably.
-- Banco: TypeDB Cloud v3 via driver HTTP, com TypeQL escrito diretamente nas rotas/services.
-- ML: subprojeto Python em `backend/project_ml`, com artefatos treinados em `backend/models`.
-- Deploy: arquivos `vercel.json` em frontend/backend, sem Docker/CI no repositório.
+Esta fase mapeia o sistema que existe hoje, os dados realmente persistidos e os pontos que impedem a arquitetura multi-faculdade solicitada. Ela nao introduz entidades institucionais novas nem telas novas; a implementacao deve ocorrer em fases aditivas depois que os vinculos e as permissoes estiverem definidos no TypeDB.
 
-## Arquitetura e pastas
+## Stack confirmada
 
-- `frontend/src/App.jsx`: roteador por estado local (`page`) e composição global de `AuthProvider`/`ToastProvider`.
-- `frontend/src/pages`: páginas de feed, perfil, comunidades, mensagens, notificações, configurações, Zuni e auditoria.
-- `frontend/src/components`: layout, UI primitives, posts, comunidades, mídia e stories.
-- `frontend/src/services`: clientes REST para posts, usuários, comunidades, conversas, notificações e realtime.
-- `backend/src/index.js`: inicialização Express, middlewares globais, rotas REST e Socket.io.
-- `backend/src/routes`: rotas atuais versionadas apenas por prefixo funcional.
-- `backend/src/middleware/auth.js`: JWT, bloqueio de usuários banidos e autorização por papel.
-- `backend/src/db/typedb.js`: conexão TypeDB e helpers TypeQL.
+| Area | Implementacao atual |
+| --- | --- |
+| Frontend | React + Vite em `frontend/src`; navegacao interna controlada por estado em `App.jsx` |
+| Backend | Express em `backend/src/index.js`, REST em `/api/*` e Socket.io |
+| Persistencia principal | TypeDB, consultado por TypeQL em stores, repositories e rotas |
+| Imagens e videos | Cloudinary via `cloudinary.service.js` |
+| PDFs e documentos | Supabase Storage via `document.service.js` |
+| Autenticacao | JWT; frontend guarda token em `localStorage` e consulta `/api/auth/me` |
+| Validacao | Zod nas rotas/services que ja foram implementados com validacao |
 
-## Autenticacao e autorizacao
+Nao ha Next.js, App Router, Prisma ou uma base relacional paralela no runtime auditado.
 
-O login gera JWT com `username`, `email`, `displayName` e `role`. O frontend persiste o token em `localStorage` e reidrata via `/api/auth/me`.
+## Modelo real encontrado
 
-Antes desta expansão, os papéis eram focados em rede social/moderação: `user`, `professor`, `community_moderator`, `moderator`, `admin`. A expansão adiciona RBAC universitário compatível, preservando esses papéis e incluindo `aluno`, `coordination`, `administrative`, `secretary`, `library`, `management` e `super_admin`.
+### Identidade e rede social
 
-## APIs atuais
+- `person` representa usuario e perfil. O identificador funcional usado nas rotas e relacoes e `username`.
+- O cadastro cria a pessoa com `username`, nome, email, hash de senha e preferencias sociais; login emite JWT.
+- O papel atual e global, salvo como atributo `user-role` na pessoa.
+- Posts sao entidades `post` relacionadas ao autor por `posting`; comentarios, reacoes, salvos e compartilhamentos tambem usam relacoes TypeDB.
+- Comunidades sao `group` com `group-membership`; nao sao vinculos academicos institucionais.
 
-Rotas existentes preservadas:
+### AVA academico atual
 
-- `/api/auth`
-- `/api/admin`
-- `/api/users`
-- `/api/posts`
-- `/api/communities`
-- `/api/conversations`
-- `/api/notifications`
-- `/api/search`
-- `/api/uploads`
-- `/api/stories`
-- `/api/realtime`
-- `/api/data-export`
+O schema em `backend/migrations/typedb/003_academic_platform_schema.tql` modela:
 
-Nova camada compatível:
+```text
+educational-institute
+  -> academic-course-offering (period, schedule, room, status)
+       -> academic-course
+       -> academic-enrollment(person student)
+       -> academic-teaching-assignment(person teacher)
+       -> academic-material
+       -> academic-activity -> academic-submission
+       -> academic-attendance-session
+       -> academic-forum-post/comment
+```
 
-- `/api/platform/v1/modules`
-- `/api/platform/v1/dashboard`
-- `/api/platform/v1/ai/assistant`
+- `academic-course` esta sendo usado na UI como disciplina, embora o nome sugira curso de graduacao.
+- `academic-course-offering` acumula periodo, horario e sala, sem entidade separada de semestre ou turma.
+- A matricula liga diretamente `person` a `academic-course-offering`.
+- A frequencia liga sessao a oferta e entradas a pessoas matriculadas.
+- Materiais e entregas armazenam metadados no TypeDB; `academic-document-path`, adicionado na migration `004`, permite vincular a exclusao do objeto no Supabase.
 
-## Banco
+### Portfolio
 
-O projeto usa TypeDB, não Prisma. Como a migração para Prisma quebraria o modelo atual, a recomendação é manter TypeDB no curto prazo e introduzir migrações TypeQL versionadas. As extensões preparadas estão em `backend/migrations/typedb/001_portfolio_schema_extension.tql`, `002_university_roles_extension.tql` e `003_academic_platform_schema.tql`.
+- O portfolio nao e uma entidade independente: e um `post` anotado com atributos `portfolio-*`.
+- Ownership e obtido pela relacao `posting(page: person, post: post)`.
+- O link publico segue `/portfolio/:username/:slug`, e a busca atual valida `username` junto com `slug`.
+- Documentos do portfolio guardam URL/path Supabase; midia guarda URL Cloudinary.
+- Ainda nao existem `universityId`, `courseId` institucional ou `visibility` academica no projeto de portfolio.
 
-## Gargalos encontrados
+### Uploads
 
-- Roteamento frontend por estado local dificulta deep links, guards e lazy loading.
-- CSS concentrado em `components.css`, o que dificulta modularidade e performance incremental.
-- TypeQL espalhado por rotas/services, elevando acoplamento com o banco.
-- Falta de migrations versionadas e runner de schema.
-- RBAC ainda não cobria perfis universitários.
-- APIs não têm versionamento geral nem Swagger.
-- Não há testes automatizados, lint, Docker, CI/CD ou staging no repositório.
-- Funcionalidades acadêmicas/ERP/IA eram conceituais ou dispersas, sem módulo próprio.
+- `/api/uploads/media` envia imagem/video ao Cloudinary com JWT.
+- `/api/uploads/documents` e `/api/uploads/resume` enviam arquivos ao Supabase com JWT.
+- AVA e portfolio persistem URL e path do documento no TypeDB; midia de post/portfolio persiste URL Cloudinary.
+- Nao foi encontrado fallback local para uploads no runtime auditado.
 
-## Melhorias implementadas nesta etapa
+## Rotas e guardas atuais
 
-- Criada estrutura modular em `backend/src/modules` e `frontend/src/modules`.
-- Adicionado RBAC universitário em `backend/src/modules/auth/rbac.js`.
-- Mantida compatibilidade com o middleware atual de autenticação.
-- Criada API modular versionada `/api/platform/v1`.
-- Criada tela frontend `CampusPage` como AVA funcional e hub acadêmico.
-- Adicionado serviço frontend `platform.js`.
-- Adicionada navegação protegida por permissão.
-- O AVA usa repositories TypeDB para disciplinas, matriculas, atividades, entregas, frequencia, forum, curriculo e vitrine publica; `backend/data/ava-store.json` ficou apenas como dado legado sem rota ativa.
-- O acesso a disciplinas agora exige matrícula do aluno ou designação docente; coordenação pode registrar esses vínculos no Portal.
+| Funcionalidade | Endpoint atual | Persistencia | Guarda atual |
+| --- | --- | --- | --- |
+| Registro/login/sessao | `/api/auth/*` | TypeDB + JWT | Login publico; operacoes de conta validam token |
+| Feed/posts | `/api/posts/*` | TypeDB + Cloudinary/Supabase conforme anexo | `auth` nas operacoes privadas |
+| Perfil | `/api/users/*` | TypeDB | `auth` |
+| Portfolio publico | `/portfolio/:username/:slug`, `/api/portfolio/*` | TypeDB | Publico para conteudo publicado |
+| AVA consulta | `/api/platform/v1/ava` | TypeDB | `auth` + permission map |
+| Criacao de disciplina atual | `POST /api/platform/v1/ava/coordination/courses` | TypeDB | permissao global `academic.coordination.read` |
+| Matricula/designacao atual | `/api/platform/v1/ava/coordination/courses/:courseId/*` | TypeDB | permissao global `academic.coordination.read` |
+| Materiais/atividades/frequencia | `/api/platform/v1/ava/teacher/*` | TypeDB + Supabase | permissao global docente |
+| Uploads | `/api/uploads/*` | Cloudinary/Supabase + vinculo posterior | `auth` |
 
-## Ativacao do AVA no TypeDB
+## Desalinhamento com a arquitetura alvo
 
-A migração de schema e os repositories TypeDB foram preparados. Execute `npm run db:migrate:typedb` e `npm run db:seed:academic` no `backend` com credenciais validas; a tentativa em 25 de maio de 2026 retornou erro de autenticacao do TypeDB antes de modificar o schema.
+| Necessidade solicitada | Estado real atual | Consequencia |
+| --- | --- | --- |
+| `UNIVERSITY -> CAMPUS -> COURSE -> SEMESTER -> CLASS_GROUP -> SUBJECT` | Existe apenas `educational-institute -> academic-course-offering -> academic-course` | Nao e possivel separar curso, turma, semestre e disciplina com integridade |
+| `InstitutionMembership` por universidade/campus | Inexistente | Usuario tem papel global e nao papel por instituicao |
+| `ProfessorSubject` | Existe apenas teaching assignment para offering | Professor nao pode ser escopado por disciplina/semestre conforme modelo novo |
+| `Enrollment(student, classGroup, semester)` | Matricula direta na offering | Historico e transferencia de turma ficam ambiguos |
+| Posts `GLOBAL/UNIVERSITY/COURSE/CLASS` | Post criado com visibilidade social `public` | Feed academico nao pode filtrar contexto institucional |
+| Portfolio com universidade/curso/visibilidade | Portfolio e metadata de post | Falta ownership academico e filtragem institucional |
 
-## Roadmap sem quebrar o sistema
+## Autenticacao e RBAC: riscos bloqueantes
 
-1. Fundacao: manter rotas atuais, adicionar `/api/platform/v1`, RBAC compatível e documentação.
-2. Dados reais: aplicar as migrations TypeDB, semear as ofertas iniciais e cadastrar matriculas/designacoes no portal.
-3. Frontend modular: migrar uma página por vez para `frontend/src/modules`, com lazy loading e guards.
-4. Acadêmico: disciplinas, atividades, entregas, notas, presença e feedback docente.
-5. Comunicação: consolidar chat, notificações, fóruns, grupos e eventos.
-6. ERP: secretaria, matrículas, protocolos, documentos, assinaturas digitais e workflows.
-7. Biblioteca: acervo, empréstimos, reservas, multas, TCCs e recomendação.
-8. IA: RAi com OpenAI API, embeddings, memória contextual, recomendações e detecção de risco.
-9. Observabilidade: logs estruturados, rate limit, Swagger, métricas e auditoria completa.
-10. DevOps: Docker, CI, lint, testes, ambiente staging e monitoramento.
+1. `backend/src/middleware/auth.js` confirma o papel no TypeDB, mas em ambiente diferente de `production` aceita o papel carregado do JWT se a consulta ao banco falhar. Isto e fail-open e nao atende validacao backend obrigatoria.
+2. `backend/src/modules/auth/rbac.js` trabalha apenas com papeis globais. Nao existe `requireInstitutionRole`.
+3. Os papeis usados hoje (`management`, `coordination`, `administrative`, `aluno`) nao correspondem de forma consistente aos papeis alvo (`UNIVERSITY_ADMIN`, `COORDINATOR`, `STUDENT` etc.).
+4. `typedbAvaStore.js` deixa gestores globais passarem sem filtro institucional em `authorizationMatch`; em ambiente multi-faculdade isso permite acesso cruzado.
+5. O endpoint atual de criacao de disciplina grava uma offering em uma instituicao por codigo, mas nao consegue validar campus, curso, semestre, turma nem membership porque tais relacoes ainda nao existem.
+
+Nenhuma funcionalidade administrativa multi-faculdade deve ser liberada para producao antes de corrigir esses cinco pontos.
+
+## Inventario de dados fake e simulacoes ativos
+
+### Visiveis no runtime
+
+| Arquivo | Ocorrencia | Problema real a substituir |
+| --- | --- | --- |
+| `frontend/src/pages/HomePage.jsx` | `TRENDING`, `SUGGESTED_COMMUNITIES`, `SUGGESTED_PEOPLE` usados como fallback | Feed exibe comunidades, pessoas e tendencias inventadas quando API retorna vazio; deve exibir empty state real |
+| `frontend/src/components/layout/Sidebar.jsx` | `COMMUNITIES_FOLLOWED` | Sidebar sempre mostra comunidades inexistentes; deve listar memberships reais |
+| `backend/src/routes/portfolio.js` | `inferSkills()` inicia com habilidades fixas e inclui fallbacks textuais de soft skills | Portfolio atribui competencias nao cadastradas/evidenciadas; deve exibir apenas sinais persistidos |
+| `backend/src/routes/portfolio.js` | timeline inclui marco final fixo e textos de disponibilidade/avaliacao | Vitrine publica afirma fatos sem fonte persistida |
+
+### Seeds e documentacao operacional
+
+| Arquivo | Ocorrencia | Problema real a substituir |
+| --- | --- | --- |
+| `backend/scripts/seed-complete-platform-data.js` | Declarado como `development/demo population`, cria usuarios `.demo` e atividades/posts artificiais | Nao pode ser caminho de populacao de um ambiente real |
+| `backend/scripts/seed-academic-data.js` | Catalogo academico hardcoded | Deve ser substituido por cadastro administrativo persistente |
+| `backend/package.json` | Scripts `db:seed:catalog` e `db:seed:academic` expostos | Permitem reintroduzir dados inventados |
+
+### Itens classificados como configuracao local, nao mock academico
+
+- Token JWT em `frontend/src/contexts/AuthContext.jsx`: comportamento exigido pela stack informada.
+- Tema, perfis visitados, ringtone e chaves E2EE em `localStorage`: preferencias/dispositivo; nao sao fonte de dados academicos.
+- Imagens do carrossel de login em `AuthLayout.jsx`: conteudo visual da pagina de autenticacao, nao listagem persistente.
+
+## O que ja opera com dados reais
+
+- Registro, login e leitura do perfil consultam TypeDB.
+- Posts e comentarios persistem no TypeDB; midias seguem Cloudinary e documentos de portfolio seguem Supabase.
+- Portfolio publico consulta posts anotados e usa rota por `username + slug`.
+- O AVA consulta e altera cursos/ofertas, matriculas, designacoes, materiais, atividades, entregas, frequencia e forum pelo store TypeDB.
+- Upload e exclusao de documentos academicos possuem vinculo de path Supabase no TypeDB apos a migration `004`.
+
+## Lacunas funcionais para as proximas fases
+
+- Nao existem entidades/CRUDs para universidade aprovada, campus, curso de graduacao, semestre, turma e disciplina separada.
+- Nao existe solicitacao/aprovacao de vinculo institucional do aluno.
+- Nao existe RBAC por instituicao ou campus.
+- Posts ainda nao possuem escopo academico `GLOBAL/UNIVERSITY/COURSE/CLASS`.
+- Portfolio ainda nao possui vinculo institucional nem visibilidade academica.
+- A nomenclatura `academic-course` precisa ser migrada ou explicitamente compatibilizada com `subject`; reutiliza-la como curso e disciplina ao mesmo tempo quebraria integridade.
+- Nao ha suite automatizada de testes backend/frontend registrada; validacao atual depende de build/checks e testes manuais.
+
+## Plano de execucao seguro
+
+### Fase 2 - Nucleo institucional
+
+1. Criar migration TypeDB aditiva para universidade/campus/curso/semestre/turma/disciplina e `institution-membership`, preservando as entidades atuais durante a transicao.
+2. Criar endpoints Express com Zod para cadastro e consulta dessas entidades, iniciando por `SUPER_ADMIN` e administradores institucionais aprovados.
+3. Criar fluxo real de solicitacao e aprovacao de membership.
+4. Vincular, por migracao controlada, offerings atuais a `subject`, `semester` e `class-group`; nao inferir relacoes a partir de textos.
+
+### Fase 3 - RBAC real
+
+1. Tornar autenticacao fail-closed se a validacao TypeDB falhar.
+2. Implementar `requireInstitutionRole` e escopo por universidade/campus.
+3. Normalizar papeis legados apenas por migracao explicita e auditavel.
+4. Cobrir acesso negado e isolamento entre instituicoes antes de liberar telas administrativas.
+
+### Fases 4 a 6
+
+- Migrar AVA para os novos vinculos.
+- Adicionar visibilidade academica a posts e ownership institucional ao portfolio.
+- Remover fallbacks falsos do feed/sidebar/portfolio somente com APIs reais ou empty states implementados.
+- Desabilitar/remover seeds demonstrativos depois que os cadastros administrativos reais estiverem disponiveis.
+
+## Validacoes desta auditoria
+
+- Schema TypeDB versionado lido nas migrations `001` a `004`.
+- Middlewares `auth`/RBAC e rotas Express academicas, sociais, portfolio e upload inspecionados.
+- Frontend do portal, feed e sidebar inspecionados para origem dos dados.
+- Busca ampla por termos de demonstracao/fallback/static/localStorage executada em `frontend/src`, `backend/src`, `backend/scripts` e `docs`.
+
+## Criterio de saida da Fase 1
+
+A Fase 1 esta concluida quando este diagnostico for aceito como base da mudanca. Nenhum cadastro multi-faculdade novo deve ser implementado antes da migration institucional e do escopo de autorizacao por membership previstos para a Fase 2 e Fase 3.

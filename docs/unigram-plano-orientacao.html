@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>UNIGRAM - Orientacao para continuidade</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #526174;
+      --line: #dce4ee;
+      --accent: #275cba;
+      --pale: #eff5ff;
+      --warning: #fff4df;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      line-height: 1.48;
+    }
+    main { max-width: 185mm; margin: 0 auto; padding: 17mm 0; }
+    h1 { margin: 0 0 5px; font-size: 27pt; color: #102342; }
+    h2 {
+      margin: 28px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid var(--line);
+      font-size: 17pt;
+      color: #16386b;
+    }
+    h3 { margin: 17px 0 6px; font-size: 12.5pt; color: #16386b; }
+    p { margin: 6px 0 9px; }
+    ul, ol { margin: 6px 0 12px; padding-left: 23px; }
+    li { margin: 4px 0; }
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: #edf1f6;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 9.5pt;
+    }
+    .subtitle { color: var(--muted); font-size: 12pt; }
+    .stamp {
+      display: inline-block;
+      margin: 18px 0 10px;
+      padding: 8px 13px;
+      border: 1px solid #bfcee4;
+      border-radius: 8px;
+      background: var(--pale);
+      color: #173c78;
+      font-weight: bold;
+    }
+    .warning {
+      margin: 14px 0;
+      padding: 11px 13px;
+      border-left: 4px solid #d88c16;
+      background: var(--warning);
+    }
+    table { width: 100%; border-collapse: collapse; margin: 9px 0 14px; font-size: 9.7pt; }
+    th, td { border: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+    th { text-align: left; background: #f2f6fb; color: #173c78; }
+    .phase {
+      margin: 10px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      page-break-inside: avoid;
+    }
+    .phase strong { color: var(--accent); }
+    .small { color: var(--muted); font-size: 9.5pt; }
+    .page-break { page-break-before: always; }
+    @page { size: A4; margin: 15mm; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>UNIGRAM</h1>
+    <p class="subtitle">Orientacao para continuidade do sistema academico real</p>
+    <p class="small">Documento preparado em 25/05/2026 a partir da auditoria do codigo atual.</p>
+
+    <div class="stamp">Nenhuma alteracao foi aplicada ao banco de dados nesta orientacao.</div>
+
+    <div class="warning">
+      Uma aplicacao de migration institucional foi proposta durante a analise, mas nao foi autorizada
+      e nao foi executada. O rascunho local dessa Fase 2 tambem foi retirado para que nenhuma rota
+      dependa de schema ainda inexistente.
+    </div>
+
+    <h2>1. Arquitetura confirmada</h2>
+    <table>
+      <tr><th>Camada</th><th>Padrao real encontrado</th></tr>
+      <tr><td>Frontend</td><td>React + Vite em <code>frontend/src</code></td></tr>
+      <tr><td>Backend</td><td>Express em <code>backend/src</code></td></tr>
+      <tr><td>Banco principal</td><td>TypeDB com TypeQL em stores, repositories e rotas</td></tr>
+      <tr><td>Imagens/videos</td><td>Cloudinary</td></tr>
+      <tr><td>Documentos/PDFs</td><td>Supabase Storage, com URL/path persistidos quando vinculados</td></tr>
+      <tr><td>Autenticacao</td><td>JWT armazenado no <code>localStorage</code> e validado no backend</td></tr>
+      <tr><td>Validacao</td><td>Zod</td></tr>
+    </table>
+
+    <h2>2. Codigo ja ajustado/encontrado funcional</h2>
+    <p>Estes pontos ja estao presentes no codigo atual e devem ser preservados durante a reestruturacao:</p>
+    <table>
+      <tr><th>Area</th><th>Estado atual</th><th>Arquivos principais</th></tr>
+      <tr>
+        <td>Portal/AVA</td>
+        <td>Consome estado academico real via API TypeDB, incluindo operacoes de professor e coordenacao.</td>
+        <td><code>AcademicPortalPage.jsx</code>, <code>CampusPage.jsx</code>, <code>typedbAvaStore.js</code></td>
+      </tr>
+      <tr>
+        <td>Disciplina no modelo atual</td>
+        <td>Existe criacao persistente para <code>academic-course</code> + offering pela rota de coordenacao atual.</td>
+        <td><code>avaRoutes.js</code>, <code>typedbAvaStore.js</code>, <code>platform.js</code></td>
+      </tr>
+      <tr>
+        <td>Frequencia</td>
+        <td>Registra status <code>present</code>, <code>absent</code>, <code>late</code> e <code>justified</code>.</td>
+        <td><code>avaRoutes.js</code>, <code>CampusPage.jsx</code></td>
+      </tr>
+      <tr>
+        <td>Materiais/documentos</td>
+        <td>Metadados possuem <code>documentPath</code> para associacao com objeto Supabase e exclusao real.</td>
+        <td><code>004_academic_material_document_path.tql</code>, <code>document.service.js</code></td>
+      </tr>
+      <tr>
+        <td>Portfolio</td>
+        <td>Link publico usa <code>/portfolio/:username/:slug</code>, com busca vinculada ao autor e slug.</td>
+        <td><code>typedbPortfolioStore.js</code>, <code>routes/portfolio.js</code></td>
+      </tr>
+    </table>
+
+    <h2>3. O modelo atual e seu limite</h2>
+    <p>Hoje o AVA esta estruturado desta forma:</p>
+    <p><code>educational-institute -&gt; academic-course-offering -&gt; academic-course</code></p>
+    <p>
+      O problema e semantico e estrutural: <code>academic-course</code> esta sendo tratado como
+      disciplina. Ele nao pode passar a representar tambem um curso de graduacao sem quebrar
+      matriculas, ofertas, materiais e frequencia existentes.
+    </p>
+    <p>A hierarquia desejada deve ser criada separadamente e integrada depois:</p>
+    <p><code>UNIVERSITY -&gt; CAMPUS -&gt; COURSE -&gt; SEMESTER -&gt; CLASS_GROUP -&gt; SUBJECT</code></p>
+
+    <div class="page-break"></div>
+    <h2>4. Problemas ainda ativos</h2>
+    <table>
+      <tr><th>Arquivo/area</th><th>Problema</th><th>Correcao pretendida</th></tr>
+      <tr>
+        <td><code>HomePage.jsx</code></td>
+        <td>Fallback de tendencias, pessoas e comunidades inventadas.</td>
+        <td>Buscar API real; quando vazio, mostrar empty state.</td>
+      </tr>
+      <tr>
+        <td><code>Sidebar.jsx</code></td>
+        <td>Comunidades seguidas fixas em array local.</td>
+        <td>Listar memberships reais de comunidades.</td>
+      </tr>
+      <tr>
+        <td><code>routes/portfolio.js</code></td>
+        <td>Habilidades e afirmacoes publicas inseridas sem dado persistido.</td>
+        <td>Exibir somente skills, evidencias e disponibilidade salvas.</td>
+      </tr>
+      <tr>
+        <td><code>seed-complete-platform-data.js</code></td>
+        <td>Seed explicitamente de demonstracao.</td>
+        <td>Remover do fluxo operacional apos existir cadastro administrativo real.</td>
+      </tr>
+      <tr>
+        <td>Auth/RBAC</td>
+        <td>Roles globais; nao existe vinculo por instituicao; validacao TypeDB pode falhar aberta em desenvolvimento.</td>
+        <td>RBAC institucional e validacao fail-closed antes de multi-faculdade.</td>
+      </tr>
+    </table>
+
+    <h2>5. O que proponho fazer, sem executar ainda</h2>
+    <div class="phase">
+      <strong>Fase 2A - Desenho aprovado do schema</strong>
+      <p>Preparar para sua revisao uma migration TypeQL aditiva, sem aplica-la, definindo universidade, campus, curso, semestre, turma, disciplina e membership. A raiz existente <code>educational-institute</code> deve ser analisada como candidata a Universidade para evitar duplicacao.</p>
+    </div>
+    <div class="phase">
+      <strong>Fase 2B - Endpoints institucionais</strong>
+      <p>Depois de aprovar o schema, implementar rotas Express com Zod para criar/listar a hierarquia e para solicitar/aprovar vinculo institucional. Nenhuma tela sera exibida antes de existir backend persistente.</p>
+    </div>
+    <div class="phase">
+      <strong>Fase 3 - Autorizacao real</strong>
+      <p>Implementar <code>requireInstitutionRole</code>, bloquear acesso cruzado entre universidades e remover o fail-open da validacao JWT/TypeDB. Somente entao administradores, coordenadores, professores e alunos passam a operar por instituicao.</p>
+    </div>
+    <div class="phase">
+      <strong>Fase 4 - Ponte com o AVA existente</strong>
+      <p>Relacionar as offerings atuais a turma, semestre e disciplina aprovados, sem migrar por texto nem inventar vinculos. Materiais, atividades e frequencia continuarao usando dados reais durante a transicao.</p>
+    </div>
+    <div class="phase">
+      <strong>Fases 5 e 6 - Feed, portfolio e uploads</strong>
+      <p>Adicionar visibilidade institucional a posts e portfolio, remover fallbacks falsos visiveis e validar permissoes de uploads Cloudinary/Supabase com vinculos persistidos.</p>
+    </div>
+
+    <h2>6. Decisoes que preciso da sua aprovacao</h2>
+    <ol>
+      <li>Usar <code>educational-institute</code> existente como Universidade, adicionando atributos institucionais, ou criar uma entidade nova e uma migracao de compatibilidade.</li>
+      <li>Definir se os dados AVA existentes devem ser preservados e associados manualmente a novas turmas/disciplinas.</li>
+      <li>Confirmar quais usuarios reais receberao inicialmente <code>SUPER_ADMIN</code> e <code>UNIVERSITY_ADMIN</code>.</li>
+      <li>Aprovar o schema TypeQL antes de qualquer execucao contra TypeDB.</li>
+    </ol>
+
+    <h2>7. Regra de execucao daqui em diante</h2>
+    <p>
+      Posso preparar codigo e migrations para revisao local, mas nao executarei migrations,
+      seeds ou alteracoes no TypeDB sem sua autorizacao explicita para o comando especifico.
+      Seeds demonstrativos nao serao usados como substituto de cadastro real.
+    </p>
+  </main>
+</body>
+</html>

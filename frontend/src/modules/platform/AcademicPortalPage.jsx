@@ -14,7 +14,21 @@ import Topbar from '../../components/layout/Topbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
-import { assignAcademicTeacher, createAcademicCourse, enrollAcademicStudent, fetchAva } from './platform';
+import {
+  assignInstitutionProfessor,
+  createInstitutionAvaOffering,
+  createInstitutionCampus,
+  createInstitutionClassGroup,
+  createInstitutionCourse,
+  createInstitutionSemester,
+  createInstitutionSubject,
+  createInstitutionUniversity,
+  enrollInstitutionStudent,
+  fetchAva,
+  fetchUniversities,
+  fetchUniversity,
+  linkInstitutionSubjectToClass,
+} from './platform';
 
 const pageVariants = {
   initial: { opacity: 0, y: 18 },
@@ -91,17 +105,27 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('home');
-  const [enrollmentDraft, setEnrollmentDraft] = useState({ courseId: '', username: '', name: '', registration: '' });
-  const [teacherDraft, setTeacherDraft] = useState({ courseId: '', username: '', name: '' });
-  const [courseDraft, setCourseDraft] = useState({
-    title: '',
+  const [universities, setUniversities] = useState([]);
+  const [institutionData, setInstitutionData] = useState(null);
+  const [selectedUniversityId, setSelectedUniversityId] = useState('');
+  const [universityDraft, setUniversityDraft] = useState({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
+  const [campusDraft, setCampusDraft] = useState({ name: '', city: '', state: '' });
+  const [courseDraft, setCourseDraft] = useState({ campusId: '', name: '', degreeType: 'bachelor', duration: 8 });
+  const [semesterDraft, setSemesterDraft] = useState({ courseId: '', year: new Date().getFullYear(), period: 1, active: true });
+  const [classDraft, setClassDraft] = useState({ semesterId: '', code: '', shift: 'evening' });
+  const [subjectDraft, setSubjectDraft] = useState({ courseId: '', name: '', workload: 80 });
+  const [offeringDraft, setOfferingDraft] = useState({
+    classGroupId: '',
+    subjectId: '',
     code: '',
     description: '',
     period: '2026.1',
     schedule: '',
     room: '',
-    tags: '',
+    color: '#2563eb',
   });
+  const [studentDraft, setStudentDraft] = useState({ classGroupId: '', username: '', registration: '' });
+  const [professorDraft, setProfessorDraft] = useState({ semesterId: '', subjectId: '', username: '' });
 
   const reload = async () => {
     setLoading(true);
@@ -118,6 +142,23 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
   useEffect(() => {
     reload();
+  }, [token]);
+
+  const loadInstitution = async (preferredId = selectedUniversityId) => {
+    const data = await fetchUniversities(token);
+    const list = data.universities || [];
+    setUniversities(list);
+    const nextId = preferredId || list[0]?.id || '';
+    setSelectedUniversityId(nextId);
+    if (nextId) setInstitutionData(await fetchUniversity(token, nextId));
+    else setInstitutionData(null);
+  };
+
+  useEffect(() => {
+    loadInstitution().catch(() => {
+      setUniversities([]);
+      setInstitutionData(null);
+    });
   }, [token]);
 
   const role = normalizeRole(user?.role);
@@ -141,44 +182,135 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const pendingCorrections = Number(teacherDashboard.pendingCorrections || 0);
   const enrolledStudents = courses.reduce((sum, course) => sum + (course.students?.length || 0), 0);
 
-  const createEnrollment = async (event) => {
-    event.preventDefault();
-    const courseId = enrollmentDraft.courseId || courses[0]?.id;
-    if (!courseId) return;
-    try {
-      setAva(await enrollAcademicStudent(token, courseId, enrollmentDraft));
-      setEnrollmentDraft({ courseId, username: '', name: '', registration: '' });
-      showToast('Matricula registrada', 'OK');
-    } catch (err) {
-      showToast(err.message || 'Erro ao matricular aluno', '!');
+  const refreshInstitution = async (data) => {
+    if (data?.university?.id) {
+      setSelectedUniversityId(data.university.id);
+      setInstitutionData(data);
+      const list = await fetchUniversities(token);
+      setUniversities(list.universities || []);
+    } else {
+      await loadInstitution();
     }
   };
 
-  const assignTeacher = async (event) => {
+  const createUniversity = async (event) => {
     event.preventDefault();
-    const courseId = teacherDraft.courseId || courses[0]?.id;
-    if (!courseId) return;
     try {
-      setAva(await assignAcademicTeacher(token, courseId, teacherDraft));
-      setTeacherDraft({ courseId, username: '', name: '' });
-      showToast('Professor designado', 'OK');
+      await refreshInstitution(await createInstitutionUniversity(token, universityDraft));
+      setUniversityDraft({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
+      showToast('Universidade criada', 'OK');
     } catch (err) {
-      showToast(err.message || 'Erro ao designar professor', '!');
+      showToast(err.message || 'Erro ao criar universidade', '!');
+    }
+  };
+
+  const createCampus = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId) return;
+    try {
+      await refreshInstitution(await createInstitutionCampus(token, selectedUniversityId, campusDraft));
+      setCampusDraft({ name: '', city: '', state: '' });
+      showToast('Campus criado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar campus', '!');
     }
   };
 
   const createCourse = async (event) => {
     event.preventDefault();
+    if (!selectedUniversityId || !courseDraft.campusId) return;
     try {
-      const payload = {
-        ...courseDraft,
-        tags: courseDraft.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      };
-      setAva(await createAcademicCourse(token, payload));
-      setCourseDraft({ title: '', code: '', description: '', period: '2026.1', schedule: '', room: '', tags: '' });
+      await refreshInstitution(await createInstitutionCourse(token, selectedUniversityId, courseDraft.campusId, {
+        name: courseDraft.name,
+        degreeType: courseDraft.degreeType,
+        duration: Number(courseDraft.duration),
+      }));
+      setCourseDraft(prev => ({ ...prev, name: '' }));
+      showToast('Curso criado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar curso', '!');
+    }
+  };
+
+  const createSemester = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !semesterDraft.courseId) return;
+    try {
+      await refreshInstitution(await createInstitutionSemester(token, selectedUniversityId, semesterDraft.courseId, {
+        year: Number(semesterDraft.year),
+        period: Number(semesterDraft.period),
+        active: semesterDraft.active,
+      }));
+      showToast('Semestre criado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar semestre', '!');
+    }
+  };
+
+  const createClassGroup = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !classDraft.semesterId) return;
+    try {
+      await refreshInstitution(await createInstitutionClassGroup(token, selectedUniversityId, classDraft.semesterId, classDraft));
+      setClassDraft(prev => ({ ...prev, code: '' }));
+      showToast('Turma criada', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao criar turma', '!');
+    }
+  };
+
+  const createSubject = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !subjectDraft.courseId) return;
+    try {
+      await refreshInstitution(await createInstitutionSubject(token, selectedUniversityId, subjectDraft.courseId, {
+        name: subjectDraft.name,
+        workload: Number(subjectDraft.workload),
+      }));
+      setSubjectDraft(prev => ({ ...prev, name: '' }));
       showToast('Disciplina criada', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao criar disciplina', '!');
+    }
+  };
+
+  const openAvaOffering = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !offeringDraft.classGroupId || !offeringDraft.subjectId) return;
+    try {
+      await refreshInstitution(await linkInstitutionSubjectToClass(token, selectedUniversityId, offeringDraft.classGroupId, offeringDraft.subjectId));
+      await refreshInstitution(await createInstitutionAvaOffering(token, selectedUniversityId, offeringDraft.classGroupId, offeringDraft.subjectId, offeringDraft));
+      await reload();
+      setOfferingDraft(prev => ({ ...prev, code: '', description: '', schedule: '', room: '' }));
+      showToast('Offering AVA aberta', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao abrir offering do AVA', '!');
+    }
+  };
+
+  const enrollStudent = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !studentDraft.classGroupId) return;
+    try {
+      await refreshInstitution(await enrollInstitutionStudent(token, selectedUniversityId, studentDraft.classGroupId, studentDraft));
+      await reload();
+      setStudentDraft(prev => ({ ...prev, username: '', registration: '' }));
+      showToast('Aluno matriculado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao matricular aluno', '!');
+    }
+  };
+
+  const assignProfessor = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId || !professorDraft.semesterId || !professorDraft.subjectId) return;
+    try {
+      await refreshInstitution(await assignInstitutionProfessor(token, selectedUniversityId, professorDraft.semesterId, professorDraft.subjectId, professorDraft));
+      await reload();
+      setProfessorDraft(prev => ({ ...prev, username: '' }));
+      showToast('Professor vinculado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao vincular professor', '!');
     }
   };
 
@@ -262,48 +394,147 @@ export default function AcademicPortalPage({ onOpenAva }) {
     </motion.section>
   );
 
-  const renderCoordination = () => (
-    <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
-      <PortalCard title="Criar disciplina" text="Cria a disciplina e sua oferta ativa no TypeDB." tone="wide" icon={BookOpen}>
-        <form className="academic-form" onSubmit={createCourse}>
-          <input value={courseDraft.title} onChange={event => setCourseDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Nome da disciplina" required />
-          <input value={courseDraft.code} onChange={event => setCourseDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo, ex: ESW-301" required />
-          <textarea value={courseDraft.description} onChange={event => setCourseDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
-          <input value={courseDraft.period} onChange={event => setCourseDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo, ex: 2026.1" required />
-          <input value={courseDraft.schedule} onChange={event => setCourseDraft(prev => ({ ...prev, schedule: event.target.value }))} placeholder="Horario, ex: Segunda - 19:00" required />
-          <input value={courseDraft.room} onChange={event => setCourseDraft(prev => ({ ...prev, room: event.target.value }))} placeholder="Sala ou ambiente" required />
-          <input value={courseDraft.tags} onChange={event => setCourseDraft(prev => ({ ...prev, tags: event.target.value }))} placeholder="Tags separadas por virgula" />
-          <button className="btn btn-primary">Criar disciplina</button>
-        </form>
-      </PortalCard>
-      <PortalCard title="Matricular aluno" text="O username deve existir na base de usuarios." icon={Users}>
-        <form className="academic-form" onSubmit={createEnrollment}>
-          <select value={enrollmentDraft.courseId} onChange={event => setEnrollmentDraft(prev => ({ ...prev, courseId: event.target.value }))}>
-            <option value="">Selecione a disciplina</option>
-            {courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
-          </select>
-          <input value={enrollmentDraft.username} onChange={event => setEnrollmentDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do aluno" required />
-          <input value={enrollmentDraft.name} onChange={event => setEnrollmentDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome completo" required />
-          <input value={enrollmentDraft.registration} onChange={event => setEnrollmentDraft(prev => ({ ...prev, registration: event.target.value }))} placeholder="Matricula" required />
-          <button className="btn btn-primary" disabled={!courses.length}>Matricular</button>
-        </form>
-      </PortalCard>
-      <PortalCard title="Designar professor" text="Vincula um usuario existente a uma oferta de disciplina." icon={GraduationCap}>
-        <form className="academic-form" onSubmit={assignTeacher}>
-          <select value={teacherDraft.courseId} onChange={event => setTeacherDraft(prev => ({ ...prev, courseId: event.target.value }))}>
-            <option value="">Selecione a disciplina</option>
-            {courses.map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
-          </select>
-          <input value={teacherDraft.username} onChange={event => setTeacherDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do professor" required />
-          <input value={teacherDraft.name} onChange={event => setTeacherDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome do professor" required />
-          <button className="btn btn-primary" disabled={!courses.length}>Designar</button>
-        </form>
-      </PortalCard>
-      <PortalCard title="Oferta academica" text="Turmas disponiveis para coordenacao." tone="wide" icon={BookOpen}>
-        <DisciplinesList courses={courses} loading={loading} onOpenAva={onOpenAva} />
-      </PortalCard>
-    </motion.section>
-  );
+  const renderCoordination = () => {
+    const campuses = institutionData?.campuses || [];
+    const institutionCourses = institutionData?.courses || [];
+    const semesters = institutionData?.semesters || [];
+    const classGroups = institutionData?.classGroups || [];
+    const subjects = institutionData?.subjects || [];
+    return (
+      <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
+        <PortalCard title="Universidade" text="Selecione a raiz institucional persistida no TypeDB." tone="wide" icon={GraduationCap}>
+          <form className="academic-form" onSubmit={event => event.preventDefault()}>
+            <select value={selectedUniversityId} onChange={async event => {
+              const id = event.target.value;
+              setSelectedUniversityId(id);
+              setInstitutionData(id ? await fetchUniversity(token, id) : null);
+            }}>
+              <option value="">Selecione uma universidade</option>
+              {universities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </form>
+          {!universities.length && <EmptyState>Nenhuma universidade cadastrada.</EmptyState>}
+        </PortalCard>
+
+        {role === 'super_admin' && (
+          <PortalCard title="Criar universidade" text="Cria a raiz institucional; voce aplica a migration TypeDB manualmente antes de usar." tone="wide" icon={GraduationCap}>
+            <form className="academic-form" onSubmit={createUniversity}>
+              <input value={universityDraft.name} onChange={event => setUniversityDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da universidade" required />
+              <input value={universityDraft.slug} onChange={event => setUniversityDraft(prev => ({ ...prev, slug: event.target.value }))} placeholder="Slug opcional" />
+              <input value={universityDraft.cnpj} onChange={event => setUniversityDraft(prev => ({ ...prev, cnpj: event.target.value }))} placeholder="CNPJ" required />
+              <input value={universityDraft.logo} onChange={event => setUniversityDraft(prev => ({ ...prev, logo: event.target.value }))} placeholder="URL do logo Cloudinary (opcional)" />
+              <textarea value={universityDraft.description} onChange={event => setUniversityDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="Descricao" />
+              <button className="btn btn-primary">Criar universidade</button>
+            </form>
+          </PortalCard>
+        )}
+
+        <PortalCard title="Campus" text="Campus pertence a universidade selecionada." icon={Users}>
+          <form className="academic-form" onSubmit={createCampus}>
+            <input value={campusDraft.name} onChange={event => setCampusDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome do campus" required />
+            <input value={campusDraft.city} onChange={event => setCampusDraft(prev => ({ ...prev, city: event.target.value }))} placeholder="Cidade" required />
+            <input value={campusDraft.state} onChange={event => setCampusDraft(prev => ({ ...prev, state: event.target.value }))} placeholder="UF" maxLength={2} required />
+            <button className="btn btn-primary" disabled={!selectedUniversityId}>Criar campus</button>
+          </form>
+        </PortalCard>
+
+        <PortalCard title="Curso" text="Curso de graduacao vinculado ao campus." icon={BookOpen}>
+          <form className="academic-form" onSubmit={createCourse}>
+            <select value={courseDraft.campusId} onChange={event => setCourseDraft(prev => ({ ...prev, campusId: event.target.value }))} required>
+              <option value="">Selecione o campus</option>
+              {campuses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <input value={courseDraft.name} onChange={event => setCourseDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome do curso" required />
+            <select value={courseDraft.degreeType} onChange={event => setCourseDraft(prev => ({ ...prev, degreeType: event.target.value }))}>
+              <option value="bachelor">Bacharelado</option>
+              <option value="licentiate">Licenciatura</option>
+              <option value="technologist">Tecnologo</option>
+              <option value="specialization">Especializacao</option>
+            </select>
+            <input type="number" min={1} max={20} value={courseDraft.duration} onChange={event => setCourseDraft(prev => ({ ...prev, duration: event.target.value }))} placeholder="Duracao" required />
+            <button className="btn btn-primary" disabled={!campuses.length}>Criar curso</button>
+          </form>
+        </PortalCard>
+
+        <PortalCard title="Semestre e turma" text="Crie o semestre e a turma antes de abrir disciplinas no AVA." icon={PanelsTopLeft}>
+          <form className="academic-form" onSubmit={createSemester}>
+            <select value={semesterDraft.courseId} onChange={event => setSemesterDraft(prev => ({ ...prev, courseId: event.target.value }))} required>
+              <option value="">Curso do semestre</option>
+              {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <input type="number" value={semesterDraft.year} onChange={event => setSemesterDraft(prev => ({ ...prev, year: event.target.value }))} required />
+            <input type="number" min={1} max={4} value={semesterDraft.period} onChange={event => setSemesterDraft(prev => ({ ...prev, period: event.target.value }))} required />
+            <button className="btn btn-primary" disabled={!institutionCourses.length}>Criar semestre</button>
+          </form>
+          <form className="academic-form" onSubmit={createClassGroup}>
+            <select value={classDraft.semesterId} onChange={event => setClassDraft(prev => ({ ...prev, semesterId: event.target.value }))} required>
+              <option value="">Semestre da turma</option>
+              {semesters.map(item => <option key={item.id} value={item.id}>{item.year}.{item.period}</option>)}
+            </select>
+            <input value={classDraft.code} onChange={event => setClassDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da turma" required />
+            <select value={classDraft.shift} onChange={event => setClassDraft(prev => ({ ...prev, shift: event.target.value }))}>
+              <option value="morning">Matutino</option>
+              <option value="afternoon">Vespertino</option>
+              <option value="evening">Noturno</option>
+              <option value="distance">EAD</option>
+            </select>
+            <button className="btn btn-primary" disabled={!semesters.length}>Criar turma</button>
+          </form>
+        </PortalCard>
+
+        <PortalCard title="Disciplina e AVA" text="A offering do AVA so abre depois da disciplina estar vinculada a uma turma." tone="wide" icon={BookOpen}>
+          <form className="academic-form" onSubmit={createSubject}>
+            <select value={subjectDraft.courseId} onChange={event => setSubjectDraft(prev => ({ ...prev, courseId: event.target.value }))} required>
+              <option value="">Curso da disciplina</option>
+              {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <input value={subjectDraft.name} onChange={event => setSubjectDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da disciplina" required />
+            <input type="number" min={1} value={subjectDraft.workload} onChange={event => setSubjectDraft(prev => ({ ...prev, workload: event.target.value }))} placeholder="Carga horaria" required />
+            <button className="btn btn-primary" disabled={!institutionCourses.length}>Criar disciplina</button>
+          </form>
+          <form className="academic-form" onSubmit={openAvaOffering}>
+            <select value={offeringDraft.classGroupId} onChange={event => setOfferingDraft(prev => ({ ...prev, classGroupId: event.target.value }))} required>
+              <option value="">Turma</option>
+              {classGroups.map(item => <option key={item.id} value={item.id}>{item.code}</option>)}
+            </select>
+            <select value={offeringDraft.subjectId} onChange={event => setOfferingDraft(prev => ({ ...prev, subjectId: event.target.value }))} required>
+              <option value="">Disciplina</option>
+              {subjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <input value={offeringDraft.code} onChange={event => setOfferingDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da offering, ex: ESW-301" required />
+            <input value={offeringDraft.period} onChange={event => setOfferingDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo, ex: 2026.1" required />
+            <input value={offeringDraft.schedule} onChange={event => setOfferingDraft(prev => ({ ...prev, schedule: event.target.value }))} placeholder="Horario" required />
+            <input value={offeringDraft.room} onChange={event => setOfferingDraft(prev => ({ ...prev, room: event.target.value }))} placeholder="Sala ou ambiente" required />
+            <button className="btn btn-primary" disabled={!classGroups.length || !subjects.length}>Abrir no AVA</button>
+          </form>
+        </PortalCard>
+
+        <PortalCard title="Vinculos academicos" text="Matricula aluno na turma e professor na disciplina/semestre." tone="wide" icon={Users}>
+          <form className="academic-form" onSubmit={enrollStudent}>
+            <select value={studentDraft.classGroupId} onChange={event => setStudentDraft(prev => ({ ...prev, classGroupId: event.target.value }))} required>
+              <option value="">Turma do aluno</option>
+              {classGroups.map(item => <option key={item.id} value={item.id}>{item.code}</option>)}
+            </select>
+            <input value={studentDraft.username} onChange={event => setStudentDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do aluno" required />
+            <input value={studentDraft.registration} onChange={event => setStudentDraft(prev => ({ ...prev, registration: event.target.value }))} placeholder="Matricula" required />
+            <button className="btn btn-primary" disabled={!classGroups.length}>Matricular aluno</button>
+          </form>
+          <form className="academic-form" onSubmit={assignProfessor}>
+            <select value={professorDraft.semesterId} onChange={event => setProfessorDraft(prev => ({ ...prev, semesterId: event.target.value }))} required>
+              <option value="">Semestre</option>
+              {semesters.map(item => <option key={item.id} value={item.id}>{item.year}.{item.period}</option>)}
+            </select>
+            <select value={professorDraft.subjectId} onChange={event => setProfessorDraft(prev => ({ ...prev, subjectId: event.target.value }))} required>
+              <option value="">Disciplina</option>
+              {subjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+            <input value={professorDraft.username} onChange={event => setProfessorDraft(prev => ({ ...prev, username: event.target.value }))} placeholder="Username do professor" required />
+            <button className="btn btn-primary" disabled={!semesters.length || !subjects.length}>Vincular professor</button>
+          </form>
+        </PortalCard>
+      </motion.section>
+    );
+  };
 
   const renderManagement = () => (
     <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole, requirePermission } from './auth/rbac.js';
 import avaRouter from './academic/avaRoutes.js';
+import institutionRouter from './institution/institutionRoutes.js';
 import { getAvaState } from './academic/typedbAvaStore.js';
 import { answerRaiFromTypeDB } from '../services/rai.service.js';
 
@@ -61,5 +62,6 @@ router.post('/v1/ai/assistant', requirePermission('ai.use'), async (req, res) =>
 });
 
 router.use('/v1/ava', requirePermission('platform.read'), avaRouter);
+router.use('/v1/institutions', institutionRouter);
 
 export default router;
