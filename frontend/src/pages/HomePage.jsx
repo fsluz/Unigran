@@ -176,11 +176,11 @@ export default function HomePage({ onOpenProfile }) {
   };
 
   return (
-    <div className="page-scroll">
-      <Topbar title="Feed" />
+    <div className="page-scroll home-page">
+      <Topbar />
 
       <div className="page-layout">
-        <main className="section-grid">
+        <main className="section-grid home-feed">
           <div className="stories-strip-wrap">
             <StoriesBar onOpenProfile={onOpenProfile} />
           </div>
@@ -251,7 +251,7 @@ export default function HomePage({ onOpenProfile }) {
           </div>
         </main>
 
-        <aside className="right-panel">
+        <aside className="right-panel home-right-panel">
           <div className="panel-card" style={{ marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Tendencias</div>
             {trending.length ? trending.map((item, i) => (

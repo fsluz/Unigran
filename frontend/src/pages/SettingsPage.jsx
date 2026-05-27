@@ -654,7 +654,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   }
 
   return (
-    <div className="page-scroll">
+    <div className="page-scroll settings-page">
       <Topbar title="Configuracoes" />
       <div className="settings-shell">
 

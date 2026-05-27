@@ -263,7 +263,7 @@ export default function ZuniPage({ onOpenProfile }) {
           )}
 
           {posts.map(post => (
-            <article key={post.id} className={`zuni-reel ${likedPulse[post.id] ? 'liked-pulse' : ''}`} data-post-id={post.id}>
+            <article key={post.id} className={`zuni-reel ${commentsOpen === post.id ? 'comments-open' : ''} ${likedPulse[post.id] ? 'liked-pulse' : ''}`} data-post-id={post.id}>
               <div className="zuni-video-stage" onDoubleClick={() => likeOnce(post)}>
                 {post.media?.url ? (
                   <video

@@ -298,10 +298,10 @@ export default function CommunitiesPage({ onOpenProfile }) {
   }
 
   return (
-    <div className="page-scroll">
+    <div className="page-scroll communities-index">
       <Topbar title="Comunidades" />
 
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 18px', width: '100%' }}>
+      <div className="community-index-shell">
         <section className="page-hero" style={{ marginBottom: 18 }}>
           <div>
             <span className="page-badge">UNIGRAN</span>
@@ -311,7 +311,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
           <Button onClick={() => setCreateOpen(true)}>+ Nova comunidade</Button>
         </section>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        <div className="community-filters">
           {[
             ['all', 'Todas'],
             ['mine', 'Minhas'],

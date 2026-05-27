@@ -621,11 +621,11 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
 
       {/* Actions */}
       <div className="post-footer">
-        <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike}>
+        <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike} aria-label="Curtir">
           <svg width={19} height={19} viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
           </svg>
-          <span>{Number(likes || 0)}</span>
+          <span className="post-action-count">{Number(likes || 0)}</span>
         </button>
         <button
           className="post-action-btn"
@@ -653,7 +653,8 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           style={{ color: showComments ? 'var(--accent)' : undefined }}
         >
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span>{commentsCount} Comentarios</span>
+          <span className="post-action-count">{commentsCount}</span>
+          <span className="post-action-label">Comentarios</span>
         </button>
         <button className="post-action-btn" onClick={async () => {
           await sharePost({ token, postId: post.id }).catch(() => null);
@@ -670,7 +671,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           showToast('Post compartilhado!', 'OK');
         }}>
           <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          <span>Compartilhar</span>
+          <span className="post-action-label">Compartilhar</span>
         </button>
         <button
           className={`post-action-btn ${saved ? 'liked' : ''}`}
@@ -681,7 +682,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             showToast(saved ? 'Removido dos favoritos' : 'Post salvo', 'OK');
           }}
         >
-          <span>{saved ? 'Salvo' : 'Salvar'}</span>
+          <span className="post-action-label">{saved ? 'Salvo' : 'Salvar'}</span>
         </button>
       </div>
 

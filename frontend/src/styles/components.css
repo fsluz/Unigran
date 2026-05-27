@@ -5873,3 +5873,240 @@ img, video { max-width: 100%; }
   .explore-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* Visual refresh: feed, communities, messages, Zuni, admin and settings. */
+.home-page .home-feed { gap: 14px; }
+.home-page .post-card {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--card) 95%, var(--page-bg));
+}
+.post-action-count { font-weight: 700; }
+
+.community-index-shell { max-width: 1320px; margin: 0 auto; padding: 22px 18px; width: 100%; }
+.communities-index .page-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 172px;
+  padding: 28px;
+  margin-bottom: 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(106,0,244,.2), transparent 34%),
+    linear-gradient(110deg, color-mix(in srgb, var(--card) 94%, var(--page-bg)), color-mix(in srgb, var(--accent) 15%, var(--card)));
+}
+.community-filters { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.communities-index .community-card-grid { grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 14px; }
+.communities-index .community-list-card {
+  min-height: 202px;
+  padding: 18px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 96%, var(--page-bg));
+}
+.communities-index .community-list-card p { margin: 16px 0 12px; }
+
+.admin-hub-content { width: min(1240px, 100%); padding: 34px 28px; }
+.admin-hub-heading { display: flex; gap: 18px; align-items: center; margin-bottom: 28px; }
+.admin-hub-title-icon {
+  width: 58px; height: 58px; display: grid; place-items: center; flex-shrink: 0;
+  border-radius: 18px; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border));
+}
+.admin-hub-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 30px; }
+.admin-hub-metric {
+  display: flex; gap: 16px; align-items: center; min-height: 116px; padding: 18px;
+  border: 1px solid var(--border); border-radius: 18px; background: var(--card);
+}
+.admin-hub-metric div { display: grid; gap: 7px; }
+.admin-hub-metric small { text-transform: uppercase; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.admin-hub-metric strong { font: 800 29px var(--font-head); color: var(--text); }
+.admin-hub-section-title { margin: 0 0 16px; font: 700 19px var(--font-head); color: var(--text); }
+.admin-hub-grid { gap: 20px; }
+.admin-hub-card { min-height: 116px; border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+
+.settings-page .settings-shell {
+  max-width: 1320px;
+  margin: 18px auto;
+  padding: 0 18px 18px;
+  gap: 18px;
+  background: transparent;
+}
+.settings-page .settings-sidenav {
+  width: 244px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  padding: 12px;
+}
+.settings-page .settings-nav-item { border-radius: 10px; margin-bottom: 4px; }
+.settings-page .settings-content {
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card) 86%, var(--page-bg));
+}
+.settings-page .settings-section {
+  padding: 22px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+@media (min-width: 1001px) {
+  .zuni-feed { width: min(100%, 1060px); }
+  .zuni-reel {
+    grid-template-columns: minmax(420px, 560px) 82px;
+    justify-content: center;
+    transition: grid-template-columns .2s ease;
+  }
+  .zuni-reel.comments-open {
+    grid-template-columns: minmax(400px, 520px) 72px minmax(300px, 355px);
+    gap: 16px;
+  }
+  .zuni-reel.comments-open .zuni-comments {
+    position: relative;
+    grid-column: 3;
+    grid-row: 1;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: calc(100% - 30px);
+    max-height: none;
+    margin: 15px 0;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 1120px) and (min-width: 761px) {
+  .communities-index .community-card-grid { grid-template-columns: repeat(2, minmax(240px, 1fr)); }
+  .admin-hub-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .home-page .topbar-page-title { display: none; }
+  .home-page .page-layout { padding: 8px 10px; }
+  .home-page .home-feed { gap: 11px; }
+  .home-page .stories-strip-wrap { margin-bottom: 2px; }
+  .home-page .post-card {
+    margin-bottom: 10px;
+    border-radius: 16px;
+    box-shadow: none;
+  }
+  .home-page .post-head { padding: 12px 14px 9px; }
+  .home-page .post-body { padding: 4px 14px 15px; font-size: 15px; }
+  .home-page .post-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 7px 5px;
+    flex-wrap: nowrap;
+  }
+  .home-page .post-action-btn {
+    min-width: 0 !important;
+    padding: 6px 2px;
+    gap: 4px;
+    flex-direction: column;
+    justify-content: center;
+    font-size: 11px;
+  }
+  .home-page .post-action-btn + .post-action-btn { border-left: 1px solid var(--border); }
+  .home-page .post-action-label { display: none; }
+
+  .community-index-shell { padding: 12px 10px; }
+  .communities-index .page-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 16px;
+    min-height: auto;
+  }
+  .communities-index .community-card-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  .messages-page .conv-list-head {
+    padding: 20px 14px 10px;
+    background: transparent;
+  }
+  .messages-page .messages-title-row { margin-bottom: 15px; }
+  .messages-page .messages-title-row h3 { font-size: 22px; }
+  .messages-page .messages-title-row::after { display: none; }
+  .messages-page .messages-quick-actions {
+    position: static;
+    display: flex;
+    width: 100%;
+    height: auto;
+    margin-bottom: 14px;
+    gap: 8px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .messages-page .messages-quick-actions .messages-new-btn,
+  .messages-page .messages-quick-actions .messages-outline-btn {
+    position: static !important;
+    height: 40px;
+    display: inline-flex;
+    border-radius: 11px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .messages-page .messages-new-btn { flex: 1; }
+  .messages-page .messages-outline-btn { min-width: 94px; }
+  .messages-page .messages-search-input {
+    height: 42px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--page-bg) 75%, var(--card));
+  }
+  .messages-page .conv-item {
+    margin: 4px 8px;
+    padding: 10px 9px;
+    min-height: 68px;
+    border-radius: 14px;
+  }
+  .messages-page .conv-item.active {
+    border: 1px solid color-mix(in srgb, var(--accent) 36%, transparent);
+  }
+  .messages-page .messages-shell.mobile-chat-open .chat-area { border-radius: 22px; }
+  .messages-page .chat-head {
+    min-height: 70px;
+    padding: 12px;
+    gap: 9px;
+    border-radius: 20px 20px 0 0;
+    background: color-mix(in srgb, var(--card) 90%, var(--accent-light));
+  }
+  .messages-page .chat-head-name { font-size: 15px; }
+  .messages-page .chat-head-actions { margin-left: auto; gap: 2px; }
+  .messages-page .chat-head-icon { width: 35px; height: 35px; }
+  .messages-page .chat-messages { padding: 16px 10px; }
+  .messages-page .msg-bubble { padding: 11px 13px; border-radius: 4px 18px 18px 18px; font-size: 14px; }
+  .messages-page .msg-bubble.me { border-radius: 18px 4px 18px 18px; }
+  .messages-page .chat-input-bar {
+    margin: 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--card);
+  }
+  .messages-page .chat-input { border: 0; background: transparent; }
+
+  .admin-hub-content { padding: 18px 12px; }
+  .admin-hub-heading { margin-bottom: 18px; }
+  .admin-hub-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 20px; }
+  .admin-hub-metric { min-height: 94px; padding: 12px; gap: 10px; }
+  .admin-hub-metric .admin-hub-icon { width: 38px; height: 38px; }
+  .admin-hub-metric strong { font-size: 22px; }
+
+  .settings-page .settings-shell { display: block; margin: 8px; padding: 0 0 72px; }
+  .settings-page .settings-sidenav {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+  .settings-page .settings-nav-group { display: contents; }
+  .settings-page .settings-nav-item { white-space: nowrap; flex-shrink: 0; }
+  .settings-page .settings-content { padding: 10px; border-radius: 15px; }
+  .settings-page .settings-section { padding: 14px; }
+}
+
