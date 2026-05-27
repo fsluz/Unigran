@@ -149,15 +149,15 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
           </div>
 
           <footer className="post-detail-composer">
-            <textarea
-              className="post-detail-composer-input"
-              placeholder="Adicione seu comentário..."
-              value={newText}
-              onChange={e => setNewText(e.target.value)}
-              rows={2}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(); } }}
-            />
-            <div className="post-detail-composer-bar">
+            <div className="post-detail-composer-row">
+              <textarea
+                className="post-detail-composer-input"
+                placeholder="Adicione seu comentário..."
+                value={newText}
+                onChange={e => setNewText(e.target.value)}
+                rows={1}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(); } }}
+              />
               <button type="button" className="post-detail-publish-btn" onClick={addComment} disabled={!newText.trim() || submitting}>
                 PUBLICAR
               </button>
