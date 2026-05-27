@@ -321,6 +321,21 @@ export default function ZuniPage({ onOpenProfile }) {
                   />
                 </div>
 
+                <div className="zuni-rail">
+                  <button type="button" onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''} title="Curtir" aria-label="Curtir">
+                    <ZuniIcon name="heart" size={24} />
+                    <span>{Number(post.likes || 0)}</span>
+                  </button>
+                  <button type="button" onClick={() => openComments(post)} title="Comentarios" aria-label="Comentarios">
+                    <ZuniIcon name="comment" size={24} />
+                    <span>{Number(post.comments || 0)}</span>
+                  </button>
+                  <button type="button" onClick={() => navigator.share?.({ url: window.location.href }).catch(() => null)} title="Enviar" aria-label="Enviar">
+                    <ZuniIcon name="share" size={24} />
+                    <span>Enviar</span>
+                  </button>
+                </div>
+
                 <div className="zuni-overlay">
                   <div className="zuni-author-row">
                     <button className="zuni-author" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
@@ -340,15 +355,9 @@ export default function ZuniPage({ onOpenProfile }) {
                 </div>
               </div>
 
-              <div className="zuni-actions">
-                <button onClick={() => scrollToNeighbor(-1)} title="Anterior" aria-label="Anterior"><ZuniIcon name="up" /></button>
-                <button onClick={() => scrollToNeighbor(1)} title="Proximo" aria-label="Proximo"><ZuniIcon name="down" /></button>
-                <button onClick={() => toggleLike(post)} className={(liked[post.id] ?? post.liked) ? 'active' : ''} title="Curtir" aria-label="Curtir"><ZuniIcon name="heart" /></button>
-                <span>{Number(post.likes || 0)}</span>
-                <button onClick={() => openComments(post)} title="Comentarios" aria-label="Comentarios"><ZuniIcon name="comment" /></button>
-                <span>{Number(post.comments || 0)}</span>
-                <button onClick={() => navigator.share?.({ url: window.location.href }).catch(() => null)} title="Compartilhar" aria-label="Compartilhar"><ZuniIcon name="share" /></button>
-                <span>Enviar</span>
+              <div className="zuni-nav">
+                <button type="button" onClick={() => scrollToNeighbor(-1)} title="Anterior" aria-label="Anterior"><ZuniIcon name="up" /></button>
+                <button type="button" onClick={() => scrollToNeighbor(1)} title="Proximo" aria-label="Proximo"><ZuniIcon name="down" /></button>
               </div>
 
               {commentsOpen === post.id && (

@@ -1025,13 +1025,59 @@
 .zuni-author span { display: grid; gap: 2px; }
 .zuni-author small { color: #d1d5db; font-size: 12px; }
 .zuni-follow { flex: 0 0 auto; border: 1px solid rgba(255,255,255,.62); border-radius: 8px; padding: 8px 13px; background: rgba(0,0,0,.16); color: #fff; font-weight: 800; cursor: pointer; }
-.zuni-actions { display: grid; align-content: center; justify-items: center; gap: 6px; color: var(--text); background: var(--page-bg); border-left: 1px solid var(--border); }
-.zuni-actions button { width: 50px; height: 50px; display: grid; place-items: center; border: 0; border-radius: 999px; background: var(--card); color: var(--text); cursor: pointer; box-shadow: var(--shadow-sm); }
-.zuni-actions span { color: var(--text-muted); font-size: 11px; font-weight: 800; max-width: 68px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zuni-actions button[title="Curtir"] { background: #111827; color: #fff; }
-.zuni-actions button[title="Curtir"] svg { fill: #fff; stroke: #fff; }
-.zuni-actions button.active { background: #fff; color: #ef4444; border: 1px solid rgba(239,68,68,.45); }
-.zuni-actions button.active svg { fill: #ef4444; stroke: #ef4444; }
+.zuni-rail {
+  position: absolute;
+  right: 12px;
+  bottom: 108px;
+  z-index: 7;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+.zuni-rail button {
+  width: auto;
+  min-width: 52px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.55));
+}
+.zuni-rail button span {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+.zuni-rail button svg { stroke: #fff; }
+.zuni-rail button:first-child svg { fill: transparent; }
+.zuni-rail button.active svg { fill: #ef4444; stroke: #ef4444; }
+.zuni-rail button.active span { color: #fecaca; }
+.zuni-nav {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--text);
+  background: var(--page-bg);
+  border-left: 1px solid var(--border);
+}
+.zuni-nav button {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
 .zuni-comments { position: absolute; left: 10px; right: 92px; bottom: 10px; z-index: 5; max-height: min(48%, 360px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: color-mix(in srgb, var(--card) 94%, transparent); color: var(--text); box-shadow: 0 18px 60px rgba(0,0,0,.35); }
 .zuni-comments-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .zuni-comments-head button { width: 30px; height: 30px; border: 0; border-radius: 999px; background: var(--page-bg); color: var(--text); cursor: pointer; }
@@ -1046,9 +1092,9 @@
 .zuni-more { width: calc(100% - 24px); margin: 12px; scroll-snap-align: end; }
 @media (max-width: 620px) {
   .zuni-feed { width: 100%; }
-  .zuni-reel { grid-template-columns: minmax(0, 1fr) 70px; }
-  .zuni-actions button { width: 44px; height: 44px; font-size: 10px; }
-  .zuni-comments { right: 78px; }
+  .zuni-reel { grid-template-columns: minmax(0, 1fr); }
+  .zuni-nav { display: none; }
+  .zuni-comments { right: 12px; left: 12px; }
   .zuni-volume-panel input { width: 88px; }
 }
 .stories-strip-wrap { flex: 0 0 108px; height: 108px; min-height: 108px; max-height: 108px; align-self: start; overflow: hidden; }
@@ -5046,9 +5092,9 @@ img, video { max-width: 100%; }
   .page-layout,.page-center { padding: 8px; }
   .post-action-btn { min-width: 100%; justify-content: flex-start; padding-inline: 12px; }
   .topbar-search { display: none; }
-  .zuni-reel { grid-template-columns: minmax(0, 1fr) 58px; }
-  .zuni-actions button { width: 40px; height: 40px; }
-  .zuni-comments { right: 64px; left: 6px; }
+  .zuni-reel { grid-template-columns: minmax(0, 1fr); }
+  .zuni-nav { display: none; }
+  .zuni-comments { right: 12px; left: 12px; }
 }
 
 .portfolio-intelligence { display: grid; gap: 18px; }
@@ -6872,15 +6918,15 @@ img, video { max-width: 100%; }
   background: color-mix(in srgb, var(--card) 90%, var(--page-bg));
 }
 .zuni-video-stage { border-radius: 18px 0 0 18px; }
-.zuni-actions {
+.zuni-nav {
   border-left: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   background: color-mix(in srgb, var(--card) 92%, var(--page-bg));
 }
-.zuni-actions button {
+.zuni-nav button {
   border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
   transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
-.zuni-actions button:hover {
+.zuni-nav button:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--accent) 38%, transparent);
 }
@@ -6901,19 +6947,90 @@ img, video { max-width: 100%; }
 }
 
 @media (max-width: 760px) {
-  .zuni-page { height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px)); }
-  .zuni-feed { width: 100%; }
+  .zuni-shell { background: #000; }
+  .zuni-shell > .topbar { display: none; }
+  .zuni-shell.page-scroll {
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  .zuni-page {
+    height: 100%;
+    background: #000;
+  }
+  .zuni-feed {
+    width: 100%;
+    height: 100%;
+    scroll-snap-type: y mandatory;
+  }
   .zuni-reel {
-    height: calc(100dvh - 86px - env(safe-area-inset-bottom, 0px));
+    height: 100%;
     min-height: 0;
     margin: 0;
+    border: 0;
     border-radius: 0;
+    grid-template-columns: minmax(0, 1fr);
+    background: #000;
+  }
+  .zuni-video-stage {
+    border-radius: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .zuni-reel video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .zuni-nav { display: none; }
+  .zuni-sound {
+    top: 14px;
+    left: 12px;
+    right: auto;
+  }
+  .zuni-rail {
+    right: 10px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    gap: 18px;
+  }
+  .zuni-rail button {
+    min-width: 54px;
+    gap: 5px;
+  }
+  .zuni-rail button svg {
+    width: 28px;
+    height: 28px;
+  }
+  .zuni-rail button span {
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .zuni-overlay {
+    right: 0;
+    left: 0;
+    padding: 72px 78px 18px 14px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.28) 42%, transparent 100%);
+  }
+  .zuni-overlay p { max-width: 100%; font-size: 14px; }
+  .zuni-follow {
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 999px;
+    background: rgba(106,0,244,.72);
+    border-color: rgba(255,255,255,.35);
+  }
+  .zuni-comments {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: min(62vh, 480px);
+    border-radius: 18px 18px 0 0;
     border-left: 0;
     border-right: 0;
-    grid-template-columns: minmax(0, 1fr) 66px;
+    border-bottom: 0;
   }
-  .zuni-video-stage { border-radius: 0; }
-  .zuni-actions button { width: 42px; height: 42px; }
+  .zuni-reel.comments-open .zuni-rail { opacity: .25; pointer-events: none; }
 
   .settings-page .settings-shell {
     display: block;
