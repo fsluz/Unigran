@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
@@ -29,6 +28,7 @@ export default function MessagesPage() {
   const [groupFile, setGroupFile] = useState(null);
   const [userResults, setUserResults] = useState([]);
   const [conversationSearch, setConversationSearch] = useState('');
+  const [conversationFilter, setConversationFilter] = useState('all');
   const [groupOpen, setGroupOpen] = useState(false);
   const [addPeopleOpen, setAddPeopleOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
@@ -120,13 +120,16 @@ export default function MessagesPage() {
   const filteredConversations = useMemo(() => {
     const q = conversationSearch.trim().toLowerCase();
     const sorted = [...conversations].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
-    if (!q) return sorted;
     return sorted.filter(conv => {
       const name = conv.participant?.displayName || conv.title || '';
       const username = conv.participant?.username || '';
-      return name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+      const matchesText = !q || name.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+      const matchesFilter = conversationFilter === 'all'
+        || (conversationFilter === 'unread' && Number(conv.receivedUnreadCount || 0) > 0)
+        || (conversationFilter === 'groups' && conv.type === 'group');
+      return matchesText && matchesFilter;
     });
-  }, [conversations, conversationSearch]);
+  }, [conversations, conversationSearch, conversationFilter]);
 
   const bumpConversation = (conversationId, message) => {
     setConversations(prev => prev
@@ -1090,12 +1093,11 @@ export default function MessagesPage() {
   return (
     <div className="page-scroll messages-page">
       <audio ref={ringtoneRef} src={ringtoneSrc} loop preload="auto" />
-      <Topbar title="Mensagens" />
       <div className={`messages-shell ${active ? 'has-active' : ''} ${mobileChatOpen ? 'mobile-chat-open' : ''}`}>
         <div className="conv-list">
           <div className="conv-list-head">
             <div className="messages-title-row">
-              <h3><span className="messages-title-icon" /> Mensagens</h3>
+              <h3>Mensagens</h3>
               {conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
                 <span className="messages-title-badge">{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
               )}
@@ -1129,6 +1131,25 @@ export default function MessagesPage() {
                 )}
               </div>
             </div>
+            <div className="messages-filter-tabs" aria-label="Filtrar conversas">
+              {[
+                ['all', 'Todas'],
+                ['unread', 'Nao lidas'],
+                ['groups', 'Grupos'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={conversationFilter === id ? 'active' : ''}
+                  onClick={() => setConversationFilter(id)}
+                >
+                  {label}
+                  {id === 'unread' && conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
+                    <span>{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1149,9 +1170,12 @@ export default function MessagesPage() {
                 />
                 <div className="conv-info">
                   <div className="conv-name">{conversationTitle(conv)}</div>
-                <div className="conv-preview">{conv.lastMessage || conversationSub(conv)}</div>
+                  <div className="conv-preview">{conv.lastMessage || conversationSub(conv)}</div>
                 </div>
-                {Number(conv.receivedUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.receivedUnreadCount}</span>}
+                <div className="conv-side">
+                  {conv.lastMessageAt && <time>{relativeTime(conv.lastMessageAt)}</time>}
+                  {Number(conv.receivedUnreadCount || 0) > 0 && <span className="sidebar-wide-badge">{conv.receivedUnreadCount}</span>}
+                </div>
               </button>
             ))}
           </div>

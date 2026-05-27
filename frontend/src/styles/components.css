@@ -5954,6 +5954,70 @@ img, video { max-width: 100%; }
   background: var(--card);
 }
 
+.messages-page .messages-shell {
+  grid-template-columns: minmax(294px, 324px) minmax(0, 1fr);
+  height: calc(100dvh - 24px);
+  background:
+    radial-gradient(circle at 65% 26%, rgba(64,56,170,.1), transparent 36%),
+    var(--page-bg);
+}
+.messages-page .conv-list {
+  background: color-mix(in srgb, var(--card) 88%, var(--page-bg));
+}
+.messages-page .messages-quick-actions .messages-new-btn { flex: 1; }
+.messages-filter-tabs { display: flex; align-items: center; gap: 7px; margin-top: 14px; }
+.messages-filter-tabs button {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px;
+  border: 1px solid transparent; border-radius: 999px; color: var(--text-muted);
+  background: color-mix(in srgb, var(--card) 74%, var(--page-bg)); font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.messages-filter-tabs button.active {
+  color: #fff; border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+}
+.messages-filter-tabs span {
+  min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center;
+  border-radius: 999px; color: #fff; background: var(--accent); font-size: 10px;
+}
+.messages-filter-tabs button.active span { background: rgba(255,255,255,.22); }
+.messages-page .conv-item { min-height: 70px; padding: 11px 12px; gap: 11px; }
+.messages-page .conv-info { min-width: 0; flex: 1; }
+.messages-page .conv-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.messages-page .conv-preview { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+.messages-page .conv-side { display: grid; justify-items: end; align-self: stretch; gap: 8px; }
+.messages-page .conv-side time { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.messages-page .chat-head {
+  min-height: 78px;
+  padding: 16px 22px;
+  background: color-mix(in srgb, var(--card) 84%, var(--page-bg));
+}
+.messages-page .chat-head-icon {
+  width: 42px; height: 42px; border: 1px solid transparent; border-radius: 12px;
+}
+.messages-page .chat-head-icon:hover { border-color: color-mix(in srgb, var(--accent) 52%, var(--border)); }
+.messages-page .chat-messages { padding: 26px 30px; }
+.messages-page .msg-bubble { border-radius: 4px 18px 18px 18px; padding: 12px 16px; }
+.messages-page .msg-bubble.me { border-radius: 18px 4px 18px 18px; }
+.messages-page .chat-input-bar {
+  margin: 0 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+}
+.messages-page .chat-input { border-color: transparent; background: transparent; }
+.messages-page .chat-input:focus { box-shadow: none; }
+.messages-page .chat-send-btn {
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+  box-shadow: 0 10px 22px rgba(92,54,245,.28);
+}
+
+.zuni-comments-about { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+.zuni-comments-about h3 { margin: 0 0 9px; font: 700 18px var(--font-head); color: var(--text); }
+.zuni-comments-about p { margin: 0 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.45; }
+.zuni-comments-about div { display: flex; gap: 22px; }
+.zuni-comments-about span { display: grid; gap: 3px; color: var(--text-muted); font-size: 11px; }
+.zuni-comments-about strong { color: var(--text); font-size: 14px; }
+
 @media (min-width: 1001px) {
   .zuni-feed { width: min(100%, 1060px); }
   .zuni-reel {
@@ -5989,20 +6053,21 @@ img, video { max-width: 100%; }
   .home-page .page-layout { padding: 8px 10px; }
   .home-page .home-feed { gap: 11px; }
   .home-page .stories-strip-wrap { margin-bottom: 2px; }
-  .home-page .post-card {
+  .post-card {
     margin-bottom: 10px;
     border-radius: 16px;
     box-shadow: none;
+    border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
   }
-  .home-page .post-head { padding: 12px 14px 9px; }
-  .home-page .post-body { padding: 4px 14px 15px; font-size: 15px; }
-  .home-page .post-footer {
+  .post-head { padding: 12px 14px 9px; }
+  .post-body { padding: 4px 14px 15px; font-size: 15px; }
+  .post-footer {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     padding: 7px 5px;
     flex-wrap: nowrap;
   }
-  .home-page .post-action-btn {
+  .post-action-btn {
     min-width: 0 !important;
     padding: 6px 2px;
     gap: 4px;
@@ -6010,8 +6075,8 @@ img, video { max-width: 100%; }
     justify-content: center;
     font-size: 11px;
   }
-  .home-page .post-action-btn + .post-action-btn { border-left: 1px solid var(--border); }
-  .home-page .post-action-label { display: none; }
+  .post-action-btn + .post-action-btn { border-left: 1px solid var(--border); }
+  .post-action-label { display: none; }
 
   .community-index-shell { padding: 12px 10px; }
   .communities-index .page-hero {
@@ -6057,6 +6122,12 @@ img, video { max-width: 100%; }
     border-radius: 11px;
     background: color-mix(in srgb, var(--page-bg) 75%, var(--card));
   }
+  .messages-page .messages-filter-tabs {
+    gap: 6px;
+    margin-top: 13px;
+    overflow-x: auto;
+  }
+  .messages-page .messages-filter-tabs button { flex-shrink: 0; height: 32px; padding: 0 13px; }
   .messages-page .conv-item {
     margin: 4px 8px;
     padding: 10px 9px;
@@ -6087,6 +6158,7 @@ img, video { max-width: 100%; }
     background: var(--card);
   }
   .messages-page .chat-input { border: 0; background: transparent; }
+  .zuni-comments-about { display: none; }
 
   .admin-hub-content { padding: 18px 12px; }
   .admin-hub-heading { margin-bottom: 18px; }

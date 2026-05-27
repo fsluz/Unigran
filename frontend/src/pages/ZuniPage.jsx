@@ -353,8 +353,16 @@ export default function ZuniPage({ onOpenProfile }) {
 
               {commentsOpen === post.id && (
                 <section className="zuni-comments">
+                  <div className="zuni-comments-about">
+                    <h3>Sobre este Zuni</h3>
+                    <p>Videos curtos, rapidos e divertidos. Assista, curta e compartilhe.</p>
+                    <div>
+                      <span><strong>{Number(post.likes || 0)}</strong> Curtidas</span>
+                      <span><strong>{Number(post.comments || 0)}</strong> Comentarios</span>
+                    </div>
+                  </div>
                   <div className="zuni-comments-head">
-                    <strong>Comentarios</strong>
+                    <strong>Comentarios ({Number(post.comments || 0)})</strong>
                     <button onClick={() => setCommentsOpen(null)}>x</button>
                   </div>
                   <div className="zuni-comments-list">
