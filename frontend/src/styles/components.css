@@ -989,8 +989,8 @@
 .profile-hover-actions button { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 7px; background: var(--page-bg); color: var(--text); font-size: 12px; font-weight: 800; }
 .zuni-shell { background: var(--page-bg); }
 .zuni-page { width: 100%; height: calc(100vh - 64px); display: flex; justify-content: center; padding: 0; overflow: hidden; background: var(--page-bg); }
-.zuni-feed { width: min(100%, 560px); height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; display: grid; gap: 0; padding: 0; background: var(--page-bg); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
-.zuni-reel { position: relative; height: calc(100vh - 64px); min-height: 560px; display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: stretch; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; background: var(--page-bg); }
+.zuni-feed { width: min(100%, 560px); height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; scroll-behavior: smooth; display: block; padding: 0; background: var(--page-bg); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.zuni-reel { position: relative; height: calc(100vh - 64px); min-height: calc(100vh - 64px); display: grid; grid-template-columns: minmax(0, 1fr) 82px; align-items: stretch; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; background: var(--page-bg); }
 .zuni-video-stage { position: relative; min-width: 0; height: 100%; overflow: hidden; background: #000; }
 .zuni-video-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; border: 0 solid transparent; }
 .zuni-reel.liked-pulse .zuni-video-stage::after { animation: zuniLikeBorder .68s ease; }
@@ -5080,9 +5080,7 @@ img, video { max-width: 100%; }
   .composer-portfolio-grid { grid-template-columns: 1fr; }
   .comment-replies { margin-left: 18px; }
   .comment-reply-box { margin-left: 0; }
-  .zuni-page { height: calc(100dvh - 122px); }
-  .zuni-feed { scroll-snap-type: y mandatory; scroll-behavior: smooth; touch-action: pan-y; overscroll-behavior-y: none; }
-  .zuni-reel { height: calc(100dvh - 122px); min-height: 420px; }
+  .zuni-feed { scroll-snap-type: y mandatory; scroll-behavior: smooth; touch-action: pan-y; overscroll-behavior-y: contain; }
   .group-create-box { grid-template-columns: 1fr; }
   .messages-search-row { grid-template-columns: 1fr; }
   .chat-head { flex-wrap: wrap; }
@@ -6951,38 +6949,52 @@ img, video { max-width: 100%; }
   .zuni-shell > .topbar { display: none; }
   .zuni-shell.page-scroll {
     height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
-    padding-bottom: 0;
+    max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0 !important;
     overflow: hidden;
   }
   .zuni-page {
     height: 100%;
+    max-height: 100%;
     background: #000;
+    overflow: hidden;
   }
   .zuni-feed {
+    display: block;
     width: 100%;
     height: 100%;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
     scroll-snap-type: y mandatory;
+    touch-action: pan-y;
   }
   .zuni-reel {
-    height: 100%;
-    min-height: 0;
+    display: block;
+    width: 100%;
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    min-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
     margin: 0;
     border: 0;
     border-radius: 0;
-    grid-template-columns: minmax(0, 1fr);
     background: #000;
+    box-sizing: border-box;
   }
   .zuni-video-stage {
+    position: relative;
     border-radius: 0;
     width: 100%;
     height: 100%;
+    min-height: 100%;
   }
   .zuni-reel video {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  .zuni-nav { display: none; }
+  .zuni-nav { display: none !important; }
   .zuni-sound {
     top: 14px;
     left: 12px;
@@ -7021,9 +7033,11 @@ img, video { max-width: 100%; }
     border-color: rgba(255,255,255,.35);
   }
   .zuni-comments {
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 80;
     max-height: min(62vh, 480px);
     border-radius: 18px 18px 0 0;
     border-left: 0;
@@ -7031,6 +7045,12 @@ img, video { max-width: 100%; }
     border-bottom: 0;
   }
   .zuni-reel.comments-open .zuni-rail { opacity: .25; pointer-events: none; }
+  .zuni-more {
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    scroll-snap-align: start;
+  }
 
   .settings-page .settings-shell {
     display: block;

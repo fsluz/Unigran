@@ -58,6 +58,8 @@ export default function ZuniPage({ onOpenProfile }) {
   const videoRefs = useRef(new Map());
   const volumeRef = useRef(null);
 
+  const isMobileZuniView = () => window.matchMedia('(max-width: 760px)').matches;
+
   const loadPage = async (nextPage = 1, append = false) => {
     if (loading) return;
     setLoading(true);
@@ -175,6 +177,7 @@ export default function ZuniPage({ onOpenProfile }) {
   };
 
   const onZuniWheel = (event) => {
+    if (isMobileZuniView()) return;
     if (Math.abs(event.deltaY) < 42) return;
     const now = Date.now();
     if (now - wheelLockRef.current < 720) {
@@ -197,6 +200,7 @@ export default function ZuniPage({ onOpenProfile }) {
   };
 
   const onZuniTouchEnd = (event) => {
+    if (isMobileZuniView()) return;
     const start = touchStartRef.current;
     const touch = event.changedTouches?.[0];
     touchStartRef.current = null;
