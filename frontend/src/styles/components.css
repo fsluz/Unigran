@@ -2421,10 +2421,21 @@
 .topbar-icon-btn:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
 
 .topbar-clean {
-  justify-content: flex-end !important;
-  gap: 22px;
+  justify-content: center !important;
+  position: sticky;
 }
-.topbar-clean > div:has(.topbar-search) { margin-left: auto; }
+.topbar-search-shell {
+  position: relative;
+  flex: 0 1 440px;
+  width: min(440px, calc(100% - 300px));
+  margin-inline: auto;
+}
+.topbar-clean .topbar-actions {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 .topbar-user-chip {
   display: inline-flex; align-items: center; gap: 9px; padding: 5px 8px 5px 5px;
   border: 0; border-radius: 12px; color: var(--text); background: transparent; cursor: pointer;
@@ -5992,8 +6003,8 @@ img, video { max-width: 100%; }
 }
 .home-page .topbar.topbar-clean {
   display: flex;
-  justify-content: flex-end !important;
-  gap: 22px;
+  justify-content: center !important;
+  padding-inline: 24px;
 }
 .home-page .topbar-page-title {
   margin-right: 0;
@@ -6600,6 +6611,8 @@ img, video { max-width: 100%; }
   .messages-page .chat-input { border: 0; background: transparent; }
   .topbar-user-chip span, .topbar-user-chip b { display: none; }
   .topbar-clean { gap: 8px; padding-inline: 12px; }
+  .topbar-search-shell { width: calc(100% - 58px); margin-left: 0; margin-right: auto; }
+  .topbar-clean .topbar-actions { right: 12px; }
   .zuni-comments-about { display: none; }
 
   .admin-hub-content { padding: 18px 12px; }

@@ -49,10 +49,10 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
   }[String(user?.role || '').toLowerCase()] || 'Usuario';
 
   return (
-    <div className="topbar topbar-clean" style={{ justifyContent: 'center' }}>
+    <div className="topbar topbar-clean">
       {left && <div style={{ marginRight: 12 }}>{left}</div>}
 
-      <div style={{ flex: 1, maxWidth: 440, position: 'relative' }}>
+      <div className="topbar-search-shell">
         <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
           width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
           <circle cx={11} cy={11} r={8} /><path d="m21 21-4.35-4.35" />
