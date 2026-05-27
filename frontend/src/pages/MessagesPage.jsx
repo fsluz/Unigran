@@ -11,6 +11,13 @@ import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
 import '../styles/mobile-chat.css';
 
+const QUICK_REACTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}'];
+const MESSAGE_REACTIONS = [
+  ...QUICK_REACTIONS, '\u{1F60D}', '\u{1F525}', '\u{1F389}', '\u{1F622}', '\u{1F62E}', '\u{1F621}',
+  '\u{1F64F}', '\u{1F4AF}', '\u{1F680}', '\u{1F440}', '\u{1F914}', '\u{1F60E}', '\u{1F973}',
+  '\u{1F49C}', '\u2705', '\u274C', '\u{1F44C}', '\u{1F91D}', '\u{1F4AA}', '\u2728',
+];
+
 export default function MessagesPage() {
   const { token, user } = useAuth();
   const { showToast } = useToast();
@@ -1162,7 +1169,7 @@ export default function MessagesPage() {
                   <div className="messages-search-popout">
                     {userResults.map(person => (
                       <button key={person.username} onClick={() => { setTargetUsername(person.username); setConversationSearch(person.username); setUserResults([]); }}>
-                        <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <Avatar size={30} src={person.profilePicture || null} imageFit="contain" name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
                         <span>{person.displayName || person.username}<small>@{person.username}</small></span>
                       </button>
                     ))}
@@ -1204,6 +1211,7 @@ export default function MessagesPage() {
                 <Avatar
                   size={40}
                   src={conv.groupPicture || conv.participant?.profilePicture || null}
+                  imageFit="contain"
                   name={conversationTitle(conv)}
                   initials={(conversationTitle(conv) || '?').slice(0, 2)}
                 />
@@ -1227,6 +1235,7 @@ export default function MessagesPage() {
               <Avatar
                 size={40}
                 src={conversationPhoto(active)}
+                imageFit="contain"
                 name={conversationTitle(active)}
                 initials={(conversationTitle(active) || '?').slice(0, 2)}
               />
@@ -1267,6 +1276,7 @@ export default function MessagesPage() {
                         <Avatar
                           size={30}
                           src={msgAuthor?.profilePicture || null}
+                          imageFit="contain"
                           name={msgAuthor?.displayName || msgAuthor?.username || active.title}
                           initials={(msgAuthor?.displayName || msgAuthor?.username || active.title || '?').slice(0, 2)}
                         />
@@ -1298,7 +1308,7 @@ export default function MessagesPage() {
                             <button className="msg-react-btn" onClick={() => setReactionPickerOpen(reactionPickerOpen === msg.id ? null : msg.id)} title="Reagir">+</button>
                             {reactionPickerOpen === msg.id && (
                               <div className="msg-reaction-picker">
-                                {['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}'].map(emoji => (
+                                {MESSAGE_REACTIONS.map(emoji => (
                                   <button key={emoji} onClick={() => reactToMessage(msg, emoji)}>{emoji}</button>
                                 ))}
                               </div>
@@ -1380,6 +1390,7 @@ export default function MessagesPage() {
                 <Avatar
                   size={82}
                   src={conversationPhoto(active)}
+                  imageFit="contain"
                   name={conversationTitle(active)}
                   initials={(conversationTitle(active) || '?').slice(0, 2)}
                 />
@@ -1399,7 +1410,7 @@ export default function MessagesPage() {
                     <div className="chat-about-members">
                       {(groupMembers.length ? groupMembers : [{ username: user?.username, displayName: user?.displayName, profilePicture: user?.profilePicture }, ...(active.participants || [])]).map(member => (
                         <div key={member.username} className="chat-about-member">
-                          <Avatar size={32} src={member.profilePicture || null} name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
+                          <Avatar size={32} src={member.profilePicture || null} imageFit="contain" name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
                           <span>{member.displayName || member.username}<small>@{member.username}</small></span>
                         </div>
                       ))}
@@ -1452,7 +1463,7 @@ export default function MessagesPage() {
                   <div className="messages-search-popout in-modal">
                     {userResults.map(person => (
                       <button key={person.username} onClick={() => { setTargetUsername(person.username); setUserResults([]); }}>
-                        <Avatar size={34} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <Avatar size={34} src={person.profilePicture || null} imageFit="contain" name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
                         <span>{person.displayName || person.username}<small>@{person.username}</small></span>
                       </button>
                     ))}
@@ -1506,7 +1517,7 @@ export default function MessagesPage() {
                   <div className="messages-search-popout in-modal">
                     {groupResults.map(person => (
                       <button key={person.username} onClick={() => addGroupUser(person)}>
-                        <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <Avatar size={30} src={person.profilePicture || null} imageFit="contain" name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
                         <span>{person.displayName || person.username}<small>@{person.username}</small></span>
                       </button>
                     ))}
@@ -1539,7 +1550,7 @@ export default function MessagesPage() {
                   <div className="messages-search-popout in-modal">
                     {groupResults.map(person => (
                       <button key={person.username} onClick={() => addGroupUser(person)}>
-                        <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                        <Avatar size={30} src={person.profilePicture || null} imageFit="contain" name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
                         <span>{person.displayName || person.username}<small>@{person.username}</small></span>
                       </button>
                     ))}
@@ -1588,7 +1599,7 @@ export default function MessagesPage() {
                     <div className="messages-search-popout in-modal">
                       {groupResults.map(person => (
                         <button key={person.username} onClick={() => addGroupUser(person)}>
-                          <Avatar size={30} src={person.profilePicture || null} name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
+                          <Avatar size={30} src={person.profilePicture || null} imageFit="contain" name={person.displayName || person.username} initials={(person.displayName || person.username || '?').slice(0, 2)} />
                           <span>{person.displayName || person.username}<small>@{person.username}</small></span>
                         </button>
                       ))}
@@ -1600,7 +1611,7 @@ export default function MessagesPage() {
                   {groupMembers.map(member => (
                     <div key={member.username} className="group-member-row">
                       <button onClick={() => member.username && window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: member.username }))}>
-                        <Avatar size={34} src={member.profilePicture || null} name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
+                        <Avatar size={34} src={member.profilePicture || null} imageFit="contain" name={member.displayName || member.username} initials={(member.displayName || member.username || '?').slice(0, 2)} />
                         <span><strong>{member.displayName || member.username}</strong><small>@{member.username}</small></span>
                       </button>
                       <button className="btn btn-secondary btn-xs" onClick={() => removeMemberFromGroup(member.username)}>
@@ -1630,7 +1641,7 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <div className="call-audio-avatar">
-                  <Avatar size={92} src={active.groupPicture || activeParticipant?.profilePicture || null} name={conversationTitle(active)} initials={(conversationTitle(active) || '?').slice(0, 2)} />
+                  <Avatar size={92} src={active.groupPicture || activeParticipant?.profilePicture || null} imageFit="contain" name={conversationTitle(active)} initials={(conversationTitle(active) || '?').slice(0, 2)} />
                 </div>
               )}
               <audio ref={remoteAudioRef} autoPlay playsInline />

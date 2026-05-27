@@ -7,6 +7,12 @@ import { hasPermission } from '../modules/auth/rbac.js';
 
 const router = Router();
 const typingByConversation = new Map();
+const allowedMessageReactions = new Set([
+  '\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}', '\u{1F60D}', '\u{1F525}',
+  '\u{1F389}', '\u{1F622}', '\u{1F62E}', '\u{1F621}', '\u{1F64F}', '\u{1F4AF}',
+  '\u{1F680}', '\u{1F440}', '\u{1F914}', '\u{1F60E}', '\u{1F973}', '\u{1F49C}',
+  '\u2705', '\u274C', '\u{1F44C}', '\u{1F91D}', '\u{1F4AA}', '\u2728',
+]);
 
 function packMessageText({ content, author, media = null, readBy = [], edited = false, reactions = {} }) {
   return JSON.stringify({ v: 2, content, author, media, readBy, edited, reactions });
@@ -637,8 +643,7 @@ router.patch('/:convId/messages/:msgId', auth, async (req, res) => {
 
 router.patch('/:convId/messages/:msgId/reactions', auth, async (req, res) => {
   const emoji = String(req.body?.emoji || '');
-  const allowedReactions = new Set(['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}']);
-  if (!allowedReactions.has(emoji)) return res.status(400).json({ error: 'Reacao invalida' });
+  if (!allowedMessageReactions.has(emoji)) return res.status(400).json({ error: 'Reacao invalida' });
   try {
     const rows = await readQuery(`
       match

@@ -103,7 +103,7 @@
 .chat-input:focus { outline: none; box-shadow: 0 6px 20px var(--accent-glow); }
 
 /* Media and attachments */
-.msg-media { max-width: 240px; border-radius: 12px; margin-top: 8px; }
+.msg-media { max-width: 240px; border-radius: 12px; margin-top: 8px; object-fit: contain; }
 .msg-audio { width: 220px; margin-top: 8px; }
 
 

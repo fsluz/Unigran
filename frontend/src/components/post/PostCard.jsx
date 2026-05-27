@@ -426,6 +426,14 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
     return fn({ token, commentId });
   };
 
+  const openPostDetails = async () => {
+    if (!onOpenDetail) return;
+    const loaded = onLoadComments
+      ? await onLoadComments(post.id)
+      : await fetchComments({ token, postId: post.id });
+    onOpenDetail({ ...post, _comments: loaded || [] });
+  };
+
   const deleteCurrentPost = async () => {
     if (!window.confirm('Excluir post?')) return;
     try {
@@ -566,7 +574,11 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               </div>
             </div>
           )}
-          {bodyText && <div className="post-body">{formatContent(bodyText)}</div>}
+          {bodyText && (
+            <button type="button" className="post-body post-body-open" onClick={openPostDetails}>
+              {formatContent(bodyText)}
+            </button>
+          )}
           {post.originalPost && (
             <div className="repost-card">
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
@@ -639,11 +651,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           onClick={async () => {
             // If modal callback exists, open the detail modal (preferred)
             if (onOpenDetail) {
-              const loaded = onLoadComments
-                ? await onLoadComments(post.id)
-                : await fetchComments({ token, postId: post.id });
-              const postWithComments = { ...post, _comments: loaded || [] };
-              onOpenDetail(postWithComments);
+              await openPostDetails();
             } else {
               // Fallback to inline comments
               const next = !showComments;

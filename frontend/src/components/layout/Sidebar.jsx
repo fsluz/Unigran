@@ -1,5 +1,4 @@
 ﻿import { useAuth } from '../../contexts/AuthContext';
-import { Avatar } from '../ui';
 import { useEffect, useState } from 'react';
 import { fetchConversations } from '../../services/conversations';
 import { fetchCommunities } from '../../services/communities';
@@ -163,15 +162,6 @@ export default function Sidebar({
           <button type="button" className={`sidebar-wide-item ${isActive('settings') ? 'active' : ''}`} onClick={() => onNavigate('settings')} title="Configuracoes">
             <span className="sidebar-wide-icon"><SidebarIcon name="settings" /></span>
             {!collapsed && <span className="sidebar-wide-label">Configuracoes</span>}
-          </button>
-          <button type="button" className="sidebar-wide-user" onClick={() => onNavigate('profile')} title="Perfil">
-            <Avatar size={42} src={user?.profilePicture || null} name={user?.displayName || ''} initials={user?.avatar || user?.displayName?.slice(0, 2)} />
-            {!collapsed && (
-              <div className="sidebar-wide-user-info">
-                <div className="sidebar-wide-user-name">{user?.displayName}</div>
-                <div className="sidebar-wide-user-handle">@{user?.username}</div>
-              </div>
-            )}
           </button>
         </div>
       </aside>

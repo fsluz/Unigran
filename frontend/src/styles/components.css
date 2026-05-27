@@ -1144,6 +1144,10 @@
   padding: 12px 18px 24px;
   font-size: 16px;
 }
+.post-card-model .post-body-open {
+  width: 100%; border: 0; background: transparent; text-align: left; font-family: inherit; cursor: pointer;
+}
+.post-card-model .post-body-open:hover { color: color-mix(in srgb, var(--text) 82%, var(--accent)); }
 .post-card-model .post-media-wrap {
   margin: 0 18px 18px;
   overflow: hidden;
@@ -2415,6 +2419,21 @@
 }
 
 .topbar-icon-btn:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+.topbar-clean {
+  justify-content: flex-end !important;
+  gap: 22px;
+}
+.topbar-clean > div:has(.topbar-search) { margin-left: auto; }
+.topbar-user-chip {
+  display: inline-flex; align-items: center; gap: 9px; padding: 5px 8px 5px 5px;
+  border: 0; border-radius: 12px; color: var(--text); background: transparent; cursor: pointer;
+}
+.topbar-user-chip:hover { background: var(--accent-light); }
+.topbar-user-chip span { display: grid; gap: 2px; min-width: 94px; text-align: left; }
+.topbar-user-chip strong { font-size: 12px; font-weight: 700; line-height: 1.1; color: var(--text); }
+.topbar-user-chip small { font-size: 11px; color: var(--accent); }
+.topbar-user-chip b { font-size: 14px; color: var(--text-muted); font-weight: 500; }
 
 .topbar-notif-dot {
   position: absolute;
@@ -5971,6 +5990,11 @@ img, video { max-width: 100%; }
   justify-content: start !important;
   gap: 32px;
 }
+.home-page .topbar.topbar-clean {
+  display: flex;
+  justify-content: flex-end !important;
+  gap: 22px;
+}
 .home-page .topbar-page-title {
   margin-right: 0;
   gap: 10px;
@@ -6355,6 +6379,7 @@ img, video { max-width: 100%; }
   background: color-mix(in srgb, var(--card) 91%, var(--page-bg));
 }
 .messages-page .msg-bubble.me { border-radius: 18px 4px 18px 18px; }
+.messages-page .msg-media { object-fit: contain; background: color-mix(in srgb, var(--page-bg) 92%, #000); }
 .messages-page .msg-author-name { color: color-mix(in srgb, var(--accent) 82%, #f3c4ff); font-size: 13px; }
 .messages-page .msg-meta-line { min-height: 25px; }
 .messages-page .msg-menu-wrap { display: inline-flex; align-items: center; gap: 3px; }
@@ -6367,8 +6392,8 @@ img, video { max-width: 100%; }
 .messages-page .msg-react-btn:hover { color: var(--accent); background: var(--accent-light); }
 .messages-page .msg-reaction-picker {
   position: absolute; z-index: 41; bottom: calc(100% + 7px); left: 0;
-  display: flex; gap: 3px; padding: 6px;
-  border: 1px solid var(--border); border-radius: 999px;
+  display: grid; grid-template-columns: repeat(6, 32px); gap: 3px; padding: 8px;
+  border: 1px solid var(--border); border-radius: 16px;
   background: var(--card); box-shadow: var(--shadow);
 }
 .messages-page .msg-row.me .msg-reaction-picker { left: auto; right: 0; }
@@ -6565,6 +6590,7 @@ img, video { max-width: 100%; }
   .messages-page .msg-bubble.me { border-radius: 18px 4px 18px 18px; }
   .messages-page .msg-menu-wrap { opacity: 1; }
   .messages-page .msg-reactions button { min-height: 28px; padding-inline: 10px; }
+  .messages-page .msg-reaction-picker { grid-template-columns: repeat(6, 31px); max-width: calc(100vw - 44px); }
   .messages-page .chat-input-bar {
     margin: 7px;
     border: 1px solid var(--border);
@@ -6572,6 +6598,8 @@ img, video { max-width: 100%; }
     background: var(--card);
   }
   .messages-page .chat-input { border: 0; background: transparent; }
+  .topbar-user-chip span, .topbar-user-chip b { display: none; }
+  .topbar-clean { gap: 8px; padding-inline: 12px; }
   .zuni-comments-about { display: none; }
 
   .admin-hub-content { padding: 18px 12px; }

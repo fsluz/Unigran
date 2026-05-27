@@ -1,71 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchNotifications, markAllAsRead, markAsRead } from '../../services/notifications';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
-import UnigranLogo from './UnigranLogo';
-
-function NotifDot({ children }) {
-  return (
-    <div style={{
-      width: 40,
-      height: 40,
-      borderRadius: '50%',
-      background: 'linear-gradient(135deg,var(--accent),#00A8FF)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#fff',
-      fontWeight: 800,
-      fontSize: 13,
-      flexShrink: 0,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function navigateNotification(notification) {
-  if (notification.type === 'academic-feedback') {
-    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'ava' }));
-    return;
-  }
-  if (notification.type === 'message') {
-    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'messages' }));
-    return;
-  }
-  if (notification.type === 'story') {
-    window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'zuni' }));
-    return;
-  }
-  if (notification.actor) {
-    window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: notification.actor }));
-    return;
-  }
-  window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'home' }));
-}
 
 export default function Topbar({ title, left, right, brandOnly = false }) {
-  const { token } = useAuth();
-  const [showNotif, setShowNotif] = useState(false);
+  const { token, user } = useAuth();
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ users: [], communities: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const notifRef = useRef();
-
-  useEffect(() => {
-    const h = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  useEffect(() => {
-    if (!token) return;
-    fetchNotifications(token)
-      .then(setNotifications)
-      .catch(() => setNotifications([]));
-  }, [token, showNotif]);
 
   useEffect(() => {
     const q = query.trim();
@@ -97,36 +39,18 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
     window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'communities' }));
   };
 
-  const readAll = async () => {
-    const before = notifications;
-    setNotifications([]);
-    try {
-      await markAllAsRead(token);
-    } catch {
-      setNotifications(before);
-    }
-  };
-
-  const openNotification = async (notification) => {
-    setShowNotif(false);
-    setNotifications(prev => prev.filter(item => item.id !== notification.id));
-    navigateNotification(notification);
-    try {
-      await markAsRead(token, notification.id);
-    } catch {
-      fetchNotifications(token).then(setNotifications).catch(() => {});
-    }
-  };
+  const ownProfile = () => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'profile' }));
+  const roleName = {
+    super_admin: 'Administrador',
+    admin: 'Administrador',
+    social_admin: 'Administrador',
+    moderator: 'Moderador',
+    professor: 'Professor',
+  }[String(user?.role || '').toLowerCase()] || 'Usuario';
 
   return (
-    <div className="topbar" style={{ justifyContent: 'center' }}>
+    <div className="topbar topbar-clean" style={{ justifyContent: 'center' }}>
       {left && <div style={{ marginRight: 12 }}>{left}</div>}
-      {(title || brandOnly) && (
-        <div className="topbar-page-title">
-          <UnigranLogo size={30} className="topbar-logo-svg" />
-          {title && <span>{title}</span>}
-        </div>
-      )}
 
       <div style={{ flex: 1, maxWidth: 440, position: 'relative' }}>
         <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
@@ -186,61 +110,14 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
 
       <div className="topbar-actions">
         {right}
-        
-        <div ref={notifRef} style={{ position: 'relative' }}>
-          <button
-            className="topbar-icon-btn"
-            onClick={() => setShowNotif(p => !p)}
-            style={{ background: showNotif ? 'var(--accent-light)' : undefined, color: showNotif ? 'var(--accent)' : undefined }}
-          >
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            {notifications.length > 0 && <span className="topbar-notif-dot" />}
-          </button>
-
-          {showNotif && (
-            <div className="notif-popout">
-              <div className="notif-popout-header">
-                <div>
-                  <div className="notif-popout-title">Notificacoes</div>
-                  <div className="notif-popout-unread">{notifications.length} nao lidas</div>
-                </div>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <button className="notif-mark-btn" onClick={readAll}>Marcar lidas</button>
-                  <button className="notif-close-btn" onClick={() => setShowNotif(false)}>x</button>
-                </div>
-              </div>
-
-              <div className="notif-popout-list">
-                {notifications.length === 0 && <div className="search-empty">Nenhuma notificacao.</div>}
-                {notifications.map(n => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    className="notif-popout-item unread"
-                    onClick={() => openNotification(n)}
-                    style={{ width: '100%', border: 0, textAlign: 'left' }}
-                  >
-                    <NotifDot>{(n.type || 'UN').slice(0, 2).toUpperCase()}</NotifDot>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="notif-popout-text">
-                        {n.actorName ? <strong>{n.actorName}</strong> : null} {n.text}
-                      </div>
-                      <div className="notif-popout-time">{n.time}</div>
-                    </div>
-                    <div className="notif-unread-dot" />
-                  </button>
-                ))}
-              </div>
-
-              <div className="notif-popout-footer">
-                <button className="notif-see-all" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'notifications' }))}>Ver todas</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <button type="button" className="topbar-user-chip" onClick={ownProfile} title="Meu perfil">
+          <Avatar size={36} src={user?.profilePicture || null} name={user?.displayName || ''} initials={user?.avatar || user?.displayName?.slice(0, 2)} />
+          <span>
+            <strong>{user?.displayName || user?.username}</strong>
+            <small>{roleName}</small>
+          </span>
+          <b aria-hidden="true">{'\u2304'}</b>
+        </button>
       </div>
 
     </div>
