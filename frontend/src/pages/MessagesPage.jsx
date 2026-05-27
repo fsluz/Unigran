@@ -70,6 +70,7 @@ export default function MessagesPage() {
   const callIdRef = useRef(null);
   const ringtoneRef = useRef(null);
   const chatMenuRef = useRef(null);
+  const conversationSearchRef = useRef(null);
   const messagesEndRef = useRef(null);
   const unreadMarkerRef = useRef(null);
 
@@ -92,6 +93,7 @@ export default function MessagesPage() {
       end: <><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z" /></>,
       edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
       trash: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>,
+      search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
     };
     return <svg {...common}>{paths[name]}</svg>;
   }
@@ -1101,14 +1103,26 @@ export default function MessagesPage() {
               {conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
                 <span className="messages-title-badge">{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
               )}
+              <div className="messages-mobile-actions">
+                <button onClick={() => setGroupOpen(true)} aria-label="Novo grupo"><ChatIcon name="video" size={18} /></button>
+                <button onClick={() => conversationSearchRef.current?.focus()} aria-label="Buscar conversa"><ChatIcon name="search" size={18} /></button>
+                <button onClick={() => setNewConversationOpen(true)} aria-label="Nova conversa"><ChatIcon name="more" size={18} /></button>
+              </div>
             </div>
             <div className="messages-quick-actions">
-              <button className="messages-new-btn" onClick={() => setNewConversationOpen(true)}><ChatIcon name="plus" size={15} /> Nova</button>
-              <button className="messages-outline-btn" onClick={() => setGroupOpen(true)}>Grupo</button>
+              <button className="messages-new-btn" onClick={() => setNewConversationOpen(true)}>
+                <ChatIcon name="plus" size={17} /> Nova mensagem <ChatIcon name="send" size={16} />
+              </button>
+              <button className="messages-outline-btn messages-new-group" onClick={() => setGroupOpen(true)}>
+                <span><ChatIcon name="chat" size={20} /></span>
+                <strong>Novo grupo<small>Crie um grupo de conversa</small></strong>
+                <b>{'>'}</b>
+              </button>
             </div>
             <div className="messages-search-row">
               <div className="messages-user-search">
                 <input
+                  ref={conversationSearchRef}
                   className="messages-search-input"
                   placeholder="Buscar..."
                   value={targetUsername}

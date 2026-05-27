@@ -177,7 +177,7 @@ export default function HomePage({ onOpenProfile }) {
 
   return (
     <div className="page-scroll home-page">
-      <Topbar />
+      <Topbar title="Feed" />
 
       <div className="page-layout">
         <main className="section-grid home-feed">

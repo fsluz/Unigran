@@ -655,7 +655,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
 
   return (
     <div className="page-scroll settings-page">
-      <Topbar title="Configuracoes" />
+      <Topbar brandOnly />
       <div className="settings-shell">
 
         {/* Left nav */}
@@ -719,6 +719,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               </div>
             </div>
 
+            <div className="settings-personal-grid">
             <div className="settings-panel-card">
               <div style={{ fontFamily:'var(--font-head)', fontWeight:800, fontSize:16, color:'var(--text)', marginBottom:20 }}>Informacoes Pessoais</div>
               <div style={{ marginBottom:16 }}>
@@ -757,6 +758,11 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
               <button style={{ padding:'10px 24px', borderRadius:8, background:'linear-gradient(135deg,#6A00F4,#00A8FF)', color:'#fff', border:'none', fontWeight:700, fontSize:13, cursor:'pointer' }} onClick={savePersonalInfo}>
                 Salvar alteracoes
               </button>
+            </div>
+            <aside className="settings-security-tip">
+              <strong>Dica de seguranca</strong>
+              <p>Mantenha suas informacoes sempre atualizadas para garantir melhor experiencia e seguranca na plataforma.</p>
+            </aside>
             </div>
 
             {/* Password accordion */}

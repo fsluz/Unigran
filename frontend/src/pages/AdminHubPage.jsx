@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, Building2, ChevronRight, FileClock, FileText, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
+import { AlertTriangle, BarChart3, Building2, ChevronRight, FileClock, FileText, Flag, Lock, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
 import { hasPermission } from '../modules/shared/permissions';
@@ -32,6 +32,13 @@ export default function AdminHubPage({ onNavigate }) {
     { label: 'Comunidades', value: dashboard?.overview?.totalCommunities, icon: Building2 },
     { label: 'Posts', value: dashboard?.overview?.totalPosts, icon: FileText },
     { label: 'Logins falhos', value: dashboard?.security?.loginFailed, icon: ShieldAlert },
+  ];
+  const recentActions = (dashboard?.topActions || []).slice(0, 4);
+  const alerts = [
+    { label: 'Logins falhos', value: dashboard?.security?.loginFailed || 0, icon: ShieldAlert },
+    { label: 'Contas bloqueadas', value: dashboard?.security?.loginBlocked || 0, icon: Lock },
+    { label: 'Alertas de auditoria', value: (dashboard?.levelBreakdown || []).find(item => item.name === 'ALERT')?.value || 0, icon: AlertTriangle },
+    { label: 'Resets de senha', value: dashboard?.security?.passwordResets || 0, icon: Flag },
   ];
 
   return (
@@ -71,6 +78,29 @@ export default function AdminHubPage({ onNavigate }) {
             </button>
           ))}
         </section>
+        {canViewOverview && (
+          <section className="admin-hub-lower">
+            <div className="admin-hub-panel">
+              <header><h2>Atividades recentes</h2><button onClick={() => onNavigate('auditLogs')}>Ver todas</button></header>
+              {recentActions.length ? recentActions.map(({ action, count }) => (
+                <div className="admin-activity" key={action}>
+                  <span className="admin-hub-icon"><FileClock size={18} /></span>
+                  <div><strong>{action.replaceAll('_', ' ')}</strong><small>{count} eventos registrados</small></div>
+                </div>
+              )) : <p className="admin-empty">Sem atividade recente.</p>}
+            </div>
+            <div className="admin-hub-panel">
+              <header><h2>Alertas importantes</h2><button onClick={() => onNavigate('adminDashboard')}>Ver todos</button></header>
+              {alerts.map(({ label, value, icon: Icon }) => (
+                <div className="admin-alert" key={label}>
+                  <span className="admin-hub-icon"><Icon size={18} /></span>
+                  <div><strong>{value} {label.toLowerCase()}</strong><small>Ver detalhes no painel</small></div>
+                  <ChevronRight size={16} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

@@ -45,7 +45,7 @@ function navigateNotification(notification) {
   window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'home' }));
 }
 
-export default function Topbar({ title, left, right }) {
+export default function Topbar({ title, left, right, brandOnly = false }) {
   const { token } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
   const [query, setQuery] = useState('');
@@ -121,10 +121,10 @@ export default function Topbar({ title, left, right }) {
   return (
     <div className="topbar" style={{ justifyContent: 'center' }}>
       {left && <div style={{ marginRight: 12 }}>{left}</div>}
-      {title && (
+      {(title || brandOnly) && (
         <div className="topbar-page-title">
           <UnigranLogo size={30} className="topbar-logo-svg" />
-          <span>{title}</span>
+          {title && <span>{title}</span>}
         </div>
       )}
 
