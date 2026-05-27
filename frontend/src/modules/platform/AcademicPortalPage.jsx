@@ -333,6 +333,10 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const canCreateInstitution = hasPermission(user, 'institutions:create');
   const canAssignRoles = hasPermission(user, 'roles:assign');
   const canStudy = hasPermission(user, 'academic:read');
+  const canViewPortalAdmin = hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read');
+  const canViewMasterBi = hasPermission(user, 'system:manage');
+  const canViewAdminDashboard = hasPermission(user, 'system:manage');
+  const canViewAuditLogs = hasPermission(user, 'audit:read');
 
   const tabs = useMemo(() => [
     { id: 'home', label: 'Inicio', icon: PanelsTopLeft, visible: true },
@@ -970,6 +974,29 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <span>{tab.label}</span>
             </button>
           ))}
+          {canViewPortalAdmin && (
+            <>
+              <div className="academic-portal-nav-group">ADMINISTRACAO</div>
+              {canViewMasterBi && (
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'masterBi' }))}>
+                  <small><BarChart3 size={17} /></small>
+                  <span>Master BI</span>
+                </button>
+              )}
+              {canViewAuditLogs && (
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'auditLogs' }))}>
+                  <small><Activity size={17} /></small>
+                  <span>Logs de Auditoria</span>
+                </button>
+              )}
+              {canViewAdminDashboard && (
+                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'adminDashboard' }))}>
+                  <small><Users size={17} /></small>
+                  <span>Painel de Gestao</span>
+                </button>
+              )}
+            </>
+          )}
         </aside>
         <section className="academic-portal-main">
           {error && <div className="portfolio-alert">{error} <button onClick={reload}>Tentar novamente</button></div>}

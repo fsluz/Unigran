@@ -5,7 +5,7 @@ import ChatRAIModal from '../modals/ChatRAIModal';
 import ChatGPTMakerModal from '../modals/ChatGPTMakerModal';
 import { CHAT_CONFIG } from '../../config/integrations';
 
-const RAI_IMG = '/assets/rai-mascot.png';
+const RAI_IMG = '../../../assets/rai-mascot.png';
 
 export default function FloatingAssistants() {
   const { token, user } = useAuth();
