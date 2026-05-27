@@ -19,14 +19,10 @@ import ZuniPage           from './pages/ZuniPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
 import { AchievementsProvider } from './contexts/AchievementsContext';
-import AuditLogsPage       from './pages/AuditLogsPage';
-import AdminHubPage         from './pages/AdminHubPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
-import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
-import AdminDashboardPage from './pages/AdminDashboardPage';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
 function AppShell() {
@@ -97,17 +93,9 @@ function AppShell() {
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
     ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
-    masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
-    auditLogs: hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage />,
-    adminHub: (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read'))
-      ? <AdminHubPage onNavigate={navigate} />
-      : <HomePage />,
-    adminDashboard: hasPermission(user, 'system:manage')
-      ? <AdminDashboardPage />
-      : <HomePage />,
   };
 
   const toggleSidebar = () => {

@@ -4,6 +4,8 @@ import { auth } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole, requirePermission } from './auth/rbac.js';
 import avaRouter from './academic/avaRoutes.js';
 import institutionRouter from './institution/institutionRoutes.js';
+import scheduleRouter from './schedules/scheduleRoutes.js';
+import raiRouter from './rai/raiRoutes.js';
 import { getAvaState } from './academic/typedbAvaStore.js';
 import { answerRai } from '../services/rai.service.js';
 
@@ -74,5 +76,7 @@ router.post('/v1/ai/assistant', requirePermission('platform:read'), async (req, 
 
 router.use('/v1/ava', requirePermission('academic:read'), avaRouter);
 router.use('/v1/institutions', institutionRouter);
+router.use('/v1/schedules', requirePermission('platform:read'), scheduleRouter);
+router.use('/v1/rai', requirePermission('platform:read'), raiRouter);
 
 export default router;

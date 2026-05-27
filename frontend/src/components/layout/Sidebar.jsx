@@ -146,16 +146,6 @@ export default function Sidebar({
               ))}
             </>
           )}
-
-          {(hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read')) && (
-            <>
-              <div className="sidebar-wide-section-label"><span>Administracao</span></div>
-              <button type="button" className={`sidebar-wide-item ${isActive('adminHub') ? 'active' : ''}`} onClick={() => onNavigate('adminHub')} title="Admin">
-                <span className="sidebar-wide-icon"><SidebarIcon name="admin" /></span>
-                {!collapsed && <span className="sidebar-wide-label">Admin</span>}
-              </button>
-            </>
-          )}
         </div>
 
         <div className="sidebar-wide-bottom desktop-only-nav">

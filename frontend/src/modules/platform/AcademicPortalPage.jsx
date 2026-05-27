@@ -76,7 +76,7 @@ function EmptyState({ children }) {
   return <div className="academic-table-list"><div><span>{children}</span></div></div>;
 }
 
-function AcademicUserPicker({ token, universityId, value, onChange, placeholder }) {
+function AcademicUserPicker({ token, universityId, value, onChange, placeholder, requiredRole = '', emptyText = 'Nenhum usuario encontrado.' }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -92,7 +92,7 @@ function AcademicUserPicker({ token, universityId, value, onChange, placeholder 
     setLoading(true);
     const timer = window.setTimeout(async () => {
       try {
-        const data = await searchInstitutionUsers(token, universityId, query);
+        const data = await searchInstitutionUsers(token, universityId, query, requiredRole);
         if (active) setResults(data.users || []);
       } catch {
         if (active) setResults([]);
@@ -104,7 +104,7 @@ function AcademicUserPicker({ token, universityId, value, onChange, placeholder 
       active = false;
       window.clearTimeout(timer);
     };
-  }, [token, universityId, query]);
+  }, [token, universityId, query, requiredRole]);
 
   return (
     <div className="academic-user-picker">
@@ -120,7 +120,7 @@ function AcademicUserPicker({ token, universityId, value, onChange, placeholder 
       {focused && query.length >= 2 && (
         <div className="academic-search-results">
           {loading && <div><small>Pesquisando usuario...</small></div>}
-          {!loading && !results.length && <div><small>Nenhum usuario encontrado.</small></div>}
+          {!loading && !results.length && <div><small>{emptyText}</small></div>}
           {!loading && results.map(person => (
             <button
               key={person.username}
@@ -333,18 +333,14 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const canCreateInstitution = hasPermission(user, 'institutions:create');
   const canAssignRoles = hasPermission(user, 'roles:assign');
   const canStudy = hasPermission(user, 'academic:read');
-  const canViewPortalAdmin = hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read');
-  const canViewMasterBi = hasPermission(user, 'system:manage');
-  const canViewAdminDashboard = hasPermission(user, 'system:manage');
-  const canViewAuditLogs = hasPermission(user, 'audit:read');
 
   const tabs = useMemo(() => [
-    { id: 'home', label: 'Inicio', icon: PanelsTopLeft, visible: true },
-    { id: 'student', label: 'Aluno', icon: BookOpen, visible: hasPermission(user, 'academic:read') },
-    { id: 'teacher', label: 'Professor', icon: GraduationCap, visible: canTeach },
-    { id: 'coordination', label: role === 'admin' ? 'Gestao Institucional' : role === 'super_admin' ? 'Gestao Global' : 'Coordenacao', icon: Users, visible: canCoordinate },
+    { id: 'home', label: 'Dashboard', icon: PanelsTopLeft, visible: true },
+    { id: 'student', label: 'Alunos', icon: BookOpen, visible: hasPermission(user, 'academic:read') },
+    { id: 'teacher', label: 'Professores', icon: GraduationCap, visible: canTeach },
+    { id: 'coordination', label: 'Coordenacao', icon: Users, visible: canCoordinate },
     { id: 'management', label: 'Indicadores', icon: BarChart3, visible: canManage },
-  ].filter(tab => tab.visible), [user, role, canTeach, canCoordinate, canManage]);
+  ].filter(tab => tab.visible), [user, canTeach, canCoordinate, canManage]);
 
   const pendingCorrections = Number(teacherDashboard.pendingCorrections || 0);
   const enrolledStudents = courses.reduce((sum, course) => sum + (course.students?.length || 0), 0);
@@ -564,6 +560,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     if (!selectedUniversityId || !coordinatorDraft.courseId) return;
     try {
       await assignInstitutionCoordinator(token, selectedUniversityId, coordinatorDraft.courseId, coordinatorDraft);
+      await refreshInstitution(await fetchUniversity(token, selectedUniversityId));
       setCoordinatorDraft(prev => ({ ...prev, username: '' }));
       showToast('Coordenador atribuido ao curso', 'OK');
     } catch (err) {
@@ -874,6 +871,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
               value={studentDraft.username}
               onChange={username => setStudentDraft(prev => ({ ...prev, username }))}
               placeholder="Pesquise o aluno por nome ou username"
+              requiredRole="student"
+              emptyText="Nenhum aluno aprovado disponivel para esta instituicao."
             />
             <button className="btn btn-primary" disabled={!classGroups.length}>Matricular aluno</button>
           </form>
@@ -892,6 +891,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
               value={professorDraft.username}
               onChange={username => setProfessorDraft(prev => ({ ...prev, username }))}
               placeholder="Pesquise o professor por nome ou username"
+              requiredRole="professor"
+              emptyText="Nenhum professor aprovado disponivel para esta instituicao."
             />
             <button className="btn btn-primary" disabled={!semesters.length || !subjects.length}>Vincular professor</button>
           </form>
@@ -907,6 +908,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
                 value={coordinatorDraft.username}
                 onChange={username => setCoordinatorDraft(prev => ({ ...prev, username }))}
                 placeholder="Pesquise o coordenador por nome ou username"
+                requiredRole="coordination"
+                emptyText="Nenhum coordenador disponivel para esta instituicao."
               />
               <button className="btn btn-primary" disabled={!institutionCourses.length}>Atribuir coordenador</button>
             </form>
@@ -974,29 +977,6 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <span>{tab.label}</span>
             </button>
           ))}
-          {canViewPortalAdmin && (
-            <>
-              <div className="academic-portal-nav-group">ADMINISTRACAO</div>
-              {canViewMasterBi && (
-                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'masterBi' }))}>
-                  <small><BarChart3 size={17} /></small>
-                  <span>Master BI</span>
-                </button>
-              )}
-              {canViewAuditLogs && (
-                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'auditLogs' }))}>
-                  <small><Activity size={17} /></small>
-                  <span>Logs de Auditoria</span>
-                </button>
-              )}
-              {canViewAdminDashboard && (
-                <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'adminDashboard' }))}>
-                  <small><Users size={17} /></small>
-                  <span>Painel de Gestao</span>
-                </button>
-              )}
-            </>
-          )}
         </aside>
         <section className="academic-portal-main">
           {error && <div className="portfolio-alert">{error} <button onClick={reload}>Tentar novamente</button></div>}

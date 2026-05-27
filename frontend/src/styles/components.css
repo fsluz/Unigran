@@ -5428,7 +5428,7 @@ img, video { max-width: 100%; }
   right: 20px;
   bottom: 20px;
   z-index: 9999;
-  width: min(510px, calc(100vw - 32px));
+  width: min(920px, calc(100vw - 32px));
   height: min(650px, calc(100vh - 36px));
   display: flex;
   flex-direction: column;
@@ -5463,8 +5463,14 @@ img, video { max-width: 100%; }
   cursor: pointer;
 }
 .rai-chat-actions button:hover { background: rgba(255,255,255,.18); }
-.rai-chat-messages {
+.rai-chat-layout {
   flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.rai-chat-messages {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5497,6 +5503,10 @@ img, video { max-width: 100%; }
 .rai-message p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; font-size: 14px; }
 .rai-message small { display: block; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
 .rai-message.user small { color: rgba(255,255,255,.85); }
+.rai-message.reminder {
+  border-color: rgba(37, 99, 235, .26);
+  background: rgba(37, 99, 235, .08);
+}
 .rai-message-sources { display: grid; gap: 5px; margin-top: 8px; }
 .rai-message-sources a { color: var(--accent); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
 .rai-chat-loading,
@@ -5546,9 +5556,134 @@ img, video { max-width: 100%; }
   cursor: pointer;
 }
 .rai-chat-form button:disabled { opacity: .48; cursor: default; }
+.rai-schedules-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 14px;
+  border-left: 1px solid var(--border);
+  background: var(--card);
+}
+.rai-schedules-panel > strong,
+.rai-schedule-detail > strong {
+  font-family: var(--font-head);
+  font-size: 14px;
+}
+.rai-schedule-form {
+  display: grid;
+  gap: 8px;
+}
+.rai-schedule-form input,
+.rai-schedule-form select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--text);
+  background: var(--page-bg);
+}
+.rai-schedule-form button {
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #fff;
+  background: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+.rai-schedule-list,
+.rai-event-list,
+.rai-schedule-detail {
+  display: grid;
+  gap: 8px;
+}
+.rai-schedule-list button,
+.rai-event-item {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px;
+  color: var(--text);
+  background: var(--page-bg);
+  text-align: left;
+}
+.rai-schedule-list button.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+.rai-schedule-list span,
+.rai-event-item span {
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.rai-schedule-list small,
+.rai-event-item small {
+  color: var(--text-muted);
+}
+.rai-event-item.done { opacity: .72; }
+.rai-event-item.cancelled { border-color: rgba(239,68,68,.28); }
+.rai-event-item > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.rai-event-item button {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 8px;
+  color: var(--text);
+  background: var(--card);
+  cursor: pointer;
+}
+.rai-memory-list {
+  display: grid;
+  gap: 7px;
+}
+.rai-memory-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--page-bg);
+}
+.rai-memory-list span {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text);
+}
+.rai-memory-list small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.rai-memory-list button {
+  border: 0;
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: var(--text);
+  background: var(--card);
+  cursor: pointer;
+}
+.rai-memory-list .rai-memory-danger {
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,.24);
+  background: rgba(239,68,68,.08);
+}
 @keyframes raiSpin { to { transform: rotate(360deg); } }
 @media (max-width: 580px) {
   .rai-chat-modal { right: 8px; bottom: 8px; width: calc(100vw - 16px); height: min(680px, calc(100vh - 16px)); }
+  .rai-chat-layout { grid-template-columns: 1fr; }
+  .rai-schedules-panel { display: none; }
 }
 
 .portal-entry {

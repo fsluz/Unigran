@@ -47,6 +47,108 @@ export async function askRai(token, prompt, messages = [], selectedCourseId = ''
   return readJson(res, 'Erro ao conversar com a RAi');
 }
 
+export async function fetchRaiChatMessages(token) {
+  const res = await apiFetch('/platform/v1/schedules/chat/messages', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar historico da RAi');
+}
+
+export async function fetchRaiProfile(token) {
+  const res = await apiFetch('/platform/v1/rai/profile', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar perfil da RAi');
+}
+
+export async function updateRaiProfile(token, payload) {
+  const res = await apiFetch('/platform/v1/rai/profile', {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao atualizar perfil da RAi');
+}
+
+export async function fetchRaiMemories(token) {
+  const res = await apiFetch('/platform/v1/rai/memories', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar memorias da RAi');
+}
+
+export async function deleteRaiMemory(token, memoryId) {
+  const res = await apiFetch(`/platform/v1/rai/memories/${memoryId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao apagar memoria da RAi');
+}
+
+export async function deleteAllRaiMemories(token) {
+  const res = await apiFetch('/platform/v1/rai/memories/all', {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao apagar memorias da RAi');
+}
+
+export async function fetchRaiSchedules(token) {
+  const res = await apiFetch('/platform/v1/schedules', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar cronogramas');
+}
+
+export async function createRaiSchedule(token, payload) {
+  const res = await apiFetch('/platform/v1/schedules', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar cronograma');
+}
+
+export async function fetchRaiSchedule(token, scheduleId) {
+  const res = await apiFetch(`/platform/v1/schedules/${scheduleId}`, {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar cronograma');
+}
+
+export async function createRaiScheduleEvent(token, scheduleId, payload) {
+  const res = await apiFetch(`/platform/v1/schedules/${scheduleId}/events`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao criar evento');
+}
+
+export async function updateRaiScheduleEvent(token, eventId, payload) {
+  const res = await apiFetch(`/platform/v1/schedules/events/${eventId}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao atualizar evento');
+}
+
+export async function cancelRaiScheduleEvent(token, eventId) {
+  const res = await apiFetch(`/platform/v1/schedules/events/${eventId}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao cancelar evento');
+}
+
+export async function fetchRaiReminders(token) {
+  const res = await apiFetch('/platform/v1/schedules/reminders', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar lembretes');
+}
+
 export async function fetchAva(token) {
   const res = await apiFetch('/platform/v1/ava', { headers: authHeaders(token) });
   return readJson(res, 'Erro ao carregar AVA');
@@ -262,8 +364,9 @@ export async function enrollInstitutionStudent(token, universityId, classGroupId
   return readJson(res, 'Erro ao matricular aluno na turma');
 }
 
-export async function searchInstitutionUsers(token, universityId, query) {
-  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/users/search?q=${encodeURIComponent(query)}`, {
+export async function searchInstitutionUsers(token, universityId, query, role = '') {
+  const roleQuery = role ? `&role=${encodeURIComponent(role)}` : '';
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/users/search?q=${encodeURIComponent(query)}${roleQuery}`, {
     headers: authHeaders(token),
   });
   return readJson(res, 'Erro ao pesquisar usuarios');

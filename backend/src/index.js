@@ -22,6 +22,7 @@ import cryptoRouter        from './routes/crypto.js';
 import { setupSocket }     from './socket/handlers.js';
 import { auditRequests }    from './middleware/audit.js';
 import reportsRouter from './routes/reports.js';
+import { startRaiReminderScheduler } from './services/raiScheduler.service.js';
 
 const app    = express();
 const server = createServer(app);
@@ -79,6 +80,7 @@ app.use((err, _req, res, _next) => {
 
 /*  Socket.io  */
 setupSocket(io);
+startRaiReminderScheduler();
 
 /*  Start  */
 const PORT = process.env.PORT || 3001;
