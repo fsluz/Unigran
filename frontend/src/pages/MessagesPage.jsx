@@ -1190,16 +1190,6 @@ export default function MessagesPage() {
               </div>
             </div>
 
-            {e2eeStatus.checked && (
-              <div className={`e2ee-banner ${e2eeStatus.ready ? 'ready' : 'warn'}`}>
-                {e2eeStatus.ready
-                  ? 'E2EE ativo. Novas mensagens seguem cifradas.'
-                  : e2eeStatus.missing.filter(name => name !== user?.username).length
-                    ? `E2EE aguardando chave: ${e2eeStatus.missing.filter(name => name !== user?.username).join(', ')}. Conversa antiga continua normal.`
-                    : 'E2EE criando sua chave. Conversa antiga continua normal.'}
-              </div>
-            )}
-
             <div className="chat-messages">
               {activeMessages.map(msg => {
                 const mine = msg.author?.id === user?.username || msg.author?.id === user?.id;

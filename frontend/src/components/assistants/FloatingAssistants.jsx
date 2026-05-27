@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatRAIModal from '../modals/ChatRAIModal';
 import { CHAT_CONFIG } from '../../config/integrations';
@@ -8,6 +8,15 @@ export default function FloatingAssistants() {
   const { token, user } = useAuth();
   const [raiOpen, setRaiOpen] = useState(false);
   const [raiPeek, setRaiPeek] = useState(true);
+
+  useEffect(() => {
+    const openRai = () => {
+      setRaiOpen(true);
+      setRaiPeek(false);
+    };
+    window.addEventListener('unigran:open-rai', openRai);
+    return () => window.removeEventListener('unigran:open-rai', openRai);
+  }, []);
 
   return (
     <>
@@ -24,8 +33,7 @@ export default function FloatingAssistants() {
             alt="RAi Assistente"
             onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.add('show'); }}
           />
-          <span className="rai-fallback show">RAi</span>
-          {raiPeek && <div className="rai-speech-bubble">Precisa de ajuda?</div>}
+          <span className="rai-fallback">RAi</span>
         </button>
       </div>
 

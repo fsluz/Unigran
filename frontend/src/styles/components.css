@@ -5706,13 +5706,14 @@ img, video { max-width: 100%; }
   position: relative;
   background: transparent;
   padding: 0;
-  width: 72px;
-  height: 72px;
+  width: 54px;
+  height: 54px;
   border-radius: 16px;
 }
-.floating-assistant-btn.rai img { width: 72px; height: 72px; object-fit: contain; filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); }
+.floating-assistant-btn.rai img { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); }
 .floating-assistant-btn.rai .rai-fallback { display: none; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg,#2374e1,#8b5cf6); color: #fff; font-weight: 900; place-items: center; }
 .floating-assistant-btn.rai .rai-fallback.show { display: grid; }
+.app-shell:has(.messages-page) .floating-assistants { bottom: 88px; }
 .rai-speech-bubble {
   position: absolute;
   right: 78px;
@@ -5821,8 +5822,16 @@ img, video { max-width: 100%; }
 .messages-page .conv-item { margin: 4px 9px; border-radius: 12px; border-bottom: 0; }
 .messages-page .conv-item:hover, .messages-page .conv-item.active { background: var(--accent-light) !important; }
 .messages-page .chat-messages { background: color-mix(in srgb, var(--page-bg) 84%, var(--card)); }
+.messages-page .msg-block { display: block; margin-bottom: 10px; }
+.messages-page .msg-row { display: flex; width: 100%; gap: 8px; align-items: flex-end; justify-content: flex-start; }
+.messages-page .msg-row.me { flex-direction: row; justify-content: flex-end; }
+.messages-page .msg-stack { max-width: min(68%, 560px); align-items: flex-start; }
+.messages-page .msg-row.me .msg-stack { align-items: flex-end; }
+.messages-page .msg-bubble { position: relative; width: fit-content; max-width: 100%; }
+.messages-page .msg-meta-line.me { justify-content: flex-end; }
 
 @media (max-width: 760px) {
+  .floating-assistants { display: none; }
   .mobile-bottom-nav {
     display: flex;
     height: calc(64px + env(safe-area-inset-bottom, 0px));
@@ -5856,6 +5865,7 @@ img, video { max-width: 100%; }
     display: flex; flex: 1; border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
   }
   .messages-page .chat-messages { padding: 12px; }
+  .messages-page .msg-stack { max-width: 84%; }
   .messages-page .chat-input-bar { padding: 9px; gap: 4px; }
 }
 
