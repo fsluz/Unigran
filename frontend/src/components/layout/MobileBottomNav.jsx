@@ -14,7 +14,6 @@ const QUICK = [
   { id: 'profile', label: 'Meu perfil' },
   { id: 'settings', label: 'Configurações' },
   { id: 'campus', label: 'Portal', perm: 'platform:read' },
-  { id: 'adminHub', label: 'Admin', anyPerm: ['audit:read', 'system:manage'] },
 ];
 
 function NavIcon({ name }) {

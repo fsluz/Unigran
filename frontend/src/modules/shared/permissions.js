@@ -10,6 +10,8 @@ const ROLE_ALIASES = {
   administrativo: 'secretary',
   library: 'secretary',
   biblioteca: 'secretary',
+  teacher: 'professor',
+  docente: 'professor',
   community_moderator: 'moderator',
   admin_rede_social: 'social_admin',
   social_administrator: 'social_admin',

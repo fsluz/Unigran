@@ -26,6 +26,8 @@ export const ROLE_ALIASES = {
   secretaria: 'secretary',
   library: 'secretary',
   biblioteca: 'secretary',
+  teacher: 'professor',
+  docente: 'professor',
   coordenacao: 'coordination',
   coordenacao_academica: 'coordination',
   coordinator: 'coordination',
@@ -207,7 +209,6 @@ async function approvedInstitutionRoles(username, universityId) {
 }
 
 export async function canAccessInstitution(user, institutionId, permission = 'institutions:read') {
-  if (!hasPermission(user, permission)) return false;
   if (normalizeUniversityRole(user?.role) === 'super_admin') return true;
   if (!institutionId || !user?.username) return false;
   const memberships = await approvedInstitutionRoles(user.username, institutionId);
@@ -228,8 +229,51 @@ export async function canAccessCourse(user, institutionId, courseId, permission 
   return rows.length > 0;
 }
 
+export async function canAccessSemester(user, institutionId, semesterId, permission = 'classes:read') {
+  if (!(await canAccessInstitution(user, institutionId, permission))) return false;
+  if (normalizeUniversityRole(user?.role) !== 'coordination' || !semesterId) return true;
+  const rows = await readQuery(`
+    match
+      $member isa person, has username "${typeqlLiteral(user.username)}";
+      $semester isa institution-semester, has institution-semester-id "${typeqlLiteral(semesterId)}";
+      institution-semester-link(course: $course, semester: $semester);
+      $scope isa institution-course-coordination, links (coordinator: $member, course: $course),
+        has institution-status "approved";
+    fetch { "scope": { $scope.* } };
+  `);
+  return rows.length > 0;
+}
+
+export async function canAccessSubject(user, institutionId, subjectId, permission = 'academic:read') {
+  if (!(await canAccessInstitution(user, institutionId, permission))) return false;
+  if (normalizeUniversityRole(user?.role) !== 'coordination' || !subjectId) return true;
+  const rows = await readQuery(`
+    match
+      $member isa person, has username "${typeqlLiteral(user.username)}";
+      $subject isa institution-subject, has institution-subject-id "${typeqlLiteral(subjectId)}";
+      institution-subject-link(course: $course, subject: $subject);
+      $scope isa institution-course-coordination, links (coordinator: $member, course: $course),
+        has institution-status "approved";
+    fetch { "scope": { $scope.* } };
+  `);
+  return rows.length > 0;
+}
+
 export async function canAccessClass(user, institutionId, classId, permission = 'classes:read') {
   if (!(await canAccessInstitution(user, institutionId, permission))) return false;
+  if (normalizeUniversityRole(user?.role) === 'coordination' && classId) {
+    const rows = await readQuery(`
+      match
+        $coordinator isa person, has username "${typeqlLiteral(user.username)}";
+        $class isa institution-class-group, has institution-class-group-id "${typeqlLiteral(classId)}";
+        institution-class-group-link(semester: $semester, class-group: $class);
+        institution-semester-link(course: $course, semester: $semester);
+        $scope isa institution-course-coordination, links (coordinator: $coordinator, course: $course),
+          has institution-status "approved";
+      fetch { "scope": { $scope.* } };
+    `);
+    return rows.length > 0;
+  }
   if (normalizeUniversityRole(user?.role) !== 'professor' || !classId) return true;
   const rows = await readQuery(`
     match
@@ -288,6 +332,34 @@ export function requireCoursePermission(permission) {
     } catch (err) {
       console.error('[course rbac]', err);
       return res.status(503).json({ error: 'Nao foi possivel validar o escopo do curso' });
+    }
+  };
+}
+
+export function requireSemesterPermission(permission) {
+  return async (req, res, next) => {
+    try {
+      if (!(await canAccessSemester(req.user, req.params.universityId, req.params.semesterId, permission))) {
+        return res.status(403).json({ error: 'Semestre fora do escopo autorizado', permission });
+      }
+      return next();
+    } catch (err) {
+      console.error('[semester rbac]', err);
+      return res.status(503).json({ error: 'Nao foi possivel validar o escopo do semestre' });
+    }
+  };
+}
+
+export function requireSubjectPermission(permission) {
+  return async (req, res, next) => {
+    try {
+      if (!(await canAccessSubject(req.user, req.params.universityId, req.params.subjectId, permission))) {
+        return res.status(403).json({ error: 'Disciplina fora do escopo autorizado', permission });
+      }
+      return next();
+    } catch (err) {
+      console.error('[subject rbac]', err);
+      return res.status(503).json({ error: 'Nao foi possivel validar o escopo da disciplina' });
     }
   };
 }

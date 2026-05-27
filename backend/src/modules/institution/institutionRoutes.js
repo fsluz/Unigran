@@ -5,6 +5,8 @@ import {
   requireCoursePermission,
   requireInstitutionPermission,
   requirePermission,
+  requireSemesterPermission,
+  requireSubjectPermission,
   hasPermission,
   canAccessInstitution,
 } from '../auth/rbac.js';
@@ -157,6 +159,7 @@ const MembershipRoleSchema = z.object({
 
 const InstitutionUserSearchSchema = z.object({
   q: z.string().trim().min(2).max(80),
+  role: z.enum(['coordination', 'professor', 'student']).optional(),
 });
 
 function handleError(res, err, fallback) {
@@ -243,7 +246,7 @@ router.post('/universities', requirePermission('institutions:create'), async (re
 
 router.get('/universities/:universityId', requireInstitutionPermission('institutions:read'), async (req, res) => {
   try {
-    res.json(await getUniversityHierarchy(req.params.universityId));
+    res.json(await getUniversityHierarchy(req.params.universityId, req.user));
   } catch (err) {
     handleError(res, err, 'Erro ao carregar universidade');
   }
@@ -259,7 +262,7 @@ router.post('/universities/:universityId/campuses', requireInstitutionPermission
   }
 });
 
-router.post('/universities/:universityId/campuses/:campusId/courses', requireInstitutionPermission('courses:create'), async (req, res) => {
+router.post('/universities/:universityId/campuses/:campusId/courses', requireInstitutionPermission('faculties:manage'), async (req, res) => {
   const parsed = CourseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -279,7 +282,7 @@ router.post('/universities/:universityId/courses/:courseId/semesters', requireCo
   }
 });
 
-router.post('/universities/:universityId/semesters/:semesterId/classes', requireInstitutionPermission('classes:create'), async (req, res) => {
+router.post('/universities/:universityId/semesters/:semesterId/classes', requireSemesterPermission('classes:create'), async (req, res) => {
   const parsed = ClassGroupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -332,7 +335,7 @@ router.post('/universities/:universityId/classes/:classGroupId/enrollments', req
   }
 });
 
-router.post('/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors', requireInstitutionPermission('users:approve'), async (req, res) => {
+router.post('/universities/:universityId/semesters/:semesterId/subjects/:subjectId/professors', requireSubjectPermission('users:approve'), async (req, res) => {
   const parsed = ProfessorSubjectSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
@@ -365,11 +368,11 @@ router.delete('/universities/:universityId', requirePermission('institutions:del
   }
 });
 
-router.put('/universities/:universityId/courses/:courseId/coordinator', requirePermission('roles:assign'), requireCoursePermission('courses:update'), async (req, res) => {
+router.put('/universities/:universityId/courses/:courseId/coordinator', requireInstitutionPermission('roles:assign'), requireCoursePermission('courses:update'), async (req, res) => {
   const parsed = CoordinatorCourseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
-    res.json(await assignCoordinatorToCourse(req.params.universityId, req.params.courseId, parsed.data));
+    res.json(await assignCoordinatorToCourse(req.params.universityId, req.params.courseId, parsed.data, req.user));
   } catch (err) {
     handleError(res, err, 'Erro ao atribuir coordenador ao curso');
   }
@@ -386,10 +389,10 @@ router.post('/universities/:universityId/memberships/requests', async (req, res)
 });
 
 router.get('/universities/:universityId/users/search', requireInstitutionPermission('institutions:read'), async (req, res) => {
-  const parsed = InstitutionUserSearchSchema.safeParse({ q: req.query.q });
+  const parsed = InstitutionUserSearchSchema.safeParse({ q: req.query.q, role: req.query.role || undefined });
   if (!parsed.success) return res.json({ users: [] });
   try {
-    res.json({ users: await searchInstitutionUsers(req.params.universityId, parsed.data.q) });
+    res.json({ users: await searchInstitutionUsers(req.params.universityId, parsed.data.q, { role: parsed.data.role }) });
   } catch (err) {
     handleError(res, err, 'Erro ao pesquisar usuarios');
   }
