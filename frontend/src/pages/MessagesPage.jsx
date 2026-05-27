@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
-import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, updateConversation, updateMessage } from '../services/conversations';
+import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, toggleMessageReaction, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
 import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publishOwnPublicKey } from '../services/e2ee';
@@ -36,6 +36,7 @@ export default function MessagesPage() {
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   const [messageMenuOpen, setMessageMenuOpen] = useState(null);
+  const [reactionPickerOpen, setReactionPickerOpen] = useState(null);
   const [editingMessage, setEditingMessage] = useState(null);
   const [editText, setEditText] = useState('');
   const [unreadMarkerByConv, setUnreadMarkerByConv] = useState({});
@@ -262,13 +263,22 @@ export default function MessagesPage() {
       if (!data?.messageId) return;
       setMessages(prev => ({ ...prev, [active.id]: (prev[active.id] || []).filter(msg => msg.id !== data.messageId) }));
     };
+    const onReacted = ({ data }) => {
+      if (!data?.messageId) return;
+      setMessages(prev => ({
+        ...prev,
+        [active.id]: (prev[active.id] || []).map(msg => msg.id === data.messageId ? { ...msg, reactions: data.reactions || {} } : msg),
+      }));
+    };
     channel.subscribe('message_sent', onMessage);
     channel.subscribe('message_edited', onEdited);
     channel.subscribe('message_deleted', onDeleted);
+    channel.subscribe('message_reacted', onReacted);
     return () => {
       channel.unsubscribe('message_sent', onMessage);
       channel.unsubscribe('message_edited', onEdited);
       channel.unsubscribe('message_deleted', onDeleted);
+      channel.unsubscribe('message_reacted', onReacted);
     };
   }, [token, active?.id, user?.username, realtimeRevision]);
 
@@ -660,6 +670,21 @@ export default function MessagesPage() {
       showToast('Mensagem copiada', 'OK');
     } catch {
       showToast('Nao foi possivel copiar', '!');
+    }
+  };
+
+  const reactToMessage = async (msg, emoji) => {
+    if (!active?.id || !msg?.id) return;
+    try {
+      const data = await toggleMessageReaction({ token, conversationId: active.id, messageId: msg.id, emoji });
+      setMessages(prev => ({
+        ...prev,
+        [active.id]: (prev[active.id] || []).map(item => item.id === msg.id ? { ...item, reactions: data.reactions || {} } : item),
+      }));
+      getConversationChannel(token, active.id).publish('message_reacted', data).catch(() => null);
+      setReactionPickerOpen(null);
+    } catch (err) {
+      showToast(err.message || 'Erro ao reagir mensagem', '!');
     }
   };
 
@@ -1253,20 +1278,44 @@ export default function MessagesPage() {
                           {msg.edited && <small className="msg-edited">editada</small>}
                           {renderMedia(msg.media)}
                         </div>
+                        {Object.entries(msg.reactions || {}).some(([, names]) => names?.length) && (
+                          <div className={`msg-reactions ${mine ? 'me' : ''}`}>
+                            {Object.entries(msg.reactions || {}).filter(([, names]) => names?.length).map(([emoji, names]) => (
+                              <button
+                                key={emoji}
+                                className={names.includes(user?.username) ? 'chosen' : ''}
+                                onClick={() => reactToMessage(msg, emoji)}
+                                title="Reagir"
+                              >
+                                <span>{emoji}</span>{names.length}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         <div className={`msg-meta-line ${mine ? 'me' : ''}`}>
                           <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
-                          {mine && (
-                            <div className="msg-menu-wrap">
-                              <button className="msg-more-btn" onClick={() => setMessageMenuOpen(messageMenuOpen === msg.id ? null : msg.id)}><ChatIcon name="more" size={15} /></button>
-                              {messageMenuOpen === msg.id && (
-                                <div className="msg-menu">
+                          <div className="msg-menu-wrap">
+                            <button className="msg-react-btn" onClick={() => setReactionPickerOpen(reactionPickerOpen === msg.id ? null : msg.id)} title="Reagir">+</button>
+                            {reactionPickerOpen === msg.id && (
+                              <div className="msg-reaction-picker">
+                                {['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}'].map(emoji => (
+                                  <button key={emoji} onClick={() => reactToMessage(msg, emoji)}>{emoji}</button>
+                                ))}
+                              </div>
+                            )}
+                            {mine && (
+                              <>
+                                <button className="msg-more-btn" onClick={() => setMessageMenuOpen(messageMenuOpen === msg.id ? null : msg.id)}><ChatIcon name="more" size={15} /></button>
+                                {messageMenuOpen === msg.id && (
+                                  <div className="msg-menu">
                                   <button onClick={() => startEditMessage(msg)}><ChatIcon name="edit" size={14} /> Editar mensagem</button>
                                   <button onClick={() => copyMessage(msg)}><ChatIcon name="chat" size={14} /> Copiar</button>
                                   <button className="danger" onClick={() => removeMessage(msg.id)}><ChatIcon name="trash" size={14} /> Excluir mensagem</button>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
                         {mine && activeParticipant?.username && msg.readBy?.includes(activeParticipant.username) && (
                           <div className="msg-read">Lido</div>

@@ -122,6 +122,15 @@ export async function updateMessage({ token, conversationId, messageId, content 
   return parseResponse(res, 'Erro ao editar mensagem');
 }
 
+export async function toggleMessageReaction({ token, conversationId, messageId, emoji }) {
+  const res = await apiFetch(`/conversations/${conversationId}/messages/${messageId}/reactions`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ emoji }),
+  });
+  return parseResponse(res, 'Erro ao reagir mensagem');
+}
+
 export async function deleteConversation({ token, conversationId }) {
   const res = await apiFetch(`/conversations/${conversationId}`, {
     method: 'DELETE',

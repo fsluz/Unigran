@@ -351,7 +351,6 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const portfolio = getPortfolioPost(post);
   const portfolioLink = portfolio?.externalLink ? portfolioLinkMeta(portfolio.externalLink, portfolio.externalKind) : null;
   const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
-  const compactCard = !portfolio && !post.originalPost && !post.media?.url && embeds.length === 0;
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -458,7 +457,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   ];
 
   return (
-    <div className={`card post-card ${compactCard ? 'post-card-compact' : ''}`} style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
+    <div className="card post-card post-card-model" style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
       {/* Header */}
       <div className="post-head">
         <div className="profile-hover-wrap" style={{ flexShrink: 0 }}>
@@ -615,7 +614,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             </div>
           )}
           {post.media?.url && (
-            <div style={{ marginBottom: 14 }}>
+            <div className="post-media-wrap">
               {post.media.resource_type === 'video'
                 ? <AutoPauseVideo src={post.media.url} controls preload="metadata" style={{ width: '100%', borderRadius: 12, maxHeight: 420 }} />
                 : <img src={post.media.url} alt="post media" loading="lazy" onClick={() => setLightbox(post.media.url)} style={{ width: '100%', borderRadius: 12, maxHeight: 420, objectFit: 'cover', cursor: 'zoom-in' }} />}

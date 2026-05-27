@@ -8,8 +8,8 @@ import { hasPermission } from '../modules/auth/rbac.js';
 const router = Router();
 const typingByConversation = new Map();
 
-function packMessageText({ content, author, media = null, readBy = [], edited = false }) {
-  return JSON.stringify({ v: 2, content, author, media, readBy, edited });
+function packMessageText({ content, author, media = null, readBy = [], edited = false, reactions = {} }) {
+  return JSON.stringify({ v: 2, content, author, media, readBy, edited, reactions });
 }
 
 function packConversationName({ title, picture = null, type = 'direct', description = '' }) {
@@ -60,10 +60,10 @@ async function isConversationMember(conversationId, username) {
 function unpackMessageText(raw) {
   try {
     const parsed = JSON.parse(raw);
-    if (parsed?.v === 1) return { ...parsed, media: null, readBy: [] };
-    if (parsed?.v === 2) return parsed;
+    if (parsed?.v === 1) return { ...parsed, media: null, readBy: [], reactions: {} };
+    if (parsed?.v === 2) return { ...parsed, reactions: parsed.reactions || {} };
   } catch (_) {}
-  return { content: raw, author: null, media: null, readBy: [] };
+  return { content: raw, author: null, media: null, readBy: [], reactions: {} };
 }
 
 function looksEncrypted(raw = '') {
@@ -348,6 +348,7 @@ router.get('/:id/messages', auth, async (req, res) => {
         content: payload.content,
         media: payload.media || null,
         readBy: payload.readBy || [],
+        reactions: payload.reactions || {},
         edited: Boolean(payload.edited),
         time: row.created_at,
         author: payload.author?.id
@@ -399,6 +400,7 @@ router.post('/:id/messages', auth, async (req, res) => {
       content: cleanContent,
       media,
       readBy: [req.user.username],
+      reactions: {},
       time: now,
       author: { id: req.user.username, displayName: req.user.displayName },
     });
@@ -622,6 +624,7 @@ router.patch('/:convId/messages/:msgId', auth, async (req, res) => {
       content,
       media: payload.media || null,
       readBy: payload.readBy || [],
+      reactions: payload.reactions || {},
       edited: true,
       time: rows[0].created_at,
       author: payload.author || { id: req.user.username, displayName: req.user.displayName },
@@ -629,6 +632,42 @@ router.patch('/:convId/messages/:msgId', auth, async (req, res) => {
   } catch (err) {
     console.error('[messages PATCH]', err);
     res.status(500).json({ error: 'Erro ao editar' });
+  }
+});
+
+router.patch('/:convId/messages/:msgId/reactions', auth, async (req, res) => {
+  const emoji = String(req.body?.emoji || '');
+  const allowedReactions = new Set(['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}']);
+  if (!allowedReactions.has(emoji)) return res.status(400).json({ error: 'Reacao invalida' });
+  try {
+    const rows = await readQuery(`
+      match
+        $user isa person, has username "${typeqlLiteral(req.user.username)}";
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.convId)}";
+        conversation-participant(participant: $user, conversation: $conv);
+        message-delivery(conversation: $conv, message: $m);
+        $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}", has message-text $text;
+      fetch { "text": $text };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Mensagem nao encontrada' });
+    const payload = unpackMessageText(rows[0].text);
+    const reactions = { ...(payload.reactions || {}) };
+    const users = new Set(Array.isArray(reactions[emoji]) ? reactions[emoji] : []);
+    if (users.has(req.user.username)) users.delete(req.user.username);
+    else users.add(req.user.username);
+    if (users.size) reactions[emoji] = [...users];
+    else delete reactions[emoji];
+    const nextPayload = JSON.stringify({ ...payload, v: 2, reactions });
+    await writeQuery(`
+      match
+        $m isa message, has message-id "${typeqlLiteral(req.params.msgId)}";
+      update
+        $m has message-text "${typeqlLiteral(nextPayload)}";
+    `);
+    res.json({ messageId: req.params.msgId, reactions });
+  } catch (err) {
+    console.error('[message reaction PATCH]', err);
+    res.status(500).json({ error: 'Erro ao reagir mensagem' });
   }
 });
 
