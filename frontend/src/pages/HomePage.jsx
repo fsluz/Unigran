@@ -187,27 +187,19 @@ export default function HomePage({ onOpenProfile }) {
 
           <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="home-feed-tabs">
             {[
               ['for-you', 'Para voce'],
               ['following', 'Seguindo'],
               ['trending', 'Tendencias'],
             ].map(([id, label]) => (
-              <button key={id} onClick={() => setFeed(id)} style={{
-                padding: '7px 16px',
-                borderRadius: 20,
-                border: `1px solid ${feed === id ? 'var(--accent)' : 'var(--border)'}`,
-                background: feed === id ? 'var(--accent)' : 'transparent',
-                color: feed === id ? '#fff' : 'var(--text-muted)',
-                fontWeight: feed === id ? 700 : 400,
-                fontSize: 13,
-              }}>
+              <button key={id} className={feed === id ? 'active' : ''} onClick={() => setFeed(id)}>
                 {label}
               </button>
             ))}
           </div>
 
-          <div className="section-grid">
+          <div className="section-grid home-post-list">
             {trendTitle && (
               <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <strong>#{trendTitle}</strong>
@@ -252,35 +244,37 @@ export default function HomePage({ onOpenProfile }) {
         </main>
 
         <aside className="right-panel home-right-panel">
-          <div className="panel-card" style={{ marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Tendencias</div>
+          <div className="panel-card home-side-card home-trends-card">
+            <div className="home-side-heading">Tendencias</div>
             {trending.length ? trending.map((item, i) => (
-              <div key={item.tag} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: i < trending.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={item.tag} className="home-trend-row">
                 <div>
-                  <button onClick={() => openTrend(item.tag)} style={{ border: 0, background: 'transparent', padding: 0, fontWeight: 700, fontSize: 14, color: 'var(--text)', cursor: 'pointer' }}>#{item.tag}</button>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.count} posts - {item.lastHour || 0} ultima hora</div>
+                  <button onClick={() => openTrend(item.tag)}>#{item.tag}</button>
+                  <div>{item.count} posts - Ultima hora</div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-light)', padding: '2px 8px', borderRadius: 10 }}>#{i + 1}</span>
+                <span>#{i + 1}</span>
               </div>
             )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma tendencia real encontrada.</div>}
+            {trending.length > 0 && <button className="home-more-btn" type="button">Ver mais</button>}
           </div>
 
-          <div className="panel-card" style={{ marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Sugeridas para voce</div>
+          <div className="panel-card home-side-card">
+            <div className="home-side-heading">Sugestoes para voce</div>
             {suggestedCommunities.length ? suggestedCommunities.map(com => (
-              <div key={com.id || com.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${com.color || 'var(--accent)'}22`, color: com.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0, border: '1px solid var(--border)' }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{com.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{Number(com.members || 0).toLocaleString()} membros</div>
+              <div key={com.id || com.name} className="home-community-row">
+                <div className="home-community-mark" style={{ color: com.color || undefined }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
+                <div className="home-community-info">
+                  <div>{com.name}</div>
+                  <small>{Number(com.members || 0).toLocaleString()} membros</small>
                 </div>
-                <button onClick={() => handleJoinCommunity(com)} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, padding: '5px 12px', fontSize: 11, fontWeight: 700 }}>Entrar</button>
+                <button onClick={() => handleJoinCommunity(com)}>Entrar</button>
               </div>
             )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma comunidade sugerida pelo servidor.</div>}
+            {suggestedCommunities.length > 0 && <button className="home-more-btn" type="button">Ver mais</button>}
           </div>
 
-          <div className="panel-card">
-            <div style={{ fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 15, color: 'var(--text)', marginBottom: 14 }}>Pessoas sugeridas</div>
+          <div className="panel-card home-side-card home-people-card">
+            <div className="home-side-heading">Pessoas sugeridas</div>
             {suggestedPeople.length ? suggestedPeople.map((person, i, arr) => (
               <div key={person.username || person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
                 <button onClick={() => person.username && onOpenProfile?.(person.username)} style={{ border: 0, background: 'transparent', padding: 0 }}>
