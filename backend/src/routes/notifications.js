@@ -7,10 +7,10 @@ const router = Router();
 router.get('/', auth, async (req, res) => {
   try {
     const safeUser = typeqlLiteral(req.user.username);
-    // FIXED: replaced direct relation call with `links` to satisfy TypeDB 3.x role inference.
+    // FIXED: bind recipient as person; migration 005 grants the missing notification recipient role.
     const rows = await readQuery(`
       match
-        $recipient has username "${safeUser}";
+        $recipient isa person, has username "${safeUser}";
         $notification isa notification,
           has notification-id $id,
           has notification-text $text,
@@ -65,7 +65,7 @@ router.get('/', auth, async (req, res) => {
 router.patch('/read-all', auth, (_req, res) => {
   writeQuery(`
     match
-      $recipient has username "${typeqlLiteral(_req.user.username)}";
+      $recipient isa person, has username "${typeqlLiteral(_req.user.username)}";
       $notification isa notification;
       $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
     delete
@@ -82,7 +82,7 @@ router.patch('/read-all', auth, (_req, res) => {
 router.patch('/:id/read', auth, (req, res) => {
   writeQuery(`
     match
-      $recipient has username "${typeqlLiteral(req.user.username)}";
+      $recipient isa person, has username "${typeqlLiteral(req.user.username)}";
       $notification isa notification, has notification-id "${typeqlLiteral(req.params.id)}";
       $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
     delete

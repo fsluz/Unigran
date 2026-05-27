@@ -128,17 +128,16 @@ router.get('/', auth, async (req, res) => {
   try {
     const now = typeqlDatetime();
     const viewer = typeqlLiteral(req.user.username);
-    const rows = await readQuery(`
+    // FIXED: split own and followed stories. The previous disjunction triggers a TypeDB planning failure.
+    const ownRows = await readQuery(`
       match
         $story isa story,
           has story-id $id,
           has creation-timestamp $created,
           has expiry-timestamp $expires;
         $expires > ${now};
-        $posting isa posting, links (page: $author, post: $story);
-        $author isa person, has username $username, has name $name;
-        $viewer isa person, has username "${viewer}";
-        { $author is $viewer; } or { following(follower: $viewer, page: $author); };
+        $author isa person, has username "${viewer}", has username $username, has name $name;
+        posting(page: $author, post: $story);
         try { $author has profile-picture $author_profile_picture; };
         try { $story has story-text $text; };
         try { $story has story-image $image; };
@@ -157,6 +156,36 @@ router.get('/', auth, async (req, res) => {
         }
       };
     `);
+    const followedRows = await readQuery(`
+      match
+        $viewer isa person, has username "${viewer}";
+        $author isa person, has username $username, has name $name;
+        following(follower: $viewer, page: $author);
+        $story isa story,
+          has story-id $id,
+          has creation-timestamp $created,
+          has expiry-timestamp $expires;
+        $expires > ${now};
+        posting(page: $author, post: $story);
+        try { $author has profile-picture $author_profile_picture; };
+        try { $story has story-text $text; };
+        try { $story has story-image $image; };
+        try { $story has story-video $video; };
+      fetch {
+        "id": $id,
+        "text": $text,
+        "image": $image,
+        "video": $video,
+        "created": $created,
+        "expires": $expires,
+        "author": {
+          "username": $username,
+          "name": $name,
+          "profile_picture": $author_profile_picture
+        }
+      };
+    `);
+    const rows = [...ownRows, ...followedRows.filter(row => row.author?.username !== req.user.username)];
     res.json({ stories: packStories(rows, req.user.username) });
   } catch (err) {
     console.error('[stories GET]', err);

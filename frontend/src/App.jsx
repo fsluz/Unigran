@@ -20,6 +20,7 @@ import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
 import { AchievementsProvider } from './contexts/AchievementsContext';
 import AuditLogsPage       from './pages/AuditLogsPage';
+import AdminHubPage         from './pages/AdminHubPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
@@ -101,9 +102,12 @@ function AppShell() {
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
     auditLogs: hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage />,
-      adminDashboard: hasPermission(user, 'system:manage')
-    ? <AdminDashboardPage />
-    : <HomePage />,
+    adminHub: (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read'))
+      ? <AdminHubPage onNavigate={navigate} />
+      : <HomePage />,
+    adminDashboard: hasPermission(user, 'system:manage')
+      ? <AdminDashboardPage />
+      : <HomePage />,
   };
 
   const toggleSidebar = () => {

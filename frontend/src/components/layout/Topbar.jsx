@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchNotifications, markAllAsRead, markAsRead } from '../../services/notifications';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
 import UnigranLogo from './UnigranLogo';
-import ChatGPTMakerModal from '../modals/ChatGPTMakerModal';
-import ChatRAIModal from '../modals/ChatRAIModal';
-import { CHAT_CONFIG } from '../../config/integrations';
 
 function NotifDot({ children }) {
   return (
@@ -50,10 +46,8 @@ function navigateNotification(notification) {
 }
 
 export default function Topbar({ title, left, right }) {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [showNotif, setShowNotif] = useState(false);
-  const [showChatGPTMaker, setShowChatGPTMaker] = useState(false);
-  const [showChatRAI, setShowChatRAI] = useState(false);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ users: [], communities: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
@@ -193,26 +187,6 @@ export default function Topbar({ title, left, right }) {
       <div className="topbar-actions">
         {right}
         
-        {/* Chat GPT Maker Icon */}
-        <button
-          className="topbar-icon-btn"
-          onClick={() => setShowChatGPTMaker(true)}
-          title={CHAT_CONFIG.GPT_MAKER.name}
-          style={{ color: CHAT_CONFIG.GPT_MAKER.color }}
-        >
-          <MessageCircle size={18} />
-        </button>
-
-        {/* Chat RAI Icon */}
-        <button
-          className="topbar-icon-btn"
-          onClick={() => setShowChatRAI(true)}
-          title={CHAT_CONFIG.RAI.name}
-          style={{ color: CHAT_CONFIG.RAI.color }}
-        >
-          <Sparkles size={18} />
-        </button>
-
         <div ref={notifRef} style={{ position: 'relative' }}>
           <button
             className="topbar-icon-btn"
@@ -269,9 +243,6 @@ export default function Topbar({ title, left, right }) {
         </div>
       </div>
 
-      {/* Chat Modals */}
-      <ChatGPTMakerModal isOpen={showChatGPTMaker} onClose={() => setShowChatGPTMaker(false)} />
-      <ChatRAIModal isOpen={showChatRAI} onClose={() => setShowChatRAI(false)} token={token} user={user} />
     </div>
   );
 }

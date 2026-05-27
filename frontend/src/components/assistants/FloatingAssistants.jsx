@@ -1,30 +1,17 @@
 import { useState } from 'react';
-import { MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatRAIModal from '../modals/ChatRAIModal';
-import ChatGPTMakerModal from '../modals/ChatGPTMakerModal';
 import { CHAT_CONFIG } from '../../config/integrations';
 import raiMascot from '../../assets/rai-mascot.png.png';
 
 export default function FloatingAssistants() {
   const { token, user } = useAuth();
   const [raiOpen, setRaiOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const [raiPeek, setRaiPeek] = useState(true);
 
   return (
     <>
       <div className="floating-assistants" aria-label="Assistentes">
-        <button
-          type="button"
-          className="floating-assistant-btn support"
-          onClick={() => setSupportOpen(true)}
-          title="Atendimento Unigran"
-        >
-          <MessageCircle size={22} />
-          <span>Atendimento</span>
-        </button>
-
         <button
           type="button"
           className={`floating-assistant-btn rai ${raiPeek ? 'peek' : ''}`}
@@ -43,7 +30,6 @@ export default function FloatingAssistants() {
       </div>
 
       <ChatRAIModal isOpen={raiOpen} onClose={() => setRaiOpen(false)} token={token} user={user} />
-      <ChatGPTMakerModal isOpen={supportOpen} onClose={() => setSupportOpen(false)} />
     </>
   );
 }

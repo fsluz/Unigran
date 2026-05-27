@@ -1,0 +1,2 @@
+redefine
+  person plays notification-delivery:recipient;

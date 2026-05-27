@@ -299,10 +299,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
 
   return (
     <div className="page-scroll">
-      <Topbar
-        title="Comunidades"
-        right={<Button onClick={() => setCreateOpen(true)}>+ Nova comunidade</Button>}
-      />
+      <Topbar title="Comunidades" />
 
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 18px', width: '100%' }}>
         <section className="page-hero" style={{ marginBottom: 18 }}>
@@ -311,6 +308,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
             <h1 style={{ marginTop: 12, fontFamily: 'var(--font-head)', color: 'var(--text)' }}>Comunidades</h1>
             <p style={{ color: 'var(--text-muted)', maxWidth: 620 }}>Crie grupos, entre em comunidades, veja membros e organize conversas por interesse.</p>
           </div>
+          <Button onClick={() => setCreateOpen(true)}>+ Nova comunidade</Button>
         </section>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>

@@ -13,8 +13,7 @@ const QUICK = [
   { id: 'profile', label: 'Meu perfil' },
   { id: 'settings', label: 'Configurações' },
   { id: 'campus', label: 'Portal', perm: 'platform:read' },
-  { id: 'auditLogs', label: 'Logs de Auditoria', perm: 'audit:read' },
-  { id: 'adminDashboard', label: 'Administracao', perm: 'system:manage' },
+  { id: 'adminHub', label: 'Admin', anyPerm: ['audit:read', 'system:manage'] },
 ];
 
 function NavIcon({ name }) {
@@ -48,7 +47,7 @@ export default function MobileBottomNav({
           <div className="mobile-quick-backdrop" onClick={() => setQuickOpen(false)} />
           <div className="mobile-quick-panel">
             <strong>Acesso rápido</strong>
-            {QUICK.filter(item => !item.perm || hasPermission?.(item.perm)).map(item => (
+            {QUICK.filter(item => (!item.perm || hasPermission?.(item.perm)) && (!item.anyPerm || item.anyPerm.some(perm => hasPermission?.(perm)))).map(item => (
               <button
                 key={item.id}
                 type="button"

@@ -83,7 +83,6 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed }) 
       <aside className={`notif-panel ${sidebarCollapsed ? 'collapsed-sidebar' : ''}`}>
         <header className="notif-panel-head">
           <h2>Notificações</h2>
-          <button type="button" className="notif-panel-menu" aria-label="Mais opções">···</button>
         </header>
 
         {loading && <p className="notif-panel-empty">Carregando...</p>}

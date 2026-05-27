@@ -116,9 +116,6 @@ export default function Sidebar({
               {!collapsed && item.badge && badge(item.badge) > 0 && (
                 <span className="sidebar-wide-badge">{badge(item.badge)}</span>
               )}
-              {item.action === 'notifications' && !collapsed && (
-                <span className="sidebar-notif-dots" aria-hidden>···</span>
-              )}
             </button>
           ))}
 
@@ -154,24 +151,10 @@ export default function Sidebar({
           {(hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read')) && (
             <>
               <div className="sidebar-wide-section-label"><span>Administracao</span></div>
-              {hasPermission(user, 'system:manage') && (
-                <button type="button" className={`sidebar-wide-item ${isActive('masterBi') ? 'active' : ''}`} onClick={() => onNavigate('masterBi')} title="Master BI">
-                  <span className="sidebar-wide-icon"><SidebarIcon name="analytics" /></span>
-                  {!collapsed && <span className="sidebar-wide-label">Master BI</span>}
-                </button>
-              )}
-              {hasPermission(user, 'audit:read') && (
-                <button type="button" className={`sidebar-wide-item ${isActive('auditLogs') ? 'active' : ''}`} onClick={() => onNavigate('auditLogs')} title="Logs de Auditoria">
-                  <span className="sidebar-wide-icon"><SidebarIcon name="audit" /></span>
-                  {!collapsed && <span className="sidebar-wide-label">Logs de Auditoria</span>}
-                </button>
-              )}
-              {hasPermission(user, 'system:manage') && (
-                <button type="button" className={`sidebar-wide-item ${isActive('adminDashboard') ? 'active' : ''}`} onClick={() => onNavigate('adminDashboard')} title="Administracao">
-                  <span className="sidebar-wide-icon"><SidebarIcon name="admin" /></span>
-                  {!collapsed && <span className="sidebar-wide-label">Painel de Gestao</span>}
-                </button>
-              )}
+              <button type="button" className={`sidebar-wide-item ${isActive('adminHub') ? 'active' : ''}`} onClick={() => onNavigate('adminHub')} title="Admin">
+                <span className="sidebar-wide-icon"><SidebarIcon name="admin" /></span>
+                {!collapsed && <span className="sidebar-wide-label">Admin</span>}
+              </button>
             </>
           )}
         </div>

@@ -1088,7 +1088,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="page-scroll">
+    <div className="page-scroll messages-page">
       <audio ref={ringtoneRef} src={ringtoneSrc} loop preload="auto" />
       <Topbar title="Mensagens" />
       <div className={`messages-shell ${active ? 'has-active' : ''} ${mobileChatOpen ? 'mobile-chat-open' : ''}`}>
