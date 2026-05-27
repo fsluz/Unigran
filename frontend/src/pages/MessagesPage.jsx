@@ -5,7 +5,7 @@ import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, toggleMessageReaction, updateConversation, updateMessage } from '../services/conversations';
 import { uploadMedia } from '../services/posts';
 import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
-import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, publishOwnPublicKey } from '../services/e2ee';
+import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, isEncryptedText, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
@@ -141,12 +141,22 @@ export default function MessagesPage() {
     });
   }, [conversations, conversationSearch, conversationFilter]);
 
+  const previewFromMessage = (message) => {
+    if (!message) return '';
+    if (message.content?.trim()) return message.content.trim();
+    if (message.media?.type === 'image') return '📷 Foto';
+    if (message.media?.type === 'video') return '🎥 Video';
+    if (message.media?.type === 'audio') return '🎤 Audio';
+    if (message.media?.url) return '📎 Arquivo';
+    return '';
+  };
+
   const bumpConversation = (conversationId, message) => {
     setConversations(prev => prev
       .map(conv => conv.id === conversationId ? {
         ...conv,
         lastMessageAt: message?.time || new Date().toISOString(),
-        lastMessage: message?.content || (message?.media ? 'Midia enviada' : conv.lastMessage),
+        lastMessagePreview: previewFromMessage(message) || conv.lastMessagePreview || '',
       } : conv)
       .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
   };
@@ -188,8 +198,17 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchConversations(token)
-      .then((loaded) => {
-        setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
+      .then(async (loaded) => {
+        const normalized = [...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+        const decorated = await Promise.all(normalized.map(async (conv) => {
+          const raw = conv.lastMessage || '';
+          if (!raw) return { ...conv, lastMessagePreview: conv.lastMessagePreview || '' };
+          if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw };
+          const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
+          const text = decrypted?.locked ? '' : (decrypted?.content || '');
+          return { ...conv, lastMessagePreview: text || '' };
+        }));
+        setConversations(decorated);
         setActive(prev => prev || (isMobileMessagesView() ? null : (loaded[0] || null)));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
@@ -199,8 +218,22 @@ export default function MessagesPage() {
     if (!token) return undefined;
     const interval = setInterval(() => {
       fetchConversations(token)
-        .then((loaded) => {
-          setConversations([...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
+        .then(async (loaded) => {
+          const normalized = [...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+          const decorated = await Promise.all(normalized.map(async (conv) => {
+            const raw = conv.lastMessage || '';
+            if (!raw) return { ...conv, lastMessagePreview: '' };
+            if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw };
+            const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
+            const text = decrypted?.locked ? '' : (decrypted?.content || '');
+            return { ...conv, lastMessagePreview: text || '' };
+          }));
+          setConversations(prev => decorated.map(conv => {
+            const existing = prev.find(item => item.id === conv.id);
+            return conv.lastMessagePreview
+              ? conv
+              : { ...conv, lastMessagePreview: existing?.lastMessagePreview || '' };
+          }));
           setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (loaded[0] || null)));
         })
         .catch(() => null);
@@ -249,12 +282,14 @@ export default function MessagesPage() {
     const channel = getConversationChannel(token, active.id);
     const onMessage = ({ data }) => {
       if (!data?.message?.id) return;
-      decryptMessage(active.id, data.message, user?.username).then((message) => setMessages(prev => {
-        const current = prev[active.id] || [];
-        if (current.some(msg => msg.id === message.id)) return prev;
-        return { ...prev, [active.id]: [...current, message] };
-      }));
-      bumpConversation(active.id, data.message);
+      decryptMessage(active.id, data.message, user?.username).then((message) => {
+        setMessages(prev => {
+          const current = prev[active.id] || [];
+          if (current.some(msg => msg.id === message.id)) return prev;
+          return { ...prev, [active.id]: [...current, message] };
+        });
+        bumpConversation(active.id, message);
+      });
       if (data.message?.author?.id !== user?.username) markConversationRead({ token, conversationId: active.id }).catch(() => null);
     };
     const onEdited = ({ data }) => {
@@ -857,11 +892,19 @@ export default function MessagesPage() {
     pc.ontrack = event => {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
       remoteStreamRef.current.addTrack(event.track);
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        remoteVideoRef.current.play?.().catch(() => null);
+      }
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = remoteStreamRef.current;
         remoteAudioRef.current.play().catch(() => null);
       }
+    };
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'connected') setCall(prev => prev ? { ...prev, status: 'Conectado' } : prev);
+      if (['failed', 'disconnected', 'closed'].includes(state)) endCall(false);
     };
     pcRef.current = pc;
     return pc;
@@ -1217,7 +1260,7 @@ export default function MessagesPage() {
                 />
                 <div className="conv-info">
                   <div className="conv-name">{conversationTitle(conv)}</div>
-                  <div className="conv-preview">{conv.lastMessage || conversationSub(conv)}</div>
+                  <div className="conv-preview">{conv.lastMessagePreview || conversationSub(conv)}</div>
                 </div>
                 <div className="conv-side">
                   {conv.lastMessageAt && <time>{relativeTime(conv.lastMessageAt)}</time>}
