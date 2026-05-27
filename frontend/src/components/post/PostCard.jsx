@@ -351,6 +351,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const portfolio = getPortfolioPost(post);
   const portfolioLink = portfolio?.externalLink ? portfolioLinkMeta(portfolio.externalLink, portfolio.externalKind) : null;
   const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
+  const compactCard = !portfolio && !post.originalPost && !post.media?.url && embeds.length === 0;
 
   const toggleLike = () => {
     setLiked(v => !v);
@@ -457,7 +458,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   ];
 
   return (
-    <div className="card post-card" style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
+    <div className={`card post-card ${compactCard ? 'post-card-compact' : ''}`} style={{ overflow: 'visible' }} onDoubleClick={() => { if (!liked) toggleLike(); }}>
       {/* Header */}
       <div className="post-head">
         <div className="profile-hover-wrap" style={{ flexShrink: 0 }}>
@@ -471,6 +472,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               name={post.author.displayName || post.author.username || ''}
               initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
             />
+            {post.author.online && <span className="post-author-online" aria-label="Online" />}
           </button>
           <ProfileHover author={post.author} onOpenProfile={onOpenProfile} />
         </div>
@@ -481,6 +483,9 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             style={{ border: 0, background: 'transparent', padding: 0, textAlign: 'left' }}
           >
             {post.author.displayName}
+            {(post.author.verified || post.author.isVerified) && (
+              <span className="post-author-verified" aria-label="Verificado">✓</span>
+            )}
             <RoleBadge role={post.author.role} />
           </button>
           {post.community && (
