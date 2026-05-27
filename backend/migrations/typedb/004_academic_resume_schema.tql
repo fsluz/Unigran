@@ -1,0 +1,19 @@
+define
+  attribute academic-resume-id, value string;
+  attribute academic-document-path, value string;
+
+  entity academic-resume,
+    owns academic-resume-id @key,
+    owns academic-url @card(0..1),
+    owns academic-document-name @card(0..1),
+    owns academic-document-storage @card(0..1),
+    owns academic-document-path @card(0..1),
+    owns academic-content @card(1..1),
+    owns academic-datetime @card(1..1),
+    plays academic-resume-owner:resume;
+
+  relation academic-resume-owner,
+    relates owner,
+    relates resume;
+
+  person plays academic-resume-owner:owner;

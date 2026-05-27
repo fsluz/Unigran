@@ -6,7 +6,7 @@ function clamp(value, min, max) {
 }
 
 export default function ImageCropModal({ file, shape = 'cover', onCancel, onConfirm }) {
-  const [pos, setPos] = useState({ x: 50, y: 50, zoom: 1.15 });
+  const [pos, setPos] = useState({ x: 50, y: 50, zoom: 1.3 });
   const [dragging, setDragging] = useState(false);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const imgRef = useRef(null);
@@ -118,7 +118,7 @@ export default function ImageCropModal({ file, shape = 'cover', onCancel, onConf
         onPointerCancel={endDrag}
       >
         <img ref={imgRef} src={preview} alt="crop" onLoad={onImgLoad} style={previewStyle()} draggable={false} />
-        <div className="crop-help">Arraste em qualquer direção. Role para zoom.</div>
+        <div className="crop-help">Arraste para escolher parte da foto.</div>
       </div>
     </Modal>
   );

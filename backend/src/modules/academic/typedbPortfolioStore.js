@@ -6,6 +6,12 @@ function safe(value) {
   return typeqlLiteral(value || '');
 }
 
+function missingResumeSchema(error) {
+  const message = String(error?.message || '');
+  return ['academic-resume', 'academic-resume-owner', 'academic-resume-id', 'academic-document-path']
+    .some(label => message.includes(label));
+}
+
 function parseList(value) {
   if (Array.isArray(value)) return value;
   try {
@@ -208,13 +214,23 @@ function uniquePortfolioItems(items = []) {
 
 export async function savePortfolioResume(user, payload) {
   const username = safe(user?.username || user?.id);
-  const existing = await readQuery(`
-    match
-      $owner isa person, has username "${username}";
-      $resume isa academic-resume;
-      $link isa academic-resume-owner, links (owner: $owner, resume: $resume);
-    fetch { "resume": { $resume.* } };
-  `);
+  let existing;
+  try {
+    existing = await readQuery(`
+      match
+        $owner isa person, has username "${username}";
+        $resume isa academic-resume;
+        $link isa academic-resume-owner, links (owner: $owner, resume: $resume);
+      fetch { "resume": { $resume.* } };
+    `);
+  } catch (error) {
+    if (missingResumeSchema(error)) {
+      const setupError = new Error('Schema de curriculo ausente. Rode 004_academic_resume_schema.tql.');
+      setupError.statusCode = 503;
+      throw setupError;
+    }
+    throw error;
+  }
   if (existing.length) {
     await writeQuery(`
       match
@@ -245,13 +261,20 @@ export async function savePortfolioResume(user, payload) {
 }
 
 export async function getPortfolioResume(username) {
-  const rows = await readQuery(`
-    match
-      $owner isa person, has username "${safe(username)}";
-      $resume isa academic-resume, has academic-content $content;
-      academic-resume-owner(owner: $owner, resume: $resume);
-    fetch { "content": $content };
-  `);
+  let rows;
+  try {
+    rows = await readQuery(`
+      match
+        $owner isa person, has username "${safe(username)}";
+        $resume isa academic-resume, has academic-content $content;
+        academic-resume-owner(owner: $owner, resume: $resume);
+      fetch { "content": $content };
+    `);
+  } catch (error) {
+    // Portfolio posts remain visible while optional resume schema is not installed.
+    if (missingResumeSchema(error)) return null;
+    throw error;
+  }
   if (!rows.length) return null;
   try {
     return JSON.parse(rows[0].content);

@@ -19,8 +19,25 @@
 }
 
 [data-theme="light"] .modal-box--post-detail {
-  background: #0f172a;
+  background: #fff;
 }
+
+[data-theme="light"] .post-detail-left,
+[data-theme="light"] .post-detail-right,
+[data-theme="light"] .post-detail-composer { background: #fff; }
+[data-theme="light"] .post-detail-author-name,
+[data-theme="light"] .post-detail-comments-head h2,
+[data-theme="light"] .post-detail-comment-author,
+[data-theme="light"] .post-detail-comment-text,
+[data-theme="light"] .post-detail-body { color: #111827; }
+[data-theme="light"] .post-detail-comment-card,
+[data-theme="light"] .post-detail-sort-btn,
+[data-theme="light"] .post-detail-composer-input,
+[data-theme="light"] .comment-inline-reply input,
+[data-theme="light"] .comment-edit-box textarea,
+[data-theme="light"] .comment-dot-menu { background: #f8fafc; color: #111827; border-color: #e5e7eb; }
+[data-theme="light"] .comment-dot-menu button { color: #111827; }
+[data-theme="light"] .comment-dot-menu button.danger { color: #dc2626; }
 
 .modal-body--flush {
   padding: 0 !important;

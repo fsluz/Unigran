@@ -446,7 +446,7 @@ router.post('/reset-password/request', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[reset-password/request]', err);
-    res.status(500).json({ error: 'Erro ao enviar email' });
+    res.status(err.statusCode || 500).json({ error: err.message || 'Erro ao enviar email' });
   }
 });
 

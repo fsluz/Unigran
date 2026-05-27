@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchNotifications, markAllAsRead, markAsRead } from '../../services/notifications';
 import { relativeTime } from '../../utils/time';
+import { Avatar } from '../ui';
 
 function groupLabel(time) {
   const raw = String(time || '');
@@ -97,8 +98,9 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed }) 
               {group.items.map(n => (
                 <button key={n.id} type="button" className="notif-panel-item" onClick={() => openOne(n)}>
                   <span className="notif-panel-dot" />
+                  <Avatar size={38} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigran'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
                   <div>
-                    <p>{n.text}</p>
+                    <p>{n.actorName && <strong>{n.actorName} </strong>}{n.text}</p>
                     <time>{relativeTime(n.time)}</time>
                   </div>
                 </button>

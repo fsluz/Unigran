@@ -7,6 +7,7 @@ import { createComment, deletePost as deletePostRequest, fetchComments, likeComm
 import { apiFetch, authHeaders } from '../../utils/api';
 import ImageLightbox from '../media/ImageLightbox';
 import { hasPermission } from '../../modules/shared/permissions';
+import { CommentRow } from './PostCommentThread';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -693,7 +694,15 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               Nenhum comentario ainda. Seja o primeiro! 
             </p>
           ) : (
-            comments.map(c => <CommentItem key={c.id} comment={c} onReply={addReply} onToggleLike={toggleCommentLike} />)
+            comments.map(c => (
+              <CommentRow
+                key={c.id}
+                comment={c}
+                postId={post.id}
+                postAuthorUsername={post.author?.username}
+                onMutate={setComments}
+              />
+            ))
           )}
 
           {/* New comment input */}

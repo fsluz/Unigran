@@ -4,8 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ChatRAIModal from '../modals/ChatRAIModal';
 import ChatGPTMakerModal from '../modals/ChatGPTMakerModal';
 import { CHAT_CONFIG } from '../../config/integrations';
-
-const RAI_IMG = '../../../assets/rai-mascot.png';
+import raiMascot from '../../assets/rai-mascot.png.png';
 
 export default function FloatingAssistants() {
   const { token, user } = useAuth();
@@ -34,7 +33,7 @@ export default function FloatingAssistants() {
           title={CHAT_CONFIG.RAI.name}
         >
           <img
-            src={RAI_IMG}
+            src={raiMascot}
             alt="RAi Assistente"
             onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.add('show'); }}
           />

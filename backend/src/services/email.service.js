@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
 
 function createTransporter() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
+  const user = String(process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  const pass = String(process.env.EMAIL_PASS || process.env.SMTP_PASS || '').trim();
   if (!user || !pass) return null;
 
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -20,6 +20,11 @@ function createTransporter() {
 export async function sendPasswordResetCode(toEmail, code) {
     const transporter = createTransporter();
     if (!transporter) {
+      if (process.env.NODE_ENV === 'production') {
+        const error = new Error('Email de recuperacao nao configurado. Defina EMAIL_USER e EMAIL_PASS.');
+        error.statusCode = 503;
+        throw error;
+      }
       console.warn('[email] SMTP nao configurado (EMAIL_USER/EMAIL_PASS). Codigo de reset:', code);
       return;
     }

@@ -2,17 +2,18 @@ import { useState } from 'react';
 
 const MAIN = [
   { id: 'home', label: 'Início', icon: 'home' },
-  { id: 'explore', label: 'Explorar', icon: 'explore' },
   { id: 'zuni', label: 'Zuni', icon: 'zuni' },
   { id: 'messages', label: 'Msgs', icon: 'messages', badge: 'messages' },
   { id: 'notifications', label: 'Alertas', icon: 'bell', badge: 'notifications' },
 ];
 
 const QUICK = [
+  { id: 'explore', label: 'Explorar' },
   { id: 'communities', label: 'Comunidades' },
   { id: 'profile', label: 'Meu perfil' },
   { id: 'settings', label: 'Configurações' },
   { id: 'campus', label: 'Portal', perm: 'platform:read' },
+  { id: 'auditLogs', label: 'Logs de Auditoria', perm: 'audit:read' },
   { id: 'adminDashboard', label: 'Administracao', perm: 'system:manage' },
 ];
 

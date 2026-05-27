@@ -2,34 +2,6 @@
    Uses project CSS variables from global.css (accent, card, page-bg, text, etc.)
 */
 
-.messages-shell {
-  display: flex;
-  gap: 16px;
-  padding: 12px;
-}
-
-/* Mobile full-screen behavior when a chat is open */
-.messages-shell.mobile-chat-open .conv-list {
-  display: none;
-}
-.messages-shell.mobile-chat-open .chat-area {
-  flex: 1 1 100%;
-  margin: 0;
-  border-radius: 18px;
-  box-shadow: var(--shadow-sm);
-}
-
-/* Chat area overall */
-.chat-area {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-height: calc(100vh - 120px);
-  background: linear-gradient(180deg, var(--card), rgba(0,0,0,0));
-  border-radius: 12px;
-  overflow: hidden;
-}
-
 .chat-head {
   display: flex;
   align-items: center;
@@ -158,14 +130,15 @@
 .chat-input-icon { background: transparent; border: none; color: var(--text-muted); padding:8px; border-radius:10px; }
 .chat-send-btn { background: var(--accent); color: #fff; border-radius: 999px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; border:none; }
 
-@media (min-width: 701px) {
-  /* Keep existing desktop layout unchanged */
-  .messages-shell.mobile-chat-open .conv-list { display: block; }
-}
-
 @media (max-width: 700px) {
   .messages-shell { padding: 8px; }
   .conv-list { width: 100%; }
-  .chat-area { box-shadow: none; border-radius: 12px; }
+  .messages-shell.mobile-chat-open .conv-list { display: none; }
+  .messages-shell.mobile-chat-open .chat-area {
+    flex: 1 1 100%;
+    margin: 0;
+    border-radius: 12px;
+    box-shadow: none;
+  }
   .chat-head { padding: 8px; }
 }

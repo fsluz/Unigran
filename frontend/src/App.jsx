@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { markAllAsRead } from './services/notifications';
 import { ToastProvider } from './contexts/ToastContext';
 import FriendsPage from './pages/FriendsPage';
 
@@ -30,7 +29,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
 function AppShell() {
-  const { user, logout, token } = useAuth();
+  const { user, logout } = useAuth();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
   const [authView, setAuthView] = useState('login');
@@ -124,7 +123,6 @@ function AppShell() {
         onToggleCollapse={toggleSidebar}
         onOpenNotifications={() => {
           setNotifPanelOpen(true);
-          if (token) markAllAsRead(token).catch(() => null);
         }}
         notifClearKey={notifPanelOpen ? 1 : 0}
         dark={dark}
