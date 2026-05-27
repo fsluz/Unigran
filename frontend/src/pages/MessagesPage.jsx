@@ -894,6 +894,7 @@ export default function MessagesPage() {
       remoteStreamRef.current.addTrack(event.track);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        remoteVideoRef.current.muted = true;
         remoteVideoRef.current.play?.().catch(() => null);
       }
       if (remoteAudioRef.current) {
@@ -943,7 +944,6 @@ export default function MessagesPage() {
   const toggleRemoteSound = () => {
     const nextMuted = !call?.soundMuted;
     if (remoteAudioRef.current) remoteAudioRef.current.muted = nextMuted;
-    if (remoteVideoRef.current) remoteVideoRef.current.muted = nextMuted;
     setCall(prev => prev ? { ...prev, soundMuted: nextMuted } : prev);
   };
 

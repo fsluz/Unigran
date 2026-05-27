@@ -6639,3 +6639,164 @@ img, video { max-width: 100%; }
   .settings-page .settings-section { padding: 14px; }
 }
 
+/* ---------- UI polish pass ---------- */
+.topbar-profile-wrap { position: relative; }
+.topbar-profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+  min-width: 170px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.topbar-profile-menu button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+.topbar-profile-menu button:hover { background: var(--page-bg); }
+.topbar-profile-menu button.danger { color: var(--red); }
+
+.sidebar-wide {
+  background:
+    radial-gradient(circle at 16% 6%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 32%),
+    var(--sidebar-bg);
+  border-right: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+.sidebar-wide-item {
+  min-height: 40px;
+  border: 1px solid transparent;
+}
+.sidebar-wide-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.sidebar-wide-item.active {
+  background: linear-gradient(135deg, rgba(106,0,244,0.16), rgba(54,102,255,0.12));
+  border-color: color-mix(in srgb, var(--accent) 44%, transparent);
+}
+.sidebar-wide-bottom { gap: 6px; }
+
+.messages-page .chat-messages {
+  padding: 14px 18px;
+  gap: 8px;
+}
+.messages-page .msg-block { margin-bottom: 2px; }
+.messages-page .msg-row { gap: 8px; }
+.messages-page .msg-stack { max-width: min(72%, 560px); }
+.messages-page .msg-bubble { padding: 10px 13px; }
+.messages-page .msg-meta-line { margin-top: 2px; min-height: 20px; }
+.messages-page .msg-reactions { margin-top: 4px; }
+
+.settings-page .settings-shell {
+  height: calc(100dvh - 86px);
+  align-items: stretch;
+}
+.settings-page .settings-sidenav,
+.settings-page .settings-content {
+  height: 100%;
+  overflow-y: auto;
+}
+.settings-page .settings-content {
+  min-width: 0;
+}
+.settings-page .settings-section {
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.settings-page .settings-nav-item {
+  border: 1px solid transparent;
+  transition: all .18s ease;
+}
+.settings-page .settings-nav-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.zuni-page {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(64,56,170,.12), transparent 36%),
+    var(--page-bg);
+}
+.zuni-feed { width: min(100%, 940px); }
+.zuni-reel {
+  grid-template-columns: minmax(0, 1fr) 96px;
+  border-radius: 18px;
+  margin: 8px 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 90%, var(--page-bg));
+}
+.zuni-video-stage { border-radius: 18px 0 0 18px; }
+.zuni-actions {
+  border-left: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background: color-mix(in srgb, var(--card) 92%, var(--page-bg));
+}
+.zuni-actions button {
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.zuni-actions button:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.explore-tile {
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.explore-tile:hover {
+  transform: translateY(-3px) scale(1.015);
+  border-color: color-mix(in srgb, var(--accent) 46%, transparent);
+  box-shadow: 0 16px 34px rgba(16, 24, 40, .24);
+}
+.explore-tile img, .explore-tile video { transition: transform .25s ease, filter .25s ease; }
+.explore-tile:hover img, .explore-tile:hover video {
+  transform: scale(1.06);
+  filter: saturate(1.08);
+}
+
+@media (max-width: 760px) {
+  .zuni-page { height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px)); }
+  .zuni-feed { width: 100%; }
+  .zuni-reel {
+    height: calc(100dvh - 86px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    margin: 0;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    grid-template-columns: minmax(0, 1fr) 66px;
+  }
+  .zuni-video-stage { border-radius: 0; }
+  .zuni-actions button { width: 42px; height: 42px; }
+
+  .settings-page .settings-shell {
+    display: block;
+    height: auto;
+    margin: 8px;
+    padding: 0 0 90px;
+  }
+  .settings-page .settings-sidenav {
+    height: auto;
+    overflow: auto hidden;
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    backdrop-filter: blur(10px);
+  }
+  .settings-page .settings-content {
+    height: auto;
+    overflow: visible;
+  }
+}
+

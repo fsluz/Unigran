@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { Avatar } from '../ui';
 
 export default function Topbar({ title, left, right, brandOnly = false }) {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ users: [], communities: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
 
   useEffect(() => {
     const q = query.trim();
@@ -40,6 +42,10 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
   };
 
   const ownProfile = () => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'profile' }));
+  const signOut = () => {
+    logout();
+    setProfileMenuOpen(false);
+  };
   const roleName = {
     super_admin: 'Administrador',
     admin: 'Administrador',
@@ -47,6 +53,16 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
     moderator: 'Moderador',
     professor: 'Professor',
   }[String(user?.role || '').toLowerCase()] || 'Usuario';
+
+  useEffect(() => {
+    const close = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   return (
     <div className="topbar topbar-clean">
@@ -110,14 +126,22 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
 
       <div className="topbar-actions">
         {right}
-        <button type="button" className="topbar-user-chip" onClick={ownProfile} title="Meu perfil">
-          <Avatar size={36} src={user?.profilePicture || null} name={user?.displayName || ''} initials={user?.avatar || user?.displayName?.slice(0, 2)} />
-          <span>
-            <strong>{user?.displayName || user?.username}</strong>
-            <small>{roleName}</small>
-          </span>
-          <b aria-hidden="true">{'\u2304'}</b>
-        </button>
+        <div className="topbar-profile-wrap" ref={profileMenuRef}>
+          <button type="button" className="topbar-user-chip" onClick={() => setProfileMenuOpen(v => !v)} title="Menu do perfil">
+            <Avatar size={36} src={user?.profilePicture || null} name={user?.displayName || ''} initials={user?.avatar || user?.displayName?.slice(0, 2)} />
+            <span>
+              <strong>{user?.displayName || user?.username}</strong>
+              <small>{roleName}</small>
+            </span>
+            <b aria-hidden="true">{'\u2304'}</b>
+          </button>
+          {profileMenuOpen && (
+            <div className="topbar-profile-menu">
+              <button type="button" onClick={() => { ownProfile(); setProfileMenuOpen(false); }}>Meu perfil</button>
+              <button type="button" className="danger" onClick={signOut}>Sair conta</button>
+            </div>
+          )}
+        </div>
       </div>
 
     </div>
