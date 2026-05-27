@@ -27,6 +27,7 @@ function SidebarIcon({ name }) {
   if (name === 'zuni') return <svg {...p}><rect x="3" y="4" width="18" height="16" rx="3"/><polygon points="10 8 16 12 10 16 10 8"/></svg>;
   if (name === 'messages') return <svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
   if (name === 'portal') return <svg {...p}><path d="M3 10l9-6 9 6-9 6-9-6z"/><path d="M5 12v5c2 2 12 2 14 0v-5"/></svg>;
+  if (name === 'admin') return <svg {...p}><path d="M12 3l8 4v5c0 5.25-3.25 9.75-8 11-4.75-1.25-8-5.75-8-11V7l8-4z"/><path d="M9.5 12.5l2.5 2.5 4.5-4.5"/></svg>;
   if (name === 'settings') return <svg {...p} strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
   return <svg {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>;
 }
@@ -145,6 +146,16 @@ export default function Sidebar({
                   {!collapsed && <span className="sidebar-wide-label">{item.label}</span>}
                 </button>
               ))}
+            </>
+          )}
+
+          {hasPermission(user, 'system:manage') && (
+            <>
+              <div className="sidebar-wide-section-label"><span>Administracao</span></div>
+              <button type="button" className={`sidebar-wide-item ${isActive('adminDashboard') ? 'active' : ''}`} onClick={() => onNavigate('adminDashboard')} title="Administracao">
+                <span className="sidebar-wide-icon"><SidebarIcon name="admin" /></span>
+                {!collapsed && <span className="sidebar-wide-label">Administracao</span>}
+              </button>
             </>
           )}
         </div>
