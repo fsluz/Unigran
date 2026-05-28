@@ -265,12 +265,13 @@ function profileMemoryContext(bundle) {
 
 function adaptToneWithProfile(tone, bundle) {
   const profile = bundle?.profile || {};
-  if (tone === 'serious') return 'serious';
-  if (profile.tonePreference === 'serious') return 'serious';
+  if (tone === 'serious') return profile.humorLevel === 'high' ? 'normal' : 'serious';
+  if (profile.tonePreference === 'serious') return profile.humorLevel === 'high' ? 'normal' : 'serious';
   if (profile.tonePreference === 'technical') return 'technical';
   if (profile.tonePreference === 'motivational') return 'motivational';
   if (profile.tonePreference === 'ultra_pop') return 'ultra_pop';
-  if (profile.tonePreference === 'funny' && tone === 'normal') return 'normal';
+  if (profile.tonePreference === 'funny') return 'funny';
+  if (profile.humorLevel === 'high' && ['normal', 'study', 'academic', 'guidance'].includes(tone)) return 'funny';
   return tone;
 }
 

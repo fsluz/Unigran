@@ -14,7 +14,7 @@ import { listRaiChatMessages, saveRaiChatMessage } from '../schedules/typedbSche
 const router = Router();
 
 const ProfileSchema = z.object({
-  preferredName: z.string().trim().min(2).max(48).optional(),
+  preferredName: z.string().trim().min(2).max(48).optional().or(z.literal('')),
   course: z.string().trim().max(120).optional().or(z.literal('')),
   semester: z.string().trim().max(40).optional().or(z.literal('')),
   tonePreference: z.enum(['balanced', 'funny', 'serious', 'motivational', 'technical', 'ultra_pop']).optional(),
@@ -40,6 +40,32 @@ function invalid(res, parsed) {
   const errors = parsed.error.flatten();
   const message = errors.formErrors[0] || Object.values(errors.fieldErrors).flat().find(Boolean) || 'Dados invalidos';
   return res.status(400).json({ message, errors });
+}
+
+function cleanProfilePayload(payload) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key, value]) => key !== 'preferredName' || String(value || '').trim()),
+  );
+}
+
+function memoriesFromProfilePayload(payload) {
+  const entries = [
+    ['preferredName', 'identity', 'preferred_name'],
+    ['course', 'academic', 'course'],
+    ['semester', 'academic', 'semester'],
+    ['tonePreference', 'preference', 'tone_preference'],
+    ['responseLengthPreference', 'preference', 'response_length_preference'],
+    ['humorLevel', 'preference', 'humor_level'],
+  ];
+  return entries
+    .filter(([field]) => payload[field] !== undefined && String(payload[field] || '').trim())
+    .map(([field, type, key]) => ({
+      type,
+      key,
+      value: String(payload[field]).trim(),
+      confidence: 'high',
+      source: 'manual_update',
+    }));
 }
 
 async function ensureOnboardingPrompt(username, bundle) {
@@ -69,8 +95,11 @@ router.put('/profile', async (req, res) => {
   const parsed = ProfileSchema.safeParse(req.body);
   if (!parsed.success) return invalid(res, parsed);
   try {
-    const bundle = await updateRaiProfile(req.user.username, parsed.data);
-    if (parsed.data.preferredName) await markOnboardingComplete(req.user.username);
+    const payload = cleanProfilePayload(parsed.data);
+    await updateRaiProfile(req.user.username, payload);
+    await Promise.all(memoriesFromProfilePayload(payload).map(memory => upsertRaiMemory(req.user.username, memory)));
+    if (payload.preferredName) await markOnboardingComplete(req.user.username);
+    const bundle = await getRaiProfileBundle(req.user.username);
     res.json(bundle);
   } catch (err) {
     handleError(res, err, 'Erro ao atualizar perfil da RAi');
