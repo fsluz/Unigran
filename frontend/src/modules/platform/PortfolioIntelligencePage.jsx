@@ -1,446 +1,453 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Activity,
   ArrowUpRight,
-  BadgeCheck,
-  BarChart3,
   BookOpen,
-  BriefcaseBusiness,
+  Briefcase,
   CheckCircle2,
-  Code2,
+  ChevronDown,
+  ChevronUp,
+  Copy,
   Download,
   ExternalLink,
   FileText,
-  Filter,
-  GitBranch,
   GraduationCap,
-  Mail,
+  Link2,
   MapPin,
-  Radar,
   Search,
-  ShieldCheck,
-  Sparkles,
-  Target,
+  Tag,
+  User,
 } from 'lucide-react';
 import { fetchAva } from './platform';
 
-function normalizeSkillObject(skill, index = 0) {
-  if (Array.isArray(skill)) return skill;
-  if (typeof skill === 'string') return [skill, 'ML', Math.max(58, 92 - index * 4)];
-  return [
-    skill?.name || 'Skill',
-    skill?.family || skill?.category || 'Portfolio',
-    Number(skill?.level || Math.max(58, 92 - index * 4)),
-  ];
-}
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function publicPortfolioLink(user, item) {
-  const path = item?.shareUrl || `/portfolio/${user?.username || ''}/${item?.slug || item?.activityId || item?.id || ''}`;
+  const path = item?.shareUrl
+    || `/portfolio/${user?.username || ''}/${item?.slug || item?.activityId || item?.id || ''}`;
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${String(path).replace(/^\/api\/portfolio/, '/portfolio')}`;
+}
+
+function portfolioProfileUrl(username) {
+  return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
 }
 
 function projectKind(item = {}) {
   const text = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.externalKind || ''}`.toLowerCase();
   if (item.externalKind === 'web_app' || text.includes('react') || text.includes('frontend')) return 'Frontend';
   if (item.externalKind === 'repository' || text.includes('api') || text.includes('backend')) return 'Backend';
-  if (text.includes('ia') || text.includes('dados') || text.includes('sql')) return 'IA/Dados';
-  if (item.externalKind === 'prototype' || text.includes('design') || text.includes('ux')) return 'UX';
+  if (text.includes('ia') || text.includes('dados') || text.includes('sql')) return 'Dados';
+  if (item.externalKind === 'prototype' || text.includes('design') || text.includes('ux')) return 'Design';
   return 'Academico';
 }
 
-function explicitCaseFact(summary = '', labels = []) {
-  const lines = String(summary || '').split(/\r?\n/);
-  const expression = new RegExp(`^(?:#{1,3}\\s*)?(?:${labels.join('|')})\\s*:?\\s*(.*)$`, 'i');
-  for (let index = 0; index < lines.length; index += 1) {
-    const match = lines[index].trim().match(expression);
-    if (!match) continue;
-    if (match[1]?.trim()) return match[1].trim();
-    for (let next = index + 1; next < lines.length; next += 1) {
-      const value = lines[next].trim();
-      if (!value) continue;
-      if (/^#{1,3}\s+/.test(value)) break;
-      return value.replace(/^[-*]\s+/, '').trim();
-    }
-  }
-  return '';
+function normalizeSkillObject(skill, index = 0) {
+  if (Array.isArray(skill)) return skill;
+  if (typeof skill === 'string') return [skill, 'Habilidade', Math.max(58, 92 - index * 4)];
+  return [skill?.name || 'Habilidade', skill?.category || 'Habilidade', Number(skill?.level || Math.max(58, 92 - index * 4))];
 }
 
 function evidenceLabel(project = {}) {
-  if (project.externalUrl) {
-    return {
-      web_app: 'Aplicacao publicada',
-      repository: 'Repositorio',
-      prototype: 'Prototipo',
-      drive: 'Arquivos',
-      article: 'Artigo',
-    }[project.externalKind] || 'Link externo';
-  }
-  if (project.documentUrl) return project.documentName || 'Documento anexado';
-  if (project.mediaUrl) return project.mediaType === 'video' ? 'Video anexado' : 'Imagem anexada';
+  if (project.externalKind === 'web_app') return 'Aplicacao publicada';
+  if (project.externalKind === 'repository') return 'Repositorio';
+  if (project.externalKind === 'prototype') return 'Prototipo';
+  if (project.externalKind === 'drive') return 'Arquivos';
+  if (project.externalKind === 'article') return 'Artigo';
+  if (project.externalUrl) return 'Link externo';
+  if (project.documentUrl) return project.documentName || 'Documento';
   return '';
 }
 
-function projectFacts(project = {}) {
-  return [
-    ['Problema', explicitCaseFact(project.summary, ['problema', 'desafio'])],
-    ['Resultado', explicitCaseFact(project.summary, ['resultado', 'impacto'])],
-    ['Complexidade', explicitCaseFact(project.summary, ['complexidade'])],
-    ['Disciplina', project.courseName || ''],
-    ['Evidencia', evidenceLabel(project)],
-  ].filter(([, value]) => value).slice(0, 3);
-}
-
 function richInline(text = '') {
-  return String(text).split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, index) => {
+  return String(text).split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, i) => {
     const bold = part.match(/^\*\*([^*]+)\*\*$/);
-    if (bold) return <strong key={index}>{bold[1]}</strong>;
+    if (bold) return <strong key={i}>{bold[1]}</strong>;
     const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
-    if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
-    return <span key={index}>{part}</span>;
+    if (link) return <a key={i} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;
+    return <span key={i}>{part}</span>;
   });
 }
 
 function ProjectSummary({ text }) {
-  const lines = String(text || '').split(/\r?\n/);
-  const blocks = [];
-  let paragraph = [];
-  let bullets = [];
-  const flushParagraph = () => {
-    if (!paragraph.length) return;
-    blocks.push(<p key={`p-${blocks.length}`}>{paragraph.map((line, index) => <span key={index}>{richInline(line)}{index < paragraph.length - 1 && <br />}</span>)}</p>);
-    paragraph = [];
-  };
-  const flushBullets = () => {
-    if (!bullets.length) return;
-    blocks.push(<ul key={`ul-${blocks.length}`}>{bullets.map((line, index) => <li key={index}>{richInline(line)}</li>)}</ul>);
-    bullets = [];
-  };
-  for (const line of lines) {
-    if (!line.trim()) { flushParagraph(); flushBullets(); continue; }
-    if (/^#{1,3}\s+/.test(line)) {
-      flushParagraph(); flushBullets();
-      blocks.push(<h4 key={`h-${blocks.length}`}>{richInline(line.replace(/^#{1,3}\s+/, ''))}</h4>);
-    } else if (/^[-*]\s+/.test(line)) {
-      flushParagraph();
-      bullets.push(line.replace(/^[-*]\s+/, ''));
-    } else {
-      flushBullets();
-      paragraph.push(line);
-    }
+  const [expanded, setExpanded] = useState(false);
+  const lines = String(text || '').split(/\r?\n/).filter(Boolean);
+  const preview = lines.slice(0, 3);
+  const hasMore = lines.length > 3;
+  const visible = expanded ? lines : preview;
+  return (
+    <div className="pi-project-summary">
+      {visible.map((line, i) => {
+        if (/^#{1,3}\s+/.test(line)) return <strong key={i}>{richInline(line.replace(/^#{1,3}\s+/, ''))}</strong>;
+        if (/^[-*]\s+/.test(line)) return <span key={i} className="pi-bullet">• {richInline(line.replace(/^[-*]\s+/, ''))}</span>;
+        return <span key={i}>{richInline(line)}</span>;
+      })}
+      {hasMore && (
+        <button className="pi-expand-btn" onClick={() => setExpanded(v => !v)}>
+          {expanded ? <><ChevronUp size={13} /> Menos</> : <><ChevronDown size={13} /> Ver mais</>}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function linkedInJobUrl(term) {
+  return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(term)}&f_WT=2%2C1%2C3`;
+}
+
+// ── Subcomponentes ─────────────────────────────────────────────────────────
+
+function EmptyState({ icon: Icon = FileText, title, text }) {
+  return (
+    <div className="pi-empty">
+      <Icon size={28} />
+      <strong>{title}</strong>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function ProjectCard({ project, user }) {
+  const kind = project.kind || projectKind(project);
+  const evidence = evidenceLabel(project);
+  return (
+    <motion.article className="pi-project-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} layout>
+      <div className="pi-project-header">
+        <div className="pi-project-meta">
+          <span className="pi-kind-tag">{kind}</span>
+          {evidence && <span className="pi-evidence-tag">{evidence}</span>}
+        </div>
+        {project.courseName && <small className="pi-course-label"><GraduationCap size={12} /> {project.courseName}</small>}
+      </div>
+      <h3 className="pi-project-title">{project.title || project.activityTitle || 'Projeto'}</h3>
+      {project.summary && <ProjectSummary text={project.summary} />}
+      <div className="pi-project-actions">
+        {project.externalUrl && (
+          <a href={project.externalUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
+            <ExternalLink size={13} /> Abrir
+          </a>
+        )}
+        {project.documentUrl && (
+          <a href={project.documentUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
+            <Download size={13} /> Documento
+          </a>
+        )}
+        <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
+          <Link2 size={13} /> Ver no portfolio
+        </a>
+      </div>
+    </motion.article>
+  );
+}
+
+function SkillsSection({ skills }) {
+  if (!skills.length) {
+    return (
+      <EmptyState
+        icon={Tag}
+        title="Habilidades ainda nao identificadas"
+        text="Envie seu curriculo ou publique projetos para que as habilidades apareçam aqui."
+      />
+    );
   }
-  flushParagraph();
-  flushBullets();
-  return <div className="portfolio-rich-summary">{blocks}</div>;
-}
-
-function Metric({ icon: Icon, label, value, hint }) {
   return (
-    <motion.div className="portfolio-metric" whileHover={{ y: -4 }}>
-      <span><Icon size={16} /> {label}</span>
-      <strong>{value}</strong>
-      <small>{hint}</small>
-    </motion.div>
+    <div className="pi-skills-grid">
+      {skills.map(([name, category], i) => (
+        <motion.div
+          key={`${name}-${i}`}
+          className="pi-skill-tag"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: i * 0.03 }}
+          whileHover={{ y: -2 }}
+        >
+          <span>{name}</span>
+          <small>{category}</small>
+        </motion.div>
+      ))}
+    </div>
   );
 }
 
-function SkillNode({ name, family, level, index }) {
+function ResumeSection({ resume }) {
+  const virtual = resume?.virtualResume;
   return (
-    <motion.div
-      className="portfolio-skill-node"
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      whileHover={{ y: -5, scale: 1.02 }}
-      style={{ '--skill-level': `${level}%` }}
-    >
-      <div>
-        <strong>{name}</strong>
-        <span>{family}</span>
+    <div className="pi-resume-card">
+      <div className="pi-resume-icon"><FileText size={20} /></div>
+      <div className="pi-resume-info">
+        <strong>{virtual?.professionalTitle || (resume ? 'Curriculo conectado' : 'Curriculo nao enviado')}</strong>
+        <p>{virtual?.about || resume?.summary || 'Envie um PDF ou DOCX no campo acima para preencher suas informacoes profissionais.'}</p>
+        {virtual?.skills?.length > 0 && (
+          <div className="pi-resume-skills">
+            {virtual.skills.slice(0, 6).map(skill => <span key={skill} className="pi-skill-mini">{skill}</span>)}
+          </div>
+        )}
       </div>
-      <em>{level}</em>
-      <i />
-    </motion.div>
+      {resume?.documentUrl && (
+        <a href={resume.documentUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
+          <Download size={13} /> Baixar
+        </a>
+      )}
+    </div>
   );
 }
 
-function RecruiterView({ score, projects, skills, resume }) {
-  const insights = [
-    ['Competencias', skills.length ? skills.slice(0, 5).map(item => item[0]).join(', ') : 'Nenhuma competencia inferida ainda.'],
-    ['Evidencias', `${projects.length} projeto(s) publicado(s) no portfolio.`],
-    ['Curriculo', resume?.documentUrl ? 'Arquivo anexado ao portfolio.' : 'Nenhum curriculo anexado.'],
-  ];
+function CarreirasSection({ skills, resume }) {
+  const virtual = resume?.virtualResume;
+  const area = virtual?.professionalTitle || '';
+
+  const searchTerms = useMemo(() => {
+    const fromSkills = skills.slice(0, 4).map(([name]) => name);
+    const terms = area ? [area, ...fromSkills] : fromSkills;
+    const fallback = ['Desenvolvedor', 'Analista de Dados', 'Designer UX', 'Estagio TI'];
+    const final = [...new Set(terms)].filter(Boolean);
+    return final.length ? final.slice(0, 6) : fallback.slice(0, 4);
+  }, [skills, area]);
+
   return (
-    <section className="portfolio-section recruiter-mode" id="recruiter">
-      <div className="portfolio-section-head">
-        <div>
-          <span>Recruiter View</span>
-          <h2>Resumo para triagem</h2>
-        </div>
-        <p>Principais sinais do aluno reunidos para uma leitura objetiva.</p>
+    <div className="pi-careers-section">
+      <div className="pi-careers-intro">
+        <p>
+          Com base no seu curriculo e projetos, estas buscas podem ter vagas para o seu perfil.
+          Cada link abre o LinkedIn Jobs em uma nova aba.
+        </p>
       </div>
-      <div className="recruiter-grid-premium">
-        <div className="recruiter-score-card">
-          <div className="portfolio-score-ring" style={{ '--score': score }}>
-            <strong>{score}</strong>
-            <span>/100</span>
-          </div>
-          <div>
-            <small>Score profissional estimado</small>
-            <h3>{resume?.virtualResume?.professionalTitle || 'Talento academico pronto para triagem'}</h3>
-            <p>Calculado a partir de projetos publicados, curriculo, evidencias tecnicas e links verificaveis.</p>
-          </div>
-        </div>
-        <div className="recruiter-insight-stack">
-          {insights.map(([title, text]) => (
-            <div key={title} className="recruiter-insight">
-              <i />
-              <div>
-                <strong>{title}</strong>
-                <span>{text}</span>
-              </div>
+      <div className="pi-careers-list">
+        {searchTerms.map(term => (
+          <div key={term} className="pi-career-row">
+            <div className="pi-career-info">
+              <Briefcase size={15} />
+              <span>{term}</span>
             </div>
-          ))}
-        </div>
+            <a
+              href={linkedInJobUrl(term)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary pi-btn-sm"
+            >
+              Buscar no LinkedIn <ArrowUpRight size={12} />
+            </a>
+          </div>
+        ))}
       </div>
-    </section>
+      <p className="pi-careers-disclaimer">
+        As sugestoes sao geradas a partir das habilidades e titulo identificados no seu curriculo.
+        O sistema abre o LinkedIn Jobs — nao armazenamos dados de vagas.
+      </p>
+    </div>
   );
 }
 
-export default function PortfolioIntelligencePage({ user, token, portfolioItems, resume: resumeFromProfile, analysis }) {
+// ── Componente principal ───────────────────────────────────────────────────
+
+export default function PortfolioIntelligencePage({
+  user,
+  token,
+  portfolioItems,
+  resume: resumeFromProfile,
+  analysis,
+  initialSection,
+}) {
   const [ava, setAva] = useState(null);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('Todos');
-  const [resumeMode, setResumeMode] = useState('compact');
+  const [activeKind, setActiveKind] = useState('Todos');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(portfolioItems)) return;
-    fetchAva(token).then(setAva).catch(() => setAva(null));
+    fetchAva(token).then(setAva).catch(() => null);
   }, [portfolioItems, token]);
 
   const projects = useMemo(() => {
-    const real = Array.isArray(portfolioItems)
+    const raw = Array.isArray(portfolioItems)
       ? portfolioItems
       : (ava?.portfolio?.length ? ava.portfolio : []);
-    return real.map(item => ({ ...item, kind: projectKind(item) }));
+    return raw.map(item => ({ ...item, kind: projectKind(item) }));
   }, [ava, portfolioItems]);
+
   const resume = resumeFromProfile || ava?.resume || null;
-  const courses = ava?.courses || [];
+
   const skills = useMemo(() => {
     const mlSkills = (analysis?.skillObjects?.length ? analysis.skillObjects : analysis?.recommendedSkills || [])
-      .map(normalizeSkillObject)
-      .filter(item => item[0]);
+      .map(normalizeSkillObject).filter(s => s[0]);
     if (mlSkills.length) return mlSkills;
+    const fromProjects = projects.flatMap(p => [...(p.technologies || []), ...(p.competencies || []), ...(p.tags || [])]);
+    if (fromProjects.length) return [...new Set(fromProjects)].slice(0, 12).map((name, i) => [name, 'Projeto', Math.max(62, 90 - i * 3)]);
+    const fromResume = resume?.virtualResume?.skills || [];
+    return fromResume.slice(0, 10).map((name, i) => [name, 'Curriculo', Math.max(60, 88 - i * 3)]);
+  }, [analysis, portfolioItems, projects, resume]);
 
-    const projectSkills = projects.flatMap(item => [
-      ...(item.technologies || []),
-      ...(item.competencies || []),
-      ...(item.tags || []),
-    ]);
-    if (projectSkills.length) {
-      return [...new Set(projectSkills)]
-        .slice(0, 12)
-        .map((name, index) => [name, 'Projeto', Math.max(62, 90 - index * 3)]);
-    }
+  const kinds = useMemo(() => ['Todos', ...new Set(projects.map(p => p.kind))], [projects]);
 
-    return [];
-  }, [analysis, portfolioItems, projects]);
-  const score = Number(analysis?.score) > 0
-    ? Math.min(98, Math.round(Number(analysis.score)))
-    : 0;
-  const filteredProjects = projects.filter(item => {
-    const matchFilter = filter === 'Todos' || item.kind === filter;
-    const text = `${item.title} ${item.summary} ${item.courseName} ${item.kind}`.toLowerCase();
-    return matchFilter && (!query.trim() || text.includes(query.trim().toLowerCase()));
+  const filtered = projects.filter(p => {
+    const matchKind = activeKind === 'Todos' || p.kind === activeKind;
+    const text = `${p.title} ${p.summary} ${p.courseName} ${p.kind}`.toLowerCase();
+    return matchKind && (!query.trim() || text.includes(query.trim().toLowerCase()));
   });
-  const displayName = user?.displayName || user?.name || user?.username || '';
+
+  const profileUrl = portfolioProfileUrl(user?.username || '');
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  if (initialSection === 'carreiras') {
+    return (
+      <div className="pi-root">
+        <section className="pi-section">
+          <div className="pi-section-head">
+            <div>
+              <h3>Vagas para voce</h3>
+              <p>Sugestoes de busca no LinkedIn com base no seu curriculo e habilidades.</p>
+            </div>
+          </div>
+          <CarreirasSection skills={skills} resume={resume} />
+        </section>
+      </div>
+    );
+  }
 
   return (
-    <motion.div className="portfolio-intelligence" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-      <section className="portfolio-hero">
-        <div className="portfolio-hero-grid">
-          <div className="portfolio-hero-main">
-            <div className="portfolio-kicker">
-              <Sparkles size={15} /> Portfolio profissional
-            </div>
-            <h1>{displayName}</h1>
-            <p>
-              Projetos, competencias, curriculo e evidencias academicas organizados para recrutadores.
-            </p>
-            <div className="portfolio-hero-tags">
-              {courses[0]?.name && <span><GraduationCap size={14} /> {courses[0].name}</span>}
-              {projects.length > 0 && <span><MapPin size={14} /> {projects.length} projeto(s) publicado(s)</span>}
-              <span><Code2 size={14} /> {skills.slice(0, 3).map(([name]) => name).join(', ') || 'Skills em analise'}</span>
-            </div>
-            <div className="portfolio-actions">
-              <a className="btn btn-primary" href="#recruiter">Recruiter View <ArrowUpRight size={16} /></a>
-              <a className="btn btn-secondary" href={publicPortfolioLink(user, projects[0])} target="_blank" rel="noreferrer">Abrir vitrine publica</a>
-              {resume?.documentUrl && <a className="btn btn-secondary" href={resume.documentUrl} target="_blank" rel="noreferrer"><Download size={16} /> Curriculo</a>}
-            </div>
-          </div>
-          <aside className="portfolio-identity-panel">
-            <div className="portfolio-avatar">{displayName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</div>
-            <strong>{resume?.virtualResume?.professionalTitle || analysis?.area || 'Perfil academico em construcao'}</strong>
-            <span>{courses[0]?.name || projects[0]?.courseName || 'Portfolio social'}</span>
-            <div className="portfolio-mini-stack">
-              {skills.slice(0, 5).map(([name]) => <small key={name}>{name}</small>)}
-            </div>
-          </aside>
-        </div>
-      </section>
+    <div className="pi-root">
 
-      <section className="portfolio-metrics-row">
-        <Metric icon={BriefcaseBusiness} label="Projetos" value={projects.length} hint="publicados" />
-        <Metric icon={BadgeCheck} label="Curriculo" value={resume?.documentUrl ? 1 : 0} hint="arquivo conectado" />
-        <Metric icon={BarChart3} label="Evolucao" value={`${ava?.summary?.averageProgress ?? 0}%`} hint="progresso academico" />
-        <Metric icon={Target} label="Score" value={score} hint="prontidao profissional" />
-      </section>
-
-      <RecruiterView score={score} projects={projects} skills={skills} resume={resume} />
-
-      <section className="portfolio-section">
-        <div className="portfolio-section-head">
+      {/* ── Vitrine ─────────────────────────────────────────────────── */}
+      <section className="pi-section">
+        <div className="pi-section-head">
           <div>
-            <span>Skills visuais</span>
-            <h2>Competencias com evidencia</h2>
+            <h3>Vitrine publica</h3>
+            <p>Compartilhe com recrutadores, professores ou banca avaliadora.</p>
           </div>
-          <p>Habilidades agrupadas por pratica, projeto e contexto academico.</p>
-        </div>
-        <div className="portfolio-skill-grid">
-          {skills.map(([name, family, level], index) => <SkillNode key={name} name={name} family={family} level={level} index={index} />)}
-        </div>
-      </section>
-
-      <section className="portfolio-section">
-        <div className="portfolio-section-head">
-          <div>
-            <span>Projetos</span>
-            <h2>Projetos publicados</h2>
-          </div>
-          <p>Cases mostram somente contexto declarado e evidencias realmente anexadas ou vinculadas.</p>
-        </div>
-        <div className="portfolio-project-toolbar">
-          <label>
-            <Search size={16} />
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar por stack, disciplina ou resultado..." />
-          </label>
-          <div>
-            {['Todos', 'Frontend', 'Backend', 'IA/Dados', 'UX', 'Academico'].map(item => (
-              <button key={item} className={filter === item ? 'active' : ''} onClick={() => setFilter(item)}>
-                <Filter size={14} /> {item}
+          <div className="pi-vitrine-actions">
+            <div className="pi-share-row">
+              <input
+                className="pi-share-input"
+                value={profileUrl}
+                readOnly
+                aria-label="Link publico do portfolio"
+              />
+              <button className="btn btn-secondary pi-btn-sm" onClick={copyLink}>
+                <Copy size={13} /> {copied ? 'Copiado!' : 'Copiar link'}
               </button>
-            ))}
+              <a
+                href={profileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-secondary pi-btn-sm"
+              >
+                <ArrowUpRight size={13} /> Abrir vitrine
+              </a>
+            </div>
           </div>
         </div>
-        <div className="portfolio-project-grid">
-          <AnimatePresence>
-            {filteredProjects.map(project => (
-              <motion.article key={project.id || project.activityId} className="portfolio-project-card" layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <div className="portfolio-project-cover">
-                  <span>{project.kind}</span>
-                  {evidenceLabel(project) && <strong>{evidenceLabel(project)}</strong>}
-                </div>
-                <div className="portfolio-project-body">
-                  <small>{project.courseName || ''}</small>
-                  <h3>{project.title || project.activityTitle}</h3>
-                  {project.summary && <ProjectSummary text={project.summary} />}
-                  {projectFacts(project).length > 0 && (
-                    <div className="portfolio-case-facts">
-                      {projectFacts(project).map(([label, value]) => <span key={label}><b>{label}</b>{value}</span>)}
-                    </div>
-                  )}
-                  <div className="portfolio-card-actions">
-                    {project.externalUrl && <a href={project.externalUrl} target="_blank" rel="noreferrer"><ExternalLink size={15} /> Abrir</a>}
-                    <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer"><GitBranch size={15} /> Ver projeto</a>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </AnimatePresence>
-        </div>
-        {!filteredProjects.length && (
-          <div className="profile-portfolio-empty">
-            <strong>Nenhum projeto publicado ainda.</strong>
-            <span>Crie uma postagem de portfolio ou publique uma entrega do AVA para alimentar esta area.</span>
+
+        <div className="pi-profile-summary">
+          <div className="pi-avatar-circle">
+            {(user?.displayName || user?.username || '?').split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()}
           </div>
+          <div>
+            <strong>{user?.displayName || user?.username}</strong>
+            <span>{resume?.virtualResume?.professionalTitle || analysis?.area || 'Perfil academico'}</span>
+            <div className="pi-profile-tags">
+              {skills.slice(0, 5).map(([name]) => <span key={name} className="pi-skill-mini">{name}</span>)}
+            </div>
+          </div>
+          <div className="pi-profile-stats">
+            <div><strong>{projects.length}</strong><span>projetos</span></div>
+            <div><strong>{skills.length}</strong><span>habilidades</span></div>
+            <div><strong>{resume ? '1' : '0'}</strong><span>curriculo</span></div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Projetos ─────────────────────────────────────────────────── */}
+      <section className="pi-section">
+        <div className="pi-section-head">
+          <div>
+            <h3>Projetos em destaque</h3>
+            <p>Publicacoes do portfolio e entregas do AVA.</p>
+          </div>
+        </div>
+
+        {projects.length > 0 && (
+          <div className="pi-toolbar">
+            <label className="pi-search-field">
+              <Search size={14} />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Buscar por disciplina, tecnologia..."
+              />
+            </label>
+            <div className="pi-filter-row">
+              {kinds.map(k => (
+                <button
+                  key={k}
+                  className={`pi-filter-btn ${activeKind === k ? 'active' : ''}`}
+                  onClick={() => setActiveKind(k)}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filtered.length > 0 ? (
+          <div className="pi-project-grid">
+            <AnimatePresence>
+              {filtered.map(p => <ProjectCard key={p.id || p.activityId} project={p} user={user} />)}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <EmptyState
+            icon={BookOpen}
+            title="Nenhum projeto publicado ainda"
+            text="Publique uma entrega no AVA ou crie uma postagem de portfolio para ela aparecer aqui."
+          />
         )}
       </section>
 
-      <section className="portfolio-section resume-console">
-        <div className="portfolio-section-head">
+      {/* ── Habilidades ──────────────────────────────────────────────── */}
+      <section className="pi-section">
+        <div className="pi-section-head">
           <div>
-            <span>Curriculo inteligente</span>
-            <h2>Curriculo conectado</h2>
-          </div>
-          <div className="resume-mode-toggle">
-            <button className={resumeMode === 'compact' ? 'active' : ''} onClick={() => setResumeMode('compact')}>Compacto</button>
-            <button className={resumeMode === 'detail' ? 'active' : ''} onClick={() => setResumeMode('detail')}>Detalhado</button>
+            <h3>Habilidades</h3>
+            <p>Identificadas a partir do seu curriculo e dos projetos publicados.</p>
           </div>
         </div>
-        <div className="resume-console-grid">
-          <div className="resume-profile-card">
-            <FileText size={22} />
-            <h3>{resume?.virtualResume?.professionalTitle || 'Curriculo estruturado aguardando upload'}</h3>
-            <p>{resume?.virtualResume?.about || 'Envie PDF ou DOCX no perfil para estruturar objetivo, contatos, skills e experiencias.'}</p>
-            {resume?.documentUrl && <a className="btn btn-secondary" href={resume.documentUrl} target="_blank" rel="noreferrer"><Download size={15} /> Baixar arquivo</a>}
-          </div>
-          <div className="resume-evidence-list">
-            {(resumeMode === 'compact' ? projects.slice(0, 3) : projects).map(project => (
-              <div key={project.id || project.activityId}>
-                <CheckCircle2 size={16} />
-                <span>
-                  <strong>{project.title}</strong>
-                  <small>{project.kind} conectado a {project.courseName || 'portfolio'}</small>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <SkillsSection skills={skills} />
       </section>
 
-      <section className="portfolio-section">
-        <div className="portfolio-section-head">
+      {/* ── Curriculo ────────────────────────────────────────────────── */}
+      <section className="pi-section">
+        <div className="pi-section-head">
           <div>
-            <span>Timeline profissional</span>
-            <h2>Evolucao academica</h2>
+            <h3>Seu curriculo</h3>
+            <p>Informacoes extraidas do arquivo enviado.</p>
           </div>
-          <p>Projetos, certificados e marcos academicos em ordem de desenvolvimento.</p>
         </div>
-        <div className="portfolio-timeline">
-          {projects.slice(0, 5).map((project, index) => (
-            <motion.div key={project.id || project.activityId} className="portfolio-time-item" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}>
-              <span>{new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' }).format(new Date(project.updatedAt || Date.now()))}</span>
-              <strong>{project.title}</strong>
-              <p>{project.courseName || 'Marco profissional'} - {projectKind(project)}</p>
-            </motion.div>
-          ))}
-          {!projects.length && <div className="portfolio-time-item"><strong>Nenhum marco publicado.</strong><p>Publique uma entrega no AVA para iniciar a timeline.</p></div>}
-        </div>
+        <ResumeSection resume={resume} />
+        {!resume && (
+          <p className="pi-hint">Envie um PDF ou DOCX no campo acima. As informacoes serao usadas para preencher habilidades e titulo profissional.</p>
+        )}
       </section>
 
-      <section className="portfolio-contact-bar">
-        <div>
-          <Mail size={18} />
-          <span>
-            <strong>Contato rapido</strong>
-            <small>{user?.email || 'email conectado pelo curriculo'}</small>
-          </span>
+      {/* ── Vagas ────────────────────────────────────────────────────── */}
+      <section className="pi-section">
+        <div className="pi-section-head">
+          <div>
+            <h3>Vagas para voce</h3>
+            <p>Sugestoes de busca no LinkedIn com base no seu perfil.</p>
+          </div>
         </div>
-        <div>
-          <Radar size={18} />
-          <span>
-            <strong>Insights automaticos</strong>
-            <small>{analysis?.area ? `${analysis.area} - score ${analysis.score}%` : 'Score, fit tecnico e evidencias por projeto'}</small>
-          </span>
-        </div>
-        <div>
-          <ShieldCheck size={18} />
-          <span>
-            <strong>Privacidade</strong>
-            <small>Analytics internos ficam fora da vitrine publica</small>
-          </span>
-        </div>
+        <CarreirasSection skills={skills} resume={resume} />
       </section>
-    </motion.div>
+
+    </div>
   );
 }

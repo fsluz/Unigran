@@ -16,7 +16,7 @@ import { normalizeRole } from '../modules/shared/permissions';
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicaes', 'Portfolio', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
+const TABS = ['Publicaes', 'Portfolio', 'Carreiras', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
@@ -360,35 +360,43 @@ export default function ProfilePage({ onNavigate }) {
           <div className="profile-portfolio-panel">
             <div className="profile-portfolio-hero">
               <div>
-                <span className="profile-portfolio-kicker">Portfolio Pro</span>
-                <h2>Reputacao academica no perfil</h2>
-                <p>Projetos, curriculo e evidencias do AVA em uma leitura profissional.</p>
+                <h2>Portfolio</h2>
+                <p>Seus projetos e entregas academicas organizados para visualizacao profissional.</p>
               </div>
               <div className="profile-portfolio-count">
                 <strong>{portfolioItems.length}</strong>
                 <span>projetos</span>
               </div>
             </div>
-            <div className="profile-portfolio-master-share">
-              <div>
-                <strong>Link publico do perfil</strong>
-                <span>Compartilhe com empresas, professores e banca avaliadora.</span>
-              </div>
-              <div className="profile-share-field">
-                <input value={portfolioProfileUrl(user.username)} readOnly aria-label="Link publico do portfolio academico" />
-                <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(user.username))}>Copiar</button>
-              </div>
-            </div>
+
             <div className="profile-resume-panel profile-resume-compact">
               <div>
-                <span className="profile-portfolio-kicker">Curriculo</span>
-                <strong>{virtualResume?.professionalTitle || (portfolioResume ? 'Curriculo conectado ao portfolio' : 'Adicionar curriculo PDF ou DOCX')}</strong>
-                <p>{virtualResume?.about || portfolioResume?.summary || 'Envie o arquivo para preencher objetivo, contatos, skills e experiencias.'}</p>
+                <strong>{virtualResume?.professionalTitle || (portfolioResume ? 'Curriculo conectado' : 'Adicionar curriculo')}</strong>
+                <p>{virtualResume?.about || portfolioResume?.summary || 'Envie um PDF ou DOCX para preencher suas informacoes profissionais.'}</p>
               </div>
               <label className="profile-resume-upload">
-                {resumeUploading ? 'Lendo curriculo...' : 'Enviar curriculo'}
+                {resumeUploading ? 'Lendo...' : 'Enviar curriculo'}
                 <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleResumeUpload} />
               </label>
+            </div>
+
+            <PortfolioIntelligencePage
+              user={user}
+              token={token}
+              portfolioItems={portfolioItems}
+              resume={portfolioResume}
+              analysis={portfolioAnalysis}
+            />
+          </div>
+        )}
+
+        {tab === 'Carreiras' && (
+          <div className="profile-portfolio-panel">
+            <div className="profile-portfolio-hero">
+              <div>
+                <h2>Oportunidades</h2>
+                <p>Sugestoes de vagas com base no seu curriculo e habilidades.</p>
+              </div>
             </div>
             <PortfolioIntelligencePage
               user={user}
@@ -396,6 +404,7 @@ export default function ProfilePage({ onNavigate }) {
               portfolioItems={portfolioItems}
               resume={portfolioResume}
               analysis={portfolioAnalysis}
+              initialSection="carreiras"
             />
           </div>
         )}

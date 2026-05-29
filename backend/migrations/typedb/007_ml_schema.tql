@@ -1,0 +1,121 @@
+## Migration 007 — ML / Meu Caminho schema
+## Aplicar no TypeDB Studio em modo SCHEMA na database unigran_db
+
+define
+
+  # ── Atributos ML ─────────────────────────────────────────────────
+  attribute ml-id, value string;
+  attribute ml-area, value string;
+  attribute ml-target-role, value string;
+  attribute ml-level, value string;
+  attribute ml-readiness-score, value double;
+  attribute ml-status, value string;
+  attribute ml-priority, value integer;
+  attribute ml-type, value string;
+  attribute ml-reason, value string;
+  attribute ml-weeks, value integer;
+  attribute ml-match-pct, value double;
+  attribute ml-job-url, value string;
+  attribute ml-company, value string;
+  attribute ml-work-location, value string;
+  attribute ml-work-model, value string;
+  attribute ml-seniority, value string;
+  attribute ml-source, value string;
+  attribute ml-feedback-value, value string;
+  attribute ml-pref-location, value string;
+  attribute ml-pref-work-model, value string;
+  attribute ml-pref-seniority, value string;
+  attribute ml-created-at, value datetime;
+  attribute ml-updated-at, value datetime;
+
+  # ── ML Profile ───────────────────────────────────────────────────
+  ## Perfil calculado do usuário (recalculado a cada análise)
+  entity ml-profile,
+    owns ml-id @key,
+    owns ml-area @card(0..1),
+    owns ml-target-role @card(0..1),
+    owns ml-level @card(0..1),
+    owns ml-readiness-score @card(0..1),
+    owns academic-content @card(0..1),
+    owns ml-created-at @card(0..1),
+    owns ml-updated-at @card(0..1),
+    plays ml-profile-owner:profile;
+
+  relation ml-profile-owner,
+    relates profile,
+    relates owner;
+
+  person plays ml-profile-owner:owner;
+
+  # ── Learning Path ────────────────────────────────────────────────
+  ## Trilha de aprendizado gerada para o usuário
+  entity ml-learning-path,
+    owns ml-id @key,
+    owns ml-target-role @card(0..1),
+    owns ml-created-at @card(0..1),
+    owns ml-updated-at @card(0..1),
+    plays ml-path-owner:path,
+    plays ml-path-has-item:path;
+
+  relation ml-path-owner,
+    relates path,
+    relates owner;
+
+  person plays ml-path-owner:owner;
+
+  # ── Learning Path Item ───────────────────────────────────────────
+  entity ml-path-item,
+    owns ml-id @key,
+    owns academic-title,
+    owns academic-description @card(0..1),
+    owns ml-type @card(0..1),
+    owns ml-level @card(0..1),
+    owns ml-priority @card(0..1),
+    owns ml-status @card(0..1),
+    owns ml-reason @card(0..1),
+    owns ml-weeks @card(0..1),
+    owns ml-updated-at @card(0..1),
+    plays ml-path-has-item:item;
+
+  relation ml-path-has-item,
+    relates path,
+    relates item;
+
+  # ── ML Job (interação com vaga) ───────────────────────────────────
+  entity ml-job,
+    owns ml-id @key,
+    owns academic-title,
+    owns ml-company @card(0..1),
+    owns ml-job-url @card(0..1),
+    owns ml-work-location @card(0..1),
+    owns ml-work-model @card(0..1),
+    owns ml-seniority @card(0..1),
+    owns ml-match-pct @card(0..1),
+    owns ml-status @card(0..1),
+    owns ml-source @card(0..1),
+    owns ml-feedback-value @card(0..1),
+    owns ml-created-at @card(0..1),
+    plays ml-job-interaction:job;
+
+  relation ml-job-interaction,
+    relates job,
+    relates person;
+
+  person plays ml-job-interaction:person;
+
+  # ── ML Preferences ───────────────────────────────────────────────
+  entity ml-preferences,
+    owns ml-id @key,
+    owns ml-target-role @card(0..1),
+    owns ml-area @card(0..1),
+    owns ml-pref-location @card(0..1),
+    owns ml-pref-work-model @card(0..1),
+    owns ml-pref-seniority @card(0..1),
+    owns ml-updated-at @card(0..1),
+    plays ml-pref-owner:preferences;
+
+  relation ml-pref-owner,
+    relates preferences,
+    relates owner;
+
+  person plays ml-pref-owner:owner;

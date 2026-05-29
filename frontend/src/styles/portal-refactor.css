@@ -1,0 +1,947 @@
+/*
+  Portal-only refactor.
+  Scoped to Academic Portal and AVA so the social app keeps its own visual rhythm.
+*/
+
+.academic-portal-page,
+.campus-page {
+  --portal-bg: #f3f6fb;
+  --portal-surface: rgba(255, 255, 255, 0.92);
+  --portal-surface-strong: #ffffff;
+  --portal-ink: #10182f;
+  --portal-muted: #65728a;
+  --portal-line: rgba(33, 52, 96, 0.11);
+  --portal-line-strong: rgba(37, 99, 235, 0.24);
+  --portal-blue: #1d4ed8;
+  --portal-cyan: #0891b2;
+  --portal-violet: #6d28d9;
+  --portal-green: #16a34a;
+  --portal-amber: #d97706;
+  --portal-radius: 16px;
+  --portal-radius-sm: 11px;
+  --portal-shadow: 0 18px 46px rgba(24, 39, 75, 0.12);
+  --portal-shadow-soft: 0 10px 26px rgba(24, 39, 75, 0.08);
+  --portal-focus: 0 0 0 4px rgba(37, 99, 235, 0.16);
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.72), rgba(243,246,251,0.4) 28%, var(--portal-bg)),
+    repeating-linear-gradient(0deg, rgba(29,78,216,0.035) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(29,78,216,0.03) 0 1px, transparent 1px 34px);
+  color: var(--portal-ink);
+}
+
+[data-theme="dark"] .academic-portal-page,
+[data-theme="dark"] .campus-page {
+  --portal-bg: #070b16;
+  --portal-surface: rgba(17, 24, 39, 0.88);
+  --portal-surface-strong: #111827;
+  --portal-ink: #edf2ff;
+  --portal-muted: #9aa6bc;
+  --portal-line: rgba(148, 163, 184, 0.17);
+  --portal-line-strong: rgba(96, 165, 250, 0.28);
+  --portal-shadow: 0 22px 54px rgba(0, 0, 0, 0.32);
+  --portal-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.22);
+  background:
+    linear-gradient(180deg, rgba(15,23,42,0.68), rgba(7,11,22,0.46) 28%, var(--portal-bg)),
+    repeating-linear-gradient(0deg, rgba(148,163,184,0.04) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(148,163,184,0.035) 0 1px, transparent 1px 34px);
+}
+
+.academic-portal-page .topbar,
+.campus-page .topbar {
+  border-bottom: 1px solid var(--portal-line);
+  background: color-mix(in srgb, var(--portal-surface-strong) 82%, transparent);
+  backdrop-filter: blur(20px);
+}
+
+.academic-portal-page button:focus-visible,
+.academic-portal-page input:focus-visible,
+.academic-portal-page textarea:focus-visible,
+.academic-portal-page select:focus-visible,
+.campus-page button:focus-visible,
+.campus-page input:focus-visible,
+.campus-page textarea:focus-visible,
+.campus-page select:focus-visible {
+  outline: none;
+  box-shadow: var(--portal-focus);
+}
+
+.academic-portal-shell,
+.ava-shell {
+  width: min(100% - 32px, 1480px);
+  margin: 18px auto 42px;
+}
+
+.academic-portal-shell {
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.academic-portal-main,
+.campus-shell {
+  min-width: 0;
+}
+
+.academic-portal-nav {
+  top: 84px;
+  min-height: calc(100dvh - 110px);
+  padding: 16px;
+  gap: 8px;
+  border: 1px solid var(--portal-line);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--portal-surface-strong) 94%, transparent), color-mix(in srgb, var(--portal-surface) 78%, transparent)),
+    var(--portal-surface-strong);
+  color: var(--portal-ink);
+  box-shadow: var(--portal-shadow);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.academic-portal-nav::before {
+  content: none;
+}
+
+.academic-portal-brand {
+  min-height: 98px;
+  padding: 16px;
+  margin: 0 0 8px;
+  border: 1px solid var(--portal-line);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--portal-blue) 12%, transparent), color-mix(in srgb, var(--portal-cyan) 7%, transparent)),
+    color-mix(in srgb, var(--portal-surface-strong) 88%, transparent);
+}
+
+.academic-portal-brand strong {
+  color: var(--portal-ink) !important;
+  font-size: 20px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.academic-portal-brand span {
+  color: var(--portal-muted) !important;
+  font-weight: 800;
+}
+
+.academic-portal-nav > button {
+  min-height: 48px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--portal-muted) !important;
+  background: transparent;
+  font-weight: 850;
+}
+
+.academic-portal-nav > button small {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--portal-line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--portal-blue) 9%, transparent) !important;
+  color: var(--portal-blue) !important;
+}
+
+.academic-portal-nav > button:hover,
+.academic-portal-nav > button.active {
+  transform: translateX(2px);
+  border-color: var(--portal-line-strong);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--portal-blue) 12%, transparent), color-mix(in srgb, var(--portal-cyan) 8%, transparent));
+  color: var(--portal-blue) !important;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.1);
+}
+
+.academic-portal-nav > button.active::before {
+  left: -17px;
+  width: 4px;
+  height: 26px;
+  background: linear-gradient(180deg, var(--portal-blue), var(--portal-cyan));
+  box-shadow: 0 0 18px rgba(37, 99, 235, 0.34);
+}
+
+.academic-portal-page .university-selector-trigger {
+  min-height: 44px;
+  border-radius: 14px;
+  border-color: var(--portal-line);
+  background: color-mix(in srgb, var(--portal-blue) 8%, var(--portal-surface-strong));
+  color: var(--portal-ink);
+}
+
+.academic-portal-page .university-selector-dropdown {
+  border-color: var(--portal-line);
+  border-radius: 16px;
+  box-shadow: var(--portal-shadow);
+}
+
+.academic-portal-hero,
+.ava-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 292px;
+  padding: 30px;
+  overflow: hidden;
+  border: 1px solid var(--portal-line);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--portal-blue) 13%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, var(--portal-surface-strong) 94%, transparent), color-mix(in srgb, var(--portal-surface) 72%, transparent));
+  box-shadow: var(--portal-shadow);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.academic-portal-hero::before,
+.ava-hero::before {
+  content: "";
+  position: absolute;
+  inset: 18px 24px auto auto;
+  width: min(360px, 36%);
+  height: 206px;
+  border: 1px solid var(--portal-line);
+  border-radius: 20px;
+  background:
+    linear-gradient(90deg, var(--portal-line) 1px, transparent 1px) 0 0 / 58px 100%,
+    linear-gradient(0deg, var(--portal-line) 1px, transparent 1px) 0 0 / 100% 42px,
+    linear-gradient(180deg, color-mix(in srgb, var(--portal-surface-strong) 72%, transparent), color-mix(in srgb, var(--portal-blue) 8%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 18px 42px rgba(24,39,75,0.12);
+  opacity: 0.86;
+  z-index: -1;
+}
+
+.academic-portal-hero::after,
+.ava-hero::after {
+  content: "";
+  position: absolute;
+  right: 52px;
+  top: 62px;
+  width: min(278px, 30%);
+  height: 126px;
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, var(--portal-blue) 0 32%, transparent 32% 39%, var(--portal-cyan) 39% 64%, transparent 64% 71%, var(--portal-violet) 71% 100%) 0 76px / 100% 16px no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--portal-blue) 26%, transparent), color-mix(in srgb, var(--portal-cyan) 18%, transparent)) 0 28px / 74% 12px no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--portal-ink) 18%, transparent), transparent) 0 52px / 58% 10px no-repeat;
+  opacity: 0.92;
+  z-index: -1;
+}
+
+.ava-hero-orb {
+  display: none;
+}
+
+.academic-portal-hero > div,
+.ava-hero > div {
+  max-width: 760px;
+}
+
+.academic-portal-hero span,
+.campus-kicker,
+.campus-panel-head span,
+.ava-panel-title span {
+  color: var(--portal-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.academic-portal-hero h1,
+.ava-hero h1,
+.campus-hero h1 {
+  margin: 6px 0 10px;
+  color: var(--portal-ink);
+  font-size: clamp(34px, 4.6vw, 62px);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.academic-portal-hero p,
+.ava-hero p,
+.campus-hero p {
+  max-width: 700px;
+  color: var(--portal-muted);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.academic-hero-actions {
+  align-self: end;
+  min-width: min(280px, 100%);
+}
+
+.academic-premium-cta,
+.campus-page .btn-primary,
+.academic-portal-page .btn-primary {
+  border: 0 !important;
+  background: linear-gradient(135deg, var(--portal-blue), var(--portal-cyan)) !important;
+  color: #fff !important;
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22);
+}
+
+.academic-premium-cta:hover,
+.campus-page .btn-primary:hover,
+.academic-portal-page .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 38px rgba(37, 99, 235, 0.28);
+}
+
+.academic-portal-page .btn-secondary,
+.campus-page .btn-secondary,
+.ava-command-bar > button,
+.academic-command-bar > button {
+  border-color: var(--portal-line);
+  border-radius: 12px;
+  background: var(--portal-surface);
+  color: var(--portal-ink);
+}
+
+.academic-portal-page .btn-secondary:hover,
+.campus-page .btn-secondary:hover,
+.ava-command-bar > button:hover,
+.academic-command-bar > button:hover {
+  border-color: var(--portal-line-strong);
+  background: color-mix(in srgb, var(--portal-blue) 9%, var(--portal-surface-strong));
+  color: var(--portal-blue);
+}
+
+.academic-portal-grid {
+  gap: 18px;
+  padding: 0;
+}
+
+.academic-portal-card,
+.academic-premium-stat,
+.campus-metric,
+.campus-panel,
+.ava-module-card,
+.ava-course-rail,
+.ava-course-workspace,
+.ava-side-panel .campus-panel,
+.ava-dashboard-panel,
+.ava-item-card,
+.ava-submission-card,
+.ava-forum-post,
+.ava-forum-composer,
+.ava-teacher-box,
+.ava-portfolio-modal {
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--portal-surface-strong) 94%, transparent), color-mix(in srgb, var(--portal-surface) 76%, transparent)),
+    var(--portal-surface-strong);
+  box-shadow: var(--portal-shadow-soft);
+  backdrop-filter: blur(18px) saturate(135%);
+}
+
+.academic-portal-card {
+  padding: 20px;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.academic-portal-card::before {
+  content: "";
+  inset: 0;
+  background:
+    linear-gradient(90deg, var(--portal-blue), var(--portal-cyan)) 0 0 / 100% 3px no-repeat;
+  opacity: 0.66;
+}
+
+.academic-portal-card:hover,
+.campus-metric:hover,
+.campus-panel:hover,
+.ava-module-card:hover,
+.ava-course-workspace:hover,
+.ava-item-card:hover,
+.ava-submission-card:hover,
+.ava-forum-post:hover,
+.ava-teacher-box:hover {
+  transform: translateY(-2px);
+  border-color: var(--portal-line-strong);
+  box-shadow: var(--portal-shadow);
+}
+
+.academic-card-head {
+  align-items: start;
+  column-gap: 12px;
+}
+
+.academic-card-icon {
+  width: 42px;
+  height: 42px;
+  border-color: var(--portal-line-strong);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--portal-blue) 10%, transparent);
+  color: var(--portal-blue);
+}
+
+.academic-portal-card h3,
+.campus-panel-head h2,
+.ava-panel-title h3,
+.ava-item-card h3,
+.ava-submission-card h3,
+.ava-teacher-box h3 {
+  color: var(--portal-ink);
+  letter-spacing: 0;
+}
+
+.academic-portal-card p,
+.academic-portal-card > div > p,
+.academic-discipline-list small,
+.academic-service-grid span,
+.academic-table-list small,
+.academic-finance-list small,
+.campus-metric span,
+.campus-metric small,
+.campus-workflow span,
+.ava-course-cover p,
+.ava-item-card p,
+.ava-forum-post p,
+.ava-empty {
+  color: var(--portal-muted);
+}
+
+.academic-metric-grid {
+  gap: 12px;
+}
+
+.academic-premium-stat,
+.academic-metric-grid > div,
+.campus-metric {
+  min-height: 118px;
+  padding: 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--portal-blue) 8%, transparent), transparent 44%),
+    var(--portal-surface);
+}
+
+.academic-premium-stat strong,
+.academic-metric-grid strong,
+.campus-metric strong {
+  color: var(--portal-ink);
+  font-size: clamp(25px, 2.2vw, 34px);
+}
+
+.academic-premium-stat span,
+.academic-metric-grid span {
+  color: var(--portal-blue);
+}
+
+.academic-form {
+  gap: 11px;
+}
+
+.academic-form input,
+.academic-form select,
+.academic-form textarea,
+.academic-user-picker input,
+.ava-textarea,
+.ava-input,
+.ava-file-picker,
+.ava-forum-composer textarea,
+.ava-comment-form input,
+.ava-teacher-box input,
+.ava-teacher-box select,
+.ava-teacher-box textarea,
+.ava-grade-grid input,
+.ava-grade-grid textarea,
+.campus-rai-form input {
+  min-height: 42px;
+  border: 1px solid var(--portal-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 82%, transparent);
+  color: var(--portal-ink);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+.academic-form input:focus,
+.academic-form select:focus,
+.academic-form textarea:focus,
+.academic-user-picker input:focus,
+.ava-textarea:focus,
+.ava-input:focus,
+.ava-forum-composer textarea:focus,
+.ava-comment-form input:focus,
+.ava-teacher-box input:focus,
+.ava-teacher-box select:focus,
+.ava-teacher-box textarea:focus,
+.ava-grade-grid input:focus,
+.ava-grade-grid textarea:focus,
+.campus-rai-form input:focus {
+  border-color: var(--portal-line-strong);
+  box-shadow: var(--portal-focus);
+}
+
+.academic-table-list,
+.academic-finance-list,
+.academic-discipline-list,
+.academic-status-stack,
+.campus-course-list,
+.campus-timeline,
+.campus-module-list,
+.ava-roster,
+.ava-gradebook,
+.ava-attendance-history,
+.campus-rai-thread {
+  gap: 10px;
+}
+
+.academic-table-list > div,
+.academic-finance-list > div,
+.academic-discipline-list button,
+.academic-action-list button,
+.academic-service-grid button,
+.academic-course-actions button,
+.academic-module-launcher button,
+.academic-status-stack span,
+.campus-workflow,
+.campus-recommendation,
+.ava-roster > div,
+.ava-gradebook > div,
+.ava-attendance-history > div,
+.campus-rai-answer,
+.ava-calendar-row,
+.ava-notice {
+  border: 1px solid var(--portal-line);
+  border-radius: var(--portal-radius-sm);
+  background: color-mix(in srgb, var(--portal-surface-strong) 76%, transparent);
+}
+
+.academic-table-list > div,
+.academic-finance-list > div {
+  padding: 13px 14px;
+}
+
+.academic-discipline-list button,
+.academic-module-launcher button,
+.academic-action-list button,
+.academic-service-grid button,
+.academic-course-actions button {
+  color: var(--portal-ink);
+}
+
+.academic-discipline-list button:hover,
+.academic-module-launcher button:hover,
+.academic-action-list button:hover,
+.academic-service-grid button:hover,
+.academic-course-actions button:hover {
+  transform: translateY(-2px);
+  border-color: var(--portal-line-strong);
+  background: color-mix(in srgb, var(--portal-blue) 8%, var(--portal-surface-strong));
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.11);
+}
+
+.academic-mini-progress,
+.campus-progress {
+  height: 9px;
+  background: color-mix(in srgb, var(--portal-line) 62%, transparent);
+}
+
+.academic-mini-progress i,
+.campus-progress i {
+  background: linear-gradient(90deg, var(--portal-blue), var(--portal-cyan));
+}
+
+.academic-search-results {
+  border-color: var(--portal-line);
+  border-radius: 16px;
+  background: var(--portal-surface-strong);
+  box-shadow: var(--portal-shadow);
+}
+
+.academic-search-results > button:hover,
+.academic-search-results button:hover {
+  background: color-mix(in srgb, var(--portal-blue) 8%, transparent);
+}
+
+.ava-command-bar {
+  top: 12px;
+  z-index: 12;
+  padding: 12px;
+  border-color: var(--portal-line);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 86%, transparent);
+  box-shadow: var(--portal-shadow-soft);
+}
+
+.ava-search {
+  height: 46px;
+  border-color: var(--portal-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 78%, transparent);
+}
+
+.ava-search:focus-within {
+  border-color: var(--portal-line-strong);
+  box-shadow: var(--portal-focus);
+}
+
+.ava-layout {
+  grid-template-columns: 292px minmax(0, 1fr) 332px;
+  gap: 20px;
+}
+
+.ava-course-rail {
+  top: 88px;
+  padding: 16px;
+  gap: 10px;
+}
+
+.ava-course-button {
+  min-height: 72px;
+  border-color: var(--portal-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 78%, transparent);
+}
+
+.ava-course-button:hover,
+.ava-course-button.active {
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--course-color, var(--portal-blue)) 42%, var(--portal-line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--course-color, var(--portal-blue)) 14%, transparent), transparent),
+    var(--portal-surface-strong);
+}
+
+.ava-course-button em,
+.ava-module-card-head strong,
+.ava-item-head small,
+.ava-roster em,
+.ava-attendance-history strong {
+  background: color-mix(in srgb, var(--portal-blue) 10%, transparent);
+  color: var(--portal-blue);
+}
+
+.ava-course-workspace {
+  padding: 18px;
+}
+
+.ava-course-cover {
+  grid-template-columns: minmax(0, 1fr) 164px;
+  padding: 22px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--course-color, var(--portal-blue)) 34%, var(--portal-line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--course-color, var(--portal-blue)) 15%, transparent), transparent 56%),
+    color-mix(in srgb, var(--portal-surface-strong) 86%, transparent);
+}
+
+.ava-course-cover h2 {
+  color: var(--portal-ink);
+  font-size: clamp(22px, 2.5vw, 31px);
+  letter-spacing: 0;
+}
+
+.ava-course-stats {
+  border-color: var(--portal-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 74%, transparent);
+}
+
+.ava-tabs {
+  gap: 8px;
+  padding: 8px;
+  border-color: var(--portal-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 72%, transparent);
+}
+
+.ava-tabs button {
+  min-height: 40px;
+  border-color: transparent;
+  border-radius: 12px;
+  color: var(--portal-muted);
+}
+
+.ava-tabs button:hover {
+  background: color-mix(in srgb, var(--portal-blue) 8%, transparent);
+  color: var(--portal-blue);
+}
+
+.ava-tabs button.active {
+  background: linear-gradient(135deg, var(--portal-blue), var(--portal-cyan));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.2);
+}
+
+.ava-dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ava-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 14px;
+}
+
+.ava-item-card,
+.ava-submission-card,
+.ava-forum-post,
+.ava-forum-composer,
+.ava-teacher-box {
+  padding: 16px;
+}
+
+.ava-item-card.done {
+  border-color: color-mix(in srgb, var(--portal-green) 38%, var(--portal-line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--portal-green) 8%, var(--portal-surface-strong)), var(--portal-surface));
+  opacity: 1;
+}
+
+.ava-item-card.activity.late {
+  border-color: color-mix(in srgb, var(--red) 34%, var(--portal-line));
+}
+
+.ava-feedback,
+.ava-portfolio-link,
+.ava-link-classifier,
+.ava-portfolio-suggestion,
+.ava-institution-gate {
+  border-radius: 14px;
+  border: 1px solid var(--portal-line);
+  background: color-mix(in srgb, var(--portal-blue) 7%, var(--portal-surface-strong));
+}
+
+.ava-comments {
+  display: grid;
+  gap: 8px;
+}
+
+.ava-comment {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--portal-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 72%, transparent);
+}
+
+.ava-comment strong {
+  color: var(--portal-ink);
+  font-size: 12px;
+}
+
+.ava-comment span {
+  color: var(--portal-muted);
+  font-size: 13px;
+}
+
+.ava-comment-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.campus-rai-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+}
+
+.campus-rai-thread {
+  max-height: 390px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.campus-rai-answer.assistant {
+  border-color: color-mix(in srgb, var(--portal-cyan) 28%, var(--portal-line));
+}
+
+.campus-rai-answer.user {
+  border-color: color-mix(in srgb, var(--portal-violet) 24%, var(--portal-line));
+}
+
+.campus-rai-pending,
+.campus-rai-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.campus-rai-pending {
+  color: var(--portal-blue);
+  background: color-mix(in srgb, var(--portal-blue) 9%, transparent);
+}
+
+.campus-rai-error {
+  color: var(--red);
+  background: var(--red-light);
+}
+
+.ava-portfolio-modal-backdrop {
+  background: rgba(5, 10, 24, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+.ava-portfolio-modal {
+  max-width: 720px;
+  border-radius: 22px;
+  padding: 26px;
+}
+
+.ava-portfolio-preview {
+  border: 1px solid var(--portal-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--portal-blue) 7%, var(--portal-surface-strong));
+}
+
+.portfolio-alert,
+.ava-error-box,
+.ava-empty {
+  border: 1px solid var(--portal-line);
+  border-radius: 16px;
+  background: var(--portal-surface);
+  box-shadow: var(--portal-shadow-soft);
+}
+
+.ava-empty {
+  padding: 18px;
+  text-align: center;
+}
+
+@media (max-width: 1180px) {
+  .academic-portal-shell,
+  .ava-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .academic-portal-nav,
+  .ava-course-rail {
+    position: static;
+    min-height: auto;
+  }
+
+  .academic-portal-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .academic-portal-brand,
+  .academic-portal-page .university-selector {
+    grid-column: 1 / -1;
+  }
+
+  .ava-side-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .academic-portal-hero::before,
+  .academic-portal-hero::after,
+  .ava-hero::before,
+  .ava-hero::after {
+    opacity: 0.28;
+  }
+
+  .academic-portal-hero,
+  .ava-hero {
+    min-height: 230px;
+    padding: 24px;
+  }
+
+  .academic-portal-grid,
+  .academic-metric-grid,
+  .ava-dashboard-grid,
+  .ava-side-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .ava-course-cover {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .academic-portal-shell,
+  .ava-shell {
+    width: 100%;
+    margin: 0;
+  }
+
+  .academic-portal-page .topbar,
+  .campus-page .topbar {
+    display: none;
+  }
+
+  .academic-portal-mobile-topbar {
+    min-height: 58px;
+    border-bottom: 1px solid var(--portal-line);
+    background: color-mix(in srgb, var(--portal-surface-strong) 92%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .academic-portal-nav {
+    border-radius: 0 18px 18px 0;
+    background: var(--portal-surface-strong) !important;
+  }
+
+  .academic-portal-grid {
+    padding: 12px 12px 88px;
+  }
+
+  .academic-portal-hero,
+  .ava-hero {
+    display: none;
+  }
+
+  .ava-command-bar {
+    position: sticky;
+    top: 0;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .ava-layout {
+    padding: 0;
+  }
+
+  .ava-course-workspace,
+  .ava-side-panel {
+    padding: 12px;
+  }
+
+  .ava-course-rail {
+    border-radius: 0 18px 18px 0;
+    background: var(--portal-surface-strong) !important;
+  }
+
+  .ava-command-bar > button,
+  .academic-command-bar > button {
+    min-height: 40px;
+  }
+
+  .ava-search kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .academic-metric-grid,
+  .campus-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .academic-portal-card,
+  .ava-course-workspace,
+  .ava-dashboard-panel,
+  .ava-item-card,
+  .ava-teacher-box,
+  .campus-panel {
+    border-radius: 14px !important;
+  }
+
+  .ava-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ava-comment-form,
+  .campus-rai-form,
+  .ava-grade-grid {
+    grid-template-columns: 1fr;
+  }
+}
