@@ -753,6 +753,32 @@ export async function requestMembership(user, universityId, payload) {
   return { id, universityId, campusId: payload.campusId || '', username: user.username, role: payload.role || 'student', status: 'pending' };
 }
 
+export async function listMyMemberships(username) {
+  const rows = await readQuery(`
+    match
+      $member isa person, has username "${safe(username)}";
+      $university isa educational-institute, has institution-id $university_id, has name $university_name;
+      $membership isa institution-membership, links (member: $member, university: $university),
+        has institution-membership-id $membership_id,
+        has institution-role $role,
+        has institution-status $status;
+    fetch {
+      "membership_id": $membership_id,
+      "university_id": $university_id,
+      "university_name": $university_name,
+      "role": $role,
+      "status": $status
+    };
+  `);
+  return rows.map(row => ({
+    id: row.membership_id,
+    universityId: row.university_id,
+    universityName: row.university_name || row.university_id,
+    role: normalizeUniversityRole(row.role),
+    status: row.status,
+  }));
+}
+
 export async function listMemberships(universityId) {
   await ensureUniversity(universityId);
   const rows = await readQuery(`

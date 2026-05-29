@@ -26,6 +26,7 @@ import {
   getUniversityHierarchy,
   linkSubjectToClassGroup,
   listMemberships,
+  listMyMemberships,
   listUniversities,
   requestMembership,
   inviteInstitutionMember,
@@ -118,7 +119,7 @@ const SubjectSchema = z.object({
 
 const MembershipRequestSchema = z.object({
   campusId: z.string().trim().min(1).max(120).optional().or(z.literal('')),
-  role: z.literal('student').optional(),
+  role: z.enum(['student', 'admin', 'coordination', 'professor', 'secretary']).optional(),
 });
 
 const AvaOfferingSchema = z.object({
@@ -383,6 +384,14 @@ router.put('/universities/:universityId/courses/:courseId/coordinator', requireI
     res.json(await assignCoordinatorToCourse(req.params.universityId, req.params.courseId, parsed.data, req.user));
   } catch (err) {
     handleError(res, err, 'Erro ao atribuir coordenador ao curso');
+  }
+});
+
+router.get('/memberships/me', async (req, res) => {
+  try {
+    res.json({ memberships: await listMyMemberships(req.user?.username) });
+  } catch (err) {
+    handleError(res, err, 'Erro ao carregar seus vinculos institucionais');
   }
 });
 

@@ -434,13 +434,20 @@ export async function updateInstitutionMembershipRole(token, universityId, membe
   return readJson(res, 'Erro ao definir papel institucional');
 }
 
-export async function requestInstitutionMembership(token, universityId) {
+export async function fetchMyInstitutionMemberships(token) {
+  const res = await apiFetch('/platform/v1/institutions/memberships/me', {
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao carregar vinculos institucionais');
+}
+
+export async function requestInstitutionMembership(token, universityId, payload = {}) {
   const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/memberships/requests`, {
     method: 'POST',
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ role: 'student' }),
+    body: JSON.stringify({ role: payload.role || 'student' }),
   });
-  return readJson(res, 'Erro ao solicitar matricula');
+  return readJson(res, 'Erro ao solicitar vinculo institucional');
 }
 
 export async function updateTeacherActivity(token, activityId, payload) {

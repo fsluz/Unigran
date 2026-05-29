@@ -35,6 +35,7 @@ import {
   linkInstitutionSubjectToClass,
   updateInstitutionMembershipRole,
   inviteInstitutionMember,
+  fetchMyInstitutionMemberships,
   requestInstitutionMembership,
   searchInstitutionUsers,
 } from './platform';
@@ -305,6 +306,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [professorDraft, setProfessorDraft] = useState({ semesterId: '', subjectId: '', username: '' });
   const [coordinatorDraft, setCoordinatorDraft] = useState({ courseId: '', username: '' });
   const [inviteDraft, setInviteDraft] = useState({ username: '', role: 'student' });
+  const [catalogUniversities, setCatalogUniversities] = useState([]);
+  const [myMemberships, setMyMemberships] = useState([]);
 
   const reload = async () => {
     setLoading(true);
@@ -333,6 +336,17 @@ export default function AcademicPortalPage({ onOpenAva }) {
       : await fetchUniversities(token);
     const list = data.universities || [];
     setUniversities(list);
+    if (!list.length && hasPermission(user, 'institutions:read') && !hasPermission(user, 'institutions:create')) {
+      const [catalog, mine] = await Promise.all([
+        fetchUniversities(token),
+        fetchMyInstitutionMemberships(token).catch(() => ({ memberships: [] })),
+      ]);
+      setCatalogUniversities(catalog.universities || []);
+      setMyMemberships(mine.memberships || []);
+    } else {
+      setCatalogUniversities([]);
+      setMyMemberships([]);
+    }
     const nextId = preferredId || list[0]?.id || '';
     setSelectedUniversityId(nextId);
     if (nextId && hasPermission(user, 'institutions:read')) setInstitutionData(await fetchUniversity(token, nextId));
@@ -638,15 +652,32 @@ export default function AcademicPortalPage({ onOpenAva }) {
     }
   };
 
-  const requestEnrollment = async () => {
-    if (!selectedUniversityId) return;
+  const requestEnrollment = async (requestedRole = 'student') => {
+    const universityId = selectedUniversityId || catalogUniversities[0]?.id;
+    if (!universityId) return;
     try {
-      await requestInstitutionMembership(token, selectedUniversityId);
-      showToast('Solicitacao enviada para aprovacao', 'OK');
+      const result = await requestInstitutionMembership(token, universityId, { role: requestedRole });
+      setMyMemberships(prev => {
+        const next = prev.filter(item => item.universityId !== universityId);
+        return [...next, {
+          id: result.id,
+          universityId,
+          universityName: catalogUniversities.find(item => item.id === universityId)?.name || universityId,
+          role: requestedRole,
+          status: result.status || 'pending',
+        }];
+      });
+      showToast('Solicitacao enviada. Aguarde aprovacao do admin global.', 'OK');
     } catch (err) {
-      showToast(err.message || 'Erro ao solicitar matricula', '!');
+      showToast(err.message || 'Erro ao solicitar vinculo', '!');
     }
   };
+
+  const pendingMemberships = myMemberships.filter(item => item.status !== 'approved');
+  const needsInstitutionAccess = hasPermission(user, 'institutions:read')
+    && !hasPermission(user, 'institutions:create')
+    && !universities.length
+    && catalogUniversities.length > 0;
 
   const inviteMember = async (event) => {
     event.preventDefault();
@@ -780,14 +811,62 @@ export default function AcademicPortalPage({ onOpenAva }) {
               {universities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
           </form>
-          {!universities.length && (
+          {!universities.length && !needsInstitutionAccess && (
             <EmptyState>
-              {canManage && !canCreateInstitution
-                ? 'Nenhuma instituicao foi atribuida a este administrador. O admin global deve aprovar um vinculo institucional.'
-                : 'Nenhuma universidade cadastrada.'}
+              {canCreateInstitution
+                ? 'Nenhuma universidade cadastrada. Crie uma universidade no card abaixo.'
+                : 'Nenhuma universidade cadastrada no sistema.'}
             </EmptyState>
           )}
         </PortalCard>
+
+        {needsInstitutionAccess && (
+          <PortalCard
+            title="Acesso institucional pendente"
+            text="Sua conta e admin institucional, mas ainda nao ha vinculo aprovado com nenhuma universidade."
+            tone="wide"
+            icon={Users}
+          >
+            <div className="academic-status-stack">
+              <span>Username para o super_admin aprovar: <strong>@{user?.username}</strong></span>
+            </div>
+            {pendingMemberships.length > 0 ? (
+              <div className="academic-table-list">
+                {pendingMemberships.map(item => (
+                  <div key={item.id}>
+                    <span>
+                      {item.universityName}
+                      <small>Papel {roleLabels[item.role] || item.role} - aguardando aprovacao</small>
+                    </span>
+                    <strong>Pendente</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <form className="academic-form" onSubmit={event => { event.preventDefault(); requestEnrollment('admin'); }}>
+                <select
+                  value={selectedUniversityId || catalogUniversities[0]?.id || ''}
+                  onChange={event => setSelectedUniversityId(event.target.value)}
+                  required
+                >
+                  <option value="">Selecione a universidade</option>
+                  {catalogUniversities.map(item => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </select>
+                <button className="btn btn-primary" type="submit">Solicitar vinculo como admin</button>
+              </form>
+            )}
+            <button className="btn btn-secondary" type="button" onClick={() => loadInstitution().then(() => showToast('Status atualizado', 'OK'))}>
+              Verificar se fui aprovado
+            </button>
+            <EmptyState>
+              O super_admin deve entrar em Portal → Coordenacao, selecionar a universidade,
+              abrir &quot;1. Vinculos institucionais&quot;, buscar @{user?.username} e clicar em
+              Vincular e aprovar (papel Admin institucional) ou Aprovar na lista pendente.
+            </EmptyState>
+          </PortalCard>
+        )}
 
         {selectedUniversityId && canInviteMembers && (
           <PortalCard
