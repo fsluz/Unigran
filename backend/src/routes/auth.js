@@ -361,29 +361,30 @@ router.get('/me/universities', async (req, res) => {
   catch { return res.status(401).json({ error: 'Token invalido' }); }
 
   const username = typeqlLiteral(decoded.username);
+
+  function mapUniv(u, role) {
+    return {
+      id: u['institution-id'] || '',
+      name: u.name || u['institution-id'] || '',
+      slug: u['institution-slug'] || '',
+      logo: u['institution-logo'] || u['profile-picture'] || null,
+      status: u['institution-status'] || 'approved',
+      membershipRole: role,
+      membershipStatus: 'approved',
+    };
+  }
+
   try {
     const role = normalizeRole(decoded.role);
+
     if (role === 'super_admin') {
       const rows = await readQuery(`
-        match
-          $u isa educational-institute, has institution-id $id;
-          try { $u has name $name; };
-          try { $u has institution-slug $slug; };
-          try { $u has institution-status $status; };
-          try { $u has logo $logo; };
-        fetch { "id": $id, "name": $name, "slug": $slug, "status": $status, "logo": $logo };
+        match $u isa educational-institute, has institution-id $id;
+        fetch { "university": { $u.* } };
       `).catch(() => []);
       const universities = rows
-        .filter(r => r.status !== 'inactive')
-        .map(r => ({
-          id: r.id,
-          name: r.name || r.id,
-          slug: r.slug || '',
-          logo: r.logo || null,
-          status: r.status || 'approved',
-          membershipRole: 'super_admin',
-          membershipStatus: 'approved',
-        }));
+        .map(r => mapUniv(r.university || {}, 'super_admin'))
+        .filter(u => u.id && u.status !== 'inactive');
       return res.json({ universities });
     }
 
@@ -394,41 +395,24 @@ router.get('/me/universities', async (req, res) => {
         $membership isa institution-membership,
           links (member: $person, university: $university),
           has institution-status "approved";
-        try { $membership has institution-role $role; };
-        try { $university has name $uname; };
-        try { $university has institution-slug $slug; };
-        try { $university has institution-status $ustatus; };
-        try { $university has logo $logo; };
+        try { $membership has institution-role $mrole; };
       fetch {
-        "uid": $uid,
-        "uname": $uname,
-        "slug": $slug,
-        "ustatus": $ustatus,
-        "logo": $logo,
-        "role": $role
+        "university": { $university.* },
+        "mrole": $mrole
       };
     `).catch(() => []);
 
-    const universities = rows
-      .filter(r => r.ustatus !== 'inactive')
-      .map(r => ({
-        id: r.uid,
-        name: r.uname || r.uid,
-        slug: r.slug || '',
-        logo: r.logo || null,
-        status: r.ustatus || 'approved',
-        membershipRole: r.role || 'student',
-        membershipStatus: 'approved',
-      }));
-
     const seen = new Set();
-    const unique = universities.filter(u => {
-      if (seen.has(u.id)) return false;
-      seen.add(u.id);
-      return true;
-    });
+    const universities = rows
+      .map(r => mapUniv(r.university || {}, r.mrole || 'student'))
+      .filter(u => {
+        if (!u.id || u.status === 'inactive') return false;
+        if (seen.has(u.id)) return false;
+        seen.add(u.id);
+        return true;
+      });
 
-    res.json({ universities: unique });
+    res.json({ universities });
   } catch (err) {
     console.error('[me/universities]', err);
     res.status(500).json({ error: 'Erro ao carregar universidades do usuario' });
