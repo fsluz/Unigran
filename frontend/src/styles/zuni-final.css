@@ -1,0 +1,175 @@
+/* Zuni final layer: one full-height video and wide side comments. */
+@media (min-width: 1001px) {
+  .zuni-page {
+    height: calc(100dvh - 50px) !important;
+    padding: 0 22px !important;
+    overflow: hidden !important;
+    background: transparent !important;
+  }
+
+  .zuni-feed {
+    width: min(100%, 1520px) !important;
+    height: 100% !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    scroll-snap-type: y mandatory !important;
+    scrollbar-width: none !important;
+    background: transparent !important;
+  }
+
+  .zuni-feed::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .zuni-reel,
+  .zuni-reel.comments-open {
+    display: flex !important;
+    grid-template-columns: none !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 34px !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    overflow: visible !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .zuni-reel:not(.comments-open) {
+    gap: 0 !important;
+  }
+
+  .zuni-reel::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 2px !important;
+    bottom: 2px !important;
+    left: 50% !important;
+    width: min(980px, calc(100% - 44px)) !important;
+    transform: translateX(-50%) !important;
+    border-radius: 28px !important;
+    pointer-events: none !important;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(0,168,255,.15), transparent 56%),
+      radial-gradient(circle at 50% 50%, rgba(106,0,244,.14), transparent 60%) !important;
+    filter: blur(24px) !important;
+    opacity: .72 !important;
+    z-index: 0 !important;
+  }
+
+  .zuni-reel.comments-open::before {
+    left: calc(50% - 232px) !important;
+    width: min(980px, calc(100% - 500px)) !important;
+  }
+
+  .zuni-video-stage {
+    flex: 0 1 980px !important;
+    width: min(980px, 100%) !important;
+    height: calc(100% - 4px) !important;
+    max-height: none !important;
+    align-self: stretch !important;
+    margin: 2px 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    background: #000 !important;
+    border: 1px solid rgba(148,163,184,.24) !important;
+    box-shadow: 0 26px 92px rgba(0,0,0,.34), 0 0 0 1px rgba(255,255,255,.04) inset !important;
+  }
+
+  .zuni-reel.comments-open .zuni-video-stage {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: 980px !important;
+  }
+
+  .zuni-video-stage::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .zuni-reel video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    background: #000 !important;
+  }
+
+  .zuni-reel.comments-open .zuni-comments {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    flex: 0 0 430px !important;
+    width: 430px !important;
+    min-width: 430px !important;
+    max-width: 430px !important;
+    height: calc(100% - 4px) !important;
+    max-height: none !important;
+    align-self: stretch !important;
+    margin: 2px 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    background: rgba(15,23,42,.44) !important;
+    border: 1px solid rgba(148,163,184,.22) !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(18px);
+  }
+
+  .zuni-comments-about,
+  .zuni-comments-head,
+  .zuni-comments-list,
+  .zuni-comment-form {
+    min-width: 0 !important;
+  }
+
+  .zuni-comments-about {
+    padding: 24px 24px 18px !important;
+  }
+
+  .zuni-comments-about h3 {
+    max-width: 100% !important;
+    margin-bottom: 10px !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+  }
+
+  .zuni-comments-about p,
+  .zuni-comment p {
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .zuni-comments-about div {
+    display: flex !important;
+    gap: 34px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .zuni-comments-head {
+    padding: 18px 24px !important;
+  }
+
+  .zuni-comments-head strong {
+    white-space: normal !important;
+  }
+
+  .zuni-comments-list {
+    padding: 18px 24px !important;
+  }
+
+  .zuni-comment-form {
+    padding: 16px 18px 18px !important;
+  }
+
+  .zuni-comment-form input {
+    min-width: 0 !important;
+  }
+}
