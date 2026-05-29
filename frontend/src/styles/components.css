@@ -394,6 +394,82 @@
   }
 }
 
+/* Zuni: um video por tela, chat lateral fixo e sem deslocar o player. */
+@media (min-width: 1001px) {
+  .zuni-page {
+    height: calc(100dvh - 64px) !important;
+    padding: 12px 28px 18px !important;
+    overflow: hidden !important;
+  }
+
+  .zuni-feed {
+    width: min(100%, 1300px) !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    scroll-snap-type: y mandatory !important;
+    scrollbar-width: none;
+  }
+
+  .zuni-feed::-webkit-scrollbar {
+    display: none;
+  }
+
+  .zuni-reel {
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+    grid-template-columns: minmax(620px, 760px) !important;
+  }
+
+  .zuni-reel.comments-open {
+    grid-template-columns: minmax(620px, 760px) minmax(330px, 370px) !important;
+    gap: 28px !important;
+    justify-content: center !important;
+  }
+
+  .zuni-reel::before {
+    left: 50% !important;
+    top: 28px !important;
+    bottom: 28px !important;
+    width: min(760px, calc(100% - 80px)) !important;
+    transform: translateX(-50%);
+  }
+
+  .zuni-reel.comments-open::before {
+    left: calc(50% - 199px) !important;
+    width: 760px !important;
+  }
+
+  .zuni-video-stage {
+    align-self: center;
+    height: calc(100% - 32px) !important;
+    max-height: 820px !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .zuni-reel.comments-open .zuni-video-stage {
+    height: calc(100% - 32px) !important;
+  }
+
+  .zuni-reel.comments-open .zuni-comments {
+    align-self: center;
+    height: calc(100% - 32px) !important;
+    max-height: 820px !important;
+    margin: 0 !important;
+  }
+
+  .zuni-more {
+    display: none;
+  }
+}
+
 /* Mensagens: esconder RAI e reforcar visual futurista. */
 .app-shell:has(.messages-page) .floating-assistants {
   display: none !important;
