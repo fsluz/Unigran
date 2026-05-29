@@ -7,6 +7,7 @@ import './styles/portal-ava-mobile.css';
 import './styles/aesthetic-system.css';
 import './styles/portfolio-clean.css';
 import './styles/portal-refactor.css';
+import './styles/meu-caminho.css';
 import App from './App.jsx';
 
 createRoot(document.getElementById('root')).render(

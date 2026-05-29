@@ -10,6 +10,7 @@ import {
   PanelsTopLeft,
   Users,
   Menu as MenuIcon,
+  X,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
 import UniversitySelector from '../../components/layout/UniversitySelector';
@@ -1251,7 +1252,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
           <div className="academic-portal-brand">
             <strong>{institution?.name || activeUniversity?.name || 'Portal Academico'}</strong>
             <span>{roleLabels[role] || role}</span>
-            <button className="academic-nav-close-btn" onClick={() => setNavOpen(false)} aria-label="Fechar menu">✕</button>
+            {navOpen && (
+              <button className="academic-nav-close-btn" onClick={() => setNavOpen(false)} aria-label="Fechar menu" type="button">
+                <X size={18} />
+              </button>
+            )}
           </div>
           <UniversitySelector />
           {tabs.map(tab => (

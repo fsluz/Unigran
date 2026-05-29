@@ -87,6 +87,7 @@
   min-height: calc(100dvh - 110px);
   padding: 16px;
   gap: 8px;
+  overflow: visible;
   border: 1px solid var(--portal-line);
   border-radius: 20px;
   background:
@@ -102,6 +103,7 @@
 }
 
 .academic-portal-brand {
+  position: relative;
   min-height: 98px;
   padding: 16px;
   margin: 0 0 8px;
@@ -122,6 +124,24 @@
 .academic-portal-brand span {
   color: var(--portal-muted) !important;
   font-weight: 800;
+}
+
+.academic-nav-close-btn {
+  display: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--portal-line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--portal-surface-strong) 82%, transparent);
+  color: var(--portal-muted);
+}
+
+.academic-nav-close-btn:hover {
+  border-color: color-mix(in srgb, var(--red) 28%, var(--portal-line));
+  background: var(--red-light);
+  color: var(--red);
 }
 
 .academic-portal-nav > button {
@@ -169,10 +189,52 @@
   color: var(--portal-ink);
 }
 
+.academic-portal-page .university-selector {
+  position: relative;
+  z-index: 30;
+}
+
 .academic-portal-page .university-selector-dropdown {
+  z-index: 80;
+  max-height: min(360px, calc(100dvh - 220px));
+  overflow-y: auto;
   border-color: var(--portal-line);
   border-radius: 16px;
+  background: var(--portal-surface-strong);
   box-shadow: var(--portal-shadow);
+}
+
+.academic-portal-page .university-selector-single.status-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--portal-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--portal-blue) 8%, var(--portal-surface-strong));
+  color: var(--portal-ink);
+}
+
+.academic-portal-page .university-selector-single.status-card svg {
+  grid-row: 1 / span 2;
+  color: var(--portal-blue);
+}
+
+.academic-portal-page .university-selector-single.status-card span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--portal-ink);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academic-portal-page .university-selector-single.status-card small {
+  color: var(--portal-muted);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .academic-portal-hero,
@@ -878,7 +940,12 @@
 
   .academic-portal-nav {
     border-radius: 0 18px 18px 0;
+    overflow-y: auto;
     background: var(--portal-surface-strong) !important;
+  }
+
+  .academic-nav-close-btn {
+    display: grid;
   }
 
   .academic-portal-grid {

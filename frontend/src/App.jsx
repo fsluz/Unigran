@@ -27,6 +27,7 @@ import { AchievementsProvider } from './contexts/AchievementsContext';
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
 import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
+import MeuCaminhoPage      from './pages/MeuCaminhoPage';
 import { hasPermission }   from './modules/shared/permissions';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
@@ -79,6 +80,7 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
           <button className={`mobile-nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}>Inicio</button>
           {canPortal && <button className={`mobile-nav-item ${page === 'campus' ? 'active' : ''}`} onClick={() => navigate('campus')}>Portal Academico</button>}
           {canAva && <button className={`mobile-nav-item ${page === 'ava' ? 'active' : ''}`} onClick={() => navigate('ava')}>AVA</button>}
+          <button className={`mobile-nav-item ${page === 'meuCaminho' ? 'active' : ''}`} onClick={() => navigate('meuCaminho')}>Meu Caminho</button>
           <button className={`mobile-nav-item ${page === 'friends' ? 'active' : ''}`} onClick={() => navigate('friends')}>Conexoes</button>
           <button className={`mobile-nav-item ${page === 'communities' ? 'active' : ''}`} onClick={() => navigate('communities')}>Comunidades</button>
           <button className={`mobile-nav-item ${page === 'explore' ? 'active' : ''}`} onClick={() => navigate('explore')}>Explorar</button>
@@ -187,6 +189,7 @@ function AppShell() {
     auditLogs:     hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage onOpenProfile={openProfile} />,
     masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
     settingsAdmin: (hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <SettingsPage key="settings-admin" initialSection="admin" onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} /> : <HomePage onOpenProfile={openProfile} />,
+    meuCaminho:    <MeuCaminhoPage />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,
