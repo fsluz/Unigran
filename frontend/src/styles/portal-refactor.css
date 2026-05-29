@@ -194,10 +194,20 @@
   z-index: 30;
 }
 
-.academic-portal-page .university-selector-dropdown {
-  z-index: 80;
-  max-height: min(360px, calc(100dvh - 220px));
+.academic-portal-nav .university-selector.is-open {
+  z-index: 120;
+}
+
+.academic-portal-nav .university-selector-dropdown {
+  position: static;
+  margin-top: 8px;
+  max-height: min(340px, calc(100dvh - 260px));
   overflow-y: auto;
+  animation: none;
+}
+
+.academic-portal-page .university-selector-dropdown {
+  z-index: 120;
   border-color: var(--portal-line);
   border-radius: 16px;
   background: var(--portal-surface-strong);

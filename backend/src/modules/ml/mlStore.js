@@ -46,13 +46,13 @@ export async function savePreferences(username, prefs) {
       prefs.workModel !== undefined && `$pref has ml-pref-work-model "${safe(prefs.workModel)}";`,
       prefs.seniority !== undefined && `$pref has ml-pref-seniority "${safe(prefs.seniority)}";`,
       `$pref has ml-updated-at ${now()};`,
-    ].filter(Boolean).join('\n      ');
-    await writeQuery(`
-      match
-        $pref isa ml-preferences, has ml-id "${safe(id)}";
-      update
-        ${updates}
-    `).catch(() => null);
+    ].filter(Boolean).join('\n        ');
+    if (updates) {
+      await writeQuery(`
+        match $pref isa ml-preferences, has ml-id "${safe(id)}";
+        update ${updates}
+      `).catch(err => console.error('[ML prefs update]', err));
+    }
     return id;
   }
 
@@ -69,7 +69,12 @@ export async function savePreferences(username, prefs) {
         has ml-pref-seniority "${safe(prefs.seniority || '')}",
         has ml-updated-at ${now()};
       $rel isa ml-pref-owner, links (owner: $person, preferences: $pref);
-  `).catch(() => null);
+  `).catch(err => {
+    console.error('[ML prefs insert]', err.message || err);
+    if (String(err.message || '').toLowerCase().includes('ml-preferences')) {
+      console.error('[ML prefs] SCHEMA NAO APLICADO: rode a migration 007_ml_schema.tql no TypeDB Studio');
+    }
+  });
   return id;
 }
 
@@ -187,10 +192,9 @@ export async function updatePathItemStatus(username, itemId, status) {
   `).catch(() => []);
   if (!rows.length) return false;
   await writeQuery(`
-    match
-      $item isa ml-path-item, has ml-id "${safe(itemId)}", has ml-status $old_status, has ml-updated-at $old_ts;
-    delete $item has ml-status $old_status; $item has ml-updated-at $old_ts;
-    insert $item has ml-status "${safe(status)}"; $item has ml-updated-at ${now()};
+    match $item isa ml-path-item, has ml-id "${safe(itemId)}";
+    update $item has ml-status "${safe(status)}";
+      $item has ml-updated-at ${now()};
   `).catch(() => null);
   return true;
 }
@@ -296,15 +300,14 @@ export async function saveCachedProfile(username, profile) {
   if (existing.length) {
     const id = existing[0].id;
     await writeQuery(`
-      match $prof isa ml-profile, has ml-id "${safe(id)}",
-        has ml-area $a, has ml-target-role $tr, has ml-level $lv, has ml-readiness-score $sc, has ml-updated-at $ts;
-      delete $prof has ml-area $a; $prof has ml-target-role $tr; $prof has ml-level $lv; $prof has ml-readiness-score $sc; $prof has ml-updated-at $ts;
-      insert $prof has ml-area "${safe(profile.area || '')}";
+      match $prof isa ml-profile, has ml-id "${safe(id)}";
+      update
+        $prof has ml-area "${safe(profile.area || '')}";
         $prof has ml-target-role "${safe(profile.targetRole || '')}";
         $prof has ml-level "${safe(profile.level || '')}";
         $prof has ml-readiness-score ${Number(profile.overallScore || 0)};
         $prof has ml-updated-at ${now()};
-    `).catch(() => null);
+    `).catch(err => console.error('[ML profile update]', err));
     return id;
   }
 

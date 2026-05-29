@@ -37,7 +37,7 @@ export default function UniversitySelector({ compact = false }) {
   }
 
   return (
-    <div className="university-selector" ref={ref}>
+    <div className={`university-selector ${open ? 'is-open' : ''}`} ref={ref}>
       <button
         className={`university-selector-trigger ${open ? 'open' : ''}`}
         onClick={() => setOpen(o => !o)}
