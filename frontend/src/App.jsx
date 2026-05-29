@@ -13,6 +13,9 @@ import CommunitiesPage    from './pages/CommunitiesPage';
 import MessagesPage       from './pages/MessagesPage';
 import NotificationsPage  from './pages/NotificationsPage';
 import SettingsPage       from './pages/SettingsPage';
+import AdminHubPage       from './pages/AdminHubPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import AuditLogsPage      from './pages/AuditLogsPage';
 import PublicProfilePage  from './pages/PublicProfilePage';
 import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
@@ -22,6 +25,7 @@ import { AchievementsProvider } from './contexts/AchievementsContext';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
+import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
@@ -93,6 +97,11 @@ function AppShell() {
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
     ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
+    admin:         (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <AdminHubPage onNavigate={setPage} /> : <HomePage onOpenProfile={openProfile} />,
+    adminDashboard: hasPermission(user, 'system:manage') ? <AdminDashboardPage /> : <HomePage onOpenProfile={openProfile} />,
+    auditLogs:     hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage onOpenProfile={openProfile} />,
+    masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
+    settingsAdmin: (hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <SettingsPage key="settings-admin" initialSection="admin" onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} /> : <HomePage onOpenProfile={openProfile} />,
     messages:      <MessagesPage />,
     notifications: <NotificationsPage />,
     settings:      <SettingsPage onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} />,

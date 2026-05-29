@@ -206,11 +206,11 @@ function PasswordAccordion({ onSuccess }) {
 }
 
 /*  Main  */
-export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
+export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSection = 'pessoal' }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
 
-  const [section, setSection] = useState('pessoal');
+  const [section, setSection] = useState(initialSection);
   const [cfg, setCfg] = useState({
     profileVisibility: user?.privacy || 'public',
     whoCanMsg:         'everyone',
@@ -288,6 +288,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
   const canAssignGlobalRoles = hasPermission(user, 'permissions:manage');
   const canSeeAdmin = canReadUsers || canModerateReports;
   const groups = [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
+
+  useEffect(() => {
+    setSection(initialSection);
+  }, [initialSection]);
 
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminReports, setAdminReports] = useState([]);

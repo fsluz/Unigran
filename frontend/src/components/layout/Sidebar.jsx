@@ -17,6 +17,7 @@ const SOCIAL_NAV = [
 ];
 
 const PORTAL_NAV = [{ id: 'campus', label: 'Portal', icon: 'portal' }];
+const ADMIN_NAV = [{ id: 'admin', label: 'Admin', icon: 'admin' }];
 
 function SidebarIcon({ name }) {
   const p = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 };
@@ -139,6 +140,18 @@ export default function Sidebar({
             <>
               <div className="sidebar-wide-section-label"><span>Portal</span></div>
               {PORTAL_NAV.map(item => (
+                <button key={item.id} type="button" className={`sidebar-wide-item ${isActive(item.id) ? 'active' : ''}`} onClick={() => onNavigate(item.id)} title={item.label}>
+                  <span className="sidebar-wide-icon"><SidebarIcon name={item.icon} /></span>
+                  {!collapsed && <span className="sidebar-wide-label">{item.label}</span>}
+                </button>
+              ))}
+            </>
+          )}
+
+          {(hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) && (
+            <>
+              <div className="sidebar-wide-section-label"><span>Admin</span></div>
+              {ADMIN_NAV.map(item => (
                 <button key={item.id} type="button" className={`sidebar-wide-item ${isActive(item.id) ? 'active' : ''}`} onClick={() => onNavigate(item.id)} title={item.label}>
                   <span className="sidebar-wide-icon"><SidebarIcon name={item.icon} /></span>
                   {!collapsed && <span className="sidebar-wide-label">{item.label}</span>}
