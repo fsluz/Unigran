@@ -7,6 +7,7 @@ import { apiFetch } from '../utils/api';
 import { uploadMedia } from '../services/posts';
 import ImageCropModal from '../components/media/ImageCropModal';
 import { hasPermission } from '../modules/shared/permissions';
+import { relativeTime } from '../utils/time';
 
 function SidebarToggle({ value, onChange }) {
   return (
@@ -35,6 +36,11 @@ function formatPasswordDate(iso) {
   if (days < 30)   return `Ha ${days} dias`;
   if (days < 365)  return `Ha ${Math.floor(days / 30)} mes(es)`;
   return `Ha ${Math.floor(days / 365)} ano(s)`;
+}
+
+function formatSessionSeen(value) {
+  if (!value) return 'agora';
+  return relativeTime(value);
 }
 
 const BASE_GROUPS = [
@@ -802,7 +808,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme }) {
                   <Row
                     key={device.device_id}
                     title={device.name || 'Sessao'}
-                    sub={revoked ? 'Inativa' : `Ativa${isCurrent ? ' (este dispositivo)' : ''} · ${device.last_seen || 'agora'}`}
+                    sub={revoked ? 'Inativa' : `Ativa${isCurrent ? ' (este dispositivo)' : ''} · visto ${formatSessionSeen(device.last_seen)}`}
                   >
                     {revoked
                       ? <span className="session-status-pill inactive">Inativa</span>

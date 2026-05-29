@@ -9,6 +9,224 @@
   flex-direction: column; align-items: center; padding: 14px 0; gap: 4px;
   flex-shrink: 0; z-index: 100; border-right: 1px solid rgba(255,255,255,0.05);
 }
+
+/* Final overrides: mensagens, configs, Zuni. */
+.app-shell:has(.messages-page) .floating-assistants { display: none !important; }
+
+@media (min-width: 769px) {
+  .messages-page .messages-shell {
+    gap: 16px !important;
+    padding: 10px !important;
+    background:
+      radial-gradient(circle at 72% 12%, rgba(106,0,244,.18), transparent 34%),
+      radial-gradient(circle at 40% 88%, rgba(0,168,255,.12), transparent 30%),
+      var(--page-bg) !important;
+  }
+  .messages-page .conv-list,
+  .messages-page .chat-area {
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)) !important;
+    border-radius: 22px !important;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--page-bg) 96%, transparent)),
+      var(--card) !important;
+    box-shadow: 0 22px 70px rgba(0,0,0,.22) !important;
+    overflow: hidden;
+  }
+  .settings-page .settings-shell {
+    min-height: calc(100dvh - 86px);
+    max-height: calc(100dvh - 86px);
+  }
+}
+
+.messages-page .conv-list-head,
+.messages-page .chat-head {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(106,0,244,.18), transparent 42%),
+    color-mix(in srgb, var(--card) 86%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border)) !important;
+}
+
+.messages-page .chat-messages {
+  background:
+    radial-gradient(circle at 80% 50%, rgba(106,0,244,.12), transparent 38%),
+    radial-gradient(circle at 20% 20%, rgba(0,168,255,.08), transparent 32%),
+    color-mix(in srgb, var(--page-bg) 92%, #050816) !important;
+}
+
+.messages-page .msg-bubble {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  backdrop-filter: blur(14px);
+}
+
+.messages-page .msg-bubble.me {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+}
+
+.messages-page .chat-input-bar {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)) !important;
+  background:
+    linear-gradient(135deg, rgba(106,0,244,.12), rgba(0,168,255,.08)),
+    color-mix(in srgb, var(--card) 88%, transparent) !important;
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+
+.settings-page .settings-content,
+.settings-page .settings-sidenav { scrollbar-gutter: stable; }
+
+.zuni-video-stage {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 0 48px rgba(106,0,244,.28),
+    0 0 88px rgba(0,168,255,.16) !important;
+}
+
+.zuni-video-stage::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(0,168,255,.38), transparent 18%, transparent 82%, rgba(106,0,244,.4)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.18), transparent 34%);
+  mix-blend-mode: screen;
+  opacity: .55;
+}
+
+.zuni-video-stage video,
+.zuni-video-stage .zuni-empty-video { position: relative; z-index: 0; }
+.zuni-overlay,
+.zuni-sound,
+.zuni-progress,
+.zuni-rail,
+.zuni-like-burst { z-index: 6; }
+
+/* Mensagens: esconder RAI e reforcar visual futurista. */
+.app-shell:has(.messages-page) .floating-assistants {
+  display: none !important;
+}
+
+.messages-page .messages-shell {
+  gap: 16px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 72% 12%, rgba(106,0,244,.18), transparent 34%),
+    radial-gradient(circle at 40% 88%, rgba(0,168,255,.12), transparent 30%),
+    var(--page-bg);
+}
+
+.messages-page .conv-list,
+.messages-page .chat-area {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--page-bg) 96%, transparent)),
+    var(--card);
+  box-shadow: 0 22px 70px rgba(0,0,0,.22);
+  overflow: hidden;
+}
+
+.messages-page .chat-area {
+  border-left: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+}
+
+.messages-page .conv-list-head,
+.messages-page .chat-head {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(106,0,244,.18), transparent 42%),
+    color-mix(in srgb, var(--card) 86%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+
+.messages-page .conv-item {
+  border: 1px solid transparent !important;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.messages-page .conv-item:hover,
+.messages-page .conv-item.active {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent) !important;
+  background:
+    linear-gradient(135deg, rgba(106,0,244,.18), rgba(0,168,255,.08)) !important;
+}
+
+.messages-page .chat-messages {
+  background:
+    radial-gradient(circle at 80% 50%, rgba(106,0,244,.12), transparent 38%),
+    radial-gradient(circle at 20% 20%, rgba(0,168,255,.08), transparent 32%),
+    color-mix(in srgb, var(--page-bg) 92%, #050816);
+}
+
+.messages-page .msg-bubble {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  backdrop-filter: blur(14px);
+}
+
+.messages-page .msg-bubble.me {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+}
+
+.messages-page .chat-input-bar {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background:
+    linear-gradient(135deg, rgba(106,0,244,.12), rgba(0,168,255,.08)),
+    color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+
+/* Configuracoes: altura firme. */
+.settings-page .settings-shell {
+  min-height: calc(100dvh - 86px);
+}
+
+.settings-page .settings-content,
+.settings-page .settings-sidenav {
+  scrollbar-gutter: stable;
+}
+
+/* Zuni: brilho cinematografico ao redor do video. */
+.zuni-video-stage {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 0 48px rgba(106,0,244,.28),
+    0 0 88px rgba(0,168,255,.16);
+}
+
+.zuni-video-stage::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(0,168,255,.38), transparent 18%, transparent 82%, rgba(106,0,244,.4)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.18), transparent 34%);
+  mix-blend-mode: screen;
+  opacity: .55;
+}
+
+.zuni-video-stage video,
+.zuni-video-stage .zuni-empty-video {
+  position: relative;
+  z-index: 0;
+}
+
+.zuni-overlay,
+.zuni-sound,
+.zuni-progress,
+.zuni-rail,
+.zuni-like-burst {
+  z-index: 6;
+}
 .sidebar-logo {
   width: 42px; height: 42px; background: var(--accent); border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
@@ -7071,4 +7289,99 @@ img, video { max-width: 100%; }
     overflow: visible;
   }
 }
+
+/* Final overrides: mensagens, configs, Zuni. */
+.app-shell:has(.messages-page) .floating-assistants { display: none !important; }
+
+@media (min-width: 769px) {
+  .messages-page .messages-shell {
+    gap: 16px !important;
+    padding: 10px !important;
+    background:
+      radial-gradient(circle at 72% 12%, rgba(106,0,244,.18), transparent 34%),
+      radial-gradient(circle at 40% 88%, rgba(0,168,255,.12), transparent 30%),
+      var(--page-bg) !important;
+  }
+  .messages-page .conv-list,
+  .messages-page .chat-area {
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)) !important;
+    border-radius: 22px !important;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--page-bg) 96%, transparent)),
+      var(--card) !important;
+    box-shadow: 0 22px 70px rgba(0,0,0,.22) !important;
+    overflow: hidden;
+  }
+  .settings-page .settings-shell {
+    min-height: calc(100dvh - 86px);
+    max-height: calc(100dvh - 86px);
+  }
+}
+
+.messages-page .conv-list-head,
+.messages-page .chat-head {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(106,0,244,.18), transparent 42%),
+    color-mix(in srgb, var(--card) 86%, transparent) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border)) !important;
+}
+
+.messages-page .chat-messages {
+  background:
+    radial-gradient(circle at 80% 50%, rgba(106,0,244,.12), transparent 38%),
+    radial-gradient(circle at 20% 20%, rgba(0,168,255,.08), transparent 32%),
+    color-mix(in srgb, var(--page-bg) 92%, #050816) !important;
+}
+
+.messages-page .msg-bubble {
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  backdrop-filter: blur(14px);
+}
+
+.messages-page .msg-bubble.me {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+}
+
+.messages-page .chat-input-bar {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border)) !important;
+  background:
+    linear-gradient(135deg, rgba(106,0,244,.12), rgba(0,168,255,.08)),
+    color-mix(in srgb, var(--card) 88%, transparent) !important;
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+
+.settings-page .settings-content,
+.settings-page .settings-sidenav { scrollbar-gutter: stable; }
+
+.zuni-video-stage {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.08) inset,
+    0 0 48px rgba(106,0,244,.28),
+    0 0 88px rgba(0,168,255,.16) !important;
+}
+
+.zuni-video-stage::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(0,168,255,.38), transparent 18%, transparent 82%, rgba(106,0,244,.4)),
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.18), transparent 34%);
+  mix-blend-mode: screen;
+  opacity: .55;
+}
+
+.zuni-video-stage video,
+.zuni-video-stage .zuni-empty-video { position: relative; z-index: 0; }
+.zuni-overlay,
+.zuni-sound,
+.zuni-progress,
+.zuni-rail,
+.zuni-like-burst { z-index: 6; }
 
