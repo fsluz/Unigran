@@ -553,6 +553,50 @@ export async function createAvaOfferingForClassSubject(universityId, classGroupI
       await automaticRegistrationForStudent(universityId, student.username),
     );
   }
+
+  // Create teaching assignments for professors already assigned to this subject/semester
+  const classGroupSemester = await readQuery(`
+    match
+      $class_group isa institution-class-group, has institution-class-group-id "${safe(classGroupId)}";
+      $semester isa institution-semester;
+      institution-class-group-link(semester: $semester, class-group: $class_group);
+      $semester has institution-semester-id $semester_id;
+    fetch { "semester_id": $semester_id };
+  `);
+  if (classGroupSemester.length) {
+    const semId = classGroupSemester[0].semester_id;
+    const assignedProfessors = await readQuery(`
+      match
+        $subject isa institution-subject, has institution-subject-id "${safe(subjectId)}";
+        $semester isa institution-semester, has institution-semester-id "${safe(semId)}";
+        $assignment isa institution-professor-subject, links (professor: $professor, subject: $subject, semester: $semester),
+          has institution-status "approved";
+        $professor isa person, has username $professor_username;
+      fetch { "professor_username": $professor_username };
+    `);
+    for (const row of assignedProfessors) {
+      const professorUsername = row.professor_username;
+      const exists = await readQuery(`
+        match
+          $professor isa person, has username "${safe(professorUsername)}";
+          $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+          academic-teaching-assignment(teacher: $professor, offering: $offering);
+        fetch { "offering": { $offering.* } };
+      `);
+      if (!exists.length) {
+        await writeQuery(`
+          match
+            $professor isa person, has username "${safe(professorUsername)}";
+            $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+          insert
+            $ta isa academic-teaching-assignment, links (teacher: $professor, offering: $offering),
+              has academic-role "professor",
+              has academic-status "active";
+        `);
+      }
+    }
+  }
+
   return getUniversityHierarchy(universityId);
 }
 
@@ -722,6 +766,16 @@ export async function assignProfessorToSubjectSemester(universityId, semesterId,
 
 export async function requestMembership(user, universityId, payload) {
   await ensureUniversity(universityId);
+
+  // Admin and super_admin self-link with auto-approval (they manage institutions by role)
+  const globalRole = normalizeUniversityRole(user?.role || 'user');
+  if (['admin', 'super_admin'].includes(globalRole)) {
+    const targetRole = normalizeUniversityRole(payload.role || 'admin');
+    const result = await inviteInstitutionMember(universityId, { username: user.username, role: targetRole });
+    const myMembership = result.memberships.find(m => m.username === user.username);
+    return { id: myMembership?.id || `auto-${uuid()}`, universityId, campusId: payload.campusId || '', username: user.username, role: targetRole, status: 'approved' };
+  }
+
   const existing = await readQuery(`
     match
       $member isa person, has username "${safe(user.username)}";
@@ -974,10 +1028,16 @@ export async function approveMembership(universityId, membershipId) {
       $membership has institution-status "approved";
       $membership has institution-updated-at ${now()};
   `);
-  if (rows[0].role === 'student') {
+  const approvedRole = normalizeUniversityRole(rows[0].role);
+  if (approvedRole === 'student') {
     await writeQuery(`
       match $member isa person, has username "${safe(rows[0].username)}", has user-role "user";
       update $member has user-role "student";
+    `).catch(() => null);
+  } else if (approvedRole !== 'user') {
+    await writeQuery(`
+      match $member isa person, has username "${safe(rows[0].username)}";
+      update $member has user-role "${safe(approvedRole)}";
     `).catch(() => null);
   }
   return listMemberships(universityId);

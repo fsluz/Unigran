@@ -274,7 +274,7 @@ function buildClassSchedule(day, startTime, lessonCount = DEFAULT_LESSONS_PER_PE
 }
 
 export default function AcademicPortalPage({ onOpenAva }) {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const { showToast } = useToast();
   const [ava, setAva] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -582,6 +582,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         username,
       }));
       await reload();
+      await refreshUser();
       setProfessorDraft(prev => ({ ...prev, username: '' }));
       showToast('Professor vinculado', 'OK');
     } catch (err) {
@@ -646,6 +647,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     try {
       const result = await updateInstitutionMembershipRole(token, selectedUniversityId, membershipId, nextRole);
       setInstitutionData(prev => ({ ...prev, memberships: result.memberships || [] }));
+      await refreshUser();
       showToast('Papel institucional atualizado', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao definir papel', '!');
@@ -657,6 +659,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
     if (!universityId) return;
     try {
       const result = await requestInstitutionMembership(token, universityId, { role: requestedRole });
+      const approved = result.status === 'approved';
       setMyMemberships(prev => {
         const next = prev.filter(item => item.universityId !== universityId);
         return [...next, {
@@ -667,7 +670,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
           status: result.status || 'pending',
         }];
       });
-      showToast('Solicitacao enviada. Aguarde aprovacao do admin global.', 'OK');
+      if (approved) {
+        await loadInstitution(universityId);
+        await refreshUser();
+        showToast('Vinculo aprovado. Acesso institucional liberado.', 'OK');
+      } else {
+        showToast('Solicitacao enviada. Aguarde aprovacao do admin global.', 'OK');
+      }
     } catch (err) {
       showToast(err.message || 'Erro ao solicitar vinculo', '!');
     }
@@ -694,6 +703,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
       });
       setInstitutionData(prev => ({ ...prev, memberships: result.memberships || [] }));
       setInviteDraft(prev => ({ ...prev, username: '' }));
+      await refreshUser();
       showToast(`@${username} vinculado como ${roleLabels[inviteDraft.role] || inviteDraft.role}`, 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao vincular usuario', '!');

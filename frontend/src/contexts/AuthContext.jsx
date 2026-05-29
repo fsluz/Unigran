@@ -61,8 +61,19 @@ export function AuthProvider({ children }) {
     setUser(prev => ({ ...prev, ...data }));
   }
 
+  async function refreshUser() {
+    if (!token) return;
+    try {
+      const r = await apiFetch('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (data.user) setUser(data.user);
+    } catch {}
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
