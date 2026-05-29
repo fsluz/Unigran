@@ -26,16 +26,21 @@ export function UniversityProvider({ children, token, userRole }) {
       });
       const data = await res.json();
       const list = data.universities || [];
+      console.log('[UNIVERSITY] universidades carregadas:', list.map(u => `${u.name}(${u.id}) role=${u.membershipRole}`));
       setUniversities(list);
       const savedId = localStorage.getItem(STORAGE_KEY);
       const savedStillValid = list.some(u => u.id === savedId);
       if (!savedStillValid) {
         const firstId = list[0]?.id || '';
+        console.log(`[UNIVERSITY] selecionando automaticamente: "${firstId || 'nenhuma'}"`);
         setActiveUniversityIdState(firstId);
         if (firstId) localStorage.setItem(STORAGE_KEY, firstId);
         else localStorage.removeItem(STORAGE_KEY);
+      } else {
+        console.log(`[UNIVERSITY] universidade ativa mantida: "${savedId}"`);
       }
-    } catch {
+    } catch (err) {
+      console.error('[UNIVERSITY] erro ao carregar universidades:', err);
       setUniversities([]);
     } finally {
       setLoading(false);

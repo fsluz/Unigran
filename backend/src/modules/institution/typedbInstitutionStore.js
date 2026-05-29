@@ -636,6 +636,7 @@ async function ensureAcademicEnrollment(offeringId, username, registration) {
 export async function enrollStudentInClassGroup(universityId, classGroupId, payload) {
   const username = String(payload.username || '').trim().replace(/^@/, '');
   if (!username) throw appError('Informe o username do aluno', 400);
+  console.log(`[UNIVERSITY] enrollStudent: university="${universityId}" classGroup="${classGroupId}" student="${username}"`);
   await assertClassGroupInUniversity(universityId, classGroupId);
   await inviteInstitutionMember(universityId, { username, role: 'student' });
   await assertApprovedInstitutionMember(universityId, username, 'student', 'Aluno');
@@ -698,6 +699,7 @@ export async function enrollStudentInClassGroup(universityId, classGroupId, payl
 export async function assignProfessorToSubjectSemester(universityId, semesterId, subjectId, payload) {
   const username = String(payload.username || '').trim().replace(/^@/, '');
   if (!username) throw appError('Informe o username do professor', 400);
+  console.log(`[UNIVERSITY] assignProfessor: university="${universityId}" semester="${semesterId}" subject="${subjectId}" professor="${username}"`);
   await assertSemesterInUniversity(universityId, semesterId);
   await assertSubjectInUniversity(universityId, subjectId);
   await inviteInstitutionMember(universityId, { username, role: 'professor' });
@@ -939,7 +941,9 @@ export async function inviteInstitutionMember(universityId, payload) {
   const username = String(payload.username || '').trim();
   if (!username) throw appError('Informe o username do usuario', 400);
   const role = normalizeUniversityRole(payload.role || 'student');
+  console.log(`[UNIVERSITY] inviteInstitutionMember: university="${universityId}" username="${username}" role="${role}"`);
   if (!['coordination', 'professor', 'secretary', 'moderator', 'student', 'admin'].includes(role)) {
+    console.warn(`[UNIVERSITY] papel invalido: "${role}"`);
     throw appError('Papel institucional invalido', 400);
   }
 
@@ -947,7 +951,10 @@ export async function inviteInstitutionMember(universityId, payload) {
     match $person isa person, has username "${safe(username)}";
     fetch { "person": { $person.* } };
   `);
-  if (!person.length) throw appError('Usuario nao encontrado na plataforma', 404);
+  if (!person.length) {
+    console.warn(`[UNIVERSITY] usuario nao encontrado: "${username}"`);
+    throw appError('Usuario nao encontrado na plataforma. Verifique se a pessoa tem conta cadastrada.', 404);
+  }
 
   const existing = await readQuery(`
     match

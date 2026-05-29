@@ -397,6 +397,19 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const canInviteMembers = hasPermission(user, 'enrollments:manage');
   const canStudy = hasPermission(user, 'academic:read');
 
+  // Log de diagnóstico (apenas em dev)
+  if (import.meta.env.DEV) {
+    console.log('[PORTAL STATE]', {
+      role,
+      activeUniversityId,
+      canTeach, canCoordinate, canManage, canCreateInstitution, canInviteMembers, canStudy,
+      universidades: universities.length,
+      institutionData: institutionData ? `${institutionData.campuses?.length || 0} campus / ${institutionData.courses?.length || 0} cursos / ${institutionData.classGroups?.length || 0} turmas / ${institutionData.subjects?.length || 0} disciplinas` : 'null',
+      avaCourses: courses.length,
+      permissions: user?.permissions,
+    });
+  }
+
   const tabs = useMemo(() => [
     { id: 'home', label: 'Dashboard', icon: PanelsTopLeft, visible: true },
     { id: 'student', label: 'Alunos', icon: BookOpen, visible: hasPermission(user, 'academic:read') },
@@ -1231,6 +1244,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
   return (
     <div className="page-scroll academic-portal-page">
       <Topbar title="Portal Academico" />
+      {/* Overlay FORA do grid — position:fixed não quebra o layout */}
+      {navOpen && <div className="academic-nav-overlay" onClick={() => setNavOpen(false)} />}
       <main className="academic-portal-shell">
         <aside className={`academic-portal-nav ${navOpen ? 'mobile-open' : ''}`}>
           <div className="academic-portal-brand">
@@ -1246,7 +1261,6 @@ export default function AcademicPortalPage({ onOpenAva }) {
             </button>
           ))}
         </aside>
-        {navOpen && <div className="academic-nav-overlay" onClick={() => setNavOpen(false)} />}
         <section className="academic-portal-main">
           <div className="academic-portal-mobile-topbar">
             <button className="academic-mobile-menu-btn" onClick={() => setNavOpen(true)} aria-label="Menu">

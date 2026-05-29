@@ -610,9 +610,13 @@
     padding-left: 0 !important;
   }
 
-  /* Portal lateral nav vira drawer */
+  /* Portal: grid passa para 1 coluna, nav sai do fluxo */
   .academic-portal-shell {
-    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
   }
   .academic-portal-nav {
     position: fixed;

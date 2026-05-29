@@ -64,14 +64,26 @@ export async function auth(req, res, next) {
           });
           return res.status(403).json({ error: 'Conta banida' });
         }
-        if (rows[0]?.role) {
-          req.user.role = normalizeRole(rows[0].role);
+        const dbRole = rows[0]?.role;
+        if (dbRole) {
+          const normalized = normalizeRole(dbRole);
+          if (normalized !== req.user.role) {
+            console.log(`[AUTH] role atualizado: token="${req.user.role}" db="${normalized}" user="${username}"`);
+          }
+          req.user.role = normalized;
+        } else {
+          console.log(`[AUTH] usuario sem user-role no TypeDB: "${username}" — usando role do token: "${req.user.role}"`);
         }
       } catch (err) {
         throw err;
       }
     }
     req.user.permissions = permissionsForRole(req.user.role);
+    const method = req.method;
+    const path = req.path;
+    if (path.startsWith('/v1/institutions') || path.startsWith('/v1/ava')) {
+      console.log(`[AUTH] ${method} ${path} | user="${username}" role="${req.user.role}" perms=[${req.user.permissions.join(',')}]`);
+    }
     next();
   } catch (err) {
     if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
