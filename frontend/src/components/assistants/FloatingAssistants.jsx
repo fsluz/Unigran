@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import ChatRAIModal from '../modals/ChatRAIModal';
 import { CHAT_CONFIG } from '../../config/integrations';
-import raiMascot from '../../assets/rai-mascot.png.png';
+import raiMascot from '@docs/rai.png';
 
 export default function FloatingAssistants() {
   const { token, user } = useAuth();

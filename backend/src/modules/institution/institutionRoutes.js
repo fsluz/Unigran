@@ -28,6 +28,8 @@ import {
   listMemberships,
   listUniversities,
   requestMembership,
+  inviteInstitutionMember,
+  searchDirectoryUsers,
   searchInstitutionUsers,
   setMembershipRole,
   updateUniversity,
@@ -159,7 +161,13 @@ const MembershipRoleSchema = z.object({
 
 const InstitutionUserSearchSchema = z.object({
   q: z.string().trim().min(2).max(80),
-  role: z.enum(['coordination', 'professor', 'student']).optional(),
+  role: z.enum(['coordination', 'professor', 'student', 'admin']).optional(),
+  scope: z.enum(['members', 'directory']).optional(),
+});
+
+const InviteMembershipSchema = z.object({
+  username: z.string().trim().min(3).max(80),
+  role: z.enum(['admin', 'coordination', 'professor', 'secretary', 'moderator', 'student']),
 });
 
 function handleError(res, err, fallback) {
@@ -389,12 +397,32 @@ router.post('/universities/:universityId/memberships/requests', async (req, res)
 });
 
 router.get('/universities/:universityId/users/search', requireInstitutionPermission('institutions:read'), async (req, res) => {
-  const parsed = InstitutionUserSearchSchema.safeParse({ q: req.query.q, role: req.query.role || undefined });
+  const parsed = InstitutionUserSearchSchema.safeParse({
+    q: req.query.q,
+    role: req.query.role || undefined,
+    scope: req.query.scope || undefined,
+  });
   if (!parsed.success) return res.json({ users: [] });
   try {
-    res.json({ users: await searchInstitutionUsers(req.params.universityId, parsed.data.q, { role: parsed.data.role }) });
+    const users = parsed.data.scope === 'directory'
+      ? await searchDirectoryUsers(req.params.universityId, parsed.data.q, { role: parsed.data.role })
+      : await searchInstitutionUsers(req.params.universityId, parsed.data.q, { role: parsed.data.role });
+    res.json({ users });
   } catch (err) {
     handleError(res, err, 'Erro ao pesquisar usuarios');
+  }
+});
+
+router.post('/universities/:universityId/memberships/invite', requireInstitutionPermission('enrollments:manage'), async (req, res) => {
+  const parsed = InviteMembershipSchema.safeParse(req.body);
+  if (!parsed.success) return invalidRequest(res, parsed, 'Dados invalidos para vincular usuario.');
+  if (parsed.data.role === 'admin' && !hasPermission(req.user, 'permissions:manage')) {
+    return res.status(403).json({ error: 'Somente super_admin pode nomear administradores institucionais' });
+  }
+  try {
+    res.status(201).json(await inviteInstitutionMember(req.params.universityId, parsed.data));
+  } catch (err) {
+    handleError(res, err, 'Erro ao vincular usuario a instituicao');
   }
 });
 

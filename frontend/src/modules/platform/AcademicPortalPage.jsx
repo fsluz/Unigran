@@ -34,6 +34,7 @@ import {
   fetchUniversity,
   linkInstitutionSubjectToClass,
   updateInstitutionMembershipRole,
+  inviteInstitutionMember,
   requestInstitutionMembership,
   searchInstitutionUsers,
 } from './platform';
@@ -76,26 +77,45 @@ function EmptyState({ children }) {
   return <div className="academic-table-list"><div><span>{children}</span></div></div>;
 }
 
-function AcademicUserPicker({ token, universityId, value, onChange, placeholder, requiredRole = '', emptyText = 'Nenhum usuario encontrado.' }) {
+function normalizeUsername(value = '') {
+  return String(value || '').trim().replace(/^@/, '');
+}
+
+function AcademicUserPicker({
+  token,
+  universityId,
+  value,
+  onChange,
+  placeholder,
+  requiredRole = '',
+  emptyText = 'Nenhum usuario encontrado.',
+  searchScope = 'directory',
+}) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const query = String(value || '').trim();
 
   useEffect(() => {
     if (!universityId || query.length < 2) {
       setResults([]);
       setLoading(false);
+      setSearchError('');
       return undefined;
     }
     let active = true;
     setLoading(true);
+    setSearchError('');
     const timer = window.setTimeout(async () => {
       try {
-        const data = await searchInstitutionUsers(token, universityId, query, requiredRole);
+        const data = await searchInstitutionUsers(token, universityId, query, requiredRole, searchScope);
         if (active) setResults(data.users || []);
-      } catch {
-        if (active) setResults([]);
+      } catch (err) {
+        if (active) {
+          setResults([]);
+          setSearchError(err.message || 'Erro ao pesquisar usuarios.');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -104,7 +124,12 @@ function AcademicUserPicker({ token, universityId, value, onChange, placeholder,
       active = false;
       window.clearTimeout(timer);
     };
-  }, [token, universityId, query, requiredRole]);
+  }, [token, universityId, query, requiredRole, searchScope]);
+
+  const pickPerson = (person) => {
+    onChange(person.username);
+    setFocused(false);
+  };
 
   return (
     <div className="academic-user-picker">
@@ -112,27 +137,37 @@ function AcademicUserPicker({ token, universityId, value, onChange, placeholder,
         value={value}
         onChange={event => onChange(event.target.value)}
         onFocus={() => setFocused(true)}
-        onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 220)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' && results[0]) {
+            event.preventDefault();
+            pickPerson(results[0]);
+          }
+        }}
         placeholder={placeholder}
         autoComplete="off"
-        required
       />
       {focused && query.length >= 2 && (
         <div className="academic-search-results">
           {loading && <div><small>Pesquisando usuario...</small></div>}
-          {!loading && !results.length && <div><small>{emptyText}</small></div>}
+          {searchError && <div><small>{searchError}</small></div>}
+          {!loading && !searchError && !results.length && <div><small>{emptyText}</small></div>}
           {!loading && results.map(person => (
             <button
               key={person.username}
               type="button"
               onMouseDown={event => event.preventDefault()}
-              onClick={() => {
-                onChange(person.username);
-                setFocused(false);
-              }}
+              onClick={() => pickPerson(person)}
             >
               <span>{person.name}</span>
-              <small>@{person.username} - {roleLabels[normalizeRole(person.role)] || person.role}</small>
+              <small>
+                @{person.username}
+                {person.membershipStatus === 'approved'
+                  ? ` - ${roleLabels[normalizeRole(person.institutionRole || person.role)] || person.role}`
+                  : person.membershipStatus && person.membershipStatus !== 'none'
+                    ? ` - ${person.membershipStatus}`
+                    : ' - sem vinculo (sera criado ao salvar)'}
+              </small>
             </button>
           ))}
         </div>
@@ -269,6 +304,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [studentDraft, setStudentDraft] = useState({ classGroupId: '', username: '' });
   const [professorDraft, setProfessorDraft] = useState({ semesterId: '', subjectId: '', username: '' });
   const [coordinatorDraft, setCoordinatorDraft] = useState({ courseId: '', username: '' });
+  const [inviteDraft, setInviteDraft] = useState({ username: '', role: 'student' });
 
   const reload = async () => {
     setLoading(true);
@@ -332,6 +368,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const canManage = hasPermission(user, 'reports:institution');
   const canCreateInstitution = hasPermission(user, 'institutions:create');
   const canAssignRoles = hasPermission(user, 'roles:assign');
+  const canInviteMembers = hasPermission(user, 'enrollments:manage');
   const canStudy = hasPermission(user, 'academic:read');
 
   const tabs = useMemo(() => [
@@ -385,22 +422,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
       status: universityDraft.status,
     };
 
-    console.info('[institution] Criando universidade', {
-      name: payload.name,
-      slug: payload.slug,
-      hasCnpj: Boolean(payload.cnpj),
-      hasLogo: Boolean(payload.logo),
-      hasDescription: Boolean(payload.description),
-    });
-
     try {
       await refreshInstitution(await createInstitutionUniversity(token, payload));
       setUniversityDraft({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
       showToast('Universidade criada', 'OK');
     } catch (err) {
-      console.error('[institution] Erro ao criar universidade', err);
-      console.error('[institution] Status da API', err?.status);
-      console.error('[institution] Resposta da API', err?.data);
       showToast(err.message || 'Erro ao criar universidade', '!');
     }
   };
@@ -509,8 +535,16 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const enrollStudent = async (event) => {
     event.preventDefault();
     if (!selectedUniversityId || !studentDraft.classGroupId) return;
+    const username = normalizeUsername(studentDraft.username);
+    if (!username) {
+      showToast('Informe o username do aluno.', '!');
+      return;
+    }
     try {
-      const data = await enrollInstitutionStudent(token, selectedUniversityId, studentDraft.classGroupId, studentDraft);
+      const data = await enrollInstitutionStudent(token, selectedUniversityId, studentDraft.classGroupId, {
+        ...studentDraft,
+        username,
+      });
       await refreshInstitution(data);
       await reload();
       setStudentDraft(prev => ({ ...prev, username: '' }));
@@ -523,8 +557,16 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const assignProfessor = async (event) => {
     event.preventDefault();
     if (!selectedUniversityId || !professorDraft.semesterId || !professorDraft.subjectId) return;
+    const username = normalizeUsername(professorDraft.username);
+    if (!username) {
+      showToast('Informe o username do professor.', '!');
+      return;
+    }
     try {
-      await refreshInstitution(await assignInstitutionProfessor(token, selectedUniversityId, professorDraft.semesterId, professorDraft.subjectId, professorDraft));
+      await refreshInstitution(await assignInstitutionProfessor(token, selectedUniversityId, professorDraft.semesterId, professorDraft.subjectId, {
+        ...professorDraft,
+        username,
+      }));
       await reload();
       setProfessorDraft(prev => ({ ...prev, username: '' }));
       showToast('Professor vinculado', 'OK');
@@ -558,8 +600,16 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const assignCoordinator = async (event) => {
     event.preventDefault();
     if (!selectedUniversityId || !coordinatorDraft.courseId) return;
+    const username = normalizeUsername(coordinatorDraft.username);
+    if (!username) {
+      showToast('Informe o username do coordenador.', '!');
+      return;
+    }
     try {
-      await assignInstitutionCoordinator(token, selectedUniversityId, coordinatorDraft.courseId, coordinatorDraft);
+      await assignInstitutionCoordinator(token, selectedUniversityId, coordinatorDraft.courseId, {
+        ...coordinatorDraft,
+        username,
+      });
       await refreshInstitution(await fetchUniversity(token, selectedUniversityId));
       setCoordinatorDraft(prev => ({ ...prev, username: '' }));
       showToast('Coordenador atribuido ao curso', 'OK');
@@ -595,6 +645,27 @@ export default function AcademicPortalPage({ onOpenAva }) {
       showToast('Solicitacao enviada para aprovacao', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao solicitar matricula', '!');
+    }
+  };
+
+  const inviteMember = async (event) => {
+    event.preventDefault();
+    if (!selectedUniversityId) return;
+    const username = inviteDraft.username.trim().replace(/^@/, '');
+    if (!username) {
+      showToast('Informe o username da pessoa.', '!');
+      return;
+    }
+    try {
+      const result = await inviteInstitutionMember(token, selectedUniversityId, {
+        username,
+        role: inviteDraft.role,
+      });
+      setInstitutionData(prev => ({ ...prev, memberships: result.memberships || [] }));
+      setInviteDraft(prev => ({ ...prev, username: '' }));
+      showToast(`@${username} vinculado como ${roleLabels[inviteDraft.role] || inviteDraft.role}`, 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao vincular usuario', '!');
     }
   };
 
@@ -717,6 +788,60 @@ export default function AcademicPortalPage({ onOpenAva }) {
             </EmptyState>
           )}
         </PortalCard>
+
+        {selectedUniversityId && canInviteMembers && (
+          <PortalCard
+            title="1. Vinculos institucionais"
+            text="Antes de matricular ou designar professor, a pessoa precisa estar aprovada nesta universidade. Convide pelo username ou aprove solicitacoes pendentes."
+            tone="wide"
+            icon={Users}
+          >
+            <form className="academic-form" onSubmit={inviteMember}>
+              <AcademicUserPicker
+                token={token}
+                universityId={selectedUniversityId}
+                value={inviteDraft.username}
+                onChange={username => setInviteDraft(prev => ({ ...prev, username }))}
+                placeholder="Busque qualquer usuario da plataforma (@username)"
+                searchScope="directory"
+                emptyText="Nenhum usuario da plataforma encontrado com esse termo."
+              />
+              <select value={inviteDraft.role} onChange={event => setInviteDraft(prev => ({ ...prev, role: event.target.value }))}>
+                <option value="student">Aluno</option>
+                <option value="professor">Professor</option>
+                <option value="coordination">Coordenacao</option>
+                <option value="secretary">Secretaria</option>
+                {hasPermission(user, 'permissions:manage') && <option value="admin">Admin institucional</option>}
+              </select>
+              <button className="btn btn-primary" type="submit">Vincular e aprovar</button>
+            </form>
+            {memberships.length > 0 && (
+              <div className="academic-table-list">
+                {memberships.map(member => (
+                  <div key={member.id}>
+                    <span>
+                      {member.name}
+                      <small>@{member.username} - {member.status} - {roleLabels[normalizeRole(member.role)] || member.role}</small>
+                    </span>
+                    {member.status !== 'approved' && hasPermission(user, 'enrollments:update') && (
+                      <button className="btn btn-secondary" type="button" onClick={() => approveMembership(member.id)}>Aprovar</button>
+                    )}
+                    {canAssignRoles && member.status === 'approved' && (
+                      <select value={member.role} onChange={event => changeMembershipRole(member.id, event.target.value)}>
+                        {hasPermission(user, 'permissions:manage') && <option value="admin">admin</option>}
+                        <option value="coordination">coordination</option>
+                        <option value="professor">professor</option>
+                        <option value="secretary">secretary</option>
+                        <option value="moderator">moderator</option>
+                        <option value="student">student</option>
+                      </select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </PortalCard>
+        )}
 
         {canCreateInstitution && (
           <PortalCard title="Criar universidade" text="Cria a raiz institucional no TypeDB configurado para este portal." tone="wide" icon={GraduationCap}>
@@ -859,7 +984,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
           </form>
         </PortalCard>
 
-        <PortalCard title="Vinculos academicos" text="Matricula aluno na turma e professor na disciplina/semestre." tone="wide" icon={Users}>
+        <PortalCard title="2. Matriculas e designacoes" text="Busque o usuario, clique no resultado e confirme. O vinculo institucional e criado automaticamente se ainda nao existir." tone="wide" icon={Users}>
           <form className="academic-form" onSubmit={enrollStudent}>
             <select value={studentDraft.classGroupId} onChange={event => setStudentDraft(prev => ({ ...prev, classGroupId: event.target.value }))} required>
               <option value="">Turma do aluno</option>
@@ -871,8 +996,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
               value={studentDraft.username}
               onChange={username => setStudentDraft(prev => ({ ...prev, username }))}
               placeholder="Pesquise o aluno por nome ou username"
-              requiredRole="student"
-              emptyText="Nenhum aluno aprovado disponivel para esta instituicao."
+              searchScope="directory"
+              emptyText="Nenhum usuario encontrado. Verifique o username na rede social."
             />
             <button className="btn btn-primary" disabled={!classGroups.length}>Matricular aluno</button>
           </form>
@@ -891,8 +1016,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
               value={professorDraft.username}
               onChange={username => setProfessorDraft(prev => ({ ...prev, username }))}
               placeholder="Pesquise o professor por nome ou username"
-              requiredRole="professor"
-              emptyText="Nenhum professor aprovado disponivel para esta instituicao."
+              searchScope="directory"
+              emptyText="Nenhum usuario encontrado. Verifique o username na rede social."
             />
             <button className="btn btn-primary" disabled={!semesters.length || !subjects.length}>Vincular professor</button>
           </form>
@@ -908,33 +1033,11 @@ export default function AcademicPortalPage({ onOpenAva }) {
                 value={coordinatorDraft.username}
                 onChange={username => setCoordinatorDraft(prev => ({ ...prev, username }))}
                 placeholder="Pesquise o coordenador por nome ou username"
-                requiredRole="coordination"
-                emptyText="Nenhum coordenador disponivel para esta instituicao."
+                searchScope="directory"
+                emptyText="Nenhum usuario encontrado. Verifique o username na rede social."
               />
               <button className="btn btn-primary" disabled={!institutionCourses.length}>Atribuir coordenador</button>
             </form>
-          )}
-          {memberships.length > 0 && (
-            <div className="academic-table-list">
-              {memberships.map(member => (
-                <div key={member.id}>
-                  <span>{member.name}<small>@{member.username} - {member.status}</small></span>
-                  {member.status !== 'approved' && hasPermission(user, 'enrollments:update') && (
-                    <button className="btn btn-secondary" onClick={() => approveMembership(member.id)}>Aprovar</button>
-                  )}
-                  {canAssignRoles && member.status === 'approved' && (
-                    <select value={member.role} onChange={event => changeMembershipRole(member.id, event.target.value)}>
-                      {hasPermission(user, 'permissions:manage') && <option value="admin">admin</option>}
-                      <option value="coordination">coordination</option>
-                      <option value="professor">professor</option>
-                      <option value="secretary">secretary</option>
-                      <option value="moderator">moderator</option>
-                      <option value="student">student</option>
-                    </select>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
         </PortalCard>
       </motion.section>

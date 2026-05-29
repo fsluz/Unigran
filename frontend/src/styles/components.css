@@ -3953,9 +3953,9 @@
   gap: 18px;
   min-height: 172px;
   padding: 24px;
-  border: 1px solid #dce5ef;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(0,83,135,.12), rgba(255,255,255,.92)), #fff;
+  background: linear-gradient(135deg, rgba(0,83,135,.12), color-mix(in srgb, var(--card) 92%, transparent));
   box-shadow: var(--shadow-sm);
 }
 .academic-portal-hero span,
@@ -3985,9 +3985,9 @@
   display: grid;
   gap: 4px;
   padding: 12px;
-  border: 1px solid #dce5ef;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255,255,255,.76);
+  background: color-mix(in srgb, var(--card) 76%, transparent);
 }
 .academic-hero-actions strong {
   color: var(--text);
@@ -4011,9 +4011,9 @@
   gap: 14px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid #dce5ef;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   box-shadow: var(--shadow-sm);
 }
 .academic-portal-card.wide { grid-column: 1 / -1; }
@@ -4200,9 +4200,11 @@
 }
 .academic-user-picker {
   position: relative;
+  z-index: 2;
 }
 .academic-user-picker .academic-search-results {
   margin-top: 0;
+  z-index: 60;
 }
 .academic-user-picker .academic-search-results button span {
   overflow: hidden;
@@ -4793,7 +4795,7 @@
 }
 .academic-portal-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-color: color-mix(in srgb, var(--border) 70%, transparent);
   border-radius: 14px;
   background:

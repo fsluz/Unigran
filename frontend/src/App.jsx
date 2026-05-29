@@ -49,6 +49,10 @@ function AppShell() {
 
   const navigate = (id) => {
     if (id === 'campus' && hasPermission(user, 'platform:read')) {
+      if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
+        setPage('campus');
+        return;
+      }
       setEnteringPortal(true);
       return;
     }
@@ -139,6 +143,7 @@ function AppShell() {
         <PortalEntryTransition
           role={user.role}
           onComplete={() => {
+            sessionStorage.setItem('unigran:portal-entry-seen', '1');
             setEnteringPortal(false);
             setPage('campus');
           }}

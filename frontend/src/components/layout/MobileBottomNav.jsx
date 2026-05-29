@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import raiMascot from '../../assets/rai-mascot.png.png';
+import raiMascot from '@docs/rai.png';
 
 const MAIN = [
   { id: 'home', label: 'Início', icon: 'home' },

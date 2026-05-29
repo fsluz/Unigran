@@ -82,10 +82,14 @@ export const DIRECT_ROLE_PERMISSIONS = {
   ],
   coordination: [
     'institutions:read',
+    'faculties:manage',
     'courses:manage',
     'classes:manage',
     'academic:manage',
+    'users:read',
     'users:approve',
+    'enrollments:manage',
+    'roles:assign',
   ],
   admin: [
     'faculties:manage',
@@ -110,7 +114,7 @@ export const ROLE_INHERITANCE = {
   social_admin: ['moderator'],
   secretary: ['student'],
   professor: ['student'],
-  coordination: ['professor'],
+  coordination: ['professor', 'secretary'],
   admin: ['coordination', 'secretary'],
   super_admin: ['admin', 'social_admin'],
 };

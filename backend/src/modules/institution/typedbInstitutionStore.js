@@ -164,6 +164,8 @@ export async function createUniversity(user, payload) {
         has institution-updated-at ${createdAt};
       $creator_link isa institution-university-creator, links (creator: $creator, university: $university);
   `);
+  const creatorRole = ['super_admin', 'admin'].includes(normalizeUniversityRole(user?.role)) ? 'admin' : 'coordination';
+  await inviteInstitutionMember(universityId, { username: user.username, role: creatorRole }).catch(() => null);
   return getUniversityHierarchy(id);
 }
 
@@ -588,8 +590,12 @@ async function ensureAcademicEnrollment(offeringId, username, registration) {
 }
 
 export async function enrollStudentInClassGroup(universityId, classGroupId, payload) {
+  const username = String(payload.username || '').trim().replace(/^@/, '');
+  if (!username) throw appError('Informe o username do aluno', 400);
   await assertClassGroupInUniversity(universityId, classGroupId);
-  await assertApprovedInstitutionMember(universityId, payload.username, 'student', 'Aluno');
+  await inviteInstitutionMember(universityId, { username, role: 'student' });
+  await assertApprovedInstitutionMember(universityId, username, 'student', 'Aluno');
+  payload = { ...payload, username };
   const person = await readQuery(`
     match $student isa person, has username "${safe(payload.username)}";
     fetch { "student": { $student.* } };
@@ -646,9 +652,13 @@ export async function enrollStudentInClassGroup(universityId, classGroupId, payl
 }
 
 export async function assignProfessorToSubjectSemester(universityId, semesterId, subjectId, payload) {
+  const username = String(payload.username || '').trim().replace(/^@/, '');
+  if (!username) throw appError('Informe o username do professor', 400);
   await assertSemesterInUniversity(universityId, semesterId);
   await assertSubjectInUniversity(universityId, subjectId);
-  await assertApprovedInstitutionMember(universityId, payload.username, 'professor', 'Professor');
+  await inviteInstitutionMember(universityId, { username, role: 'professor' });
+  await assertApprovedInstitutionMember(universityId, username, 'professor', 'Professor');
+  payload = { ...payload, username };
   const person = await readQuery(`
     match $professor isa person, has username "${safe(payload.username)}";
     fetch { "professor": { $professor.* } };
@@ -798,6 +808,7 @@ export async function searchInstitutionUsers(universityId, query, options = {}) 
       username: row.username,
       name: row.name || row.username,
       role: normalizeUniversityRole(row.role),
+      membershipStatus: 'approved',
       active: !isFalse(row.active),
       banned: isTrue(row.banned),
     }))
@@ -805,6 +816,109 @@ export async function searchInstitutionUsers(universityId, query, options = {}) 
     .filter(person => !requiredRole || person.role === requiredRole)
     .filter(person => `${person.username} ${person.name}`.toLowerCase().includes(term))
     .slice(0, 8);
+}
+
+export async function searchDirectoryUsers(universityId, query, options = {}) {
+  await ensureUniversity(universityId);
+  const term = String(query || '').trim().toLowerCase();
+  if (term.length < 2) return [];
+  const requiredRole = options.role ? normalizeUniversityRole(options.role) : '';
+  const memberships = await listMemberships(universityId);
+  const membershipByUser = new Map(memberships.map(item => [item.username, item]));
+  const rows = await readQuery(`
+    match
+      $person isa person, has username $username;
+      try { $person has name $name; };
+      try { $person has is-active $active; };
+      try { $person has is-banned $banned; };
+      try { $person has user-role $platform_role; };
+    fetch { "username": $username, "name": $name, "active": $active, "banned": $banned, "platform_role": $platform_role };
+  `);
+  return rows
+    .map(row => {
+      const membership = membershipByUser.get(row.username);
+      const institutionRole = membership ? normalizeUniversityRole(membership.role) : '';
+      return {
+        username: row.username,
+        name: row.name || row.username,
+        role: institutionRole || normalizeUniversityRole(row.platform_role || 'user'),
+        institutionRole,
+        membershipStatus: membership?.status || 'none',
+        active: !isFalse(row.active),
+        banned: isTrue(row.banned),
+      };
+    })
+    .filter(person => person.active && !person.banned)
+    .filter(person => `${person.username} ${person.name}`.toLowerCase().includes(term))
+    .filter(person => !requiredRole || !person.institutionRole || person.institutionRole === requiredRole)
+    .slice(0, 12);
+}
+
+export async function inviteInstitutionMember(universityId, payload) {
+  await ensureUniversity(universityId);
+  const username = String(payload.username || '').trim();
+  if (!username) throw appError('Informe o username do usuario', 400);
+  const role = normalizeUniversityRole(payload.role || 'student');
+  if (!['coordination', 'professor', 'secretary', 'moderator', 'student', 'admin'].includes(role)) {
+    throw appError('Papel institucional invalido', 400);
+  }
+
+  const person = await readQuery(`
+    match $person isa person, has username "${safe(username)}";
+    fetch { "person": { $person.* } };
+  `);
+  if (!person.length) throw appError('Usuario nao encontrado na plataforma', 404);
+
+  const existing = await readQuery(`
+    match
+      $member isa person, has username "${safe(username)}";
+      $university isa educational-institute, has institution-id "${safe(universityId)}";
+      $membership isa institution-membership, links (member: $member, university: $university),
+        has institution-membership-id $membership_id,
+        has institution-role $role,
+        has institution-status $status;
+    fetch { "membership_id": $membership_id, "role": $role, "status": $status };
+  `);
+
+  if (existing.length) {
+    const current = existing[0];
+    if (current.status !== 'approved') {
+      await approveMembership(universityId, current.membership_id);
+    }
+    if (normalizeUniversityRole(current.role) !== role) {
+      await setMembershipRole(universityId, current.membership_id, role);
+    }
+    return { memberships: await listMemberships(universityId), username, role, status: 'approved' };
+  }
+
+  const id = `membership-${uuid()}`;
+  const createdAt = now();
+  await writeQuery(`
+    match
+      $member isa person, has username "${safe(username)}";
+      $university isa educational-institute, has institution-id "${safe(universityId)}";
+    insert
+      $membership isa institution-membership, links (member: $member, university: $university),
+        has institution-membership-id "${id}",
+        has institution-role "${safe(role)}",
+        has institution-status "approved",
+        has institution-created-at ${createdAt},
+        has institution-updated-at ${createdAt};
+  `);
+
+  if (role === 'student') {
+    await writeQuery(`
+      match $member isa person, has username "${safe(username)}", has user-role "user";
+      update $member has user-role "student";
+    `).catch(() => null);
+  } else if (role !== 'user') {
+    await writeQuery(`
+      match $member isa person, has username "${safe(username)}";
+      update $member has user-role "${safe(role)}";
+    `).catch(() => null);
+  }
+
+  return { memberships: await listMemberships(universityId), username, role, status: 'approved' };
 }
 
 export async function approveMembership(universityId, membershipId) {
@@ -872,8 +986,12 @@ export async function setMembershipRole(universityId, membershipId, role) {
 }
 
 export async function assignCoordinatorToCourse(universityId, courseId, payload) {
+  const username = String(payload.username || '').trim().replace(/^@/, '');
+  if (!username) throw appError('Informe o username do coordenador', 400);
   await assertCourseInUniversity(universityId, courseId);
-  await assertApprovedInstitutionMember(universityId, payload.username, 'coordination', 'Coordenador');
+  await inviteInstitutionMember(universityId, { username, role: 'coordination' });
+  await assertApprovedInstitutionMember(universityId, username, 'coordination', 'Coordenador');
+  payload = { ...payload, username };
   const assigned = await readQuery(`
     match
       $coordinator isa person, has username "${safe(payload.username)}";

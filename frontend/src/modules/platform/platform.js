@@ -364,12 +364,22 @@ export async function enrollInstitutionStudent(token, universityId, classGroupId
   return readJson(res, 'Erro ao matricular aluno na turma');
 }
 
-export async function searchInstitutionUsers(token, universityId, query, role = '') {
+export async function searchInstitutionUsers(token, universityId, query, role = '', scope = 'members') {
   const roleQuery = role ? `&role=${encodeURIComponent(role)}` : '';
-  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/users/search?q=${encodeURIComponent(query)}${roleQuery}`, {
+  const scopeQuery = scope && scope !== 'members' ? `&scope=${encodeURIComponent(scope)}` : '';
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/users/search?q=${encodeURIComponent(query)}${roleQuery}${scopeQuery}`, {
     headers: authHeaders(token),
   });
   return readJson(res, 'Erro ao pesquisar usuarios');
+}
+
+export async function inviteInstitutionMember(token, universityId, payload) {
+  const res = await apiFetch(`/platform/v1/institutions/universities/${universityId}/memberships/invite`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return readJson(res, 'Erro ao vincular usuario a instituicao');
 }
 
 export async function assignInstitutionProfessor(token, universityId, semesterId, subjectId, payload) {
