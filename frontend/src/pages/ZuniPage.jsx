@@ -56,6 +56,7 @@ export default function ZuniPage({ onOpenProfile }) {
   const touchStartRef = useRef(null);
   const scrollLockRef = useRef(false);
   const videoRefs = useRef(new Map());
+  const videoTimesRef = useRef(new Map());
   const volumeRef = useRef(null);
 
   const isMobileZuniView = () => window.matchMedia('(max-width: 760px)').matches;
@@ -116,8 +117,11 @@ export default function ZuniPage({ onOpenProfile }) {
       video.muted = muted;
       video.volume = volume;
       if (postId === activePostId) {
+        const lastTime = videoTimesRef.current.get(postId);
+        if (lastTime && Math.abs(video.currentTime - lastTime) > 1) video.currentTime = lastTime;
         video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
       } else {
+        if (Number.isFinite(video.currentTime)) videoTimesRef.current.set(postId, video.currentTime);
         video.pause();
       }
     }
@@ -189,7 +193,9 @@ export default function ZuniPage({ onOpenProfile }) {
   const seekActiveVideo = (nextPercent) => {
     const video = videoRefs.current.get(activePostId);
     if (!video?.duration) return;
-    video.currentTime = (Number(nextPercent) / 100) * video.duration;
+    const nextTime = (Number(nextPercent) / 100) * video.duration;
+    video.currentTime = nextTime;
+    videoTimesRef.current.set(activePostId, nextTime);
     setProgress(Number(nextPercent));
   };
 
@@ -309,9 +315,16 @@ export default function ZuniPage({ onOpenProfile }) {
                     onClick={toggleActivePlayback}
                     onPlay={() => post.id === activePostId && setPlaying(true)}
                     onPause={() => post.id === activePostId && setPlaying(false)}
+                    onLoadedMetadata={event => {
+                      const savedTime = videoTimesRef.current.get(post.id);
+                      if (savedTime && event.currentTarget.duration && savedTime < event.currentTarget.duration) {
+                        event.currentTarget.currentTime = savedTime;
+                      }
+                    }}
                     onTimeUpdate={event => {
                       if (post.id !== activePostId) return;
                       const video = event.currentTarget;
+                      if (Number.isFinite(video.currentTime)) videoTimesRef.current.set(post.id, video.currentTime);
                       setProgress(video.duration ? (video.currentTime / video.duration) * 100 : 0);
                     }}
                   />
@@ -324,7 +337,13 @@ export default function ZuniPage({ onOpenProfile }) {
                   </div>
                 )}
 
-                <div ref={volumeRef} className={`zuni-sound ${volumeOpen ? 'open' : ''}`}>
+                <div
+                  ref={volumeRef}
+                  className={`zuni-sound ${volumeOpen ? 'open' : ''}`}
+                  onMouseDown={event => event.stopPropagation()}
+                  onPointerDown={event => event.stopPropagation()}
+                  onClick={event => event.stopPropagation()}
+                >
                   <button onClick={toggleActivePlayback} title={playing ? 'Pausar' : 'Tocar'} aria-label={playing ? 'Pausar' : 'Tocar'}>
                     <ZuniIcon name={playing ? 'pause' : 'play'} />
                   </button>

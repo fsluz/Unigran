@@ -74,6 +74,7 @@ export default function MessagesPage() {
   const callChannelRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
+  const pendingIceRef = useRef([]);
   const deviceIdRef = useRef(localStorage.getItem('unigran_device_id') || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const callIdRef = useRef(null);
   const ringtoneRef = useRef(null);
@@ -81,6 +82,44 @@ export default function MessagesPage() {
   const conversationSearchRef = useRef(null);
   const messagesEndRef = useRef(null);
   const unreadMarkerRef = useRef(null);
+
+  const addOrQueueIce = async (candidate) => {
+    if (!candidate) return;
+    if (!pcRef.current || !pcRef.current.remoteDescription) {
+      pendingIceRef.current.push(candidate);
+      return;
+    }
+    await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+  };
+
+  const flushPendingIce = async () => {
+    if (!pcRef.current?.remoteDescription) return;
+    const pending = pendingIceRef.current.splice(0);
+    for (const candidate of pending) {
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+    }
+  };
+
+  const ensureReceiveTracks = (pc, stream, kind) => {
+    if (!stream?.getAudioTracks?.().length) pc.addTransceiver('audio', { direction: 'recvonly' });
+    if (kind === 'video' && !stream?.getVideoTracks?.().length) pc.addTransceiver('video', { direction: 'recvonly' });
+  };
+
+  const syncRemoteMedia = () => {
+    if (!remoteStreamRef.current) return;
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      remoteVideoRef.current.muted = Boolean(call?.soundMuted);
+      remoteVideoRef.current.volume = call?.soundMuted ? 0 : 1;
+      remoteVideoRef.current.play?.().catch(() => null);
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = remoteStreamRef.current;
+      remoteAudioRef.current.muted = Boolean(call?.soundMuted);
+      remoteAudioRef.current.volume = call?.soundMuted ? 0 : 1;
+      remoteAudioRef.current.play?.().catch(() => null);
+    }
+  };
 
   function ChatIcon({ name, size = 20 }) {
     const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true };
@@ -389,14 +428,14 @@ export default function MessagesPage() {
       if (callIdRef.current && callId && callIdRef.current !== callId) return;
       if (!pcRef.current || !answer) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+      await flushPendingIce();
       setCall(prev => prev ? { ...prev, status: 'Conectado', remoteDeviceId: data?.fromDeviceId || prev.remoteDeviceId } : prev);
     };
     const onIce = async ({ data }) => {
       const { candidate, callId, toDeviceId } = data || {};
       if (toDeviceId && toDeviceId !== deviceIdRef.current) return;
       if (callIdRef.current && callId && callIdRef.current !== callId) return;
-      if (!pcRef.current || !candidate) return;
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+      await addOrQueueIce(candidate);
     };
     const onAccepted = ({ data }) => {
       if (!incomingCall) return;
@@ -434,14 +473,14 @@ export default function MessagesPage() {
       if (callIdRef.current && callId && callIdRef.current !== callId) return;
       if (!pcRef.current || !answer) return;
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => null);
+      await flushPendingIce();
       setCall(prev => prev ? { ...prev, status: 'Conectado', remoteDeviceId: data?.fromDeviceId || prev.remoteDeviceId } : prev);
     };
     const onIce = async ({ data }) => {
       const { candidate, callId, toDeviceId } = data || {};
       if (toDeviceId && toDeviceId !== deviceIdRef.current) return;
       if (callIdRef.current && callId && callIdRef.current !== callId) return;
-      if (!pcRef.current || !candidate) return;
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => null);
+      await addOrQueueIce(candidate);
     };
     const onAccepted = ({ data }) => {
       if (!incomingCall) return;
@@ -468,8 +507,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (callVideoRef.current && localStreamRef.current) callVideoRef.current.srcObject = localStreamRef.current;
-    if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
-    if (remoteAudioRef.current && remoteStreamRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current;
+    syncRemoteMedia();
   }, [call]);
 
   useEffect(() => {
@@ -891,16 +929,10 @@ export default function MessagesPage() {
     };
     pc.ontrack = event => {
       if (!remoteStreamRef.current) remoteStreamRef.current = new MediaStream();
-      remoteStreamRef.current.addTrack(event.track);
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStreamRef.current;
-        remoteVideoRef.current.muted = true;
-        remoteVideoRef.current.play?.().catch(() => null);
+      if (!remoteStreamRef.current.getTracks().some(track => track.id === event.track.id)) {
+        remoteStreamRef.current.addTrack(event.track);
       }
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = remoteStreamRef.current;
-        remoteAudioRef.current.play().catch(() => null);
-      }
+      syncRemoteMedia();
     };
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
@@ -944,6 +976,7 @@ export default function MessagesPage() {
   const toggleRemoteSound = () => {
     const nextMuted = !call?.soundMuted;
     if (remoteAudioRef.current) remoteAudioRef.current.muted = nextMuted;
+    if (remoteVideoRef.current) remoteVideoRef.current.muted = nextMuted;
     setCall(prev => prev ? { ...prev, soundMuted: nextMuted } : prev);
   };
 
@@ -974,6 +1007,7 @@ export default function MessagesPage() {
       localStreamRef.current = stream;
       remoteStreamRef.current = new MediaStream();
       const pc = makePeer(active.id);
+      ensureReceiveTracks(pc, stream, kind);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -1002,8 +1036,10 @@ export default function MessagesPage() {
       localStreamRef.current = stream;
       remoteStreamRef.current = new MediaStream();
       const pc = makePeer(incomingCall.conversationId);
+      ensureReceiveTracks(pc, stream, incomingCall.kind);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
       await pc.setRemoteDescription(new RTCSessionDescription(incomingCall.offer));
+      await flushPendingIce();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       const channel = callChannelFor(incomingCall.conversationId);
@@ -1067,6 +1103,7 @@ export default function MessagesPage() {
     localStreamRef.current = null;
     remoteStreamRef.current = null;
     screenStreamRef.current = null;
+    pendingIceRef.current = [];
     callIdRef.current = null;
     setCall(null);
     setIncomingCall(null);
@@ -1306,16 +1343,23 @@ export default function MessagesPage() {
             </div>
 
             <div className="chat-messages">
-              {activeMessages.map(msg => {
+              {activeMessages.map((msg, index) => {
                 const mine = msg.author?.id === user?.username || msg.author?.id === user?.id;
                 const msgAuthor = authorForMessage(msg);
+                const previous = activeMessages[index - 1];
+                const previousMine = previous && (previous.author?.id === user?.username || previous.author?.id === user?.id);
+                const sameAuthor = previous && (previous.author?.id === msg.author?.id);
+                const previousTime = previous?.time ? new Date(previous.time).getTime() : 0;
+                const currentTime = msg.time ? new Date(msg.time).getTime() : 0;
+                const closeTime = previousTime && currentTime && Math.abs(currentTime - previousTime) < 5 * 60 * 1000;
+                const compactMessage = sameAuthor && previousMine === mine && closeTime && unreadMarkerId !== msg.id;
                 return (
                   <div key={msg.id} className="msg-block">
                     {unreadMarkerId === msg.id && (
                       <div ref={unreadMarkerRef} className="unread-divider"><span>Mensagens nao lidas</span></div>
                     )}
-                    <div className={`msg-row ${mine ? 'me' : ''}`}>
-                      {!mine && (
+                    <div className={`msg-row ${mine ? 'me' : ''} ${compactMessage ? 'compact' : ''}`}>
+                      {!mine && !compactMessage && (
                         <Avatar
                           size={30}
                           src={msgAuthor?.profilePicture || null}
@@ -1324,9 +1368,10 @@ export default function MessagesPage() {
                           initials={(msgAuthor?.displayName || msgAuthor?.username || active.title || '?').slice(0, 2)}
                         />
                       )}
+                      {!mine && compactMessage && <span className="msg-avatar-spacer" />}
                       <div className="msg-stack">
                         <div className={`msg-bubble ${mine ? 'me' : ''}`}>
-                          {!mine && active.type === 'group' && <strong className="msg-author-name">{msgAuthor?.displayName || msgAuthor?.username || 'Usuario'}</strong>}
+                          {!mine && active.type === 'group' && !compactMessage && <strong className="msg-author-name">{msgAuthor?.displayName || msgAuthor?.username || 'Usuario'}</strong>}
                           {msg.content && <div>{msg.content}</div>}
                           {msg.edited && <small className="msg-edited">editada</small>}
                           {renderMedia(msg.media)}
@@ -1346,7 +1391,7 @@ export default function MessagesPage() {
                           </div>
                         )}
                         <div className={`msg-meta-line ${mine ? 'me' : ''}`}>
-                          <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>
+                          {!compactMessage && <div className={`msg-time ${mine ? 'me' : ''}`}>{relativeTime(msg.time)}</div>}
                           <div className="msg-menu-wrap">
                             <button className="msg-react-btn" onClick={() => setReactionPickerOpen(reactionPickerOpen === msg.id ? null : msg.id)} title="Reagir">+</button>
                             {reactionPickerOpen === msg.id && (

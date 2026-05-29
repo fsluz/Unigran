@@ -35,6 +35,9 @@
 
 .msg-row { display:flex; gap:8px; align-items:flex-end; }
 .msg-row.me { justify-content:flex-end; }
+.msg-row.compact { margin-top: -8px; }
+.msg-row.compact .msg-bubble { border-radius: 14px; }
+.msg-avatar-spacer { width: 30px; flex: 0 0 30px; }
 .msg-stack { display:flex; flex-direction:column; align-items: flex-start; max-width: 78%; }
 .msg-stack .msg-bubble.me { align-self: flex-end; }
 
