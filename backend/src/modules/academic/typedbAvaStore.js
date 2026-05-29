@@ -65,17 +65,21 @@ function numberValue(value, fallback = 0) {
 
 function authorizationMatch(user, offering = '$offering') {
   const username = safe(usernameOf(user));
-  if (roleOf(user) === 'super_admin') return '';
+  // $viewer is ALWAYS declared so try{} blocks that use $viewer don't need to re-declare it
+  const viewer = `$viewer isa person, has username "${username}";`;
+  if (roleOf(user) === 'super_admin') {
+    return viewer; // no additional filter – super_admin sees everything
+  }
   if (roleOf(user) === 'admin') {
-    return `$viewer isa person, has username "${username}"; $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; { $membership has institution-role "university_admin"; } or { $membership has institution-role "admin"; };`;
+    return `${viewer} $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; { $membership has institution-role "university_admin"; } or { $membership has institution-role "admin"; };`;
   }
   if (roleOf(user) === 'coordination') {
-    return `$viewer isa person, has username "${username}"; $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; $subject isa institution-subject; academic-offering-subject-link(offering: ${offering}, subject: $subject); $managed_course isa institution-course; institution-subject-link(course: $managed_course, subject: $subject); $scope isa institution-course-coordination, links (coordinator: $viewer, course: $managed_course), has institution-status "approved";`;
+    return `${viewer} $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; $subject isa institution-subject; academic-offering-subject-link(offering: ${offering}, subject: $subject); $managed_course isa institution-course; institution-subject-link(course: $managed_course, subject: $subject); $scope isa institution-course-coordination, links (coordinator: $viewer, course: $managed_course), has institution-status "approved";`;
   }
   if (roleOf(user) === 'professor') {
-    return `$viewer isa person, has username "${username}"; academic-teaching-assignment(teacher: $viewer, offering: ${offering});`;
+    return `${viewer} academic-teaching-assignment(teacher: $viewer, offering: ${offering});`;
   }
-  return `$viewer isa person, has username "${username}"; academic-enrollment(student: $viewer, offering: ${offering});`;
+  return `${viewer} academic-enrollment(student: $viewer, offering: ${offering});`;
 }
 
 async function readAccessibleOfferings(user) {
@@ -137,7 +141,6 @@ async function readMaterials(offeringId, user) {
       academic-offering-material(offering: $offering, material: $material);
       ${authorizationMatch(user)}
       try {
-        $viewer isa person, has username "${safe(usernameOf(user))}";
         $completion isa academic-material-completion, links (material: $material, student: $viewer);
       };
     fetch { "material": { $material.* }, "completion": { $completion.* } };
@@ -181,7 +184,6 @@ async function readActivities(offeringId, user) {
       academic-offering-activity(offering: $offering, activity: $activity);
       ${authorizationMatch(user)}
       try {
-        $viewer isa person, has username "${safe(usernameOf(user))}";
         $submission isa academic-submission;
         academic-activity-submission(activity: $activity, submission: $submission, student: $viewer);
       };
@@ -264,9 +266,10 @@ async function readStudents(offeringId) {
 }
 
 async function readAttendance(offeringId, user) {
+  // $viewer is always declared by authorizationMatch above; just constrain for students
   const viewerFilter = roleOf(user) === 'professor' || isAcademicManager(user)
     ? ''
-    : `$viewer isa person, has username "${safe(usernameOf(user))}"; $viewer is $student;`;
+    : `$viewer is $student;`;
   const rows = await readQuery(`
     match
       $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
@@ -397,7 +400,51 @@ async function readNotifications(user) {
   })).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+// Self-healing: create missing academic-teaching-assignment for professor
+// Bridges institution-professor-subject → academic-teaching-assignment for legacy/out-of-order data
+export async function ensureTeachingAssignments(user) {
+  if (roleOf(user) !== 'professor') return;
+  const username = safe(usernameOf(user));
+  const expectedOfferings = await readQuery(`
+    match
+      $professor isa person, has username "${username}";
+      $subject isa institution-subject;
+      $semester isa institution-semester;
+      institution-professor-subject(professor: $professor, subject: $subject, semester: $semester),
+        has institution-status "approved";
+      $offering isa academic-course-offering;
+      academic-offering-subject-link(offering: $offering, subject: $subject);
+      institution-class-group-link(semester: $semester, class-group: $class_group);
+      academic-offering-class-group-link(offering: $offering, class-group: $class_group);
+    fetch { "offering": { $offering.* } };
+  `).catch(() => []);
+
+  for (const row of expectedOfferings) {
+    const offeringId = attr(attrs(row, 'offering'), 'academic-offering-id');
+    if (!offeringId) continue;
+    const exists = await readQuery(`
+      match
+        $professor isa person, has username "${username}";
+        $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+        academic-teaching-assignment(teacher: $professor, offering: $offering);
+      fetch { "offering": { $offering.* } };
+    `).catch(() => []);
+    if (!exists.length) {
+      await writeQuery(`
+        match
+          $professor isa person, has username "${username}";
+          $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";
+        insert
+          $ta isa academic-teaching-assignment, links (teacher: $professor, offering: $offering),
+            has academic-role "professor",
+            has academic-status "active";
+      `).catch(() => null);
+    }
+  }
+}
+
 export async function getAvaState(user) {
+  if (roleOf(user) === 'professor') await ensureTeachingAssignments(user);
   const courses = await buildCourses(user);
   const notifications = await readNotifications(user);
   const activities = courses.flatMap(course => course.activities);

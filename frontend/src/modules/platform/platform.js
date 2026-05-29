@@ -154,6 +154,14 @@ export async function fetchAva(token) {
   return readJson(res, 'Erro ao carregar AVA');
 }
 
+export async function syncAvaAccess(token) {
+  const res = await apiFetch('/platform/v1/ava/sync', {
+    method: 'POST',
+    headers: authHeaders(token),
+  });
+  return readJson(res, 'Erro ao sincronizar acesso ao AVA');
+}
+
 export async function completeMaterial(token, materialId, completed = true) {
   const res = await apiFetch(`/platform/v1/ava/materials/${materialId}/complete`, {
     method: 'POST',

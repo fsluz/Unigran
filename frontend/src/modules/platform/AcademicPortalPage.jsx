@@ -38,6 +38,7 @@ import {
   fetchMyInstitutionMemberships,
   requestInstitutionMembership,
   searchInstitutionUsers,
+  syncAvaAccess,
 } from './platform';
 
 const pageVariants = {
@@ -308,6 +309,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const [inviteDraft, setInviteDraft] = useState({ username: '', role: 'student' });
   const [catalogUniversities, setCatalogUniversities] = useState([]);
   const [myMemberships, setMyMemberships] = useState([]);
+  const [syncing, setSyncing] = useState(false);
 
   const reload = async () => {
     setLoading(true);
@@ -688,6 +690,20 @@ export default function AcademicPortalPage({ onOpenAva }) {
     && !universities.length
     && catalogUniversities.length > 0;
 
+  const syncAccess = async () => {
+    setSyncing(true);
+    try {
+      const data = await syncAvaAccess(token);
+      setAva(data);
+      await refreshUser();
+      showToast('Acesso sincronizado. Disciplinas atualizadas.', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao sincronizar acesso', '!');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const inviteMember = async (event) => {
     event.preventDefault();
     if (!selectedUniversityId) return;
@@ -782,21 +798,38 @@ export default function AcademicPortalPage({ onOpenAva }) {
           <Stat label="Alunos" value={String(teacherDashboard.totalStudents || enrolledStudents)} hint="matriculados" icon={Users} />
           <Stat label="Correcoes" value={String(pendingCorrections)} hint="entregas aguardando nota" icon={CheckCircle2} />
         </div>
-        <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>
-          Gerenciar atividades e presenca <ArrowUpRight size={16} />
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary academic-premium-cta" onClick={onOpenAva}>
+            Gerenciar atividades e presenca <ArrowUpRight size={16} />
+          </button>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            onClick={syncAccess}
+            disabled={syncing}
+            title="Use se suas disciplinas nao aparecem no AVA"
+          >
+            {syncing ? 'Sincronizando...' : 'Sincronizar acesso ao AVA'}
+          </button>
+        </div>
+        {!courses.length && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>
+            Nenhuma disciplina encontrada. Se voce foi atribuido recentemente,
+            clique em &quot;Sincronizar acesso ao AVA&quot; para corrigir.
+          </p>
+        )}
       </PortalCard>
       <PortalCard title="Turmas atribuidas" icon={Users}>
         {courses.length ? (
           <div className="academic-table-list">
             {courses.map(course => (
               <div key={course.id}>
-                <span>{course.name}<small>{course.professor || 'Sem professor atribuido'}</small></span>
+                <span>{course.name}<small>{course.code} · {course.period}</small></span>
                 <strong>{course.students?.length || 0} alunos</strong>
               </div>
             ))}
           </div>
-        ) : <EmptyState>Nenhuma turma atribuida.</EmptyState>}
+        ) : <EmptyState>Nenhuma turma atribuida. Use &quot;Sincronizar acesso&quot; acima se necessario.</EmptyState>}
       </PortalCard>
     </motion.section>
   );
@@ -810,7 +843,9 @@ export default function AcademicPortalPage({ onOpenAva }) {
     const memberships = institutionData?.memberships || [];
     return (
       <motion.section className="academic-portal-grid" variants={pageVariants} initial="initial" animate="animate">
-        <PortalCard title="Universidade" text="Selecione a raiz institucional persistida no TypeDB." tone="wide" icon={GraduationCap}>
+
+        {/* ── ETAPA 0 : Selecionar / criar universidade ── */}
+        <PortalCard title="Universidade ativa" text="Selecione a instituicao que sera editada nas etapas abaixo." tone="wide" icon={GraduationCap}>
           <form className="academic-form" onSubmit={event => event.preventDefault()}>
             <select value={selectedUniversityId} onChange={async event => {
               const id = event.target.value;
@@ -824,7 +859,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
           {!universities.length && !needsInstitutionAccess && (
             <EmptyState>
               {canCreateInstitution
-                ? 'Nenhuma universidade cadastrada. Crie uma universidade no card abaixo.'
+                ? 'Nenhuma universidade cadastrada. Crie uma no bloco abaixo.'
                 : 'Nenhuma universidade cadastrada no sistema.'}
             </EmptyState>
           )}
@@ -880,8 +915,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
         {selectedUniversityId && canInviteMembers && (
           <PortalCard
-            title="1. Vinculos institucionais"
-            text="Antes de matricular ou designar professor, a pessoa precisa estar aprovada nesta universidade. Convide pelo username ou aprove solicitacoes pendentes."
+            title="ETAPA 1 · Vinculos institucionais"
+            text="Vincule e aprove as pessoas antes de matricular ou designar professor. Busque pelo username da plataforma."
             tone="wide"
             icon={Users}
           >
@@ -933,7 +968,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
         )}
 
         {canCreateInstitution && (
-          <PortalCard title="Criar universidade" text="Cria a raiz institucional no TypeDB configurado para este portal." tone="wide" icon={GraduationCap}>
+          <PortalCard title="Criar nova universidade" text="Cria a raiz institucional. Faca isso apenas uma vez por instituicao." tone="wide" icon={GraduationCap}>
             <form className="academic-form" onSubmit={createUniversity}>
               <input value={universityDraft.name} onChange={event => setUniversityDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da universidade" required />
               <input value={universityDraft.slug} onChange={event => setUniversityDraft(prev => ({ ...prev, slug: event.target.value }))} placeholder="Slug opcional" />
@@ -953,7 +988,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
           </PortalCard>
         )}
         {canCreateInstitution && institutionData?.university && (
-          <PortalCard title="Administrar universidade" text="Edicao e desativacao sao exclusivas do controle global." tone="wide" icon={GraduationCap}>
+          <PortalCard title="Administrar universidade selecionada" text="Edicao e desativacao sao exclusivas do super_admin." tone="wide" icon={GraduationCap}>
             <form className="academic-form" onSubmit={updateSelectedUniversity}>
               <input value={universityEdit.name} onChange={event => setUniversityEdit(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome" required />
               <input value={universityEdit.logo} onChange={event => setUniversityEdit(prev => ({ ...prev, logo: event.target.value }))} placeholder="URL do logo" />
@@ -969,16 +1004,22 @@ export default function AcademicPortalPage({ onOpenAva }) {
           </PortalCard>
         )}
 
-        <PortalCard title="Campus" text="Campus pertence a universidade selecionada." icon={Users}>
+        {/* ── ETAPA 2 : Estrutura academica ── */}
+        <PortalCard title="ETAPA 2 · Campus" text="Campus pertence a universidade selecionada." icon={Users}>
           <form className="academic-form" onSubmit={createCampus}>
             <input value={campusDraft.name} onChange={event => setCampusDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome do campus" required />
             <input value={campusDraft.city} onChange={event => setCampusDraft(prev => ({ ...prev, city: event.target.value }))} placeholder="Cidade" required />
-            <input value={campusDraft.state} onChange={event => setCampusDraft(prev => ({ ...prev, state: event.target.value }))} placeholder="UF" maxLength={2} required />
+            <input value={campusDraft.state} onChange={event => setCampusDraft(prev => ({ ...prev, state: event.target.value }))} placeholder="UF (ex: MS)" maxLength={2} required />
             <button className="btn btn-primary" disabled={!selectedUniversityId}>Criar campus</button>
           </form>
+          {campuses.length > 0 && (
+            <div className="academic-table-list">
+              {campuses.map(item => <div key={item.id}><span>{item.name}<small>{item.city} – {item.state}</small></span></div>)}
+            </div>
+          )}
         </PortalCard>
 
-        <PortalCard title="Curso" text="Curso de graduacao vinculado ao campus." icon={BookOpen}>
+        <PortalCard title="ETAPA 3 · Curso" text="Curso de graduacao vinculado ao campus." icon={BookOpen}>
           <form className="academic-form" onSubmit={createCourse}>
             <select value={courseDraft.campusId} onChange={event => setCourseDraft(prev => ({ ...prev, campusId: event.target.value }))} required>
               <option value="">Selecione o campus</option>
@@ -991,19 +1032,26 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <option value="technologist">Tecnologo</option>
               <option value="specialization">Especializacao</option>
             </select>
-            <input type="number" min={1} max={20} value={courseDraft.duration} onChange={event => setCourseDraft(prev => ({ ...prev, duration: event.target.value }))} placeholder="Duracao" required />
+            <input type="number" min={1} max={20} value={courseDraft.duration} onChange={event => setCourseDraft(prev => ({ ...prev, duration: event.target.value }))} placeholder="Duracao (semestres)" required />
             <button className="btn btn-primary" disabled={!campuses.length}>Criar curso</button>
           </form>
+          {institutionCourses.length > 0 && (
+            <div className="academic-table-list">
+              {institutionCourses.map(item => <div key={item.id}><span>{item.name}<small>{item.degreeType}</small></span></div>)}
+            </div>
+          )}
         </PortalCard>
 
-        <PortalCard title="Semestre e turma" text="Crie o semestre e a turma antes de abrir disciplinas no AVA." icon={PanelsTopLeft}>
+        <PortalCard title="ETAPA 4 · Semestre e Turma" text="Crie o semestre (ano/periodo) e depois a turma antes de abrir disciplinas no AVA." icon={PanelsTopLeft}>
           <form className="academic-form" onSubmit={createSemester}>
             <select value={semesterDraft.courseId} onChange={event => setSemesterDraft(prev => ({ ...prev, courseId: event.target.value }))} required>
               <option value="">Curso do semestre</option>
               {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <input type="number" value={semesterDraft.year} onChange={event => setSemesterDraft(prev => ({ ...prev, year: event.target.value }))} required />
-            <input type="number" min={1} max={4} value={semesterDraft.period} onChange={event => setSemesterDraft(prev => ({ ...prev, period: event.target.value }))} required />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input type="number" value={semesterDraft.year} onChange={event => setSemesterDraft(prev => ({ ...prev, year: event.target.value }))} placeholder="Ano" required style={{ flex: 1 }} />
+              <input type="number" min={1} max={4} value={semesterDraft.period} onChange={event => setSemesterDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo (1-4)" required style={{ flex: 1 }} />
+            </div>
             <button className="btn btn-primary" disabled={!institutionCourses.length}>Criar semestre</button>
           </form>
           <form className="academic-form" onSubmit={createClassGroup}>
@@ -1011,7 +1059,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <option value="">Semestre da turma</option>
               {semesters.map(item => <option key={item.id} value={item.id}>{item.year}.{item.period}</option>)}
             </select>
-            <input value={classDraft.code} onChange={event => setClassDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da turma" required />
+            <input value={classDraft.code} onChange={event => setClassDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da turma (ex: TI-001)" required />
             <select value={classDraft.shift} onChange={event => setClassDraft(prev => ({ ...prev, shift: event.target.value }))}>
               <option value="morning">Matutino</option>
               <option value="afternoon">Vespertino</option>
@@ -1020,18 +1068,31 @@ export default function AcademicPortalPage({ onOpenAva }) {
             </select>
             <button className="btn btn-primary" disabled={!semesters.length}>Criar turma</button>
           </form>
+          {classGroups.length > 0 && (
+            <div className="academic-table-list">
+              {classGroups.map(item => <div key={item.id}><span>{item.code}<small>{item.shift}</small></span></div>)}
+            </div>
+          )}
         </PortalCard>
 
-        <PortalCard title="Disciplina e AVA" text="A offering do AVA so abre depois da disciplina estar vinculada a uma turma." tone="wide" icon={BookOpen}>
+        <PortalCard title="ETAPA 5 · Disciplina" text="Disciplina pertence a um curso. Crie aqui antes de abrir no AVA." icon={BookOpen}>
           <form className="academic-form" onSubmit={createSubject}>
             <select value={subjectDraft.courseId} onChange={event => setSubjectDraft(prev => ({ ...prev, courseId: event.target.value }))} required>
               <option value="">Curso da disciplina</option>
               {institutionCourses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
             <input value={subjectDraft.name} onChange={event => setSubjectDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Nome da disciplina" required />
-            <input type="number" min={1} value={subjectDraft.workload} onChange={event => setSubjectDraft(prev => ({ ...prev, workload: event.target.value }))} placeholder="Carga horaria" required />
+            <input type="number" min={1} value={subjectDraft.workload} onChange={event => setSubjectDraft(prev => ({ ...prev, workload: event.target.value }))} placeholder="Carga horaria (horas)" required />
             <button className="btn btn-primary" disabled={!institutionCourses.length}>Criar disciplina</button>
           </form>
+          {subjects.length > 0 && (
+            <div className="academic-table-list">
+              {subjects.map(item => <div key={item.id}><span>{item.name}<small>{item.workload}h</small></span></div>)}
+            </div>
+          )}
+        </PortalCard>
+
+        <PortalCard title="ETAPA 6 · Abrir no AVA" text="Vincule disciplina + turma e abre a sala virtual. Isso cria o acesso no AVA para alunos e professor." tone="wide" icon={PanelsTopLeft}>
           <form className="academic-form" onSubmit={openAvaOffering}>
             <select value={offeringDraft.classGroupId} onChange={event => setOfferingDraft(prev => ({ ...prev, classGroupId: event.target.value }))} required>
               <option value="">Turma</option>
@@ -1041,8 +1102,8 @@ export default function AcademicPortalPage({ onOpenAva }) {
               <option value="">Disciplina</option>
               {subjects.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <input value={offeringDraft.code} onChange={event => setOfferingDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo da offering, ex: ESW-301" required />
-            <input value={offeringDraft.period} onChange={event => setOfferingDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo, ex: 2026.1" required />
+            <input value={offeringDraft.code} onChange={event => setOfferingDraft(prev => ({ ...prev, code: event.target.value }))} placeholder="Codigo (ex: ESW-301)" required />
+            <input value={offeringDraft.period} onChange={event => setOfferingDraft(prev => ({ ...prev, period: event.target.value }))} placeholder="Periodo (ex: 2026.1)" required />
             <select value={offeringDraft.scheduleDay} onChange={event => setOfferingDraft(prev => ({ ...prev, scheduleDay: event.target.value }))} required>
               <option value="">Dia da aula</option>
               {WEEK_DAYS.map(day => <option key={day.value} value={day.value}>{day.label}</option>)}
@@ -1060,20 +1121,21 @@ export default function AcademicPortalPage({ onOpenAva }) {
               max={MAX_LESSONS_PER_PERIOD}
               value={offeringDraft.lessonCount}
               onChange={event => setOfferingDraft(prev => ({ ...prev, lessonCount: event.target.value }))}
-              placeholder="Aulas por periodo"
+              placeholder="Qtde de aulas por periodo"
               aria-label="Quantidade de aulas por periodo"
               required
             />
             <div className="academic-schedule-summary" aria-live="polite">
-              <strong>{offeringDraft.lessonCount || 0} aulas de {CLASS_DURATION_MINUTES} minutos por periodo</strong>
-              <small>{buildClassSchedule(offeringDraft.scheduleDay, offeringDraft.scheduleStart, offeringDraft.lessonCount) || 'Selecione dia, hora inicial e quantidade de aulas.'}</small>
+              <strong>{offeringDraft.lessonCount || 0} aulas × {CLASS_DURATION_MINUTES} min</strong>
+              <small>{buildClassSchedule(offeringDraft.scheduleDay, offeringDraft.scheduleStart, offeringDraft.lessonCount) || 'Selecione dia, hora e qtde de aulas.'}</small>
             </div>
             <input value={offeringDraft.room} onChange={event => setOfferingDraft(prev => ({ ...prev, room: event.target.value }))} placeholder="Sala ou ambiente" required />
-            <button className="btn btn-primary" disabled={!classGroups.length || !subjects.length}>Abrir no AVA</button>
+            <button className="btn btn-primary" disabled={!classGroups.length || !subjects.length}>Abrir sala no AVA</button>
           </form>
         </PortalCard>
 
-        <PortalCard title="2. Matriculas e designacoes" text="Busque o usuario, clique no resultado e confirme. O vinculo institucional e criado automaticamente se ainda nao existir." tone="wide" icon={Users}>
+        {/* ── ETAPA 7 : Pessoas ── */}
+        <PortalCard title="ETAPA 7 · Matriculas e designacoes" text="Matricule alunos por turma e designe professores por disciplina/semestre. O vinculo institucional e criado automaticamente." tone="wide" icon={Users}>
           <form className="academic-form" onSubmit={enrollStudent}>
             <select value={studentDraft.classGroupId} onChange={event => setStudentDraft(prev => ({ ...prev, classGroupId: event.target.value }))} required>
               <option value="">Turma do aluno</option>
