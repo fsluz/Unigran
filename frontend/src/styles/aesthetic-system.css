@@ -1,0 +1,582 @@
+/*
+  Unified visual layer.
+  Keeps the existing Unigran purple/blue identity, but standardizes surfaces,
+  spacing, motion and component polish across the social, portal and admin UI.
+*/
+
+:root,
+[data-theme="light"] {
+  --page-bg: #f6f4ff;
+  --card: #ffffff;
+  --card-hover: #fbfaff;
+  --surface-raised: rgba(255, 255, 255, 0.88);
+  --surface-soft: rgba(255, 255, 255, 0.66);
+  --border: rgba(99, 102, 241, 0.16);
+  --border-soft: rgba(99, 102, 241, 0.09);
+
+  --text: #171136;
+  --text-2: #362b62;
+  --text-muted: #6d6590;
+  --text-light: #9b95b4;
+
+  --accent: #6d28d9;
+  --accent-2: #2563eb;
+  --accent-3: #0891b2;
+  --accent-warm: #f97316;
+  --accent-light: rgba(109, 40, 217, 0.1);
+  --accent-glow: rgba(79, 70, 229, 0.2);
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --shadow-sm: 0 10px 24px rgba(47, 35, 112, 0.08);
+  --shadow: 0 18px 48px rgba(47, 35, 112, 0.12);
+  --shadow-lg: 0 26px 70px rgba(47, 35, 112, 0.17);
+  --ring: 0 0 0 4px rgba(99, 102, 241, 0.16);
+  --gradient-brand: linear-gradient(135deg, #6d28d9 0%, #3159e8 58%, #0891b2 100%);
+  --gradient-soft: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,247,255,0.82));
+  --motion-fast: 150ms ease;
+  --motion: 220ms ease;
+}
+
+[data-theme="dark"] {
+  --page-bg: #080b18;
+  --card: #111827;
+  --card-hover: #172033;
+  --surface-raised: rgba(17, 24, 39, 0.86);
+  --surface-soft: rgba(15, 23, 42, 0.66);
+  --border: rgba(148, 163, 184, 0.2);
+  --border-soft: rgba(148, 163, 184, 0.12);
+
+  --text: #eef2ff;
+  --text-2: #d7ddf0;
+  --text-muted: #9ba7bd;
+  --text-light: #6f7b91;
+
+  --accent: #9b6cff;
+  --accent-2: #5b7cfa;
+  --accent-3: #22d3ee;
+  --accent-warm: #fb923c;
+  --accent-light: rgba(155, 108, 255, 0.16);
+  --accent-glow: rgba(91, 124, 250, 0.22);
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+  --shadow-sm: 0 10px 24px rgba(0, 0, 0, 0.22);
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 26px 70px rgba(0, 0, 0, 0.34);
+  --ring: 0 0 0 4px rgba(139, 92, 246, 0.2);
+  --gradient-brand: linear-gradient(135deg, #8b5cf6 0%, #4f7ef4 58%, #06b6d4 100%);
+  --gradient-soft: linear-gradient(180deg, rgba(17,24,39,0.92), rgba(8,11,24,0.84));
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 30%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent-3) 11%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--page-bg) 92%, #fff), var(--page-bg));
+}
+
+button,
+input,
+textarea,
+select,
+.card,
+.panel-card,
+.post-card,
+.settings-section,
+.settings-panel,
+.modal-box,
+.community-box,
+.community-hero-card,
+.admin-hub-card,
+.admin-hub-panel,
+.admin-hub-metric,
+.explore-tile {
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast),
+    color var(--motion-fast),
+    box-shadow var(--motion),
+    transform var(--motion);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.page-scroll {
+  background:
+    radial-gradient(circle at 52% -8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 28%),
+    transparent;
+}
+
+.page-center {
+  padding-top: 24px;
+}
+
+.page-layout {
+  gap: 22px;
+}
+
+.card,
+.panel-card,
+.post-card,
+.post-composer,
+.stories-strip,
+.settings-section,
+.settings-panel,
+.modal-box,
+.community-box,
+.community-hero-card,
+.admin-hub-card,
+.admin-hub-panel,
+.admin-hub-metric,
+.notifications-empty,
+.empty-state,
+.profile-portfolio-panel,
+.profile-resume-panel,
+.profile-ml-panel,
+.profile-portfolio-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--gradient-soft), var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.card:hover,
+.panel-card:hover,
+.post-card:hover,
+.community-box:hover,
+.community-hero-card:hover,
+.admin-hub-card:hover,
+.profile-portfolio-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  box-shadow: var(--shadow);
+}
+
+.page-hero,
+.home-welcome-card,
+.profile-portfolio-hero {
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--accent-3) 22%, transparent), transparent 34%),
+    radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+    var(--gradient-soft),
+    var(--card);
+  box-shadow: var(--shadow);
+}
+
+.btn,
+.form-input,
+.topbar-search,
+.composer-textarea,
+.chat-input,
+.post-comment-input,
+.settings-nav-item,
+.home-feed-tabs button,
+.community-tabs button,
+.messages-filter-tabs button {
+  border-radius: var(--radius-sm);
+}
+
+.btn {
+  min-height: 38px;
+  border: 1px solid transparent;
+  font-weight: 800;
+}
+
+.btn-primary,
+.composer-submit-btn,
+.chat-send-btn,
+.profile-share-field button,
+.zuni-comment-form button {
+  background: var(--gradient-brand) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.btn-primary:hover:not(:disabled),
+.composer-submit-btn:hover:not(:disabled),
+.chat-send-btn:hover:not(:disabled),
+.profile-share-field button:hover:not(:disabled),
+.zuni-comment-form button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.btn-secondary,
+.btn-ghost,
+.btn-icon,
+.composer-btn,
+.topbar-icon-btn,
+.post-menu-btn,
+.modal-close {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--text-2);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover,
+.btn-icon:hover,
+.composer-btn:hover,
+.topbar-icon-btn:hover,
+.post-menu-btn:hover,
+.modal-close:hover {
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: var(--accent-light);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.form-input,
+input:not([type="checkbox"]):not([type="radio"]),
+textarea,
+select,
+.composer-textarea,
+.chat-input,
+.post-comment-input,
+.topbar-search,
+.profile-share-field input {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 82%, var(--page-bg));
+  color: var(--text);
+}
+
+.form-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus,
+.composer-textarea:focus,
+.chat-input:focus,
+.post-comment-input:focus,
+.topbar-search:focus,
+.profile-share-field input:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  background: var(--card);
+  box-shadow: var(--ring);
+}
+
+.topbar {
+  border-bottom: 1px solid var(--border-soft);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--topbar-bg) 88%, transparent), color-mix(in srgb, var(--card) 68%, transparent));
+  backdrop-filter: blur(18px);
+}
+
+.topbar-search-shell {
+  color: var(--text-muted);
+}
+
+.topbar-search {
+  height: 42px;
+  box-shadow: 0 8px 20px rgba(47, 35, 112, 0.04);
+}
+
+.topbar-user-chip,
+.topbar-profile-menu,
+.notif-popout {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+}
+
+.topbar-user-chip:hover,
+.search-result-row:hover {
+  background: var(--accent-light);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.sidebar-wide {
+  background:
+    radial-gradient(circle at 28% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 34%),
+    color-mix(in srgb, var(--sidebar-bg) 92%, var(--page-bg));
+  border-right: 1px solid var(--border-soft);
+  box-shadow: 12px 0 36px rgba(47, 35, 112, 0.06);
+}
+
+.sidebar-wide-logo,
+.sidebar-collapse-btn,
+.sidebar-wide-item,
+.sidebar-wide-comm,
+.sidebar-wide-user {
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-wide-item,
+.sidebar-collapse-btn {
+  border: 1px solid transparent;
+}
+
+.sidebar-wide-item:hover,
+.sidebar-wide-comm:hover,
+.sidebar-collapse-btn:hover {
+  background: var(--accent-light);
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent);
+}
+
+.sidebar-wide-item.active {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-3) 12%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent), 0 10px 24px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.sidebar-wide-section-label {
+  color: var(--text-light);
+}
+
+.post-composer,
+.post-card {
+  overflow: hidden;
+}
+
+.post-card {
+  border-radius: 20px;
+}
+
+.post-head,
+.post-footer,
+.modal-header,
+.modal-footer,
+.messages-page .conv-list-head,
+.messages-page .chat-head {
+  border-color: var(--border-soft);
+}
+
+.post-footer,
+.composer-footer {
+  background: color-mix(in srgb, var(--card) 72%, var(--page-bg));
+}
+
+.post-action-btn {
+  border-radius: var(--radius-sm);
+}
+
+.post-action-btn:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.post-action-btn:first-child,
+.home-page .post-action-btn:first-child {
+  color: var(--accent-warm);
+}
+
+.stories-strip {
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.home-feed-tabs button,
+.messages-filter-tabs button,
+.community-filters button,
+.community-tabs button,
+.profile-tab,
+.settings-nav-item {
+  border: 1px solid transparent;
+}
+
+.home-feed-tabs button:hover,
+.messages-filter-tabs button:hover,
+.community-filters button:hover,
+.community-tabs button:hover,
+.profile-tab:hover,
+.settings-nav-item:hover {
+  background: var(--accent-light);
+  border-color: color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--accent);
+}
+
+.home-feed-tabs button.active,
+.messages-filter-tabs button.active,
+.community-filters button.active,
+.community-tabs button.active,
+.profile-tab.active,
+.settings-nav-item.active {
+  background: var(--accent-light);
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  color: var(--accent);
+}
+
+.right-panel {
+  gap: 16px;
+}
+
+.home-side-heading,
+.right-section-title,
+.settings-nav-group-title,
+.profile-achievements-label {
+  letter-spacing: 0.04em;
+}
+
+.home-trend-row,
+.home-community-row,
+.admin-activity,
+.admin-alert,
+.community-member-row,
+.search-result-row {
+  border-radius: var(--radius-sm);
+}
+
+.home-trend-row:hover,
+.home-community-row:hover,
+.admin-activity:hover,
+.admin-alert:hover,
+.community-member-row:hover {
+  background: var(--accent-light);
+}
+
+.explore-tile {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.explore-tile:hover {
+  transform: translateY(-3px);
+}
+
+.settings-page .settings-shell {
+  gap: 16px;
+  padding: 16px;
+}
+
+.settings-page .settings-sidenav,
+.settings-page .settings-content {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-page .settings-sidenav {
+  border-right: 1px solid var(--border);
+}
+
+.settings-page .settings-section {
+  padding: 22px;
+}
+
+.admin-hub-metric,
+.admin-hub-card {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent-3) 12%, transparent), transparent 28%),
+    var(--gradient-soft),
+    var(--card);
+}
+
+.admin-hub-icon,
+.admin-hub-title-icon,
+.profile-portfolio-status,
+.page-badge,
+.sidebar-wide-badge,
+.mobile-nav-badge {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.community-cover,
+.profile-banner,
+.profile-hover-banner {
+  background:
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--accent-3) 42%, transparent), transparent 32%),
+    radial-gradient(circle at 84% 8%, color-mix(in srgb, var(--accent-warm) 24%, transparent), transparent 28%),
+    var(--gradient-brand);
+}
+
+.messages-page .conv-list,
+.messages-page .chat-area,
+.messages-page .chat-input-bar {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border)) !important;
+  background: var(--gradient-soft), var(--card) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.messages-page .msg-bubble {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.messages-page .msg-bubble.me {
+  background: var(--gradient-brand) !important;
+}
+
+.mobile-bottom-nav,
+.mobile-drawer {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-nav-item,
+.mobile-drawer .mobile-nav-item {
+  border-radius: var(--radius-sm);
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.empty-state,
+.notifications-empty,
+.explore-empty {
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-layout {
+    gap: 12px;
+  }
+
+  .topbar {
+    border-radius: 0 0 16px 16px;
+  }
+
+  .card,
+  .panel-card,
+  .post-card,
+  .post-composer,
+  .settings-section,
+  .settings-panel,
+  .community-box,
+  .admin-hub-card,
+  .admin-hub-panel,
+  .admin-hub-metric {
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .settings-page .settings-shell {
+    padding: 8px;
+  }
+
+  .settings-page .settings-sidenav,
+  .settings-page .settings-content {
+    border-radius: 16px;
+  }
+}

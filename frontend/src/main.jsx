@@ -4,6 +4,7 @@ import './styles/global.css';
 import './styles/components.css';
 import './styles/zuni-final.css';
 import './styles/portal-ava-mobile.css';
+import './styles/aesthetic-system.css';
 import App from './App.jsx';
 
 createRoot(document.getElementById('root')).render(
