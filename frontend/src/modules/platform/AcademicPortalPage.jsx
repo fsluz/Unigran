@@ -9,10 +9,13 @@ import {
   GraduationCap,
   PanelsTopLeft,
   Users,
+  Menu as MenuIcon,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
+import UniversitySelector from '../../components/layout/UniversitySelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useUniversity } from '../../contexts/UniversityContext';
 import { hasPermission, normalizeRole } from '../shared/permissions';
 import {
   assignInstitutionProfessor,
@@ -277,13 +280,21 @@ function buildClassSchedule(day, startTime, lessonCount = DEFAULT_LESSONS_PER_PE
 export default function AcademicPortalPage({ onOpenAva }) {
   const { user, token, refreshUser } = useAuth();
   const { showToast } = useToast();
+  const {
+    universities,
+    activeUniversity,
+    activeUniversityId,
+    setActiveUniversityId,
+    reloadUniversities,
+  } = useUniversity();
   const [ava, setAva] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('home');
-  const [universities, setUniversities] = useState([]);
+  const [navOpen, setNavOpen] = useState(false);
   const [institutionData, setInstitutionData] = useState(null);
-  const [selectedUniversityId, setSelectedUniversityId] = useState('');
+  const selectedUniversityId = activeUniversityId;
+  const setSelectedUniversityId = setActiveUniversityId;
   const [universityDraft, setUniversityDraft] = useState({ name: '', slug: '', cnpj: '', description: '', logo: '', status: 'approved' });
   const [universityEdit, setUniversityEdit] = useState({ name: '', description: '', logo: '', status: 'approved' });
   const [campusDraft, setCampusDraft] = useState({ name: '', city: '', state: '' });
@@ -314,7 +325,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const reload = async () => {
     setLoading(true);
     try {
-      const data = await fetchAva(token);
+      const data = await fetchAva(token, activeUniversityId);
       setAva(data);
       setError('');
     } catch (err) {
@@ -330,37 +341,36 @@ export default function AcademicPortalPage({ onOpenAva }) {
       setLoading(false);
       setError('');
     }
-  }, [token, user?.permissions]);
+  }, [token, user?.permissions, activeUniversityId]);
 
   const loadInstitution = async (preferredId = selectedUniversityId) => {
-    const data = hasPermission(user, 'institutions:read')
-      ? await fetchAccessibleUniversities(token)
-      : await fetchUniversities(token);
-    const list = data.universities || [];
-    setUniversities(list);
-    if (!list.length && hasPermission(user, 'institutions:read') && !hasPermission(user, 'institutions:create')) {
-      const [catalog, mine] = await Promise.all([
-        fetchUniversities(token),
-        fetchMyInstitutionMemberships(token).catch(() => ({ memberships: [] })),
-      ]);
-      setCatalogUniversities(catalog.universities || []);
-      setMyMemberships(mine.memberships || []);
-    } else {
-      setCatalogUniversities([]);
-      setMyMemberships([]);
+    const idToLoad = preferredId || activeUniversityId;
+    if (!idToLoad) {
+      if (hasPermission(user, 'institutions:read') && !hasPermission(user, 'institutions:create')) {
+        const [catalog, mine] = await Promise.all([
+          fetchUniversities(token),
+          fetchMyInstitutionMemberships(token).catch(() => ({ memberships: [] })),
+        ]);
+        setCatalogUniversities(catalog.universities || []);
+        setMyMemberships(mine.memberships || []);
+      }
+      setInstitutionData(null);
+      return;
     }
-    const nextId = preferredId || list[0]?.id || '';
-    setSelectedUniversityId(nextId);
-    if (nextId && hasPermission(user, 'institutions:read')) setInstitutionData(await fetchUniversity(token, nextId));
-    else setInstitutionData(null);
+    setCatalogUniversities([]);
+    setMyMemberships([]);
+    if (hasPermission(user, 'institutions:read')) {
+      setInstitutionData(await fetchUniversity(token, idToLoad).catch(() => null));
+    } else {
+      setInstitutionData(null);
+    }
   };
 
   useEffect(() => {
     loadInstitution().catch(() => {
-      setUniversities([]);
       setInstitutionData(null);
     });
-  }, [token]);
+  }, [token, activeUniversityId]);
 
   useEffect(() => {
     const university = institutionData?.university;
@@ -400,12 +410,12 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
   const refreshInstitution = async (data) => {
     if (data?.university?.id) {
-      setSelectedUniversityId(data.university.id);
+      setActiveUniversityId(data.university.id);
       setInstitutionData(data);
-      const list = await fetchUniversities(token);
-      setUniversities(list.universities || []);
+      await reloadUniversities();
     } else {
       await loadInstitution();
+      await reloadUniversities();
     }
   };
 
@@ -607,7 +617,9 @@ export default function AcademicPortalPage({ onOpenAva }) {
     if (!selectedUniversityId || !window.confirm('Desativar esta universidade?')) return;
     try {
       await deleteInstitutionUniversity(token, selectedUniversityId);
-      await loadInstitution('');
+      await reloadUniversities();
+      setActiveUniversityId('');
+      setInstitutionData(null);
       showToast('Universidade desativada', 'OK');
     } catch (err) {
       showToast(err.message || 'Erro ao desativar universidade', '!');
@@ -693,7 +705,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
   const syncAccess = async () => {
     setSyncing(true);
     try {
-      const data = await syncAvaAccess(token);
+      const data = await syncAvaAccess(token, activeUniversityId);
       setAva(data);
       await refreshUser();
       showToast('Acesso sincronizado. Disciplinas atualizadas.', 'OK');
@@ -1220,24 +1232,36 @@ export default function AcademicPortalPage({ onOpenAva }) {
     <div className="page-scroll academic-portal-page">
       <Topbar title="Portal Academico" />
       <main className="academic-portal-shell">
-        <aside className="academic-portal-nav">
+        <aside className={`academic-portal-nav ${navOpen ? 'mobile-open' : ''}`}>
           <div className="academic-portal-brand">
-            <strong>{institution?.name || 'Portal Academico'}</strong>
+            <strong>{institution?.name || activeUniversity?.name || 'Portal Academico'}</strong>
             <span>{roleLabels[role] || role}</span>
+            <button className="academic-nav-close-btn" onClick={() => setNavOpen(false)} aria-label="Fechar menu">✕</button>
           </div>
+          <UniversitySelector />
           {tabs.map(tab => (
-            <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
+            <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => { setActiveTab(tab.id); setNavOpen(false); }}>
               <small><tab.icon size={17} /></small>
               <span>{tab.label}</span>
             </button>
           ))}
         </aside>
+        {navOpen && <div className="academic-nav-overlay" onClick={() => setNavOpen(false)} />}
         <section className="academic-portal-main">
+          <div className="academic-portal-mobile-topbar">
+            <button className="academic-mobile-menu-btn" onClick={() => setNavOpen(true)} aria-label="Menu">
+              <MenuIcon size={20} />
+            </button>
+            <span>{institution?.name || activeUniversity?.name || 'Portal Academico'}</span>
+            {canStudy && (
+              <button className="btn btn-primary btn-sm" onClick={onOpenAva}>AVA</button>
+            )}
+          </div>
           {error && <div className="portfolio-alert">{error} <button onClick={reload}>Tentar novamente</button></div>}
           <section className="academic-portal-hero">
             <div>
               <span>{roleLabels[role] || role}</span>
-              <h1>{institution?.name || 'Portal Academico'}</h1>
+              <h1>{institution?.name || activeUniversity?.name || 'Portal Academico'}</h1>
               <p>Ola, {user?.displayName || user?.username}. Os dados desta area sao carregados das suas relacoes academicas persistidas.</p>
             </div>
             <div className="academic-hero-actions">

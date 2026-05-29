@@ -149,13 +149,15 @@ export async function fetchRaiReminders(token) {
   return readJson(res, 'Erro ao carregar lembretes');
 }
 
-export async function fetchAva(token) {
-  const res = await apiFetch('/platform/v1/ava', { headers: authHeaders(token) });
+export async function fetchAva(token, universityId = '') {
+  const qs = universityId ? `?universityId=${encodeURIComponent(universityId)}` : '';
+  const res = await apiFetch(`/platform/v1/ava${qs}`, { headers: authHeaders(token) });
   return readJson(res, 'Erro ao carregar AVA');
 }
 
-export async function syncAvaAccess(token) {
-  const res = await apiFetch('/platform/v1/ava/sync', {
+export async function syncAvaAccess(token, universityId = '') {
+  const qs = universityId ? `?universityId=${encodeURIComponent(universityId)}` : '';
+  const res = await apiFetch(`/platform/v1/ava/sync${qs}`, {
     method: 'POST',
     headers: authHeaders(token),
   });

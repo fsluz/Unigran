@@ -82,11 +82,15 @@ function authorizationMatch(user, offering = '$offering') {
   return `${viewer} academic-enrollment(student: $viewer, offering: ${offering});`;
 }
 
-async function readAccessibleOfferings(user) {
+async function readAccessibleOfferings(user, universityId = '') {
+  const institutionFilter = universityId
+    ? `$institution has institution-id "${safe(universityId)}";`
+    : '';
   const rows = await readQuery(`
     match
       $course isa academic-course;
       $institution isa educational-institute;
+      ${institutionFilter}
       $offering isa academic-course-offering, links (course: $course, institution: $institution);
       ${authorizationMatch(user)}
       try {
@@ -339,8 +343,8 @@ async function readForum(offeringId, user) {
   return result.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
-async function buildCourses(user) {
-  const baseCourses = await readAccessibleOfferings(user);
+async function buildCourses(user, universityId = '') {
+  const baseCourses = await readAccessibleOfferings(user, universityId);
   const manage = roleOf(user) === 'professor' || isAcademicManager(user);
   return Promise.all(baseCourses.map(async course => {
     const [materials, completed, activities, students, attendanceRecords, forum] = await Promise.all([
@@ -443,9 +447,9 @@ export async function ensureTeachingAssignments(user) {
   }
 }
 
-export async function getAvaState(user) {
+export async function getAvaState(user, universityId = '') {
   if (roleOf(user) === 'professor') await ensureTeachingAssignments(user);
-  const courses = await buildCourses(user);
+  const courses = await buildCourses(user, universityId);
   const notifications = await readNotifications(user);
   const activities = courses.flatMap(course => course.activities);
   const pending = activities.filter(activity => ['pending', 'late'].includes(activity.status)).length;

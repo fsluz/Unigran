@@ -94,18 +94,19 @@ const PortfolioPublishSchema = z.object({
 
 router.get('/', async (req, res) => {
   try {
-    res.json(await getAvaState(req.user));
+    const universityId = req.query.universityId || '';
+    res.json(await getAvaState(req.user, universityId));
   } catch (err) {
     console.error('[ava state]', err);
     res.status(500).json({ error: 'Erro ao carregar AVA' });
   }
 });
 
-// Manual repair: recreate missing teaching assignments from institution-professor-subject
 router.post('/sync', requirePermission('academic:read'), async (req, res) => {
   try {
+    const universityId = req.query.universityId || req.body?.universityId || '';
     await ensureTeachingAssignments(req.user);
-    res.json(await getAvaState(req.user));
+    res.json(await getAvaState(req.user, universityId));
   } catch (err) {
     console.error('[ava sync]', err);
     res.status(500).json({ error: 'Erro ao sincronizar acessos do AVA' });

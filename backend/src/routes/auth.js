@@ -353,6 +353,88 @@ router.get('/me', async (req, res) => {
   }
 });
 
+router.get('/me/universities', async (req, res) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  let decoded;
+  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  catch { return res.status(401).json({ error: 'Token invalido' }); }
+
+  const username = typeqlLiteral(decoded.username);
+  try {
+    const role = normalizeRole(decoded.role);
+    if (role === 'super_admin') {
+      const rows = await readQuery(`
+        match
+          $u isa educational-institute, has institution-id $id;
+          try { $u has name $name; };
+          try { $u has institution-slug $slug; };
+          try { $u has institution-status $status; };
+          try { $u has logo $logo; };
+        fetch { "id": $id, "name": $name, "slug": $slug, "status": $status, "logo": $logo };
+      `).catch(() => []);
+      const universities = rows
+        .filter(r => r.status !== 'inactive')
+        .map(r => ({
+          id: r.id,
+          name: r.name || r.id,
+          slug: r.slug || '',
+          logo: r.logo || null,
+          status: r.status || 'approved',
+          membershipRole: 'super_admin',
+          membershipStatus: 'approved',
+        }));
+      return res.json({ universities });
+    }
+
+    const rows = await readQuery(`
+      match
+        $person isa person, has username "${username}";
+        $university isa educational-institute, has institution-id $uid;
+        $membership isa institution-membership,
+          links (member: $person, university: $university),
+          has institution-status "approved";
+        try { $membership has institution-role $role; };
+        try { $university has name $uname; };
+        try { $university has institution-slug $slug; };
+        try { $university has institution-status $ustatus; };
+        try { $university has logo $logo; };
+      fetch {
+        "uid": $uid,
+        "uname": $uname,
+        "slug": $slug,
+        "ustatus": $ustatus,
+        "logo": $logo,
+        "role": $role
+      };
+    `).catch(() => []);
+
+    const universities = rows
+      .filter(r => r.ustatus !== 'inactive')
+      .map(r => ({
+        id: r.uid,
+        name: r.uname || r.uid,
+        slug: r.slug || '',
+        logo: r.logo || null,
+        status: r.ustatus || 'approved',
+        membershipRole: r.role || 'student',
+        membershipStatus: 'approved',
+      }));
+
+    const seen = new Set();
+    const unique = universities.filter(u => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+      return true;
+    });
+
+    res.json({ universities: unique });
+  } catch (err) {
+    console.error('[me/universities]', err);
+    res.status(500).json({ error: 'Erro ao carregar universidades do usuario' });
+  }
+});
+
 router.post('/2fa/setup', async (req, res) => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });

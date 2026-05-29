@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { UniversityProvider, useUniversity } from './contexts/UniversityContext';
 import FriendsPage from './pages/FriendsPage';
 
 import Sidebar       from './components/layout/Sidebar';
@@ -29,14 +30,82 @@ import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import { hasPermission }   from './modules/shared/permissions';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
+function NoUniversityGate() {
+  return (
+    <div className="no-university-gate">
+      <div className="no-university-card">
+        <div className="no-university-icon">🎓</div>
+        <h2>Sem vinculo institucional</h2>
+        <p>
+          Voce ainda nao possui vinculo aprovado com nenhuma universidade.
+          Entre em contato com a instituicao para solicitar acesso.
+        </p>
+        <small>
+          Seu username: <strong style={{ color: 'var(--accent)' }}>
+            {/* username injected via parent */}
+          </strong>
+        </small>
+      </div>
+    </div>
+  );
+}
+
+function MobileDrawer({ open, onClose, page, onNavigate, user }) {
+  const drawerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const navigate = (id) => { onNavigate(id); onClose(); };
+
+  const canAdmin = hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage');
+  const canPortal = hasPermission(user, 'platform:read');
+  const canAva = hasPermission(user, 'academic:read');
+
+  return (
+    <div className="mobile-drawer-overlay" onClick={onClose}>
+      <nav className="mobile-drawer" ref={drawerRef} onClick={e => e.stopPropagation()}>
+        <div className="mobile-drawer-header">
+          <span className="mobile-drawer-brand">Unigran</span>
+          <button className="mobile-drawer-close" onClick={onClose} aria-label="Fechar menu">✕</button>
+        </div>
+        <div className="mobile-drawer-body">
+          <button className={`mobile-nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}>Inicio</button>
+          {canPortal && <button className={`mobile-nav-item ${page === 'campus' ? 'active' : ''}`} onClick={() => navigate('campus')}>Portal Academico</button>}
+          {canAva && <button className={`mobile-nav-item ${page === 'ava' ? 'active' : ''}`} onClick={() => navigate('ava')}>AVA</button>}
+          <button className={`mobile-nav-item ${page === 'friends' ? 'active' : ''}`} onClick={() => navigate('friends')}>Conexoes</button>
+          <button className={`mobile-nav-item ${page === 'communities' ? 'active' : ''}`} onClick={() => navigate('communities')}>Comunidades</button>
+          <button className={`mobile-nav-item ${page === 'explore' ? 'active' : ''}`} onClick={() => navigate('explore')}>Explorar</button>
+          <button className={`mobile-nav-item ${page === 'messages' ? 'active' : ''}`} onClick={() => navigate('messages')}>Mensagens</button>
+          <button className={`mobile-nav-item ${page === 'notifications' ? 'active' : ''}`} onClick={() => navigate('notifications')}>Notificacoes</button>
+          <button className={`mobile-nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>Configuracoes</button>
+          {canAdmin && <button className={`mobile-nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => navigate('admin')}>Administracao</button>}
+        </div>
+        <div className="mobile-drawer-user">
+          <span>{user?.displayName || user?.username}</span>
+          <small>{user?.role}</small>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
 function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
+  const { universities, activeUniversity, hasUniversity, initialized: uniInitialized } = useUniversity();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
   const [authView, setAuthView] = useState('login');
   const [enteringPortal, setEnteringPortal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : false;
@@ -91,6 +160,10 @@ function AppShell() {
     setPage('home');
   };
 
+  const isPortalRoute = page === 'campus' || page === 'ava';
+  const isAdminGlobal = user.role === 'super_admin';
+  const needsUniversityForPortal = isPortalRoute && !isAdminGlobal && uniInitialized && !hasUniversity;
+
   const pages = {
     home:          <HomePage onOpenProfile={openProfile} />,
     profile:       <ProfilePage onNavigate={setPage} />,
@@ -99,8 +172,16 @@ function AppShell() {
     communities:   <CommunitiesPage onOpenProfile={openProfile} />,
     explore:       <ExplorePage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
-    campus:        hasPermission(user, 'platform:read') ? <AcademicPortalPage onOpenAva={() => setPage('ava')} /> : <HomePage onOpenProfile={openProfile} />,
-    ava:           hasPermission(user, 'academic:read') ? <CampusPage onBackToPortal={() => setPage('campus')} /> : <HomePage onOpenProfile={openProfile} />,
+    campus:        hasPermission(user, 'platform:read')
+      ? (needsUniversityForPortal
+          ? <NoUniversityGate username={user.username} />
+          : <AcademicPortalPage onOpenAva={() => setPage('ava')} />)
+      : <HomePage onOpenProfile={openProfile} />,
+    ava:           hasPermission(user, 'academic:read')
+      ? (needsUniversityForPortal
+          ? <NoUniversityGate username={user.username} />
+          : <CampusPage onBackToPortal={() => setPage('campus')} />)
+      : <HomePage onOpenProfile={openProfile} />,
     admin:         (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <AdminHubPage onNavigate={setPage} /> : <HomePage onOpenProfile={openProfile} />,
     adminDashboard: hasPermission(user, 'system:manage') ? <AdminDashboardPage /> : <HomePage onOpenProfile={openProfile} />,
     auditLogs:     hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage onOpenProfile={openProfile} />,
@@ -121,6 +202,13 @@ function AppShell() {
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
+      <button
+        className="mobile-hamburger"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Abrir menu"
+      >
+        <span /><span /><span />
+      </button>
       <Sidebar
         page={page}
         onNavigate={id => { setNotifPanelOpen(false); navigate(id); }}
@@ -131,6 +219,13 @@ function AppShell() {
         }}
         notifClearKey={notifPanelOpen ? 1 : 0}
         dark={dark}
+      />
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        page={page}
+        onNavigate={navigate}
+        user={user}
       />
       <NotificationsPanel
         open={notifPanelOpen}
@@ -153,12 +248,21 @@ function AppShell() {
   );
 }
 
+function UniversityAwareShell() {
+  const { user, token } = useAuth();
+  return (
+    <UniversityProvider token={token} userRole={user?.role}>
+      <AppShell />
+    </UniversityProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
         <AchievementsProvider>
-          <AppShell />
+          <UniversityAwareShell />
         </AchievementsProvider>
       </ToastProvider>
     </AuthProvider>

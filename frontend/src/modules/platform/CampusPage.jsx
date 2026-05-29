@@ -13,6 +13,7 @@ import {
   FileText,
   GraduationCap,
   MessageSquare,
+  Menu as MenuIcon,
   Pencil,
   Search,
   ShieldCheck,
@@ -24,8 +25,10 @@ import {
   Zap,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
+import UniversitySelector from '../../components/layout/UniversitySelector';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useUniversity } from '../../contexts/UniversityContext';
 import {
   askRai,
   completeMaterial,
@@ -125,6 +128,8 @@ function ModuleOverview({ user, summary, teacherDashboard }) {
 export default function CampusPage({ onBackToPortal }) {
   const { token, user } = useAuth();
   const { showToast } = useToast();
+  const { activeUniversity, activeUniversityId } = useUniversity();
+  const [sideRailOpen, setSideRailOpen] = useState(false);
   const [ava, setAva] = useState(null);
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [tab, setTab] = useState('overview');
@@ -181,7 +186,7 @@ export default function CampusPage({ onBackToPortal }) {
     let alive = true;
     setLoading(true);
     setLoadError('');
-    fetchAva(token)
+    fetchAva(token, activeUniversityId)
       .then(data => {
         if (!alive) return;
         setAva(data);
@@ -194,7 +199,7 @@ export default function CampusPage({ onBackToPortal }) {
       })
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [token]);
+  }, [token, activeUniversityId]);
 
   useEffect(() => {
     if (canTeach) loadTeacherSubmissions();
@@ -502,7 +507,7 @@ export default function CampusPage({ onBackToPortal }) {
       setTeacherSubmissions(data.submissions || []);
       setGradeDrafts(prev => ({ ...prev, [submission.id]: { score: '', feedback: '' } }));
       showToast('Feedback publicado', 'OK');
-      fetchAva(token).then(setAva).catch(() => null);
+      fetchAva(token, activeUniversityId).then(setAva).catch(() => null);
     } catch (err) {
       showToast(err.message || 'Erro ao corrigir entrega', '!');
     }
@@ -543,8 +548,8 @@ export default function CampusPage({ onBackToPortal }) {
           <div className="ava-hero-orb one" />
           <div className="ava-hero-orb two" />
           <div>
-            <span className="campus-kicker">{institution?.name || 'Ambiente virtual de aprendizagem'}</span>
-            <h1>Meu AVA Unigran</h1>
+            <span className="campus-kicker">{activeUniversity?.name || institution?.name || 'Ambiente virtual de aprendizagem'}</span>
+            <h1>Meu AVA</h1>
             <p>
               Um ambiente separado da rede social para disciplinas, entregas, notas, forum,
               biblioteca, portfolio academico e acompanhamento institucional.
@@ -556,6 +561,7 @@ export default function CampusPage({ onBackToPortal }) {
             </div>
           </div>
           <div className="campus-rai-status">
+            <UniversitySelector compact />
             <span>{role}</span>
             <strong>Nivel {summary.level || 1}</strong>
             <small>{summary.xp || 0} XP academico</small>
@@ -581,13 +587,24 @@ export default function CampusPage({ onBackToPortal }) {
 
         <ModuleOverview user={user} summary={summary} teacherDashboard={teacherDashboard} />
 
+        <div className="ava-mobile-rail-toggle">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setSideRailOpen(o => !o)}
+            type="button"
+          >
+            <BookOpen size={15} /> {sideRailOpen ? 'Ocultar disciplinas' : 'Ver disciplinas'}
+          </button>
+        </div>
+
         <section className="ava-layout">
-          <aside className="ava-course-rail">
+          <aside className={`ava-course-rail ${sideRailOpen ? 'mobile-open' : ''}`}>
             <div className="campus-panel-head">
               <div>
                 <span>Disciplinas</span>
                 <h2>2026.1</h2>
               </div>
+              <button className="ava-rail-close" onClick={() => setSideRailOpen(false)} aria-label="Fechar">✕</button>
             </div>
             {loading && [1, 2, 3].map(item => <div key={item} className="skeleton-row" />)}
             {!loading && filteredCourses.map(course => (
