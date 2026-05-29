@@ -15,8 +15,9 @@
 
 @media (min-width: 769px) {
   .messages-page .messages-shell {
-    gap: 16px !important;
-    padding: 10px !important;
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 6px !important;
     background:
       radial-gradient(circle at 72% 12%, rgba(106,0,244,.18), transparent 34%),
       radial-gradient(circle at 40% 88%, rgba(0,168,255,.12), transparent 30%),
@@ -47,10 +48,35 @@
 }
 
 .messages-page .chat-messages {
+  padding: 16px 18px !important;
+  gap: 8px !important;
   background:
     radial-gradient(circle at 80% 50%, rgba(106,0,244,.12), transparent 38%),
     radial-gradient(circle at 20% 20%, rgba(0,168,255,.08), transparent 32%),
     color-mix(in srgb, var(--page-bg) 92%, #050816) !important;
+}
+
+.messages-page .msg-block {
+  margin-bottom: 0 !important;
+}
+
+.messages-page .msg-row {
+  gap: 7px !important;
+}
+
+.messages-page .msg-stack {
+  max-width: min(58%, 500px) !important;
+}
+
+.messages-page .msg-meta-line {
+  min-height: 16px !important;
+  margin-top: 2px !important;
+}
+
+.messages-page .msg-time,
+.messages-page .msg-read {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
 }
 
 .messages-page .msg-bubble {
@@ -104,6 +130,269 @@
 .zuni-progress,
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
+
+/* Zuni: visual minimalista, brilho fora do video e controle de tempo visivel. */
+@media (min-width: 1001px) {
+  .zuni-shell {
+    background:
+      radial-gradient(circle at 50% 0%, rgba(59,130,246,.12), transparent 34%),
+      radial-gradient(circle at 56% 48%, rgba(0,168,255,.08), transparent 42%),
+      #07101f !important;
+  }
+
+  .zuni-page {
+    height: calc(100dvh - 64px);
+    padding: 18px 28px 26px;
+    overflow: hidden;
+    background: transparent !important;
+  }
+
+  .zuni-feed {
+    width: min(100%, 1320px) !important;
+    height: 100%;
+    padding: 0;
+    background: transparent !important;
+  }
+
+  .zuni-reel {
+    height: calc(100dvh - 110px) !important;
+    min-height: 620px !important;
+    max-height: 860px;
+    grid-template-columns: minmax(620px, 880px) !important;
+    justify-content: center;
+    gap: 0 !important;
+    margin: 0 auto 28px !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .zuni-reel.comments-open {
+    grid-template-columns: minmax(620px, 1fr) minmax(330px, 390px) !important;
+    gap: 26px !important;
+    justify-content: stretch;
+  }
+
+  .zuni-reel::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 10px;
+    bottom: 10px;
+    width: min(880px, calc(100% - 36px));
+    border-radius: 28px;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 52%, rgba(0,168,255,.16), transparent 56%),
+      radial-gradient(circle at 52% 50%, rgba(106,0,244,.13), transparent 58%);
+    filter: blur(24px);
+    opacity: .72;
+    z-index: 0;
+  }
+
+  .zuni-reel.comments-open::before {
+    width: calc(100% - 416px);
+  }
+
+  .zuni-video-stage {
+    grid-column: 1;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(148,163,184,.26);
+    background: #020611 !important;
+    box-shadow:
+      0 24px 90px rgba(0,0,0,.34),
+      0 0 0 1px rgba(255,255,255,.04) inset !important;
+    z-index: 1;
+  }
+
+  .zuni-video-stage::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .zuni-reel video {
+    object-fit: contain;
+    background: #000;
+  }
+
+  .zuni-sound {
+    top: 22px;
+    right: 22px;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(11,18,32,.84);
+    box-shadow: 0 12px 30px rgba(0,0,0,.26);
+  }
+
+  .zuni-sound button:first-child {
+    display: none;
+  }
+
+  .zuni-sound button {
+    width: 46px;
+    height: 46px;
+  }
+
+  .zuni-volume-panel {
+    top: 56px;
+    right: 0;
+  }
+
+  .zuni-progress {
+    left: 28px;
+    right: 28px;
+    bottom: 72px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(15,23,42,.56);
+    opacity: .92;
+  }
+
+  .zuni-progress span {
+    top: 7px;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+  }
+
+  .zuni-progress input {
+    opacity: .18;
+    accent-color: #8b5cf6;
+  }
+
+  .zuni-progress:hover input,
+  .zuni-progress:focus-within input {
+    opacity: .6;
+  }
+
+  .zuni-overlay {
+    padding: 96px 28px 28px;
+    background: linear-gradient(to top, rgba(2,6,17,.84), transparent 42%);
+  }
+
+  .zuni-overlay p,
+  .zuni-follow {
+    display: none;
+  }
+
+  .zuni-author small {
+    color: #cbd5e1;
+  }
+
+  .zuni-rail {
+    right: 18px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: 58px;
+    gap: 24px;
+    z-index: 8;
+  }
+
+  .zuni-rail button {
+    min-width: 54px;
+    min-height: 58px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .zuni-rail button:hover {
+    background: rgba(255,255,255,.06);
+    transform: none;
+  }
+
+  .zuni-rail button svg {
+    width: 30px;
+    height: 30px;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.38));
+  }
+
+  .zuni-rail button span {
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .zuni-rail button:first-child svg {
+    fill: #ef4444;
+    stroke: #ef4444;
+  }
+
+  .zuni-rail button:nth-child(3) span {
+    font-size: 10px;
+  }
+
+  .zuni-nav {
+    display: none !important;
+  }
+
+  .zuni-reel.comments-open .zuni-comments {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    border-radius: 24px;
+    border: 1px solid rgba(148,163,184,.22);
+    background: rgba(15,23,42,.44);
+    box-shadow: none;
+    backdrop-filter: blur(18px);
+  }
+
+  .zuni-comments-about {
+    padding: 26px 26px 20px;
+  }
+
+  .zuni-comments-about h3 {
+    font-size: 20px;
+  }
+
+  .zuni-comments-about div {
+    gap: 42px;
+  }
+
+  .zuni-comments-head {
+    padding: 20px 24px;
+  }
+
+  .zuni-comments-head button {
+    display: none;
+  }
+
+  .zuni-comments-list {
+    padding: 18px 24px;
+  }
+
+  .zuni-comment-form {
+    padding: 18px 20px 22px;
+    gap: 10px;
+  }
+
+  .zuni-comment-form input {
+    height: 42px;
+    background: rgba(2,6,23,.76);
+    border-color: transparent;
+  }
+
+  .zuni-comment-form button {
+    height: 42px;
+    padding: 0 18px;
+    background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+  }
+}
 
 /* Mensagens: esconder RAI e reforcar visual futurista. */
 .app-shell:has(.messages-page) .floating-assistants {

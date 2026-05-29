@@ -123,6 +123,32 @@ export default function ZuniPage({ onOpenProfile }) {
     }
   }, [activePostId, muted, volume, posts]);
 
+  useEffect(() => {
+    const pauseActive = () => {
+      const video = videoRefs.current.get(activePostId);
+      if (!video) return;
+      video.pause();
+      setPlaying(false);
+    };
+    const resumeActive = () => {
+      const video = videoRefs.current.get(activePostId);
+      if (!video) return;
+      video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) pauseActive();
+      else resumeActive();
+    };
+    window.addEventListener('blur', pauseActive);
+    window.addEventListener('focus', resumeActive);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('blur', pauseActive);
+      window.removeEventListener('focus', resumeActive);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [activePostId]);
+
   const toggleLike = async (post) => {
     const isLiked = liked[post.id] ?? post.liked;
     setLiked(prev => ({ ...prev, [post.id]: !isLiked }));
