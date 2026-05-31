@@ -22,6 +22,7 @@ import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
+import { fetchNotifications } from './services/notifications';
 import { AchievementsProvider } from './contexts/AchievementsContext';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
@@ -107,6 +108,15 @@ function AppShell() {
   const [enteringPortal, setEnteringPortal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+
+  // Carrega a contagem de notificações na inicialização
+  useEffect(() => {
+    if (!token) return;
+    fetchNotifications(token)
+      .then(items => setNotifCount((items || []).length))
+      .catch(() => setNotifCount(0));
+  }, [token]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -217,10 +227,9 @@ function AppShell() {
         onNavigate={id => { setNotifPanelOpen(false); navigate(id); }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
-        onOpenNotifications={() => {
-          setNotifPanelOpen(true);
-        }}
-        notifClearKey={notifPanelOpen ? 1 : 0}
+        onOpenNotifications={() => setNotifPanelOpen(true)}
+        notifCount={notifCount}
+        onNotifCountChange={setNotifCount}
         dark={dark}
       />
       <MobileDrawer
@@ -234,6 +243,7 @@ function AppShell() {
         open={notifPanelOpen}
         onClose={() => setNotifPanelOpen(false)}
         sidebarCollapsed={sidebarCollapsed}
+        onCountChange={setNotifCount}
       />
       {pages[page] ?? <HomePage />}
       <FloatingAssistants />
