@@ -250,6 +250,51 @@ router.get('/success-logins', async (req, res) => {
     }
 });
 
+// GET /api/admin/reports/password-resets
+router.get('/password-resets', async (req, res) => {
+    try {
+        const db = getPool();
+        if (!db) return res.json({ resets: [] });
+
+        const { limit = 100, offset = 0 } = req.query;
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const result = await db.query(`
+            SELECT id, timestamp, actor, target, ip, meta, action
+            FROM audit_logs
+            WHERE action IN (
+                'PASSWORD_RESET_REQUESTED',
+                'PASSWORD_RESET_CODE_INVALID',
+                'PASSWORD_RESET_CODE_VERIFIED',
+                'PASSWORD_RESET_COMPLETED'
+            )
+              AND timestamp >= $1
+            ORDER BY timestamp DESC
+            LIMIT $2 OFFSET $3
+        `, [since, parseInt(limit), parseInt(offset)]);
+
+        const countResult = await db.query(`
+            SELECT COUNT(*)::int as total
+            FROM audit_logs
+            WHERE action IN (
+                'PASSWORD_RESET_REQUESTED',
+                'PASSWORD_RESET_CODE_INVALID',
+                'PASSWORD_RESET_CODE_VERIFIED',
+                'PASSWORD_RESET_COMPLETED'
+            )
+              AND timestamp >= $1
+        `, [since]);
+
+        res.json({
+            resets: result.rows,
+            total: countResult.rows[0]?.total || 0,
+        });
+    } catch (err) {
+        console.error('[reports/password-resets]', err);
+        res.status(500).json({ error: 'Erro ao buscar resets de senha' });
+    }
+});
+
 // GET /api/admin/reports/failed-logins
 router.get('/failed-logins', async (req, res) => {
     try {

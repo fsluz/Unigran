@@ -299,94 +299,153 @@ function CommunitiesModal({ token, onClose }) {
 
 
 
-function SuccessLoginsModal({ token, onClose }) {
-  const [logins, setLogins]     = useState([]);
-  const [loadingL, setLoadingL] = useState(true);
-  const [search, setSearch]     = useState('');
+
+
+function TimelineModal({ title, items, onClose, actionLabel, actionColor, actionIcon }) {
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+        <div className="umodal-header">
+          <span>{title}</span>
+          <button className="umodal-close" onClick={onClose}>X</button>
+        </div>
+        <div className="umodal-body">
+          {items.map((item, i) => {
+            const color = actionColor(item.action);
+            const icon  = actionIcon(item.action);
+            const label = actionLabel(item.action);
+            const date  = new Date(item.timestamp).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', year: '2-digit',
+              hour: '2-digit', minute: '2-digit',
+            });
+            return (
+              <div key={i} className="umodal-row" style={{ alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
+                  <div className="umodal-avatar" style={{ background: color + '22', color, width: 28, height: 28, fontSize: '0.9rem' }}>{icon}</div>
+                  {i < items.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 16, background: 'var(--border-color, #e5e7eb)', margin: '4px 0' }} />}
+                </div>
+                <div className="umodal-info" style={{ paddingBottom: i < items.length - 1 ? 12 : 0 }}>
+                  <span className="umodal-name" style={{ color }}>{label}</span>
+                  <span className="umodal-username">IP: {item.ip || '—'} · {date}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PasswordResetsModal({ token, onClose }) {
+  const [resets, setResets]       = useState([]);
+  const [loadingR, setLoadingR]   = useState(true);
+  const [search, setSearch]       = useState('');
+  const [selected, setSelected]   = useState(null);
 
   useEffect(() => {
-    apiFetch('/admin/reports/success-logins?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+    apiFetch('/admin/reports/password-resets?limit=200', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
-      .then(d => setLogins(d.logins || []))
+      .then(d => setResets(d.resets || []))
       .catch(() => {})
-      .finally(() => setLoadingL(false));
+      .finally(() => setLoadingR(false));
   }, [token]);
 
-  const filtered = logins.filter(l => {
-    if (!search) return true;
-    const email = l.meta?.email || '';
-    const ip    = l.ip || '';
-    const actor = l.actor || '';
-    return (email + ip + actor).toLowerCase().includes(search.toLowerCase());
-  });
+  const ACTION_LABEL = {
+    PASSWORD_RESET_REQUESTED:     'Solicitado',
+    PASSWORD_RESET_CODE_INVALID:  'Código inválido',
+    PASSWORD_RESET_CODE_VERIFIED: 'Código verificado',
+    PASSWORD_RESET_COMPLETED:     'Concluído',
+  };
+  const ACTION_COLOR = {
+    PASSWORD_RESET_REQUESTED:     '#6366f1',
+    PASSWORD_RESET_CODE_INVALID:  '#ef4444',
+    PASSWORD_RESET_CODE_VERIFIED: '#f59e0b',
+    PASSWORD_RESET_COMPLETED:     '#10b981',
+  };
+  const ACTION_ICON = {
+    PASSWORD_RESET_REQUESTED:     '🔑',
+    PASSWORD_RESET_CODE_INVALID:  '❌',
+    PASSWORD_RESET_CODE_VERIFIED: '✔️',
+    PASSWORD_RESET_COMPLETED:     '✅',
+  };
+
+  const grouped = resets.reduce((acc, r) => {
+    const key = r.meta?.email || r.target || 'desconhecido';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(r);
+    return acc;
+  }, {});
+
+  const entries = Object.entries(grouped)
+    .map(([email, items]) => ({ email, items, last: items[0]?.timestamp }))
+    .filter(e => !search || e.email.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => new Date(b.last) - new Date(a.last));
+
+  if (selected) return (
+    <TimelineModal
+      title={selected.email}
+      items={selected.items}
+      onClose={() => setSelected(null)}
+      actionLabel={a => ACTION_LABEL[a] || a}
+      actionColor={a => ACTION_COLOR[a] || '#9ca3af'}
+      actionIcon={a => ACTION_ICON[a] || '🔑'}
+    />
+  );
 
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box" onClick={e => e.stopPropagation()}>
         <div className="umodal-header">
-          <span>Logins bem-sucedidos — últimos 30 dias</span>
+          <span>Resets de senha — últimos 30 dias</span>
           <button className="umodal-close" onClick={onClose}>X</button>
         </div>
         <div className="umodal-search">
-          <input
-            placeholder="Buscar por e-mail, usuário ou IP..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
+          <input placeholder="Buscar por e-mail..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         </div>
         <div className="umodal-body">
-          {loadingL ? (
+          {loadingR ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
-          ) : filtered.length === 0 ? (
-            <div className="umodal-empty">Nenhum login encontrado</div>
-          ) : filtered.map((l, i) => {
-            const date = new Date(l.timestamp).toLocaleString('pt-BR', {
-              day: '2-digit', month: '2-digit', year: '2-digit',
-              hour: '2-digit', minute: '2-digit',
-            });
+          ) : entries.length === 0 ? (
+            <div className="umodal-empty">Nenhum reset encontrado</div>
+          ) : entries.map((e, i) => {
+            const last = new Date(e.last).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const completed = e.items.some(r => r.action === 'PASSWORD_RESET_COMPLETED');
+            const hasInvalid = e.items.some(r => r.action === 'PASSWORD_RESET_CODE_INVALID');
+            const statusColor = completed ? '#10b981' : hasInvalid ? '#ef4444' : '#f59e0b';
+            const statusLabel = completed ? 'Concluído' : hasInvalid ? 'Código inválido' : 'Em andamento';
             return (
-              <div key={l.id || i} className="umodal-row">
-                <div className="umodal-avatar" style={{ background: '#10b98122', color: '#10b981' }}>
-                  ✅
-                </div>
+              <div key={i} className="umodal-row" style={{ cursor: 'pointer' }} onClick={() => setSelected(e)}>
+                <div className="umodal-avatar" style={{ background: '#8b5cf622', color: '#8b5cf6' }}>🔑</div>
                 <div className="umodal-info">
-                  <span className="umodal-name">{l.actor || 'desconhecido'}</span>
-                  <span className="umodal-username">{l.meta?.email || '—'} · IP: {l.ip || '—'} · {date}</span>
+                  <span className="umodal-name">{e.email}</span>
+                  <span className="umodal-username">{e.items.length} evento(s) · último: {last}</span>
                 </div>
-                <span className="umodal-role" style={{ background: '#10b98122', color: '#10b981' }}>
-                  {l.meta?.role || 'user'}
-                </span>
+                <span className="umodal-role" style={{ background: statusColor + '22', color: statusColor }}>{statusLabel}</span>
+                <span style={{ color: 'var(--text-secondary, #aaa)', fontSize: '1rem' }}>›</span>
               </div>
             );
           })}
         </div>
-        <div className="umodal-footer">{filtered.length} login(s)</div>
+        <div className="umodal-footer">{entries.length} usuário(s)</div>
       </div>
     </div>
   );
 }
 
 function FailedLoginsModal({ token, onClose }) {
-  const [logins, setLogins]     = useState([]);
-  const [loadingL, setLoadingL] = useState(true);
-  const [search, setSearch]     = useState('');
+  const [logins, setLogins]       = useState([]);
+  const [loadingL, setLoadingL]   = useState(true);
+  const [search, setSearch]       = useState('');
+  const [selected, setSelected]   = useState(null);
 
   useEffect(() => {
-    apiFetch('/admin/reports/failed-logins?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+    apiFetch('/admin/reports/failed-logins?limit=200', { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
       .then(d => setLogins(d.logins || []))
       .catch(() => {})
       .finally(() => setLoadingL(false));
   }, [token]);
-
-  const filtered = logins.filter(l => {
-    if (!search) return true;
-    const email  = l.meta?.email || '';
-    const ip     = l.ip || '';
-    const reason = l.meta?.reason || '';
-    return (email + ip + reason).toLowerCase().includes(search.toLowerCase());
-  });
 
   const REASON_LABEL = {
     wrong_password: 'Senha incorreta',
@@ -394,13 +453,35 @@ function FailedLoginsModal({ token, onClose }) {
     rate_limit:     'Limite de tentativas',
     banned:         'Conta banida',
   };
-
   const REASON_COLOR = {
     wrong_password: '#f59e0b',
     user_not_found: '#6366f1',
     rate_limit:     '#ef4444',
     banned:         '#dc2626',
   };
+
+  const grouped = logins.reduce((acc, l) => {
+    const key = l.meta?.email || 'desconhecido';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(l);
+    return acc;
+  }, {});
+
+  const entries = Object.entries(grouped)
+    .map(([email, items]) => ({ email, items, last: items[0]?.timestamp }))
+    .filter(e => !search || e.email.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => new Date(b.last) - new Date(a.last));
+
+  if (selected) return (
+    <TimelineModal
+      title={selected.email}
+      items={selected.items.map(l => ({ ...l, action: l.meta?.reason || 'unknown' }))}
+      onClose={() => setSelected(null)}
+      actionLabel={a => REASON_LABEL[a] || a}
+      actionColor={a => REASON_COLOR[a] || '#9ca3af'}
+      actionIcon={_ => '🚫'}
+    />
+  );
 
   return (
     <div className="umodal-overlay" onClick={onClose}>
@@ -410,46 +491,110 @@ function FailedLoginsModal({ token, onClose }) {
           <button className="umodal-close" onClick={onClose}>X</button>
         </div>
         <div className="umodal-search">
-          <input
-            placeholder="Buscar por e-mail, IP ou motivo..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
+          <input placeholder="Buscar por e-mail..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         </div>
         <div className="umodal-body">
           {loadingL ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
-          ) : filtered.length === 0 ? (
+          ) : entries.length === 0 ? (
             <div className="umodal-empty">Nenhum login falho encontrado</div>
-          ) : filtered.map((l, i) => {
-            const reason = l.meta?.reason || 'unknown';
-            const color  = REASON_COLOR[reason] || '#9ca3af';
-            const date   = new Date(l.timestamp).toLocaleString('pt-BR', {
-              day: '2-digit', month: '2-digit', year: '2-digit',
-              hour: '2-digit', minute: '2-digit',
-            });
+          ) : entries.map((e, i) => {
+            const last = new Date(e.last).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const topReason = e.items[0]?.meta?.reason || 'unknown';
+            const color = REASON_COLOR[topReason] || '#9ca3af';
             return (
-              <div key={l.id || i} className="umodal-row">
-                <div className="umodal-avatar" style={{ background: color + '22', color }}>
-                  🚫
-                </div>
+              <div key={i} className="umodal-row" style={{ cursor: 'pointer' }} onClick={() => setSelected(e)}>
+                <div className="umodal-avatar" style={{ background: '#ef444422', color: '#ef4444' }}>🚫</div>
                 <div className="umodal-info">
-                  <span className="umodal-name">{l.meta?.email || 'e-mail desconhecido'}</span>
-                  <span className="umodal-username">IP: {l.ip || '—'} · {date}</span>
+                  <span className="umodal-name">{e.email}</span>
+                  <span className="umodal-username">{e.items.length} tentativa(s) · último: {last}</span>
                 </div>
-                <span className="umodal-role" style={{ background: color + '22', color }}>
-                  {REASON_LABEL[reason] || reason}
-                </span>
+                <span className="umodal-role" style={{ background: color + '22', color }}>{REASON_LABEL[topReason] || topReason}</span>
+                <span style={{ color: 'var(--text-secondary, #aaa)', fontSize: '1rem' }}>›</span>
               </div>
             );
           })}
         </div>
-        <div className="umodal-footer">{filtered.length} tentativa(s)</div>
+        <div className="umodal-footer">{entries.length} usuário(s)</div>
       </div>
     </div>
   );
 }
+
+function SuccessLoginsModal({ token, onClose }) {
+  const [logins, setLogins]       = useState([]);
+  const [loadingL, setLoadingL]   = useState(true);
+  const [search, setSearch]       = useState('');
+  const [selected, setSelected]   = useState(null);
+
+  useEffect(() => {
+    apiFetch('/admin/reports/success-logins?limit=200', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => setLogins(d.logins || []))
+      .catch(() => {})
+      .finally(() => setLoadingL(false));
+  }, [token]);
+
+  const grouped = logins.reduce((acc, l) => {
+    const key = l.actor || l.meta?.email || 'desconhecido';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(l);
+    return acc;
+  }, {});
+
+  const entries = Object.entries(grouped)
+    .map(([user, items]) => ({ user, items, last: items[0]?.timestamp }))
+    .filter(e => !search || e.user.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => new Date(b.last) - new Date(a.last));
+
+  if (selected) return (
+    <TimelineModal
+      title={selected.user}
+      items={selected.items.map(l => ({ ...l, action: 'LOGIN_SUCCESS' }))}
+      onClose={() => setSelected(null)}
+      actionLabel={_ => 'Login bem-sucedido'}
+      actionColor={_ => '#10b981'}
+      actionIcon={_ => '✅'}
+    />
+  );
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+        <div className="umodal-header">
+          <span>Logins bem-sucedidos — últimos 30 dias</span>
+          <button className="umodal-close" onClick={onClose}>X</button>
+        </div>
+        <div className="umodal-search">
+          <input placeholder="Buscar por usuário..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+        </div>
+        <div className="umodal-body">
+          {loadingL ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : entries.length === 0 ? (
+            <div className="umodal-empty">Nenhum login encontrado</div>
+          ) : entries.map((e, i) => {
+            const last = new Date(e.last).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const role = e.items[0]?.meta?.role || 'user';
+            return (
+              <div key={i} className="umodal-row" style={{ cursor: 'pointer' }} onClick={() => setSelected(e)}>
+                <div className="umodal-avatar" style={{ background: '#10b98122', color: '#10b981' }}>✅</div>
+                <div className="umodal-info">
+                  <span className="umodal-name">{e.user}</span>
+                  <span className="umodal-username">{e.items.length} acesso(s) · último: {last}</span>
+                </div>
+                <span className="umodal-role" style={{ background: '#10b98122', color: '#10b981' }}>{role}</span>
+                <span style={{ color: 'var(--text-secondary, #aaa)', fontSize: '1rem' }}>›</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="umodal-footer">{entries.length} usuário(s)</div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function AdminDashboardPage() {
   const { token } = useAuth();
@@ -461,6 +606,7 @@ export default function AdminDashboardPage() {
   const [showCommunities, setShowCommunities] = useState(false);
   const [showFailedLogins, setShowFailedLogins] = useState(false);
   const [showSuccessLogins, setShowSuccessLogins] = useState(false);
+  const [showPasswordResets, setShowPasswordResets] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -536,7 +682,8 @@ export default function AdminDashboardPage() {
         <MetricCard label="Logins falhos"  value={security.loginFailed}       icon="🚫" accent="#ef4444"
           onClick={() => setShowFailedLogins(true)} hint="Ver lista" />
         <MetricCard label="Bloqueados"     value={security.loginBlocked}      icon="🔒" accent="#f97316" />
-        <MetricCard label="Resets de senha" value={security.passwordResets}   icon="🔑" accent="#8b5cf6" />
+        <MetricCard label="Resets de senha" value={security.passwordResets}   icon="🔑" accent="#8b5cf6"
+          onClick={() => setShowPasswordResets(true)} hint="Ver lista" />
       </div>
 
       <div className="dash-row-2">
@@ -679,6 +826,7 @@ export default function AdminDashboardPage() {
       {showCommunities && <CommunitiesModal token={token} onClose={() => setShowCommunities(false)} />}
       {showFailedLogins && <FailedLoginsModal token={token} onClose={() => setShowFailedLogins(false)} />}
       {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}
+      {showPasswordResets && <PasswordResetsModal token={token} onClose={() => setShowPasswordResets(false)} />}
     </div>
   );
 }
