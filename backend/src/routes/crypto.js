@@ -69,33 +69,19 @@ router.put('/devices/current', auth, async (req, res) => {
     const name = typeqlLiteral(parsed.data.deviceName || 'Navegador');
     const key = typeqlLiteral(parsed.data.publicKey);
     const now = typeqlDatetime();
-
-    // Busca sem try{} opcional para evitar resultado falso-negativo
     const existing = await readQuery(`
       match
         $owner isa person, has username "${typeqlLiteral(req.user.username)}";
         $device isa crypto-device, has crypto-device-id "${deviceId}";
         crypto-device-owner(owner: $owner, device: $device);
-      fetch { "device_id": $device_id };
-    `).catch(() => []);
+        try { $device has crypto-device-revoked $revoked; };
+      fetch { "revoked": $revoked };
+    `);
 
     if (existing.length) {
-      // Verifica revogação separadamente
-      const revokedRows = await readQuery(`
-        match
-          $owner isa person, has username "${typeqlLiteral(req.user.username)}";
-          $device isa crypto-device, has crypto-device-id "${deviceId}", has crypto-device-revoked $revoked;
-          crypto-device-owner(owner: $owner, device: $device);
-        fetch { "revoked": $revoked };
-      `).catch(() => []);
-
-      const isRevoked = revokedRows.length > 0 &&
-        (revokedRows[0].revoked === true || String(revokedRows[0].revoked).toLowerCase() === 'true');
-
-      if (isRevoked) {
+      if (existing[0].revoked === true || String(existing[0].revoked).toLowerCase() === 'true') {
         return res.status(403).json({ error: 'Aparelho removido' });
       }
-
       await writeQuery(`
         match
           $owner isa person, has username "${typeqlLiteral(req.user.username)}";
@@ -107,40 +93,20 @@ router.put('/devices/current', auth, async (req, res) => {
           $device has crypto-device-last-seen ${now};
       `);
     } else {
-      // Tenta inserir; se falhar por constraint (race condition), tenta update
-      try {
-        await writeQuery(`
-          match
-            $owner isa person, has username "${typeqlLiteral(req.user.username)}";
-          insert
-            $device isa crypto-device,
-              has crypto-device-id "${deviceId}",
-              has crypto-device-name "${name}",
-              has crypto-device-public-key "${key}",
-              has crypto-device-created-at ${now},
-              has crypto-device-last-seen ${now},
-              has crypto-device-revoked false;
-            crypto-device-owner(owner: $owner, device: $device);
-        `);
-      } catch (insertErr) {
-        if (String(insertErr?.message || '').includes('unique') || String(insertErr?.message || '').includes('CNT9')) {
-          // Já existe (race condition) — faz update
-          await writeQuery(`
-            match
-              $owner isa person, has username "${typeqlLiteral(req.user.username)}";
-              $device isa crypto-device, has crypto-device-id "${deviceId}";
-              crypto-device-owner(owner: $owner, device: $device);
-            update
-              $device has crypto-device-name "${name}";
-              $device has crypto-device-public-key "${key}";
-              $device has crypto-device-last-seen ${now};
-          `);
-        } else {
-          throw insertErr;
-        }
-      }
+      await writeQuery(`
+        match
+          $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+        insert
+          $device isa crypto-device,
+            has crypto-device-id "${deviceId}",
+            has crypto-device-name "${name}",
+            has crypto-device-public-key "${key}",
+            has crypto-device-created-at ${now},
+            has crypto-device-last-seen ${now},
+            has crypto-device-revoked false;
+          crypto-device-owner(owner: $owner, device: $device);
+      `);
     }
-
     res.json({ saved: true, deviceId: parsed.data.deviceId });
   } catch (err) {
     console.error('[crypto device PUT]', err);
