@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { fetchConversations } from '../../services/conversations';
 import { fetchCommunities } from '../../services/communities';
+import { fetchNotifications } from '../../services/notifications';
 import UnigranLogo from './UnigranLogo';
 import { hasPermission } from '../../modules/shared/permissions';
 import MobileBottomNav from './MobileBottomNav';
@@ -43,11 +44,11 @@ export default function Sidebar({
   collapsed,
   onToggleCollapse,
   onOpenNotifications,
-  notifCount = 0,
-  onNotifCountChange,
+  notifClearKey = 0,
 }) {
   const { user, token } = useAuth();
   const [messageCount, setMessageCount] = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
   const [followedCommunities, setFollowedCommunities] = useState([]);
 
   const isActive = id => page === id;
@@ -57,7 +58,14 @@ export default function Sidebar({
     fetchConversations(token)
       .then(items => setMessageCount((items || []).reduce((s, i) => s + Number(i.receivedUnreadCount || 0), 0)))
       .catch(() => setMessageCount(0));
+    fetchNotifications(token)
+      .then(items => setNotifCount((items || []).length))
+      .catch(() => setNotifCount(0));
   }, [token, page]);
+
+  useEffect(() => {
+    if (notifClearKey) setNotifCount(0);
+  }, [notifClearKey]);
 
   useEffect(() => {
     if (!token) return;

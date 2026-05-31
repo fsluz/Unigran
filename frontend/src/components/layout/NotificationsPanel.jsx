@@ -30,7 +30,7 @@ function navigateNotification(notification) {
   window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'home' }));
 }
 
-export default function NotificationsPanel({ open, onClose, sidebarCollapsed, onCountChange }) {
+export default function NotificationsPanel({ open, onClose, sidebarCollapsed }) {
   const { token } = useAuth();
   const [items, setItems] = useState([]);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -40,14 +40,8 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed, on
     if (!open || !token) return;
     setLoading(true);
     fetchNotifications(token)
-      .then(data => {
-        setItems(data);
-        onCountChange?.(data.length);
-      })
-      .catch(() => {
-        setItems([]);
-        onCountChange?.(0);
-      })
+      .then(setItems)
+      .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, [open, token]);
 
@@ -65,19 +59,15 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed, on
   const clearAll = async () => {
     const before = items;
     setItems([]);
-    onCountChange?.(0);
     try {
       await markAllAsRead(token);
     } catch {
       setItems(before);
-      onCountChange?.(before.length);
     }
   };
 
   const openOne = async (n) => {
-    const next = items.filter(i => i.id !== n.id);
-    setItems(next);
-    onCountChange?.(next.length);
+    setItems(prev => prev.filter(i => i.id !== n.id));
     navigateNotification(n);
     onClose?.();
     try {
