@@ -215,4 +215,74 @@ router.get('/overview', async (req, res) => {
     }
 });
 
+// GET /api/admin/reports/success-logins
+router.get('/success-logins', async (req, res) => {
+    try {
+        const db = getPool();
+        if (!db) return res.json({ logins: [] });
+
+        const { limit = 50, offset = 0 } = req.query;
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const result = await db.query(`
+            SELECT id, timestamp, actor, ip, meta
+            FROM audit_logs
+            WHERE action = 'LOGIN_SUCCESS'
+              AND timestamp >= $1
+            ORDER BY timestamp DESC
+            LIMIT $2 OFFSET $3
+        `, [since, parseInt(limit), parseInt(offset)]);
+
+        const countResult = await db.query(`
+            SELECT COUNT(*)::int as total
+            FROM audit_logs
+            WHERE action = 'LOGIN_SUCCESS'
+              AND timestamp >= $1
+        `, [since]);
+
+        res.json({
+            logins: result.rows,
+            total: countResult.rows[0]?.total || 0,
+        });
+    } catch (err) {
+        console.error('[reports/success-logins]', err);
+        res.status(500).json({ error: 'Erro ao buscar logins bem-sucedidos' });
+    }
+});
+
+// GET /api/admin/reports/failed-logins
+router.get('/failed-logins', async (req, res) => {
+    try {
+        const db = getPool();
+        if (!db) return res.json({ logins: [] });
+
+        const { limit = 50, offset = 0 } = req.query;
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const result = await db.query(`
+            SELECT id, timestamp, actor, ip, meta
+            FROM audit_logs
+            WHERE action = 'LOGIN_FAILED'
+              AND timestamp >= $1
+            ORDER BY timestamp DESC
+            LIMIT $2 OFFSET $3
+        `, [since, parseInt(limit), parseInt(offset)]);
+
+        const countResult = await db.query(`
+            SELECT COUNT(*)::int as total
+            FROM audit_logs
+            WHERE action = 'LOGIN_FAILED'
+              AND timestamp >= $1
+        `, [since]);
+
+        res.json({
+            logins: result.rows,
+            total: countResult.rows[0]?.total || 0,
+        });
+    } catch (err) {
+        console.error('[reports/failed-logins]', err);
+        res.status(500).json({ error: 'Erro ao buscar logins falhos' });
+    }
+});
+
 export default router;

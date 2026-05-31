@@ -297,6 +297,160 @@ function CommunitiesModal({ token, onClose }) {
   );
 }
 
+
+
+function SuccessLoginsModal({ token, onClose }) {
+  const [logins, setLogins]     = useState([]);
+  const [loadingL, setLoadingL] = useState(true);
+  const [search, setSearch]     = useState('');
+
+  useEffect(() => {
+    apiFetch('/admin/reports/success-logins?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => setLogins(d.logins || []))
+      .catch(() => {})
+      .finally(() => setLoadingL(false));
+  }, [token]);
+
+  const filtered = logins.filter(l => {
+    if (!search) return true;
+    const email = l.meta?.email || '';
+    const ip    = l.ip || '';
+    const actor = l.actor || '';
+    return (email + ip + actor).toLowerCase().includes(search.toLowerCase());
+  });
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+        <div className="umodal-header">
+          <span>Logins bem-sucedidos — últimos 30 dias</span>
+          <button className="umodal-close" onClick={onClose}>X</button>
+        </div>
+        <div className="umodal-search">
+          <input
+            placeholder="Buscar por e-mail, usuário ou IP..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className="umodal-body">
+          {loadingL ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : filtered.length === 0 ? (
+            <div className="umodal-empty">Nenhum login encontrado</div>
+          ) : filtered.map((l, i) => {
+            const date = new Date(l.timestamp).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', year: '2-digit',
+              hour: '2-digit', minute: '2-digit',
+            });
+            return (
+              <div key={l.id || i} className="umodal-row">
+                <div className="umodal-avatar" style={{ background: '#10b98122', color: '#10b981' }}>
+                  ✅
+                </div>
+                <div className="umodal-info">
+                  <span className="umodal-name">{l.actor || 'desconhecido'}</span>
+                  <span className="umodal-username">{l.meta?.email || '—'} · IP: {l.ip || '—'} · {date}</span>
+                </div>
+                <span className="umodal-role" style={{ background: '#10b98122', color: '#10b981' }}>
+                  {l.meta?.role || 'user'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="umodal-footer">{filtered.length} login(s)</div>
+      </div>
+    </div>
+  );
+}
+
+function FailedLoginsModal({ token, onClose }) {
+  const [logins, setLogins]     = useState([]);
+  const [loadingL, setLoadingL] = useState(true);
+  const [search, setSearch]     = useState('');
+
+  useEffect(() => {
+    apiFetch('/admin/reports/failed-logins?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => setLogins(d.logins || []))
+      .catch(() => {})
+      .finally(() => setLoadingL(false));
+  }, [token]);
+
+  const filtered = logins.filter(l => {
+    if (!search) return true;
+    const email  = l.meta?.email || '';
+    const ip     = l.ip || '';
+    const reason = l.meta?.reason || '';
+    return (email + ip + reason).toLowerCase().includes(search.toLowerCase());
+  });
+
+  const REASON_LABEL = {
+    wrong_password: 'Senha incorreta',
+    user_not_found: 'Usuário não encontrado',
+    rate_limit:     'Limite de tentativas',
+    banned:         'Conta banida',
+  };
+
+  const REASON_COLOR = {
+    wrong_password: '#f59e0b',
+    user_not_found: '#6366f1',
+    rate_limit:     '#ef4444',
+    banned:         '#dc2626',
+  };
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+        <div className="umodal-header">
+          <span>Logins falhos — últimos 30 dias</span>
+          <button className="umodal-close" onClick={onClose}>X</button>
+        </div>
+        <div className="umodal-search">
+          <input
+            placeholder="Buscar por e-mail, IP ou motivo..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className="umodal-body">
+          {loadingL ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : filtered.length === 0 ? (
+            <div className="umodal-empty">Nenhum login falho encontrado</div>
+          ) : filtered.map((l, i) => {
+            const reason = l.meta?.reason || 'unknown';
+            const color  = REASON_COLOR[reason] || '#9ca3af';
+            const date   = new Date(l.timestamp).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', year: '2-digit',
+              hour: '2-digit', minute: '2-digit',
+            });
+            return (
+              <div key={l.id || i} className="umodal-row">
+                <div className="umodal-avatar" style={{ background: color + '22', color }}>
+                  🚫
+                </div>
+                <div className="umodal-info">
+                  <span className="umodal-name">{l.meta?.email || 'e-mail desconhecido'}</span>
+                  <span className="umodal-username">IP: {l.ip || '—'} · {date}</span>
+                </div>
+                <span className="umodal-role" style={{ background: color + '22', color }}>
+                  {REASON_LABEL[reason] || reason}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="umodal-footer">{filtered.length} tentativa(s)</div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { token } = useAuth();
   const [data, setData]                   = useState(null);
@@ -305,6 +459,8 @@ export default function AdminDashboardPage() {
   const [lastUpdate, setLastUpdate]       = useState(null);
   const [showUsers, setShowUsers]         = useState(false);
   const [showCommunities, setShowCommunities] = useState(false);
+  const [showFailedLogins, setShowFailedLogins] = useState(false);
+  const [showSuccessLogins, setShowSuccessLogins] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -375,8 +531,10 @@ export default function AdminDashboardPage() {
           onClick={() => setShowCommunities(true)} hint="Ver lista" />
         <MetricCard label="Eventos no log" value={totalLogs}                  icon="📋" accent="#f59e0b"
           sub={`${alertCount} alertas · ${warnCount} avisos`} />
-        <MetricCard label="Logins OK"      value={security.loginSuccess}      icon="✅" accent="#10b981" />
-        <MetricCard label="Logins falhos"  value={security.loginFailed}       icon="🚫" accent="#ef4444" />
+        <MetricCard label="Logins OK"      value={security.loginSuccess}      icon="✅" accent="#10b981"
+          onClick={() => setShowSuccessLogins(true)} hint="Ver lista" />
+        <MetricCard label="Logins falhos"  value={security.loginFailed}       icon="🚫" accent="#ef4444"
+          onClick={() => setShowFailedLogins(true)} hint="Ver lista" />
         <MetricCard label="Bloqueados"     value={security.loginBlocked}      icon="🔒" accent="#f97316" />
         <MetricCard label="Resets de senha" value={security.passwordResets}   icon="🔑" accent="#8b5cf6" />
       </div>
@@ -519,6 +677,8 @@ export default function AdminDashboardPage() {
 
       {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
       {showCommunities && <CommunitiesModal token={token} onClose={() => setShowCommunities(false)} />}
+      {showFailedLogins && <FailedLoginsModal token={token} onClose={() => setShowFailedLogins(false)} />}
+      {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}
     </div>
   );
 }
