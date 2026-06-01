@@ -596,6 +596,270 @@ function SuccessLoginsModal({ token, onClose }) {
 }
 
 
+
+function BlockedLoginsModal({ token, onClose }) {
+  const [summary, setSummary]   = useState([]);
+  const [logins, setLogins]     = useState([]);
+  const [loadingL, setLoadingL] = useState(true);
+  const [search, setSearch]     = useState('');
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    apiFetch('/admin/reports/blocked-logins?limit=500', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => {
+        setSummary(d.summary || []);
+        setLogins(d.logins || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingL(false));
+  }, [token]);
+
+  const grouped = logins.reduce((acc, l) => {
+    const key = l.meta?.email || l.actor || l.ip || 'desconhecido';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(l);
+    return acc;
+  }, {});
+
+  const entries = summary
+    .filter(e => !search || e.identifier.toLowerCase().includes(search.toLowerCase()))
+    .map(e => ({ ...e, items: grouped[e.identifier] || [] }));
+
+  if (selected) return (
+    <TimelineModal
+      title={selected.identifier}
+      items={selected.items.map(l => ({ ...l, action: 'blocked' }))}
+      onClose={() => setSelected(null)}
+      actionLabel={_ => 'Bloqueado'}
+      actionColor={_ => '#f97316'}
+      actionIcon={_ => '🔒'}
+    />
+  );
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+        <div className="umodal-header">
+          <span>Contas bloqueadas — últimos 30 dias</span>
+          <button className="umodal-close" onClick={onClose}>X</button>
+        </div>
+        <div className="umodal-search">
+          <input placeholder="Buscar por usuário ou IP..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+        </div>
+        <div className="umodal-body">
+          {loadingL ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : entries.length === 0 ? (
+            <div className="umodal-empty">Nenhuma conta bloqueada encontrada</div>
+          ) : entries.map((e, i) => {
+            const last = new Date(e.last_attempt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            return (
+              <div key={i} className="umodal-row" style={{ cursor: e.items.length > 0 ? 'pointer' : 'default' }}
+                onClick={() => e.items.length > 0 && setSelected(e)}>
+                <div className="umodal-avatar" style={{ background: '#f9731622', color: '#f97316' }}>🔒</div>
+                <div className="umodal-info">
+                  <span className="umodal-name">{e.identifier}</span>
+                  <span className="umodal-username">
+                    {e.attempts_after_block} tentativa(s) após bloqueio · IP: {e.ip || '—'} · último: {last}
+                  </span>
+                </div>
+                <span className="umodal-role" style={{ background: '#f9731622', color: '#f97316' }}>
+                  {e.attempts_after_block}x bloqueado
+                </span>
+                {e.items.length > 0 && <span style={{ color: 'var(--text-secondary, #aaa)', fontSize: '1rem' }}>›</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="umodal-footer">{entries.length} usuário(s) bloqueado(s)</div>
+      </div>
+    </div>
+  );
+}
+
+
+function AuditLogsModal({ token, initialLevel, onClose }) {
+  const LEVELS     = ['INFO', 'WARN', 'ALERT', 'ERROR'];
+  const CATEGORIES = ['AUTH', 'ADMIN', 'POST', 'COMMUNITY', 'USER', 'SECURITY', 'SYSTEM'];
+  const LEVEL_COLOR = { INFO: '#6366f1', WARN: '#f59e0b', ALERT: '#f97316', ERROR: '#ef4444' };
+  const LEVEL_ICON  = { INFO: 'ℹ️', WARN: '⚠️', ALERT: '🔔', ERROR: '🔴' };
+
+  const [logs, setLogs]         = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [total, setTotal]       = useState(0);
+  const [expanded, setExpanded] = useState(null);
+
+  const [level,    setLevel]    = useState(initialLevel || '');
+  const [category, setCategory] = useState('');
+  const [action,   setAction]   = useState('');
+  const [actor,    setActor]    = useState('');
+  const [from,     setFrom]     = useState('');
+  const [to,       setTo]       = useState('');
+
+  const fetchLogs = useCallback(() => {
+    setLoading(true);
+    setExpanded(null);
+    const params = new URLSearchParams({ limit: 200 });
+    if (level)        params.set('level',    level);
+    if (category)     params.set('category', category);
+    if (action.trim()) params.set('action',  action.trim());
+    if (actor.trim())  params.set('actor',   actor.trim());
+    if (from)         params.set('from',     from + 'T00:00:00Z');
+    if (to)           params.set('to',       to   + 'T23:59:59Z');
+    apiFetch('/admin/audit-logs?' + params.toString(), { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => { setLogs(d.logs || []); setTotal(d.total || (d.logs || []).length); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token, level, category, action, actor, from, to]);
+
+  useEffect(() => { fetchLogs(); }, []);
+
+  const clearFilters = () => { setLevel(''); setCategory(''); setAction(''); setActor(''); setFrom(''); setTo(''); };
+  const hasFilters   = level || category || action.trim() || actor.trim() || from || to;
+  const handleKey    = e => { if (e.key === 'Enter') fetchLogs(); };
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box alog-box" onClick={e => e.stopPropagation()}>
+
+        <div className="umodal-header">
+          <div className="alog-header-left">
+            <span>📋</span>
+            <span>Audit Logs</span>
+            {total > 0 && <span className="dash-badge">{total} evento{total !== 1 ? 's' : ''}</span>}
+          </div>
+          <button className="umodal-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="alog-filters">
+
+          <div className="alog-filter-group">
+            <span className="alog-filter-label">Nível</span>
+            <div className="alog-level-btns">
+              <button className={`alog-level-btn${!level ? ' alog-active-all' : ''}`}
+                onClick={() => setLevel('')}>Todos</button>
+              {LEVELS.map(l => (
+                <button key={l}
+                  className={`alog-level-btn alog-level-${l.toLowerCase()}${level === l ? ' alog-active' : ''}`}
+                  onClick={() => setLevel(level === l ? '' : l)}>
+                  {LEVEL_ICON[l]} {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="alog-filter-group">
+            <span className="alog-filter-label">Categoria</span>
+            <div className="alog-cat-pills">
+              <button className={`alog-cat-pill${!category ? ' alog-active' : ''}`}
+                onClick={() => setCategory('')}>Todas</button>
+              {CATEGORIES.map(c => (
+                <button key={c} className={`alog-cat-pill${category === c ? ' alog-active' : ''}`}
+                  onClick={() => setCategory(category === c ? '' : c)}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="alog-filter-row">
+            <div className="alog-input-wrap">
+              <span className="alog-input-icon">🔍</span>
+              <input className="alog-input" placeholder="Ação..." value={action}
+                onChange={e => setAction(e.target.value)} onKeyDown={handleKey} />
+            </div>
+            <div className="alog-input-wrap">
+              <span className="alog-input-icon">👤</span>
+              <input className="alog-input" placeholder="Usuário / ator..." value={actor}
+                onChange={e => setActor(e.target.value)} onKeyDown={handleKey} />
+            </div>
+            <div className="alog-date-range">
+              <input className="alog-input alog-date" type="date" value={from}
+                onChange={e => setFrom(e.target.value)} title="De" />
+              <span className="alog-date-sep">→</span>
+              <input className="alog-input alog-date" type="date" value={to}
+                onChange={e => setTo(e.target.value)} title="Até" />
+            </div>
+          </div>
+
+          <div className="alog-filter-actions">
+            <button className="alog-btn-apply" onClick={fetchLogs} disabled={loading}>
+              {loading ? <span className="alog-spin" /> : null} Filtrar
+            </button>
+            {hasFilters && (
+              <button className="alog-btn-clear" onClick={clearFilters}>× Limpar</button>
+            )}
+          </div>
+        </div>
+
+        <div className="umodal-body">
+          {loading ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : logs.length === 0 ? (
+            <div className="umodal-empty">Nenhum log encontrado com esses filtros</div>
+          ) : logs.map((log, i) => {
+            const color  = LEVEL_COLOR[log.level] || '#9ca3af';
+            const icon   = LEVEL_ICON[log.level]  || '📋';
+            const ts     = new Date(log.timestamp).toLocaleString('pt-BR', {
+              day: '2-digit', month: '2-digit', year: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            const isOpen  = expanded === i;
+            const hasMeta = Object.keys(log.meta || {}).length > 0;
+            const canExpand = hasMeta || log.target;
+            return (
+              <div key={i} className={`alog-row${isOpen ? ' alog-row-open' : ''}`}
+                onClick={() => canExpand && setExpanded(isOpen ? null : i)}>
+                <div className="alog-row-main">
+                  <div className="alog-level-bar" style={{ background: color }} />
+                  <span className="alog-row-icon">{icon}</span>
+                  <div className="alog-row-body">
+                    <div className="alog-row-top">
+                      <code className="alog-action" style={{ color }}>{log.action}</code>
+                      <div className="alog-badges">
+                        <span className="alog-badge" style={{ background: color + '1a', color }}>{log.level}</span>
+                        <span className="alog-badge alog-badge-cat">{log.category}</span>
+                      </div>
+                    </div>
+                    <div className="alog-row-meta">
+                      <span className="alog-meta-ts">{ts}</span>
+                      {log.actor && <><span className="alog-dot">·</span><span>{log.actor}</span></>}
+                      {log.ip    && <><span className="alog-dot">·</span><span className="alog-ip">{log.ip}</span></>}
+                    </div>
+                  </div>
+                  {canExpand && (
+                    <span className={`alog-chevron${isOpen ? ' open' : ''}`}>›</span>
+                  )}
+                </div>
+                {isOpen && canExpand && (
+                  <div className="alog-detail">
+                    {log.target && (
+                      <div className="alog-detail-row">
+                        <span className="alog-detail-key">Target</span>
+                        <code className="alog-detail-val">{log.target}</code>
+                      </div>
+                    )}
+                    {hasMeta && (
+                      <pre className="alog-pre">{JSON.stringify(log.meta, null, 2)}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="umodal-footer">
+          {logs.length < total
+            ? <>{logs.length} de {total} eventos exibidos</>
+            : <>{total} evento{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}</>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { token } = useAuth();
   const [data, setData]                   = useState(null);
@@ -607,6 +871,9 @@ export default function AdminDashboardPage() {
   const [showFailedLogins, setShowFailedLogins] = useState(false);
   const [showSuccessLogins, setShowSuccessLogins] = useState(false);
   const [showPasswordResets, setShowPasswordResets] = useState(false);
+  const [showBlockedLogins, setShowBlockedLogins] = useState(false);
+  const [showAuditLogs, setShowAuditLogs]         = useState(false);
+  const [auditInitLevel, setAuditInitLevel]       = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -676,12 +943,14 @@ export default function AdminDashboardPage() {
         <MetricCard label="Comunidades"    value={overview.totalCommunities}  icon="🏛" accent="#10b981"
           onClick={() => setShowCommunities(true)} hint="Ver lista" />
         <MetricCard label="Eventos no log" value={totalLogs}                  icon="📋" accent="#f59e0b"
-          sub={`${alertCount} alertas · ${warnCount} avisos`} />
+          sub={`${alertCount} alertas · ${warnCount} avisos`}
+          onClick={() => { setAuditInitLevel(''); setShowAuditLogs(true); }} hint="Ver logs" />
         <MetricCard label="Logins OK"      value={security.loginSuccess}      icon="✅" accent="#10b981"
           onClick={() => setShowSuccessLogins(true)} hint="Ver lista" />
         <MetricCard label="Logins falhos"  value={security.loginFailed}       icon="🚫" accent="#ef4444"
           onClick={() => setShowFailedLogins(true)} hint="Ver lista" />
-        <MetricCard label="Bloqueados"     value={security.loginBlocked}      icon="🔒" accent="#f97316" />
+        <MetricCard label="Bloqueados"     value={security.loginBlocked}      icon="🔒" accent="#f97316"
+          onClick={() => setShowBlockedLogins(true)} hint="Ver lista" />
         <MetricCard label="Resets de senha" value={security.passwordResets}   icon="🔑" accent="#8b5cf6"
           onClick={() => setShowPasswordResets(true)} hint="Ver lista" />
       </div>
@@ -820,6 +1089,70 @@ export default function AdminDashboardPage() {
         .umodal-banned { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #fecaca; color: #b91c1c; flex-shrink: 0; }
         .umodal-footer { padding: 10px 20px; font-size: 0.78rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); }
         .umodal-loading, .umodal-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-secondary, #888); font-size: 0.85rem; }
+
+        /* ── Audit Logs Modal ────────────────────────────────────── */
+        .alog-box { max-width: 800px; width: 96vw; max-height: 88vh; }
+        .alog-header-left { display: flex; align-items: center; gap: 8px; }
+
+        .alog-filters { padding: 14px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); display: flex; flex-direction: column; gap: 12px; }
+        .alog-filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .alog-filter-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary, #888); }
+
+        .alog-level-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+        .alog-level-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .alog-level-btn:hover { background: var(--bg-hover, #e5e7eb); }
+        .alog-active-all { background: var(--bg-hover, #e5e7eb) !important; color: var(--text-primary, #111) !important; border-color: transparent; }
+        .alog-level-info.alog-active  { background: #6366f11a; color: #6366f1; border-color: #6366f155; }
+        .alog-level-warn.alog-active  { background: #f59e0b1a; color: #f59e0b; border-color: #f59e0b55; }
+        .alog-level-alert.alog-active { background: #f973161a; color: #f97316; border-color: #f9731655; }
+        .alog-level-error.alog-active { background: #ef44441a; color: #ef4444; border-color: #ef444455; }
+
+        .alog-cat-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .alog-cat-pill { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.73rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .alog-cat-pill:hover { background: var(--bg-secondary, #f3f4f6); }
+        .alog-cat-pill.alog-active { background: #6366f11a; color: #6366f1; border-color: #6366f155; font-weight: 600; }
+
+        .alog-filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .alog-input-wrap { position: relative; flex: 1 1 140px; }
+        .alog-input-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
+        .alog-input { width: 100%; padding: 7px 10px 7px 30px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.82rem; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); outline: none; box-sizing: border-box; }
+        .alog-input:focus { border-color: #6366f1; background: var(--bg-primary, #fff); }
+        .alog-date { padding-left: 10px; flex: 1 1 120px; }
+        .alog-date-range { display: flex; align-items: center; gap: 6px; flex: 1 1 260px; }
+        .alog-date-sep { color: var(--text-secondary, #aaa); font-size: 0.85rem; flex-shrink: 0; }
+
+        .alog-filter-actions { display: flex; gap: 8px; align-items: center; }
+        .alog-btn-apply { display: flex; align-items: center; gap: 6px; padding: 7px 18px; border-radius: 8px; border: none; background: #6366f1; color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .alog-btn-apply:hover { background: #4f46e5; }
+        .alog-btn-apply:disabled { opacity: 0.6; cursor: default; }
+        .alog-btn-clear { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
+        .alog-btn-clear:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #111); }
+        .alog-spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+        .alog-row { cursor: default; transition: background 0.12s; border-bottom: 1px solid var(--border-color, #f3f4f6); }
+        .alog-row:hover { background: var(--bg-secondary, #f9fafb); }
+        .alog-row-open { background: var(--bg-secondary, #f9fafb); }
+        .alog-row-main { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+        .alog-level-bar { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+        .alog-row-icon { font-size: 1rem; flex-shrink: 0; line-height: 1; }
+        .alog-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .alog-row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .alog-action { font-size: 0.82rem; font-weight: 600; font-family: 'Courier New', monospace; }
+        .alog-badges { display: flex; gap: 5px; flex-shrink: 0; }
+        .alog-badge { font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+        .alog-badge-cat { background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); }
+        .alog-row-meta { display: flex; align-items: center; gap: 5px; font-size: 0.73rem; color: var(--text-secondary, #888); flex-wrap: wrap; }
+        .alog-meta-ts { font-variant-numeric: tabular-nums; }
+        .alog-dot { opacity: 0.4; }
+        .alog-ip { font-family: monospace; font-size: 0.72rem; opacity: 0.75; }
+        .alog-chevron { font-size: 1rem; color: var(--text-secondary, #aaa); transition: transform 0.2s; flex-shrink: 0; cursor: pointer; }
+        .alog-chevron.open { transform: rotate(90deg); }
+
+        .alog-detail { padding: 0 16px 14px 43px; }
+        .alog-detail-row { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+        .alog-detail-key { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 52px; }
+        .alog-detail-val { font-size: 0.8rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
+        .alog-pre { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.75rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.55; }
       `}</style>
 
       {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
@@ -827,6 +1160,8 @@ export default function AdminDashboardPage() {
       {showFailedLogins && <FailedLoginsModal token={token} onClose={() => setShowFailedLogins(false)} />}
       {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}
       {showPasswordResets && <PasswordResetsModal token={token} onClose={() => setShowPasswordResets(false)} />}
+      {showBlockedLogins && <BlockedLoginsModal token={token} onClose={() => setShowBlockedLogins(false)} />}
+      {showAuditLogs && <AuditLogsModal token={token} initialLevel={auditInitLevel} onClose={() => setShowAuditLogs(false)} />}
     </div>
   );
 }

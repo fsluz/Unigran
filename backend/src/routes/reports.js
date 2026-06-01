@@ -330,4 +330,56 @@ router.get('/failed-logins', async (req, res) => {
     }
 });
 
+// GET /api/admin/reports/blocked-logins
+router.get('/blocked-logins', async (req, res) => {
+    try {
+        const db = getPool();
+        if (!db) return res.json({ logins: [] });
+
+        const { limit = 50, offset = 0 } = req.query;
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        // Busca eventos de bloqueio no audit_logs
+        const result = await db.query(`
+            SELECT id, timestamp, actor, ip, meta
+            FROM audit_logs
+            WHERE action = 'LOGIN_BLOCKED'
+              AND timestamp >= $1
+            ORDER BY timestamp DESC
+            LIMIT $2 OFFSET $3
+        `, [since, parseInt(limit), parseInt(offset)]);
+
+        const countResult = await db.query(`
+            SELECT COUNT(*)::int as total
+            FROM audit_logs
+            WHERE action = 'LOGIN_BLOCKED'
+              AND timestamp >= $1
+        `, [since]);
+
+        // Busca também tentativas após bloqueio: agrupa por IP/email
+        // e conta quantas vezes tentou logar depois de estar bloqueado
+        const attemptsAfterBlock = await db.query(`
+            SELECT
+                COALESCE(meta->>'email', actor, ip) AS identifier,
+                ip,
+                COUNT(*)::int AS attempts_after_block,
+                MAX(timestamp) AS last_attempt
+            FROM audit_logs
+            WHERE action = 'LOGIN_BLOCKED'
+              AND timestamp >= $1
+            GROUP BY COALESCE(meta->>'email', actor, ip), ip
+            ORDER BY attempts_after_block DESC, last_attempt DESC
+        `, [since]);
+
+        res.json({
+            logins: result.rows,
+            total: countResult.rows[0]?.total || 0,
+            summary: attemptsAfterBlock.rows,
+        });
+    } catch (err) {
+        console.error('[reports/blocked-logins]', err);
+        res.status(500).json({ error: 'Erro ao buscar logins bloqueados' });
+    }
+});
+
 export default router;
