@@ -268,6 +268,8 @@ function PostsModal({ token, onClose }) {
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
         <div className="umodal-header" style={{ padding: '18px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '1.2rem' }}>📝</span>
@@ -278,9 +280,12 @@ function PostsModal({ token, onClose }) {
           </div>
           <button className="umodal-close" onClick={onClose} style={{ fontSize: '1.1rem', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         </div>
+
+        {/* Search */}
         <div className="umodal-search" style={{ padding: '12px 24px' }}>
           <input placeholder="Buscar por nome ou username..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         </div>
+
         <div className="umodal-body" style={{ padding: '0 0 4px' }}>
           {loadingP ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
@@ -288,6 +293,7 @@ function PostsModal({ token, onClose }) {
             <div className="umodal-empty">Nenhum autor encontrado</div>
           ) : (
             <>
+              {/* Top 3 podium cards */}
               {top3.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${top3.length}, 1fr)`, gap: 12, padding: '16px 24px 8px' }}>
                   {top3.map((p, i) => (
@@ -306,6 +312,8 @@ function PostsModal({ token, onClose }) {
                   ))}
                 </div>
               )}
+
+              {/* Remaining list */}
               {listData.length > 0 && (
                 <div style={{ borderTop: top3.length ? '1px solid var(--border-color,#e5e7eb)' : 'none', marginTop: top3.length ? 4 : 0 }}>
                   {listData.map((p, idx) => {
@@ -342,6 +350,7 @@ function PostsModal({ token, onClose }) {
             </>
           )}
         </div>
+
         <div className="umodal-footer" style={{ padding: '10px 24px', display: 'flex', justifyContent: 'space-between' }}>
           <span>{filtered.length} autor(es)</span>
           <span>{filtered.reduce((s, p) => s + (p.count || 0), 0)} posts{search ? ' (filtrados)' : ' no total'}</span>
@@ -410,6 +419,10 @@ function CommunitiesModal({ token, onClose }) {
     </div>
   );
 }
+
+
+
+
 
 function TimelineModal({ title, items, onClose, actionLabel, actionColor, actionIcon }) {
   return (
@@ -705,6 +718,8 @@ function SuccessLoginsModal({ token, onClose }) {
   );
 }
 
+
+
 function BlockedLoginsModal({ token, onClose }) {
   const [summary, setSummary]   = useState([]);
   const [logins, setLogins]     = useState([]);
@@ -786,6 +801,7 @@ function BlockedLoginsModal({ token, onClose }) {
   );
 }
 
+
 function AuditLogsModal({ token, initialLevel, onClose }) {
   const LEVELS     = ['INFO', 'WARN', 'ALERT', 'ERROR'];
   const CATEGORIES = ['AUTH', 'ADMIN', 'POST', 'COMMUNITY', 'USER', 'SECURITY', 'SYSTEM'];
@@ -830,6 +846,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box alog-box" onClick={e => e.stopPropagation()}>
+
         <div className="umodal-header">
           <div className="alog-header-left">
             <span>📋</span>
@@ -838,7 +855,9 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
           </div>
           <button className="umodal-close" onClick={onClose}>×</button>
         </div>
+
         <div className="alog-filters">
+
           <div className="alog-filter-group">
             <span className="alog-filter-label">Nível</span>
             <div className="alog-level-btns">
@@ -853,6 +872,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
               ))}
             </div>
           </div>
+
           <div className="alog-filter-group">
             <span className="alog-filter-label">Categoria</span>
             <div className="alog-cat-pills">
@@ -864,6 +884,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
               ))}
             </div>
           </div>
+
           <div className="alog-filter-row">
             <div className="alog-input-wrap">
               <span className="alog-input-icon">🔍</span>
@@ -883,6 +904,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
                 onChange={e => setTo(e.target.value)} title="Até" />
             </div>
           </div>
+
           <div className="alog-filter-actions">
             <button className="alog-btn-apply" onClick={fetchLogs} disabled={loading}>
               {loading ? <span className="alog-spin" /> : null} Filtrar
@@ -892,6 +914,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
             )}
           </div>
         </div>
+
         <div className="umodal-body">
           {loading ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
@@ -948,6 +971,7 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
             );
           })}
         </div>
+
         <div className="umodal-footer">
           {logs.length < total
             ? <>{logs.length} de {total} eventos exibidos</>
@@ -1056,49 +1080,43 @@ export default function AdminDashboardPage() {
           onClick={() => setShowPasswordResets(true)} hint="Ver lista" />
       </div>
 
-      {/* Charts row 1 - scrollable wrapper on mobile */}
-      <div className="dash-scroll-x">
-        <div className="dash-row-2">
-          <div className="dash-card dash-card-wide">
-            <div className="dash-card-header">
-              <h2>Atividade diaria <span className="dash-badge">14 dias</span></h2>
-            </div>
-            <BarChart data={actionsPerDay} valueKey="total" color="#6366f1" height={110} />
-            <XAxis data={actionsPerDay} />
+      <div className="dash-row-2">
+        <div className="dash-card dash-card-wide">
+          <div className="dash-card-header">
+            <h2>Atividade diaria <span className="dash-badge">14 dias</span></h2>
           </div>
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h2>Taxa de erros <span className="dash-badge">14 dias</span></h2>
-            </div>
-            <LineChart data={errorRate} valueKey="errors" color="#ef4444" height={90} />
-            <XAxis data={errorRate} />
+          <BarChart data={actionsPerDay} valueKey="total" color="#6366f1" height={110} />
+          <XAxis data={actionsPerDay} />
+        </div>
+        <div className="dash-card">
+          <div className="dash-card-header">
+            <h2>Taxa de erros <span className="dash-badge">14 dias</span></h2>
           </div>
+          <LineChart data={errorRate} valueKey="errors" color="#ef4444" height={90} />
+          <XAxis data={errorRate} />
         </div>
       </div>
 
-      {/* Charts row 2 - scrollable wrapper on mobile */}
-      <div className="dash-scroll-x">
-        <div className="dash-row-3">
-          <div className="dash-card">
-            <div className="dash-card-header"><h2>Categorias de acao</h2></div>
-            <div className="dash-pie-wrap">
-              <PieChart data={categoryBreakdown} size={120} />
-              <Legend data={categoryBreakdown} />
-            </div>
+      <div className="dash-row-3">
+        <div className="dash-card">
+          <div className="dash-card-header"><h2>Categorias de acao</h2></div>
+          <div className="dash-pie-wrap">
+            <PieChart data={categoryBreakdown} size={120} />
+            <Legend data={categoryBreakdown} />
           </div>
-          <div className="dash-card">
-            <div className="dash-card-header"><h2>Niveis de log</h2></div>
-            <div className="dash-pie-wrap">
-              <PieChart data={levelBreakdown} size={120} />
-              <Legend data={levelBreakdown} />
-            </div>
+        </div>
+        <div className="dash-card">
+          <div className="dash-card-header"><h2>Niveis de log</h2></div>
+          <div className="dash-pie-wrap">
+            <PieChart data={levelBreakdown} size={120} />
+            <Legend data={levelBreakdown} />
           </div>
-          <div className="dash-card">
-            <div className="dash-card-header"><h2>Cargos de usuarios</h2></div>
-            <div className="dash-pie-wrap">
-              <PieChart data={roleChart} size={120} />
-              <Legend data={roleChart} />
-            </div>
+        </div>
+        <div className="dash-card">
+          <div className="dash-card-header"><h2>Cargos de usuarios</h2></div>
+          <div className="dash-pie-wrap">
+            <PieChart data={roleChart} size={120} />
+            <Legend data={roleChart} />
           </div>
         </div>
       </div>
@@ -1127,254 +1145,149 @@ export default function AdminDashboardPage() {
       )}
 
       <style>{`
-        /* ── Page layout ─────────────────────────────────────────── */
-        .dash-page {
-          padding: 24px;
-          max-width: 1200px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          font-family: inherit;
-          /* allow the page itself to scroll vertically */
-          min-height: 0;
-          overflow-y: auto;
-          box-sizing: border-box;
-        }
-
-        /* ── Header ──────────────────────────────────────────────── */
+        .dash-page { padding: 24px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; font-family: inherit; }
         .dash-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-        .dash-title  { font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--text-primary, #111); }
+        .dash-title { font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--text-primary, #111); }
         .dash-subtitle { font-size: 0.85rem; color: var(--text-secondary, #666); margin: 4px 0 0; }
-
-        /* ── Refresh button ──────────────────────────────────────── */
-        .dash-btn-refresh {
-          padding: 8px 16px; border-radius: 8px;
-          border: 1px solid var(--border-color, #e5e7eb);
-          background: var(--bg-surface, #fff); color: var(--text-primary, #111);
-          font-size: 0.85rem; cursor: pointer; transition: background 0.15s; white-space: nowrap;
-        }
-        .dash-btn-refresh:hover    { background: var(--bg-hover, #f3f4f6); }
+        .dash-btn-refresh { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-surface, #fff); color: var(--text-primary, #111); font-size: 0.85rem; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+        .dash-btn-refresh:hover { background: var(--bg-hover, #f3f4f6); }
         .dash-btn-refresh:disabled { opacity: 0.5; cursor: default; }
-
-        /* ── Metric cards ────────────────────────────────────────── */
-        .dash-metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-          gap: 12px;
-        }
-        .dash-metric-card {
-          display: flex; align-items: center; gap: 12px;
-          padding: 16px; border-radius: 12px;
-          background: var(--bg-surface, #fff);
-          border: 1px solid var(--border-color, #e5e7eb);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-          transition: box-shadow 0.15s;
-          border-left: 3px solid var(--accent);
-        }
-        .dash-metric-card:hover   { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .dash-metric-icon         { font-size: 1.5rem; flex-shrink: 0; }
-        .dash-metric-body         { display: flex; flex-direction: column; min-width: 0; }
-        .dash-metric-label        { font-size: 0.75rem; color: var(--text-secondary, #666); font-weight: 500; }
-        .dash-metric-value        { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #111); line-height: 1.2; }
-        .dash-metric-sub          { font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 2px; }
-        .dash-metric-hint         { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 0.68rem; font-weight: 600; color: #6366f1; background: #6366f115; padding: 2px 7px 2px 5px; border-radius: 20px; width: fit-content; transition: background 0.15s; }
+        .dash-metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .dash-metric-card { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: box-shadow 0.15s; border-left: 3px solid var(--accent); }
+        .dash-metric-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dash-metric-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .dash-metric-body { display: flex; flex-direction: column; min-width: 0; }
+        .dash-metric-label { font-size: 0.75rem; color: var(--text-secondary, #666); font-weight: 500; }
+        .dash-metric-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary, #111); line-height: 1.2; }
+        .dash-metric-sub { font-size: 0.7rem; color: var(--text-secondary, #888); margin-top: 2px; }
+        .dash-metric-hint { display: inline-flex; align-items: center; gap: 4px; margin-top: 5px; font-size: 0.68rem; font-weight: 600; color: #6366f1; background: #6366f115; padding: 2px 7px 2px 5px; border-radius: 20px; width: fit-content; transition: background 0.15s; }
         .dash-metric-card:hover .dash-metric-hint { background: #6366f125; }
-        .dash-metric-hint-dot     { width: 5px; height: 5px; border-radius: 50%; background: #6366f1; flex-shrink: 0; }
-        .dash-metric-hint-arrow   { font-size: 0.85rem; line-height: 1; margin-left: 1px; }
-        .dash-metric-trend        { font-size: 0.8rem; font-weight: 600; margin-left: auto; flex-shrink: 0; }
-
-        /* ── Cards ───────────────────────────────────────────────── */
-        .dash-card {
-          background: var(--bg-surface, #fff);
-          border: 1px solid var(--border-color, #e5e7eb);
-          border-radius: 12px; padding: 18px 20px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-          min-width: 0;
-        }
+        .dash-metric-hint-dot { width: 5px; height: 5px; border-radius: 50%; background: #6366f1; flex-shrink: 0; }
+        .dash-metric-hint-arrow { font-size: 0.85rem; line-height: 1; margin-left: 1px; }
+        .dash-metric-trend { font-size: 0.8rem; font-weight: 600; margin-left: auto; flex-shrink: 0; }
+        .dash-card { background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
         .dash-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
         .dash-card-header h2 { font-size: 0.95rem; font-weight: 600; margin: 0; color: var(--text-primary, #111); display: flex; align-items: center; gap: 8px; }
         .dash-badge { font-size: 0.68rem; font-weight: 500; padding: 2px 7px; border-radius: 999px; background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); }
-        .dash-card-wide { flex: 2; }
-        .dash-card-full { width: 100%; box-sizing: border-box; }
-
-        /* ── Horizontal scroll wrapper for multi-col rows ────────── */
-        .dash-scroll-x {
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          /* subtle scrollbar so users know it's scrollable */
-          scrollbar-width: thin;
-          scrollbar-color: var(--border-color, #d1d5db) transparent;
-          border-radius: 12px;
-        }
-        .dash-scroll-x::-webkit-scrollbar       { height: 4px; }
-        .dash-scroll-x::-webkit-scrollbar-thumb { background: var(--border-color, #d1d5db); border-radius: 99px; }
-
-        /* ── Grid rows — keep natural widths inside scroll wrapper ── */
-        .dash-row-2 {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 16px;
-          min-width: 560px;   /* won't shrink below this; scrolls instead */
-        }
-        .dash-row-3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-          min-width: 620px;   /* same idea */
-        }
-
-        /* ── Charts ──────────────────────────────────────────────── */
+        .dash-card-wide { flex: 2; min-width: 0; }
+        .dash-card-full { width: 100%; }
+        .dash-row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+        .dash-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         .chart-empty { display: flex; align-items: center; justify-content: center; color: var(--text-secondary, #999); font-size: 0.8rem; }
-        .dash-xaxis  { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.65rem; color: var(--text-secondary, #aaa); overflow: hidden; }
+        .dash-xaxis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.65rem; color: var(--text-secondary, #aaa); overflow: hidden; }
         .dash-pie-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-
-        /* ── Legend ──────────────────────────────────────────────── */
-        .dash-legend      { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+        .dash-legend { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
         .dash-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
-        .dash-legend-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dash-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .dash-legend-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary, #111); font-weight: 500; }
-        .dash-legend-val  { color: var(--text-primary, #111); font-weight: 600; }
-        .dash-legend-pct  { color: var(--text-secondary, #888); }
-
-        /* ── Top actions ─────────────────────────────────────────── */
-        .dash-top-actions  { display: flex; flex-direction: column; gap: 10px; }
-        .dash-action-row   { display: grid; grid-template-columns: 28px 1fr 2fr 60px; align-items: center; gap: 10px; font-size: 0.82rem; }
-        .dash-action-rank  { color: var(--text-secondary, #aaa); font-weight: 600; }
-        .dash-action-name  { color: var(--text-primary, #111); font-family: monospace; font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dash-legend-val { color: var(--text-primary, #111); font-weight: 600; }
+        .dash-legend-pct { color: var(--text-secondary, #888); }
+        .dash-top-actions { display: flex; flex-direction: column; gap: 10px; }
+        .dash-action-row { display: grid; grid-template-columns: 28px 1fr 2fr 60px; align-items: center; gap: 10px; font-size: 0.82rem; }
+        .dash-action-rank { color: var(--text-secondary, #aaa); font-weight: 600; }
+        .dash-action-name { color: var(--text-primary, #111); font-family: monospace; font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .dash-action-bar-wrap { height: 8px; background: var(--bg-secondary, #f3f4f6); border-radius: 99px; overflow: hidden; }
-        .dash-action-bar   { height: 100%; background: #6366f1; border-radius: 99px; transition: width 0.4s ease; }
+        .dash-action-bar { height: 100%; background: #6366f1; border-radius: 99px; transition: width 0.4s ease; }
         .dash-action-count { text-align: right; font-weight: 600; color: var(--text-primary, #111); }
-
-        /* ── Loading / error states ──────────────────────────────── */
         .dash-loading, .dash-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 24px; color: var(--text-secondary, #666); font-size: 0.9rem; }
         .dash-spinner { width: 32px; height: 32px; border: 3px solid var(--border-color, #e5e7eb); border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .dash-btn-retry { padding: 8px 20px; border-radius: 8px; border: none; background: #6366f1; color: #fff; cursor: pointer; font-size: 0.85rem; }
-
-        /* ── Responsive overrides ────────────────────────────────── */
-        @media (max-width: 600px) {
-          .dash-page            { padding: 14px; gap: 14px; }
-          .dash-metrics-grid    { grid-template-columns: repeat(2, 1fr); }
-          /* action table: hide bar column on very small screens */
-          .dash-action-row      { grid-template-columns: 24px 1fr 60px; }
-          .dash-action-bar-wrap { display: none; }
-        }
-
-        /* ── Modal overlay ───────────────────────────────────────── */
-        .umodal-overlay {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.45);
-          z-index: 1000;
-          display: flex; align-items: center; justify-content: center;
-          padding: 16px;
-          /* allow the overlay itself to scroll if viewport is tiny */
-          overflow-y: auto;
-        }
-        .umodal-box {
-          background: var(--bg-primary, #fff);
-          border-radius: 16px;
-          width: 100%; max-width: 760px;
-          /* take up to 90% of viewport height, then scroll inside */
-          max-height: 90vh;
-          display: flex; flex-direction: column;
-          overflow: hidden;
-          box-shadow: 0 24px 80px rgba(0,0,0,0.28);
-          /* push box down if overlay itself is scrolling */
-          margin: auto;
-        }
-        .umodal-header  { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); flex-shrink: 0; }
-        .umodal-close   { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text-secondary, #666); padding: 4px 8px; border-radius: 6px; }
+        @media (max-width: 900px) { .dash-row-2 { grid-template-columns: 1fr; } .dash-row-3 { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .dash-page { padding: 16px; } .dash-row-3 { grid-template-columns: 1fr; } .dash-metrics-grid { grid-template-columns: repeat(2, 1fr); } .dash-action-row { grid-template-columns: 24px 1fr 60px; } .dash-action-bar-wrap { display: none; } }
+        .umodal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .umodal-box { background: var(--bg-primary, #fff); border-radius: 16px; width: 100%; max-width: 760px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
+        .umodal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+        .umodal-close { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text-secondary, #666); padding: 4px 8px; border-radius: 6px; }
         .umodal-close:hover { background: var(--bg-secondary, #f3f4f6); }
-        .umodal-search  { padding: 12px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); flex-shrink: 0; }
-        .umodal-search input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--bg-secondary, #f9fafb); box-sizing: border-box; }
+        .umodal-search { padding: 12px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+        .umodal-search input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--bg-secondary, #f9fafb); }
         .umodal-search input:focus { border-color: #6366f1; }
-        /* body is the ONLY scrolling region inside the modal */
-        .umodal-body    { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
-        .umodal-footer  { padding: 10px 20px; font-size: 0.78rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); flex-shrink: 0; }
-        .umodal-row     { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border-color, #f3f4f6); }
+        .umodal-body { overflow-y: auto; flex: 1; }
+        .umodal-row { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border-color, #f3f4f6); }
         .umodal-row:hover { background: var(--bg-secondary, #f9fafb); }
-        .umodal-avatar  { width: 34px; height: 34px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
-        .umodal-info    { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-        .umodal-name    { font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #111); }
-        .umodal-username{ font-size: 0.75rem; color: var(--text-secondary, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .umodal-role    { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; }
-        .umodal-banned  { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #fecaca; color: #b91c1c; flex-shrink: 0; }
+        .umodal-avatar { width: 34px; height: 34px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+        .umodal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .umodal-name { font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #111); }
+        .umodal-username { font-size: 0.75rem; color: var(--text-secondary, #888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .umodal-role { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; }
+        .umodal-banned { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #fecaca; color: #b91c1c; flex-shrink: 0; }
+        .umodal-footer { padding: 10px 20px; font-size: 0.78rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); }
         .umodal-loading, .umodal-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-secondary, #888); font-size: 0.85rem; }
 
-        /* ── Audit Logs modal extras ─────────────────────────────── */
-        .alog-box { max-width: 800px; width: 96vw; }
+        /* ── Audit Logs Modal ────────────────────────────────────── */
+        .alog-box { max-width: 800px; width: 96vw; max-height: 88vh; }
         .alog-header-left { display: flex; align-items: center; gap: 8px; }
 
-        .alog-filters { padding: 14px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; overflow-y: auto; max-height: 40vh; }
+        .alog-filters { padding: 14px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); display: flex; flex-direction: column; gap: 12px; }
         .alog-filter-group { display: flex; flex-direction: column; gap: 6px; }
         .alog-filter-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary, #888); }
 
         .alog-level-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-        .alog-level-btn  { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-        .alog-level-btn:hover   { background: var(--bg-hover, #e5e7eb); }
-        .alog-active-all        { background: var(--bg-hover, #e5e7eb) !important; color: var(--text-primary, #111) !important; border-color: transparent; }
+        .alog-level-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .alog-level-btn:hover { background: var(--bg-hover, #e5e7eb); }
+        .alog-active-all { background: var(--bg-hover, #e5e7eb) !important; color: var(--text-primary, #111) !important; border-color: transparent; }
         .alog-level-info.alog-active  { background: #6366f11a; color: #6366f1; border-color: #6366f155; }
         .alog-level-warn.alog-active  { background: #f59e0b1a; color: #f59e0b; border-color: #f59e0b55; }
         .alog-level-alert.alog-active { background: #f973161a; color: #f97316; border-color: #f9731655; }
         .alog-level-error.alog-active { background: #ef44441a; color: #ef4444; border-color: #ef444455; }
 
         .alog-cat-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-        .alog-cat-pill  { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.73rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-        .alog-cat-pill:hover       { background: var(--bg-secondary, #f3f4f6); }
+        .alog-cat-pill { padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.73rem; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .alog-cat-pill:hover { background: var(--bg-secondary, #f3f4f6); }
         .alog-cat-pill.alog-active { background: #6366f11a; color: #6366f1; border-color: #6366f155; font-weight: 600; }
 
-        .alog-filter-row  { display: flex; gap: 8px; flex-wrap: wrap; }
-        .alog-input-wrap  { position: relative; flex: 1 1 140px; }
-        .alog-input-icon  { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
-        .alog-input       { width: 100%; padding: 7px 10px 7px 30px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.82rem; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); outline: none; box-sizing: border-box; }
+        .alog-filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .alog-input-wrap { position: relative; flex: 1 1 140px; }
+        .alog-input-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
+        .alog-input { width: 100%; padding: 7px 10px 7px 30px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.82rem; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); outline: none; box-sizing: border-box; }
         .alog-input:focus { border-color: #6366f1; background: var(--bg-primary, #fff); }
-        .alog-date        { padding-left: 10px; flex: 1 1 120px; }
-        .alog-date-range  { display: flex; align-items: center; gap: 6px; flex: 1 1 260px; }
-        .alog-date-sep    { color: var(--text-secondary, #aaa); font-size: 0.85rem; flex-shrink: 0; }
+        .alog-date { padding-left: 10px; flex: 1 1 120px; }
+        .alog-date-range { display: flex; align-items: center; gap: 6px; flex: 1 1 260px; }
+        .alog-date-sep { color: var(--text-secondary, #aaa); font-size: 0.85rem; flex-shrink: 0; }
 
         .alog-filter-actions { display: flex; gap: 8px; align-items: center; }
-        .alog-btn-apply  { display: flex; align-items: center; gap: 6px; padding: 7px 18px; border-radius: 8px; border: none; background: #6366f1; color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
-        .alog-btn-apply:hover     { background: #4f46e5; }
-        .alog-btn-apply:disabled  { opacity: 0.6; cursor: default; }
-        .alog-btn-clear  { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
+        .alog-btn-apply { display: flex; align-items: center; gap: 6px; padding: 7px 18px; border-radius: 8px; border: none; background: #6366f1; color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .alog-btn-apply:hover { background: #4f46e5; }
+        .alog-btn-apply:disabled { opacity: 0.6; cursor: default; }
+        .alog-btn-clear { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.82rem; cursor: pointer; transition: all 0.15s; }
         .alog-btn-clear:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #111); }
         .alog-spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 
-        .alog-row        { cursor: default; transition: background 0.12s; border-bottom: 1px solid var(--border-color, #f3f4f6); }
-        .alog-row:hover  { background: var(--bg-secondary, #f9fafb); }
-        .alog-row-open   { background: var(--bg-secondary, #f9fafb); }
-        .alog-row-main   { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
-        .alog-level-bar  { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
-        .alog-row-icon   { font-size: 1rem; flex-shrink: 0; line-height: 1; }
-        .alog-row-body   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-        .alog-row-top    { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .alog-action     { font-size: 0.82rem; font-weight: 600; font-family: 'Courier New', monospace; }
-        .alog-badges     { display: flex; gap: 5px; flex-shrink: 0; }
-        .alog-badge      { font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
-        .alog-badge-cat  { background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); }
-        .alog-row-meta   { display: flex; align-items: center; gap: 5px; font-size: 0.73rem; color: var(--text-secondary, #888); flex-wrap: wrap; }
-        .alog-meta-ts    { font-variant-numeric: tabular-nums; }
-        .alog-dot        { opacity: 0.4; }
-        .alog-ip         { font-family: monospace; font-size: 0.72rem; opacity: 0.75; }
-        .alog-chevron    { font-size: 1rem; color: var(--text-secondary, #aaa); transition: transform 0.2s; flex-shrink: 0; cursor: pointer; }
+        .alog-row { cursor: default; transition: background 0.12s; border-bottom: 1px solid var(--border-color, #f3f4f6); }
+        .alog-row:hover { background: var(--bg-secondary, #f9fafb); }
+        .alog-row-open { background: var(--bg-secondary, #f9fafb); }
+        .alog-row-main { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+        .alog-level-bar { width: 3px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+        .alog-row-icon { font-size: 1rem; flex-shrink: 0; line-height: 1; }
+        .alog-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .alog-row-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .alog-action { font-size: 0.82rem; font-weight: 600; font-family: 'Courier New', monospace; }
+        .alog-badges { display: flex; gap: 5px; flex-shrink: 0; }
+        .alog-badge { font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+        .alog-badge-cat { background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); }
+        .alog-row-meta { display: flex; align-items: center; gap: 5px; font-size: 0.73rem; color: var(--text-secondary, #888); flex-wrap: wrap; }
+        .alog-meta-ts { font-variant-numeric: tabular-nums; }
+        .alog-dot { opacity: 0.4; }
+        .alog-ip { font-family: monospace; font-size: 0.72rem; opacity: 0.75; }
+        .alog-chevron { font-size: 1rem; color: var(--text-secondary, #aaa); transition: transform 0.2s; flex-shrink: 0; cursor: pointer; }
         .alog-chevron.open { transform: rotate(90deg); }
 
-        .alog-detail      { padding: 0 16px 14px 43px; }
-        .alog-detail-row  { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
-        .alog-detail-key  { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 52px; }
-        .alog-detail-val  { font-size: 0.8rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
-        .alog-pre         { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.75rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.55; }
+        .alog-detail { padding: 0 16px 14px 43px; }
+        .alog-detail-row { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+        .alog-detail-key { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 52px; }
+        .alog-detail-val { font-size: 0.8rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
+        .alog-pre { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.75rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.55; }
       `}</style>
 
-      {showUsers        && <UsersModal          token={token} onClose={() => setShowUsers(false)} />}
-      {showPosts        && <PostsModal          token={token} onClose={() => setShowPosts(false)} />}
-      {showCommunities  && <CommunitiesModal    token={token} onClose={() => setShowCommunities(false)} />}
-      {showFailedLogins && <FailedLoginsModal   token={token} onClose={() => setShowFailedLogins(false)} />}
-      {showSuccessLogins&& <SuccessLoginsModal  token={token} onClose={() => setShowSuccessLogins(false)} />}
-      {showPasswordResets&&<PasswordResetsModal token={token} onClose={() => setShowPasswordResets(false)} />}
-      {showBlockedLogins&& <BlockedLoginsModal  token={token} onClose={() => setShowBlockedLogins(false)} />}
-      {showAuditLogs    && <AuditLogsModal      token={token} initialLevel={auditInitLevel} onClose={() => setShowAuditLogs(false)} />}
+      {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
+      {showPosts && <PostsModal token={token} onClose={() => setShowPosts(false)} />}
+      {showCommunities && <CommunitiesModal token={token} onClose={() => setShowCommunities(false)} />}
+      {showFailedLogins && <FailedLoginsModal token={token} onClose={() => setShowFailedLogins(false)} />}
+      {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}
+      {showPasswordResets && <PasswordResetsModal token={token} onClose={() => setShowPasswordResets(false)} />}
+      {showBlockedLogins && <BlockedLoginsModal token={token} onClose={() => setShowBlockedLogins(false)} />}
+      {showAuditLogs && <AuditLogsModal token={token} initialLevel={auditInitLevel} onClose={() => setShowAuditLogs(false)} />}
     </div>
   );
 }
