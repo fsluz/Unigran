@@ -237,6 +237,129 @@ function UsersModal({ token, onClose }) {
   );
 }
 
+function PostsModal({ token, onClose }) {
+  const [posts, setPosts]       = useState([]);
+  const [loadingP, setLoadingP] = useState(true);
+  const [search, setSearch]     = useState('');
+  const [totalPosts, setTotalPosts] = useState(0);
+
+  useEffect(() => {
+    apiFetch('/admin/posts/by-author', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => { setPosts(d.authors || []); setTotalPosts(d.totalPosts || 0); })
+      .catch(() => {})
+      .finally(() => setLoadingP(false));
+  }, [token]);
+
+  const allSorted = [...posts].sort((a, b) => (b.count || 0) - (a.count || 0));
+  const filtered  = allSorted.filter(p =>
+    !search || (p.name + ' ' + (p.username || '')).toLowerCase().includes(search.toLowerCase())
+  );
+  const maxCount  = allSorted.length ? (allSorted[0].count || 1) : 1;
+
+  const PODIUM_COLORS  = ['#f59e0b', '#94a3b8', '#b45309'];
+  const PODIUM_BG      = ['#fef3c7', '#f1f5f9', '#fdf4e7'];
+  const PODIUM_LABELS  = ['1º lugar', '2º lugar', '3º lugar'];
+  const PODIUM_MEDALS  = ['🥇', '🥈', '🥉'];
+
+  const top3    = !search ? allSorted.slice(0, 3) : [];
+  const listData = !search ? filtered.slice(3) : filtered;
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="umodal-header" style={{ padding: '18px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.2rem' }}>📝</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '1rem' }}>Posts por autor</div>
+              {!loadingP && <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary,#888)', fontWeight: 400, marginTop: 1 }}>{allSorted.length} autores · {totalPosts} posts no total</div>}
+            </div>
+          </div>
+          <button className="umodal-close" onClick={onClose} style={{ fontSize: '1.1rem', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+
+        {/* Search */}
+        <div className="umodal-search" style={{ padding: '12px 24px' }}>
+          <input placeholder="Buscar por nome ou username..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+        </div>
+
+        <div className="umodal-body" style={{ padding: '0 0 4px' }}>
+          {loadingP ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : filtered.length === 0 ? (
+            <div className="umodal-empty">Nenhum autor encontrado</div>
+          ) : (
+            <>
+              {/* Top 3 podium cards */}
+              {top3.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${top3.length}, 1fr)`, gap: 12, padding: '16px 24px 8px' }}>
+                  {top3.map((p, i) => (
+                    <div key={p.username || i} style={{ background: PODIUM_BG[i], border: `1.5px solid ${PODIUM_COLORS[i]}44`, borderRadius: 12, padding: '14px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', fontSize: '1.4rem', lineHeight: 1 }}>{PODIUM_MEDALS[i]}</div>
+                      <div style={{ width: 44, height: 44, borderRadius: '50%', background: PODIUM_COLORS[i], color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1rem', marginTop: 6, boxShadow: `0 2px 8px ${PODIUM_COLORS[i]}55` }}>
+                        {(p.name || p.username || '?')[0].toUpperCase()}
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary,#111)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name || p.username}</div>
+                        {p.username && <div style={{ fontSize: '0.7rem', color: PODIUM_COLORS[i], fontWeight: 500 }}>@{p.username}</div>}
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: '1.5rem', color: PODIUM_COLORS[i], lineHeight: 1 }}>{p.count || 0}</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary,#999)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{PODIUM_LABELS[i]}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Remaining list */}
+              {listData.length > 0 && (
+                <div style={{ borderTop: top3.length ? '1px solid var(--border-color,#e5e7eb)' : 'none', marginTop: top3.length ? 4 : 0 }}>
+                  {listData.map((p, idx) => {
+                    const i = !search ? idx + 3 : idx;
+                    const barPct = Math.round(((p.count || 0) / maxCount) * 100);
+                    const pct100 = totalPosts ? Math.round(((p.count || 0) / totalPosts) * 100) : 0;
+                    return (
+                      <div key={p.username || i} className="umodal-row" style={{ padding: '11px 24px', gap: 14 }}>
+                        <span style={{ minWidth: 28, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary,#aaa)', textAlign: 'right', flexShrink: 0 }}>#{i + 1}</span>
+                        <div className="umodal-avatar" style={{ width: 38, height: 38, fontSize: '0.95rem', background: '#6366f122', color: '#6366f1', flexShrink: 0 }}>
+                          {(p.name || p.username || '?')[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-primary,#111)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name || p.username || 'Desconhecido'}</span>
+                            {p.username && <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary,#aaa)' }}>@{p.username}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+                            <div style={{ flex: 1, height: 5, background: 'var(--bg-secondary,#f3f4f6)', borderRadius: 99, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${barPct}%`, background: '#6366f1', borderRadius: 99, transition: 'width 0.4s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary,#aaa)', flexShrink: 0 }}>{pct100}%</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, minWidth: 48 }}>
+                          <span style={{ fontWeight: 800, fontSize: '1.15rem', color: '#6366f1', lineHeight: 1 }}>{p.count || 0}</span>
+                          <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary,#bbb)', fontWeight: 500 }}>posts</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="umodal-footer" style={{ padding: '10px 24px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>{filtered.length} autor(es)</span>
+          <span>{filtered.reduce((s, p) => s + (p.count || 0), 0)} posts{search ? ' (filtrados)' : ' no total'}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CommunitiesModal({ token, onClose }) {
   const [communities, setCommunities] = useState([]);
   const [loadingC, setLoadingC]       = useState(true);
@@ -867,6 +990,7 @@ export default function AdminDashboardPage() {
   const [error, setError]                 = useState('');
   const [lastUpdate, setLastUpdate]       = useState(null);
   const [showUsers, setShowUsers]         = useState(false);
+  const [showPosts, setShowPosts]         = useState(false);
   const [showCommunities, setShowCommunities] = useState(false);
   const [showFailedLogins, setShowFailedLogins] = useState(false);
   const [showSuccessLogins, setShowSuccessLogins] = useState(false);
@@ -939,7 +1063,8 @@ export default function AdminDashboardPage() {
         <MetricCard label="Usuarios"       value={overview.totalUsers}       icon="👤" accent="#6366f1"
           sub={`${overview.bannedUsers || 0} banidos · ${overview.twoFaUsers || 0} com 2FA`}
           onClick={() => setShowUsers(true)} hint="Ver lista" />
-        <MetricCard label="Posts"          value={overview.totalPosts}        icon="📝" accent="#22d3ee" />
+        <MetricCard label="Posts"          value={overview.totalPosts}        icon="📝" accent="#22d3ee"
+          onClick={() => setShowPosts(true)} hint="Ver lista" />
         <MetricCard label="Comunidades"    value={overview.totalCommunities}  icon="🏛" accent="#10b981"
           onClick={() => setShowCommunities(true)} hint="Ver lista" />
         <MetricCard label="Eventos no log" value={totalLogs}                  icon="📋" accent="#f59e0b"
@@ -1071,7 +1196,7 @@ export default function AdminDashboardPage() {
         @media (max-width: 900px) { .dash-row-2 { grid-template-columns: 1fr; } .dash-row-3 { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 600px) { .dash-page { padding: 16px; } .dash-row-3 { grid-template-columns: 1fr; } .dash-metrics-grid { grid-template-columns: repeat(2, 1fr); } .dash-action-row { grid-template-columns: 24px 1fr 60px; } .dash-action-bar-wrap { display: none; } }
         .umodal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .umodal-box { background: var(--bg-primary, #fff); border-radius: 14px; width: 100%; max-width: 620px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+        .umodal-box { background: var(--bg-primary, #fff); border-radius: 16px; width: 100%; max-width: 760px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
         .umodal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
         .umodal-close { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text-secondary, #666); padding: 4px 8px; border-radius: 6px; }
         .umodal-close:hover { background: var(--bg-secondary, #f3f4f6); }
@@ -1156,6 +1281,7 @@ export default function AdminDashboardPage() {
       `}</style>
 
       {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
+      {showPosts && <PostsModal token={token} onClose={() => setShowPosts(false)} />}
       {showCommunities && <CommunitiesModal token={token} onClose={() => setShowCommunities(false)} />}
       {showFailedLogins && <FailedLoginsModal token={token} onClose={() => setShowFailedLogins(false)} />}
       {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}

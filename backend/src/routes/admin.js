@@ -381,4 +381,62 @@ router.get('/power-bi', requirePermission('system:manage'), async (req, res) => 
   }
 });
 
+router.get('/posts/by-author', requirePermission('users:platform_manage'), async (req, res) => {
+  try {
+    // Mesma query do overview para contar posts — só post-id, sem depender de posting
+    const [allPostRows, authorRows] = await Promise.all([
+      readQuery(`
+        match $p isa post, has post-id $id;
+        fetch { "id": $id };
+      `).catch(() => []),
+      readQuery(`
+        match
+          $post isa post, has post-id $post_id;
+          posting(post: $post, page: $user);
+          $user isa person, has username $username;
+          try { $user has name $name; };
+        fetch {
+          "username": $username,
+          "name": $name,
+          "post_id": $post_id
+        };
+      `).catch(() => []),
+    ]);
+
+    const totalPosts = new Set(allPostRows.map(r => r.id).filter(Boolean)).size;
+
+    // Deduplica por post_id+username para evitar múltiplas linhas do mesmo post
+    const seen   = new Set();
+    const counts = {};
+    for (const row of authorRows) {
+      const key      = row.username || 'desconhecido';
+      const dedupKey = `${key}::${row.post_id}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+      if (!counts[key]) {
+        counts[key] = {
+          name: row.name || row.username || 'Desconhecido',
+          username: row.username || null,
+          count: 0,
+        };
+      }
+      counts[key].count += 1;
+    }
+
+    const authors        = Object.values(counts).sort((a, b) => b.count - a.count);
+    const countedTotal   = authors.reduce((s, a) => s + a.count, 0);
+    const orphanCount    = totalPosts - countedTotal; // posts sem autor linkado
+
+    // Se houver posts sem autor, aparece como entrada separada
+    if (orphanCount > 0) {
+      authors.push({ name: 'Sem autor identificado', username: null, count: orphanCount });
+    }
+
+    res.json({ authors, totalPosts });
+  } catch (err) {
+    console.error('[admin posts by-author]', err);
+    res.status(500).json({ error: 'Erro ao carregar posts por autor' });
+  }
+});
+
 export default router;
