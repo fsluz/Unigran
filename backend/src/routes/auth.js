@@ -7,9 +7,9 @@ import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '..
 import { normalizeRole } from '../middleware/auth.js';
 import { permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
-import { otpauthUrl, randomBase32, verifyTotp } from '../services/totp.service.js';
+import { otpauthUrl, randomBase32, verifyTotp, generateBackupCodes, hashBackupCode, verifyBackupCode, removeUsedBackupCode } from '../services/totp.service.js';
 import { sendPasswordResetCode } from '../services/email.service.js';
-import { generateCode, saveCode, verifyCode, deleteCode } from '../services/resetCode.service.js';
+import { generateCode, saveCode, verifyCode, deleteCode, canRequestCode } from '../services/resetCode.service.js';
 import { auditLog } from '../services/audit.service.js';
 
 function getIp(req) {
@@ -24,6 +24,8 @@ const RegisterSchema = z.object({
   email: z.preprocess(v => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.string().email()),
   phone: z.string().optional(),
   password: z.string().min(6),
+  acceptedTerms: z.boolean().optional(),
+  acceptedCookies: z.boolean().optional(),
 });
 
 const LoginSchema = z.object({
@@ -56,14 +58,16 @@ async function readTwoFactorByUsername(username) {
         $u isa person, has username "${typeqlLiteral(username)}";
         try { $u has two-factor-enabled $enabled; };
         try { $u has two-factor-secret $secret; };
+        try { $u has two-factor-backup-codes $backup; };
       fetch {
         "enabled": $enabled,
-        "secret": $secret
+        "secret": $secret,
+        "backupCodes": $backup
       };
     `);
-    return rows[0] || { enabled: false, secret: '' };
+    return rows[0] || { enabled: false, secret: '', backupCodes: null };
   } catch (err) {
-    if (String(err?.message || '').includes('two-factor')) return { enabled: false, secret: '' };
+    if (String(err?.message || '').includes('two-factor')) return { enabled: false, secret: '', backupCodes: null };
     throw err;
   }
 }
@@ -72,7 +76,10 @@ router.post('/register', async (req, res) => {
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { name, username, email, phone, password } = parsed.data;
+  const { name, username, email, phone, password, acceptedTerms = false, acceptedCookies = false } = parsed.data;
+  if (!acceptedTerms) {
+    return res.status(400).json({ error: 'É necessário aceitar os Termos de Uso para criar uma conta.' });
+  }
   const hash = encodeHash(await bcrypt.hash(password, 12));
   const esc = {
     username: typeqlLiteral(username),
@@ -96,7 +103,9 @@ router.post('/register', async (req, res) => {
           has can-publish true,
           has user-role "user",
           has page-visibility "public",
-          has post-visibility "public";
+          has post-visibility "public",
+          has approved-terms ${acceptedTerms},
+          has approved-cookies ${acceptedCookies};
     `);
     const payload = { id: username, username, email, role: 'user', permissions: permissionsForRole('user'), displayName: name, phone: phone || null };
     auditLog({ action: 'REGISTER', category: 'AUTH', actor: username, target: username, ip: getIp(req), meta: { email } });
@@ -111,37 +120,44 @@ router.post('/register', async (req, res) => {
 });
 
 // ─── Rate limiting em memória (por IP) ───────────────────────────────────────
-const loginAttempts = new Map();
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
-const LOGIN_MAX_TRIES = 10;
+function makeRateLimiter(windowMs, maxTries) {
+  const attempts = new Map();
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of attempts.entries()) {
+      if (now - entry.firstAt > windowMs) attempts.delete(key);
+    }
+  }, windowMs);
+  return {
+    check(key) {
+      const now = Date.now();
+      const entry = attempts.get(key) || { count: 0, firstAt: now };
+      if (now - entry.firstAt > windowMs) {
+        attempts.set(key, { count: 1, firstAt: now });
+        return false;
+      }
+      if (entry.count >= maxTries) return true;
+      attempts.set(key, { count: entry.count + 1, firstAt: entry.firstAt });
+      return false;
+    },
+    reset(key) { attempts.delete(key); },
+  };
+}
+
+const loginLimiter = makeRateLimiter(15 * 60 * 1000, 10);
+const totpLimiter  = makeRateLimiter(5  * 60 * 1000, 5);
 
 function getRateKey(req) {
   return getIp(req) || 'unknown';
 }
 
 function checkRateLimit(req) {
-  const key   = getRateKey(req);
-  const now   = Date.now();
-  const entry = loginAttempts.get(key) || { count: 0, firstAt: now };
-  if (now - entry.firstAt > LOGIN_WINDOW_MS) {
-    loginAttempts.set(key, { count: 1, firstAt: now });
-    return false;
-  }
-  if (entry.count >= LOGIN_MAX_TRIES) return true;
-  loginAttempts.set(key, { count: entry.count + 1, firstAt: entry.firstAt });
-  return false;
+  return loginLimiter.check(getRateKey(req));
 }
 
 function resetRateLimit(req) {
-  loginAttempts.delete(getRateKey(req));
+  loginLimiter.reset(getRateKey(req));
 }
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of loginAttempts.entries()) {
-    if (now - entry.firstAt > LOGIN_WINDOW_MS) loginAttempts.delete(key);
-  }
-}, LOGIN_WINDOW_MS);
 
 router.post('/login', async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
@@ -199,9 +215,32 @@ router.post('/login', async (req, res) => {
     const username = row.username || email.split('@')[0] || 'user';
     const twoFactor = await readTwoFactorByUsername(username);
     if (attrBoolTrue(twoFactor.enabled)) {
-      if (!verifyTotp(twoFactor.secret, parsed.data.twoFactorCode)) {
+      if (!parsed.data.twoFactorCode) {
         return res.json({ requires2FA: true, email });
       }
+      if (totpLimiter.check(`totp:${username}`)) {
+        auditLog({ action: '2FA_BRUTE_FORCE_BLOCKED', category: 'AUTH', actor: username, ip, level: 'ALERT' });
+        return res.status(429).json({ error: 'Muitas tentativas de codigo TOTP. Aguarde 5 minutos.' });
+      }
+      const totpOk = verifyTotp(twoFactor.secret, parsed.data.twoFactorCode);
+      let backupUsed = false;
+      if (!totpOk && twoFactor.backupCodes) {
+        const codes = JSON.parse(twoFactor.backupCodes || '[]');
+        if (verifyBackupCode(parsed.data.twoFactorCode, codes)) {
+          const remaining = removeUsedBackupCode(parsed.data.twoFactorCode, codes);
+          await writeQuery(`
+            match $u isa person, has username "${typeqlLiteral(username)}";
+            update $u has two-factor-backup-codes "${typeqlLiteral(JSON.stringify(remaining))}";
+          `);
+          backupUsed = true;
+        }
+      }
+      if (!totpOk && !backupUsed) {
+        auditLog({ action: '2FA_CODE_INVALID', category: 'AUTH', actor: username, ip, level: 'WARN' });
+        return res.status(401).json({ error: 'Codigo TOTP ou codigo de recuperacao invalido' });
+      }
+      totpLimiter.reset(`totp:${username}`);
+      if (backupUsed) auditLog({ action: '2FA_BACKUP_USED', category: 'AUTH', actor: username, ip, level: 'WARN' });
     }
 
     const payload = {
@@ -457,13 +496,17 @@ router.post('/2fa/enable', async (req, res) => {
     if (!rows.length || !verifyTotp(rows[0].secret, req.body?.code)) {
       return res.status(400).json({ error: 'Codigo invalido' });
     }
+    const backupCodes = generateBackupCodes(8);
+    const hashedBackups = JSON.stringify(backupCodes.map(hashBackupCode));
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(decoded.username)}";
       update
-        $u has two-factor-enabled true;
+        $u has two-factor-enabled true,
+        $u has two-factor-backup-codes "${typeqlLiteral(hashedBackups)}";
     `);
-    res.json({ enabled: true });
+    auditLog({ action: '2FA_ENABLED', category: 'AUTH', actor: decoded.username, ip: getIp(req) });
+    res.json({ enabled: true, backupCodes });
   } catch (err) {
     console.error('[2fa enable]', err);
     res.status(500).json({ error: 'Erro ao ativar 2FA' });
@@ -477,13 +520,43 @@ router.post('/2fa/disable', async (req, res) => {
   try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
   catch { return res.status(401).json({ error: 'Token invalido' }); }
 
+  const { password, totpCode } = req.body || {};
+  if (!password && !totpCode) {
+    return res.status(400).json({ error: 'Informe sua senha atual ou um codigo TOTP para desativar o 2FA' });
+  }
+
   try {
+    const rows = await readQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(decoded.username)}";
+        try { $u has password-hash $ph; };
+        try { $u has two-factor-secret $secret; };
+      fetch { "password_hash": $ph, "secret": $secret };
+    `);
+    if (!rows.length) return res.status(404).json({ error: 'Utilizador nao encontrado' });
+
+    const row = rows[0];
+    let verified = false;
+
+    if (password) {
+      const storedHash = row.password_hash ? decodeHash(row.password_hash) : '';
+      verified = storedHash ? await bcrypt.compare(password, storedHash) : false;
+    }
+    if (!verified && totpCode && row.secret) {
+      verified = verifyTotp(row.secret, totpCode);
+    }
+    if (!verified) {
+      auditLog({ action: '2FA_DISABLE_REJECTED', category: 'AUTH', actor: decoded.username, ip: getIp(req), level: 'WARN' });
+      return res.status(401).json({ error: 'Credencial invalida. Informe a senha correta ou um codigo TOTP valido.' });
+    }
+
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(decoded.username)}";
       update
         $u has two-factor-enabled false;
     `);
+    auditLog({ action: '2FA_DISABLED', category: 'AUTH', actor: decoded.username, ip: getIp(req) });
     res.json({ enabled: false });
   } catch (err) {
     console.error('[2fa disable]', err);
@@ -495,6 +568,10 @@ router.post('/2fa/disable', async (req, res) => {
 router.post('/reset-password/request', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ error: 'Informe o email' });
+
+  if (!canRequestCode(email)) {
+    return res.status(429).json({ error: 'Muitas tentativas. Aguarde alguns minutos antes de solicitar um novo codigo.' });
+  }
 
   try {
     const safeEmail = typeqlLiteral(email);

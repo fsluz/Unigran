@@ -370,9 +370,8 @@ select:focus,
   transform: translateY(-1px);
 }
 
-.post-action-btn:first-child,
-.home-page .post-action-btn:first-child {
-  color: var(--accent-warm);
+.post-action-btn.liked {
+  color: var(--red);
 }
 
 .stories-strip {

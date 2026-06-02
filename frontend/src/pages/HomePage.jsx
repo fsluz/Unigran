@@ -8,15 +8,14 @@ import StoriesBar from '../components/stories/StoriesBar';
 import Topbar from '../components/layout/Topbar';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 import { apiFetch, authHeaders } from '../utils/api';
-import { Avatar } from '../components/ui';
+import { Avatar, Spinner, SkeletonCard } from '../components/ui';
 import { followUser, unfollowUser } from '../services/users';
 import { joinCommunity } from '../services/communities';
 import { useAchievements } from '../contexts/AchievementsContext';
 import { EmptyState } from '../components/ui';
 
-const TRENDING_KEYWORDS = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'inteligencia', 'design'];
 
-export default function HomePage({ onOpenProfile }) {
+export default function HomePage({ onOpenProfile, onNavigateToCommunity }) {
   const { token } = useAuth();
   const { showToast } = useToast();
   const { unlock } = useAchievements();
@@ -32,25 +31,7 @@ export default function HomePage({ onOpenProfile }) {
   const [trendTitle, setTrendTitle] = useState('');
   const loadMoreRef = useRef(null);
 
-  const trending = useMemo(() => {
-    const counts = new Map();
-    for (const post of posts) {
-      for (const tag of String(post.content || '').match(/#[A-Za-z0-9_\u00C0-\u017F-]+/g) || []) {
-        const clean = tag.slice(1);
-        counts.set(clean, (counts.get(clean) || 0) + 1);
-      }
-      const lower = String(post.content || '').toLowerCase();
-      for (const word of TRENDING_KEYWORDS) {
-        if (lower.includes(word)) counts.set(word, (counts.get(word) || 0) + 1);
-      }
-    }
-    const dynamic = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tag, count]) => ({ tag, count: String(count) }));
-    const list = serverTrends.length ? serverTrends : dynamic;
-    return list.filter(t => Number(t.count) >= 2).slice(0, 10);
-  }, [posts, serverTrends]);
+  const trending = useMemo(() => serverTrends.slice(0, 10), [serverTrends]);
 
   useEffect(() => {
     let alive = true;
@@ -185,13 +166,13 @@ export default function HomePage({ onOpenProfile }) {
             <StoriesBar onOpenProfile={onOpenProfile} />
           </div>
 
-          <PostComposer onSubmit={handleNewPost} placeholder="No que voce esta pensando?" />
+          <PostComposer onSubmit={handleNewPost} placeholder="No que você está pensando?" />
 
           <div className="home-feed-tabs">
             {[
-              ['for-you', 'Para voce'],
+              ['for-you', 'Para você'],
               ['following', 'Seguindo'],
-              ['trending', 'Tendencias'],
+              ['trending', 'Tendências'],
             ].map(([id, label]) => (
               <button key={id} className={feed === id ? 'active' : ''} onClick={() => setFeed(id)}>
                 {label}
@@ -207,11 +188,7 @@ export default function HomePage({ onOpenProfile }) {
               </div>
             )}
             {loadingPosts && posts.length === 0 && [1, 2, 3].map(i => (
-              <div key={i} className="card post-card-skeleton">
-                <div className="skeleton-line" style={{ width: '40%' }} />
-                <div className="skeleton-line" style={{ width: '90%' }} />
-                <div className="skeleton-line" style={{ width: '70%' }} />
-              </div>
+              <SkeletonCard key={i} lines={3} />
             ))}
 
             {!loadingPosts && posts.length === 0 && !trendTitle && (
@@ -232,12 +209,13 @@ export default function HomePage({ onOpenProfile }) {
                 onOpenProfile={onOpenProfile}
                 onLoadComments={handleLoadComments}
                 onAddComment={handleAddComment}
+                onOpenCommunity={onNavigateToCommunity}
               />
             ))}
 
             {hasMore && posts.length > 0 && (
               <button ref={loadMoreRef} className="btn btn-secondary" onClick={loadMore} disabled={loadingPosts}>
-                {loadingPosts ? 'Carregando...' : 'Carregar mais'}
+                {loadingPosts ? <Spinner size={16} color="currentColor" /> : 'Carregar mais'}
               </button>
             )}
           </div>
@@ -245,7 +223,7 @@ export default function HomePage({ onOpenProfile }) {
 
         <aside className="right-panel home-right-panel">
           <div className="panel-card home-side-card home-trends-card">
-            <div className="home-side-heading">Tendencias</div>
+            <div className="home-side-heading">Tendências</div>
             {trending.length ? trending.map((item, i) => (
               <div key={item.tag} className="home-trend-row">
                 <div>
@@ -254,7 +232,7 @@ export default function HomePage({ onOpenProfile }) {
                 </div>
                 <span>#{i + 1}</span>
               </div>
-            )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma tendencia real encontrada.</div>}
+            )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma tendência recente encontrada.</div>}
             {trending.length > 0 && <button className="home-more-btn" type="button">Ver mais</button>}
           </div>
 

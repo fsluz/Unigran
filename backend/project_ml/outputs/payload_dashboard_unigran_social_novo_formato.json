@@ -1,0 +1,1725 @@
+{
+  "geral": [
+    {
+      "total_postagens": 10,
+      "total_estudantes": 10,
+      "areas_profissionais_identificadas": 6,
+      "score_medio": 67.21,
+      "score_medio_top10": 65.09,
+      "ranking_medio": 5.1,
+      "skills_recomendadas_total": 74,
+      "total_visualizacoes": 21272,
+      "total_interacoes": 3770,
+      "taxa_engajamento_media": 0.1783
+    }
+  ],
+  "por_curso": [
+    {
+      "curso": "Design",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 77.48,
+      "score_medio_top10": 76.96,
+      "ranking_medio": 6.0,
+      "skills_recomendadas_media": 5.0
+    },
+    {
+      "curso": "Administração",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 73.25,
+      "score_medio_top10": 67.15,
+      "ranking_medio": 6.0,
+      "skills_recomendadas_media": 11.0
+    },
+    {
+      "curso": "Sistemas para Internet",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 69.04,
+      "score_medio_top10": 67.97,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 14.0
+    },
+    {
+      "curso": "Engenharia de Software",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 68.06,
+      "score_medio_top10": 66.68,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 13.0
+    },
+    {
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "estudantes": 4,
+      "postagens": 4,
+      "areas_profissionais": 3,
+      "score_medio": 67.0925,
+      "score_medio_top10": 64.6025,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 13.75
+    },
+    {
+      "curso": "Ciência de Dados",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 63.68,
+      "score_medio_top10": 62.84,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 15.0
+    },
+    {
+      "curso": "Pedagogia",
+      "estudantes": 1,
+      "postagens": 1,
+      "areas_profissionais": 1,
+      "score_medio": 52.26,
+      "score_medio_top10": 50.89,
+      "ranking_medio": 4.0,
+      "skills_recomendadas_media": 12.0
+    }
+  ],
+  "por_area_profissional": [
+    {
+      "area_profissional": "Data / BI / Analytics",
+      "postagens": 3,
+      "cursos": 3,
+      "score_medio": 66.92,
+      "score_medio_top10": 65.18,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 14.0
+    },
+    {
+      "area_profissional": "Desenvolvimento de Software",
+      "postagens": 3,
+      "cursos": 2,
+      "score_medio": 67.3967,
+      "score_medio_top10": 65.4,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 14.3333
+    },
+    {
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "postagens": 1,
+      "cursos": 1,
+      "score_medio": 66.2,
+      "score_medio_top10": 64.16,
+      "ranking_medio": 5.0,
+      "skills_recomendadas_media": 12.0
+    },
+    {
+      "area_profissional": "Design / UX / UI",
+      "postagens": 1,
+      "cursos": 1,
+      "score_medio": 77.48,
+      "score_medio_top10": 76.96,
+      "ranking_medio": 6.0,
+      "skills_recomendadas_media": 5.0
+    },
+    {
+      "area_profissional": "Educação / Treinamento",
+      "postagens": 1,
+      "cursos": 1,
+      "score_medio": 52.26,
+      "score_medio_top10": 50.89,
+      "ranking_medio": 4.0,
+      "skills_recomendadas_media": 12.0
+    },
+    {
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "postagens": 1,
+      "cursos": 1,
+      "score_medio": 73.25,
+      "score_medio_top10": 67.15,
+      "ranking_medio": 6.0,
+      "skills_recomendadas_media": 11.0
+    }
+  ],
+  "ranking_compatibilidade": [
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "score_maximo": 69.02,
+      "score_medio_top10": 66.02,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "data, analytics, business, intelligence, sql, python, pandas, tableau"
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "score_maximo": 64.57,
+      "score_medio_top10": 64.08,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "software, developer, frontend, full, stack, java, javascript, typescript"
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "score_maximo": 73.25,
+      "score_medio_top10": 67.15,
+      "ranking": 6,
+      "categoria_compatibilidade": "Compatível alto",
+      "skills_recomendadas": "sales, social, media, content, campaign, branding, crm, copywriting"
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "score_maximo": 68.06,
+      "score_medio_top10": 66.68,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "data, analytics, business, intelligence, power, bi, dashboard, sql"
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "score_maximo": 77.48,
+      "score_medio_top10": 76.96,
+      "ranking": 6,
+      "categoria_compatibilidade": "Compatível alto",
+      "skills_recomendadas": "prototype, user, interface, usability, product"
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "score_maximo": 68.58,
+      "score_medio_top10": 64.15,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "software, developer, backend, frontend, full, stack, api, rest"
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "score_maximo": 63.68,
+      "score_medio_top10": 62.84,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "data, analytics, business, intelligence, power, bi, dashboard, sql"
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "score_maximo": 69.04,
+      "score_medio_top10": 67.97,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "software, developer, backend, full, stack, api, rest, typescript"
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "score_maximo": 52.26,
+      "score_medio_top10": 50.89,
+      "ranking": 4,
+      "categoria_compatibilidade": "Moderadamente compatível",
+      "skills_recomendadas": "education, teaching, learning, teacher, instructional, design, training, classroom"
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "score_maximo": 66.2,
+      "score_medio_top10": 64.16,
+      "ranking": 5,
+      "categoria_compatibilidade": "Compatível",
+      "skills_recomendadas": "cloud, kubernetes, aws, azure, gcp, ci, cd, deployment"
+    }
+  ],
+  "skills_recomendadas": [
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "data",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "analytics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "business",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "intelligence",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "sql",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "python",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "pandas",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "tableau",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "reporting",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "kpi",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "etl",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "machine",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "learning",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 1,
+      "nome": "Ana",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 3,
+      "titulo_postagem": "Dashboard de vendas em Power BI",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "statistics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "software",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "developer",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "frontend",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "full",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "stack",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "java",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "javascript",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "typescript",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "react",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "angular",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "spring",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "web",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "development",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 2,
+      "nome": "Bruno",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 4,
+      "titulo_postagem": "API REST para controle de tarefas",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "mobile",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "sales",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "social",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "media",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "content",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "campaign",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "branding",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "crm",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "copywriting",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "growth",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "customer",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 3,
+      "nome": "Carla",
+      "curso": "Administração",
+      "semestre": 5,
+      "titulo_postagem": "Plano de marketing para pequena empresa",
+      "area_profissional": "Marketing / Conteúdo / Vendas",
+      "skill_recomendada": "acquisition",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "data",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "analytics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "business",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "intelligence",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "power",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "bi",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "dashboard",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "sql",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "tableau",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "reporting",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "kpi",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "etl",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 4,
+      "nome": "Diego",
+      "curso": "Engenharia de Software",
+      "semestre": 6,
+      "titulo_postagem": "Modelo de machine learning para previsão de notas",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "statistics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "skill_recomendada": "prototype",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "skill_recomendada": "user",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "skill_recomendada": "interface",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "skill_recomendada": "usability",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 5,
+      "nome": "Elisa",
+      "curso": "Design",
+      "semestre": 2,
+      "titulo_postagem": "Protótipo de aplicativo educacional",
+      "area_profissional": "Design / UX / UI",
+      "skill_recomendada": "product",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "software",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "developer",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "backend",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "frontend",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "full",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "stack",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "api",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "rest",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "javascript",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "typescript",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "node",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "react",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "angular",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "spring",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 6,
+      "nome": "Felipe",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 2,
+      "titulo_postagem": "Sistema CRUD em Java",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "web",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "data",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "analytics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "business",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "intelligence",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "power",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "bi",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "dashboard",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "sql",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "tableau",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "reporting",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "kpi",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "etl",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "machine",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "learning",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 7,
+      "nome": "Gabriela",
+      "curso": "Ciência de Dados",
+      "semestre": 3,
+      "titulo_postagem": "Análise exploratória de dados públicos",
+      "area_profissional": "Data / BI / Analytics",
+      "skill_recomendada": "statistics",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "software",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "developer",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "backend",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "full",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "stack",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "api",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "rest",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "typescript",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "node",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "react",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "angular",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "spring",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "development",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 8,
+      "nome": "Henrique",
+      "curso": "Sistemas para Internet",
+      "semestre": 4,
+      "titulo_postagem": "Landing page responsiva",
+      "area_profissional": "Desenvolvimento de Software",
+      "skill_recomendada": "mobile",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "education",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "teaching",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "learning",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "teacher",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "instructional",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "design",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "training",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "classroom",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "pedagogy",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "curriculum",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "active",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 9,
+      "nome": "Isabela",
+      "curso": "Pedagogia",
+      "semestre": 5,
+      "titulo_postagem": "Plano de aula com metodologias ativas",
+      "area_profissional": "Educação / Treinamento",
+      "skill_recomendada": "methodologies",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "cloud",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "kubernetes",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "aws",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "azure",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "gcp",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "ci",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "cd",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "deployment",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "infrastructure",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "container",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "terraform",
+      "frequencia": 1
+    },
+    {
+      "id_usuario": 10,
+      "nome": "João",
+      "curso": "Análise e Desenvolvimento de Sistemas",
+      "semestre": 5,
+      "titulo_postagem": "Deploy de aplicação com Docker",
+      "area_profissional": "Cloud / DevOps / Infraestrutura",
+      "skill_recomendada": "sre",
+      "frequencia": 1
+    }
+  ],
+  "eventos_resumo": [
+    {
+      "data_evento": "2026-04-07",
+      "visualizacoes": 177,
+      "interacoes": 37
+    },
+    {
+      "data_evento": "2026-04-08",
+      "visualizacoes": 1259,
+      "interacoes": 251
+    },
+    {
+      "data_evento": "2026-04-10",
+      "visualizacoes": 534,
+      "interacoes": 111
+    },
+    {
+      "data_evento": "2026-04-11",
+      "visualizacoes": 570,
+      "interacoes": 72
+    },
+    {
+      "data_evento": "2026-04-12",
+      "visualizacoes": 422,
+      "interacoes": 60
+    },
+    {
+      "data_evento": "2026-04-13",
+      "visualizacoes": 352,
+      "interacoes": 30
+    },
+    {
+      "data_evento": "2026-04-14",
+      "visualizacoes": 567,
+      "interacoes": 98
+    },
+    {
+      "data_evento": "2026-04-15",
+      "visualizacoes": 189,
+      "interacoes": 21
+    },
+    {
+      "data_evento": "2026-04-16",
+      "visualizacoes": 678,
+      "interacoes": 133
+    },
+    {
+      "data_evento": "2026-04-17",
+      "visualizacoes": 556,
+      "interacoes": 103
+    },
+    {
+      "data_evento": "2026-04-18",
+      "visualizacoes": 441,
+      "interacoes": 104
+    },
+    {
+      "data_evento": "2026-04-19",
+      "visualizacoes": 600,
+      "interacoes": 101
+    },
+    {
+      "data_evento": "2026-04-20",
+      "visualizacoes": 354,
+      "interacoes": 70
+    },
+    {
+      "data_evento": "2026-04-21",
+      "visualizacoes": 389,
+      "interacoes": 74
+    },
+    {
+      "data_evento": "2026-04-22",
+      "visualizacoes": 768,
+      "interacoes": 93
+    },
+    {
+      "data_evento": "2026-04-25",
+      "visualizacoes": 787,
+      "interacoes": 113
+    },
+    {
+      "data_evento": "2026-04-26",
+      "visualizacoes": 542,
+      "interacoes": 94
+    },
+    {
+      "data_evento": "2026-04-27",
+      "visualizacoes": 214,
+      "interacoes": 52
+    },
+    {
+      "data_evento": "2026-04-29",
+      "visualizacoes": 203,
+      "interacoes": 29
+    },
+    {
+      "data_evento": "2026-04-30",
+      "visualizacoes": 264,
+      "interacoes": 59
+    },
+    {
+      "data_evento": "2026-05-01",
+      "visualizacoes": 559,
+      "interacoes": 124
+    },
+    {
+      "data_evento": "2026-05-02",
+      "visualizacoes": 717,
+      "interacoes": 142
+    },
+    {
+      "data_evento": "2026-05-03",
+      "visualizacoes": 230,
+      "interacoes": 30
+    },
+    {
+      "data_evento": "2026-05-05",
+      "visualizacoes": 721,
+      "interacoes": 135
+    },
+    {
+      "data_evento": "2026-05-06",
+      "visualizacoes": 324,
+      "interacoes": 79
+    },
+    {
+      "data_evento": "2026-05-07",
+      "visualizacoes": 678,
+      "interacoes": 104
+    },
+    {
+      "data_evento": "2026-05-08",
+      "visualizacoes": 873,
+      "interacoes": 193
+    },
+    {
+      "data_evento": "2026-05-09",
+      "visualizacoes": 426,
+      "interacoes": 72
+    },
+    {
+      "data_evento": "2026-05-11",
+      "visualizacoes": 505,
+      "interacoes": 103
+    },
+    {
+      "data_evento": "2026-05-12",
+      "visualizacoes": 395,
+      "interacoes": 50
+    },
+    {
+      "data_evento": "2026-05-13",
+      "visualizacoes": 606,
+      "interacoes": 103
+    },
+    {
+      "data_evento": "2026-05-14",
+      "visualizacoes": 1037,
+      "interacoes": 194
+    },
+    {
+      "data_evento": "2026-05-15",
+      "visualizacoes": 422,
+      "interacoes": 80
+    },
+    {
+      "data_evento": "2026-05-16",
+      "visualizacoes": 167,
+      "interacoes": 23
+    },
+    {
+      "data_evento": "2026-05-17",
+      "visualizacoes": 1757,
+      "interacoes": 297
+    },
+    {
+      "data_evento": "2026-05-18",
+      "visualizacoes": 261,
+      "interacoes": 52
+    },
+    {
+      "data_evento": "2026-05-19",
+      "visualizacoes": 388,
+      "interacoes": 76
+    },
+    {
+      "data_evento": "2026-05-20",
+      "visualizacoes": 709,
+      "interacoes": 119
+    },
+    {
+      "data_evento": "2026-05-21",
+      "visualizacoes": 631,
+      "interacoes": 89
+    }
+  ]
+}

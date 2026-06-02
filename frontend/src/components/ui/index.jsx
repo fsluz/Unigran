@@ -1,4 +1,53 @@
 ﻿import { useRef } from 'react';
+
+// Spinner — substitui textos "Carregando..."
+export function Spinner({ size = 20, color = 'var(--accent)' }) {
+  return (
+    <svg
+      width={size} height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      style={{ animation: 'spin 0.8s linear infinite', display: 'inline-block', verticalAlign: 'middle' }}
+      aria-label="Carregando"
+    >
+      <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// SkeletonLine — placeholder animado para conteúdo que está carregando
+export function SkeletonLine({ width = '100%', height = 14, style = {} }) {
+  return (
+    <div
+      className="skeleton-line"
+      style={{ width, height, borderRadius: height / 2, ...style }}
+      aria-hidden="true"
+    />
+  );
+}
+
+// SkeletonCard — bloco de carregamento para posts/cards
+export function SkeletonCard({ lines = 3 }) {
+  return (
+    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }} aria-hidden="true">
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="skeleton-line" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <SkeletonLine width="40%" height={12} />
+          <SkeletonLine width="25%" height={10} />
+        </div>
+      </div>
+      {Array.from({ length: lines }).map((_, i) => (
+        <SkeletonLine key={i} width={i === lines - 1 ? '60%' : '100%'} />
+      ))}
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <SkeletonLine width={60} height={30} style={{ borderRadius: 8 }} />
+        <SkeletonLine width={60} height={30} style={{ borderRadius: 8 }} />
+        <SkeletonLine width={60} height={30} style={{ borderRadius: 8 }} />
+      </div>
+    </div>
+  );
+}
 import { useClickOutside } from '../../hooks/useClickOutside';
 
 //  Button 

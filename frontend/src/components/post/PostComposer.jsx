@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar } from '../ui';
 
-export default function PostComposer({ onSubmit, placeholder = 'No que voce esta pensando?', allowMode = true, forcedPostType = null }) {
+export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?', allowMode = true, forcedPostType = null }) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [text, setT] = useState('');
