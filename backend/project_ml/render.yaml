@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: unigran-ml-api
+    runtime: python
+    rootDir: backend/project_ml
+    buildCommand: pip install -r ../requirements-ml.txt
+    startCommand: python startup.py && uvicorn api.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ML_CSV_DRIVE_ID
+        value: 1JYhKufeDMCjt1Cp06V-5ZB_iPGOdfjrh
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    disk:
+      name: ml-models
+      mountPath: /opt/render/project/src/backend/project_ml/models
+      sizeGB: 10

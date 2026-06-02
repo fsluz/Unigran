@@ -459,6 +459,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   }
 
   async function start2FA() {
+    setTwoFactorCode('');
     const res = await apiFetch('/auth/2fa/setup', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -470,6 +471,10 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   }
 
   async function enable2FA() {
+    if (twoFactorCode.replace(/\D/g, '').length !== 6) {
+      showToast('Informe o codigo de 6 digitos do app autenticador', '!');
+      return;
+    }
     const res = await apiFetch('/auth/2fa/enable', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -621,13 +626,23 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
     }
   }
   async function disable2FA() {
+    const credential = window.prompt('Digite sua senha atual ou o codigo 2FA de 6 digitos para desativar');
+    if (!credential) return;
+    const cleanCode = credential.replace(/\D/g, '');
+    const body = cleanCode.length === 6 && cleanCode === credential.replace(/\s/g, '')
+      ? { totpCode: cleanCode }
+      : { password: credential };
     const res = await apiFetch('/auth/2fa/disable', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
     });
-    if (!res.ok) return showToast('Erro 2FA', '!');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return showToast(data.error || 'Erro 2FA', '!');
     updateUser({ twoFactorEnabled: false });
     setCfg(p => ({ ...p, twoFactor: false }));
+    setTwoFactorSetup(null);
+    setTwoFactorCode('');
     showToast('2FA desligado', 'OK');
   }
 
@@ -788,10 +803,35 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
               </Row>
               {twoFactorSetup && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginTop: 10 }}>
-                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Use app autenticador</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', wordBreak: 'break-all', marginBottom: 10 }}>{twoFactorSetup.otpauthUrl}</div>
-                  <input className="form-input" value={twoFactorCode} onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Codigo 6 digitos" />
-                  <Button style={{ marginTop: 10 }} onClick={enable2FA}>Confirmar 2FA</Button>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>Escaneie o QR code no app autenticador</div>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+                    <div style={{ width: 220, height: 220, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      <img
+                        src={twoFactorSetup.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(twoFactorSetup.otpauthUrl || '')}`}
+                        alt="QR code para configurar 2FA"
+                        width={220}
+                        height={220}
+                        style={{ display: 'block' }}
+                      />
+                    </div>
+                    <div style={{ minWidth: 220, flex: 1 }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Chave manual</div>
+                      <div style={{ fontSize: 12, color: 'var(--text)', wordBreak: 'break-all', padding: 10, borderRadius: 8, background: 'var(--bg-muted, rgba(148,163,184,0.12))', border: '1px solid var(--border)', marginBottom: 10 }}>
+                        {twoFactorSetup.secret}
+                      </div>
+                      <input
+                        className="form-input"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={twoFactorCode}
+                        onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        onKeyDown={e => e.key === 'Enter' && enable2FA()}
+                        placeholder="Codigo 6 digitos"
+                        style={{ letterSpacing: 6, fontSize: 18, textAlign: 'center' }}
+                      />
+                      <Button style={{ marginTop: 10 }} onClick={enable2FA}>Confirmar 2FA</Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </Section>

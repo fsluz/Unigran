@@ -15,10 +15,11 @@ frontend/.env
 # Dados locais
 backend/data/
 
-# Modelos ML — nunca commitar (arquivos de até 5 GB)
-backend/models/
+# Modelos ML — arquivos PESADOS nunca commitar
+# Os .pkl pequenos (< 10 MB) estão em backend/project_ml/models/ e SÃO commitados
+# Apenas o CSV de 5 GB fica de fora (baixado do Drive no startup)
+backend/project_ml/models/base_vagas_processada_leve.csv
 backend/outputs/
-*.pkl
 *.joblib
 *.h5
 *.keras
@@ -26,7 +27,7 @@ backend/outputs/
 *.pth
 *.parquet
 
-# Zips de modelos/datasets (pesados — ficam no Drive)
+# Zips de treino (ficam no Drive)
 *.zip
 *.rar
 *.tar.gz
