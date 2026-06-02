@@ -15,7 +15,7 @@ frontend/.env
 # Dados locais
 backend/data/
 
-# Modelos ML
+# Modelos ML — nunca commitar (arquivos de até 5 GB)
 backend/models/
 backend/outputs/
 *.pkl
@@ -25,6 +25,16 @@ backend/outputs/
 *.pt
 *.pth
 *.parquet
+
+# Zips de modelos/datasets (pesados — ficam no Drive)
+*.zip
+*.rar
+*.tar.gz
+*.tar.bz2
+
+# Outputs e gráficos gerados pelo Colab
+backend/project_ml/outputs/
+backend/project_ml/graficos/
 
 # Logs
 *.log
