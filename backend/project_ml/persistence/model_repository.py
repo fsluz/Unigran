@@ -37,8 +37,10 @@ _DEFAULT_RANKING: dict[int, str] = {
 
 class ModelRepository:
     def __init__(self, models_dir: Path | str | None = None) -> None:
-        backend_dir = Path(__file__).resolve().parents[2]
-        self.models_dir = Path(models_dir) if models_dir else backend_dir / "models"
+        # Pasta padrão: project_ml/models/ (commitada no git, com os PKLs pequenos)
+        # O CSV de 5 GB (base_vagas_processada_leve.csv) é baixado do Drive no startup
+        project_ml_dir = Path(__file__).resolve().parents[1]
+        self.models_dir = Path(models_dir) if models_dir else project_ml_dir / "models"
 
     def is_ready(self) -> bool:
         required = [

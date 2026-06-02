@@ -365,11 +365,11 @@ export default function LoginPage({ onGoRegister }) {
               <label className="form-label">Codigo 2FA</label>
               <input
                 className="form-input"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
+                inputMode="text"
+                maxLength={16}
+                placeholder="000000 ou codigo backup"
                 value={twoFactorCode}
-                onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={e => setTwoFactorCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16))}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
             </div>

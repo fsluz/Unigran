@@ -1,0 +1,8 @@
+define
+  attribute two-factor-enabled, value boolean;
+  attribute two-factor-secret, value string;
+  attribute two-factor-backup-codes, value string;
+
+  person owns two-factor-enabled @card(0..1),
+    owns two-factor-secret @card(0..1),
+    owns two-factor-backup-codes @card(0..1);

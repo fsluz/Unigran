@@ -473,7 +473,12 @@ router.post('/2fa/setup', async (req, res) => {
       update
         $u has two-factor-secret "${secret}";
     `);
-    res.json({ secret, otpauthUrl: otpauthUrl({ secret, email: decoded.email || decoded.username }) });
+    const url = otpauthUrl({ secret, email: decoded.email || decoded.username });
+    res.json({
+      secret,
+      otpauthUrl: url,
+      qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`,
+    });
   } catch (err) {
     console.error('[2fa setup]', err);
     res.status(500).json({ error: 'Erro ao criar 2FA' });
