@@ -138,6 +138,38 @@ async function loadPostMetrics(viewerUsername) {
   return metrics;
 }
 
+async function loadPostCommunityMap() {
+  const rows = await readQuery(`
+    match
+      $post isa post, has post-id $post_id;
+      $group isa group, has group-id $group_id, has name $group_name;
+      posting(page: $group, post: $post);
+    fetch {
+      "post_id": $post_id,
+      "group_id": $group_id,
+      "group_name": $group_name
+    };
+  `);
+  const map = new Map();
+  for (const row of rows) {
+    if (!row?.post_id) continue;
+    map.set(row.post_id, { id: row.group_id, name: row.group_name });
+  }
+  return map;
+}
+
+async function loadUserCommunitySet(viewerUsername) {
+  if (!viewerUsername) return new Set();
+  const rows = await readQuery(`
+    match
+      $u isa person, has username "${typeqlLiteral(viewerUsername)}";
+      $g isa group, has group-id $group_id;
+      $m isa group-membership, links (member: $u, group: $g);
+    fetch { "group_id": $group_id };
+  `);
+  return new Set(rows.filter(r => r?.group_id).map(r => r.group_id));
+}
+
 async function loadCommentsMap() {
   // FIXED: removed nested `fetch` subquery that TypeDB rejected; comments now load in a separate TypeQL 3.x pipeline.
   const rows = await readQuery(`
@@ -268,12 +300,16 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       "post_all_attributes": { $post.* }
     };
   `);
-  const profilesMap = await loadAllProfilesMap();
-  const followingSet = await loadFollowingSet(viewerUsername);
-  const likedKeywords = await loadLikedKeywords(viewerUsername);
-  const metrics = await loadPostMetrics(viewerUsername);
-  const commentsMap = await loadCommentsMap();
-  const repostOriginalMap = await loadRepostOriginalMap();
+  const [profilesMap, followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap, userCommunitySet] = await Promise.all([
+    loadAllProfilesMap(),
+    loadFollowingSet(viewerUsername),
+    loadLikedKeywords(viewerUsername),
+    loadPostMetrics(viewerUsername),
+    loadCommentsMap(),
+    loadRepostOriginalMap(),
+    loadPostCommunityMap(),
+    loadUserCommunitySet(viewerUsername),
+  ]);
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
@@ -285,7 +321,11 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const isZuni = String(postText).toLowerCase().includes('#zuni');
     if (feed === 'zuni') return isZuni;
     if (isZuni) return false;
-    if (feed === 'following') return authorUsername === viewerUsername || followingSet.has(authorUsername);
+    if (feed === 'following') {
+      const postCommunity = communityMap.get(entry?.post_id || attrs['post-id'] || '');
+      const inJoinedCommunity = postCommunity && userCommunitySet.has(postCommunity.id);
+      return authorUsername === viewerUsername || followingSet.has(authorUsername) || inJoinedCommunity;
+    }
     if (feed === 'trending') return true;
     if (feed === 'explore') {
       const hasMedia = Boolean(imageUrl || videoUrl);
@@ -313,6 +353,8 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       id: postId,
       content: postText,
       time: entry?.created_at || attrs['creation-timestamp'] || null,
+      community: communityMap.get(postId)?.name || '',
+      communityId: communityMap.get(postId)?.id || '',
       media: mediaUrl ? {
         url: mediaUrl,
         resource_type: videoUrl ? 'video' : 'image',
@@ -409,29 +451,29 @@ export async function listTrends(viewerUsername = '') {
       "created_at": $created_at
     };
   `);
-  const keywords = ['tecnologia', 'programacao', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
+  const keywords = ['tecnologia', 'programacao', 'javascript', 'react', 'typedb', 'faculdade', 'estudos', 'carreira', 'unigran', 'ia', 'design'];
   const likedKeywords = await loadLikedKeywords(viewerUsername);
   const now = Date.now();
-  const counts = new Map();
-  const hourCounts = new Map();
+  const recentCounts = new Map();
+  const allCounts = new Map();
   for (const row of rows) {
     const text = String(row.text || '').toLowerCase();
     const words = new Set([
       ...(text.match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
       ...keywords.filter(word => text.includes(word)),
     ]);
-    const recent = now - new Date(row.created_at || 0).getTime() <= 60 * 60 * 1000;
+    const age = now - new Date(row.created_at || 0).getTime();
+    const isRecent = age <= 24 * 60 * 60 * 1000;
     for (const word of words) {
-      counts.set(word, (counts.get(word) || 0) + 1);
-      if (recent) hourCounts.set(word, (hourCounts.get(word) || 0) + 1);
+      allCounts.set(word, (allCounts.get(word) || 0) + 1);
+      if (isRecent) recentCounts.set(word, (recentCounts.get(word) || 0) + 1);
     }
   }
-  const MIN_POSTS = 2;
-  return [...counts.entries()]
-    .filter(([, count]) => count >= MIN_POSTS)
+  return [...recentCounts.entries()]
+    .filter(([, count]) => count >= 1)
     .sort((a, b) => (b[1] + (likedKeywords.has(b[0]) ? 10 : 0)) - (a[1] + (likedKeywords.has(a[0]) ? 10 : 0)))
     .slice(0, 10)
-    .map(([tag, count]) => ({ tag, count, lastHour: hourCounts.get(tag) || 0, recommended: likedKeywords.has(tag) }));
+    .map(([tag, count]) => ({ tag, count: allCounts.get(tag) || count, lastHour: count, recommended: likedKeywords.has(tag) }));
 }
 
 export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) {

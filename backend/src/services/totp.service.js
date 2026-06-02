@@ -51,3 +51,23 @@ export function otpauthUrl({ secret, email, issuer = 'Unigran' }) {
   const params = new URLSearchParams({ secret, issuer, algorithm: 'SHA1', digits: '6', period: '30' });
   return `otpauth://totp/${label}?${params.toString()}`;
 }
+
+export function generateBackupCodes(count = 8) {
+  return Array.from({ length: count }, () =>
+    crypto.randomBytes(4).toString('hex').toUpperCase()
+  );
+}
+
+export function hashBackupCode(code) {
+  return crypto.createHash('sha256').update(code.toUpperCase().replace(/-/g, '')).digest('hex');
+}
+
+export function verifyBackupCode(code, hashedCodes) {
+  const hash = hashBackupCode(code);
+  return hashedCodes.includes(hash);
+}
+
+export function removeUsedBackupCode(code, hashedCodes) {
+  const hash = hashBackupCode(code);
+  return hashedCodes.filter(h => h !== hash);
+}

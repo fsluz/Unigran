@@ -4,6 +4,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
 import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
+import EmojiPicker from '../ui/EmojiPicker';
 import { apiFetch, authHeaders } from '../../utils/api';
 import ImageLightbox from '../media/ImageLightbox';
 import { hasPermission } from '../../modules/shared/permissions';
@@ -329,7 +330,7 @@ function CommentItem({ comment, onReply, onToggleLike }) {
   );
 }
 
-export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenProfile, onLoadComments, onAddComment }) {
+export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenProfile, onLoadComments, onAddComment, onOpenCommunity }) {
   const { user, token }      = useAuth();
   const { showToast } = useToast();
 
@@ -496,9 +497,12 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             <RoleBadge role={post.author.role} />
           </button>
           {post.community && (
-            <span style={{ display:'inline-block', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background:'var(--accent-light)', color:'var(--accent)', marginBottom:2 }}>
+            <button
+              onClick={() => onOpenCommunity?.(post.communityId, post.community)}
+              style={{ display:'inline-block', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, background:'var(--accent-light)', color:'var(--accent)', marginBottom:2, border:'none', cursor:'pointer' }}
+            >
               {post.community}
-            </span>
+            </button>
           )}
           <div className="post-author-sub">
             @{post.author.username} - {relativeTime(post.time)}
@@ -644,7 +648,6 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             </svg>
             <span className="post-action-count">{Number(likes || 0)}</span>
           </span>
-          <span className="post-action-label">Curtir</span>
         </button>
         <button
           className="post-action-btn"
@@ -737,13 +740,16 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
               initials={user?.avatar || user?.displayName?.slice(0, 2)}
               style={{ flexShrink: 0 }}
             />
-            <input
-              value={newComment}
-              onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addComment()}
-              placeholder="Escreva um comentario..."
-              style={{ flex: 1, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 20, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)', outline: 'none', background: 'var(--input-bg)', transition: 'border-color 0.2s' }}
-            />
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border)', borderRadius: 20, background: 'var(--input-bg)', paddingRight: 4 }}>
+              <input
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addComment()}
+                placeholder="Escreva um comentário..."
+                style={{ flex: 1, padding: '8px 14px', border: 'none', background: 'transparent', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text)', outline: 'none' }}
+              />
+              <EmojiPicker onSelect={emoji => setNewComment(v => v + emoji)} />
+            </div>
             <button
               onClick={addComment}
               style={{ padding: '7px 14px', borderRadius: 20, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}

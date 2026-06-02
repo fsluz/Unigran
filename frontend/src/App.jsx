@@ -23,6 +23,7 @@ import ZuniPage           from './pages/ZuniPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
 import { AchievementsProvider } from './contexts/AchievementsContext';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
@@ -103,6 +104,7 @@ function AppShell() {
   const { universities, activeUniversity, hasUniversity, initialized: uniInitialized } = useUniversity();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
+  const [openCommunityId, setOpenCommunityId] = useState(null);
   const [authView, setAuthView] = useState('login');
   const [enteringPortal, setEnteringPortal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
@@ -167,11 +169,11 @@ function AppShell() {
   const needsUniversityForPortal = isPortalRoute && !isAdminGlobal && uniInitialized && !hasUniversity;
 
   const pages = {
-    home:          <HomePage onOpenProfile={openProfile} />,
+    home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} />,
     profile:       <ProfilePage onNavigate={setPage} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
-    communities:   <CommunitiesPage onOpenProfile={openProfile} />,
+    communities:   <CommunitiesPage onOpenProfile={openProfile} initialOpenCommunityId={openCommunityId} onClearInitial={() => setOpenCommunityId(null)} />,
     explore:       <ExplorePage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,
     campus:        hasPermission(user, 'platform:read')
@@ -235,7 +237,9 @@ function AppShell() {
         onClose={() => setNotifPanelOpen(false)}
         sidebarCollapsed={sidebarCollapsed}
       />
-      {pages[page] ?? <HomePage />}
+      <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
+        {pages[page] ?? <HomePage />}
+      </ErrorBoundary>
       <FloatingAssistants />
       {enteringPortal && (
         <PortalEntryTransition

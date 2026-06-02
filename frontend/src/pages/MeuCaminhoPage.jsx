@@ -340,59 +340,103 @@ function NextStepsSection({ steps }) {
   );
 }
 
+// ── Tags de interesse disponíveis ─────────────────────────────────────────
+const INTEREST_TAGS = [
+  { group: 'Tecnologia', tags: ['Desenvolvimento Web', 'Mobile (iOS/Android)', 'Backend & APIs', 'DevOps & Cloud', 'Dados & Analytics', 'Machine Learning & IA', 'Cibersegurança', 'UX/UI Design', 'Suporte & Infra', 'Games', 'Blockchain & Web3'] },
+  { group: 'Negócios', tags: ['Marketing Digital', 'Vendas & CRM', 'Gestão de Projetos', 'Empreendedorismo', 'Recursos Humanos', 'Financeiro & Contabilidade', 'Administração', 'Logística & Supply Chain', 'E-commerce', 'Consultoria'] },
+  { group: 'Criativo', tags: ['Design Gráfico', 'Fotografia & Vídeo', 'Redação & Copywriting', 'Social Media', 'Audiovisual', 'Motion Design', 'Branding'] },
+  { group: 'Saúde & Educação', tags: ['Educação & Pedagogia', 'Saúde Digital', 'Psicologia', 'Engenharia Biomédica', 'EdTech', 'Pesquisa & Ciência'] },
+  { group: 'Área Legal & Social', tags: ['Direito', 'Relações Internacionais', 'Comunicação Corporativa', 'ESG & Sustentabilidade', 'Setor Público'] },
+];
+
 // ── Seção: Preferências ────────────────────────────────────────────────────
 function PrefsModal({ prefs, onSave, onClose }) {
-  const [form, setForm] = useState({ targetRole: '', area: '', location: '', workModel: '', seniority: '', ...prefs });
-  const areas = [
-    ['', 'Todas as areas'],
-    ['dados', 'Dados e Analytics'],
-    ['desenvolvimento', 'Desenvolvimento'],
-    ['design', 'Design'],
-    ['suporte', 'Suporte e Infra'],
-    ['marketing', 'Marketing Digital'],
-    ['administracao', 'Administracao'],
-    ['financeiro', 'Financeiro'],
-    ['vendas', 'Vendas'],
-  ];
+  const [form, setForm] = useState({
+    targetRole: '', area: '', location: '', workModel: '', seniority: '',
+    interests: [],
+    ...prefs,
+    interests: Array.isArray(prefs?.interests) ? prefs.interests : (prefs?.area ? [prefs.area] : []),
+  });
+
+  const toggleInterest = (tag) => {
+    setForm(p => ({
+      ...p,
+      interests: p.interests.includes(tag)
+        ? p.interests.filter(t => t !== tag)
+        : [...p.interests, tag],
+    }));
+  };
+
   return (
     <div className="mc-modal-backdrop" onClick={onClose}>
-      <div className="mc-modal" onClick={e => e.stopPropagation()}>
+      <div className="mc-modal" style={{ maxWidth: 580, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <div className="mc-modal-head">
-          <strong>Preferencias profissionais</strong>
+          <strong>Preferências profissionais</strong>
           <button onClick={onClose}><X size={16} /></button>
         </div>
         <div className="mc-modal-body">
           <label className="mc-field">
             <span>Cargo desejado</span>
-            <input value={form.targetRole} onChange={e => setForm(p => ({ ...p, targetRole: e.target.value }))} placeholder="Ex: Analista de Dados Junior" />
+            <input value={form.targetRole} onChange={e => setForm(p => ({ ...p, targetRole: e.target.value }))} placeholder="Ex: Analista de Dados Júnior" />
           </label>
-          <label className="mc-field">
-            <span>Area de interesse</span>
-            <select value={form.area} onChange={e => setForm(p => ({ ...p, area: e.target.value }))}>
-              {areas.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </label>
+
+          {/* Tags de interesse — múltipla seleção */}
+          <div className="mc-field">
+            <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 8, display: 'block' }}>
+              Áreas de interesse <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(selecione quantas quiser)</span>
+            </span>
+            {INTEREST_TAGS.map(group => (
+              <div key={group.group} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{group.group}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {group.tags.map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleInterest(tag)}
+                      style={{
+                        padding: '5px 12px', borderRadius: 20, border: '1.5px solid',
+                        borderColor: form.interests.includes(tag) ? 'var(--accent)' : 'var(--border)',
+                        background: form.interests.includes(tag) ? 'var(--accent-light)' : 'transparent',
+                        color: form.interests.includes(tag) ? 'var(--accent)' : 'var(--text-muted)',
+                        fontWeight: form.interests.includes(tag) ? 700 : 400,
+                        fontSize: 12, cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                    >
+                      {form.interests.includes(tag) ? '✓ ' : ''}{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {form.interests.length > 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {form.interests.length} área{form.interests.length > 1 ? 's' : ''} selecionada{form.interests.length > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+
           <label className="mc-field">
             <span>Cidade ou estado preferido</span>
-            <input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} placeholder="Ex: Sao Paulo, SP ou Remoto" />
+            <input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} placeholder="Ex: São Paulo, SP ou Remoto" />
           </label>
           <label className="mc-field">
             <span>Modelo de trabalho</span>
             <select value={form.workModel} onChange={e => setForm(p => ({ ...p, workModel: e.target.value }))}>
               <option value="">Qualquer</option>
               <option value="remoto">Remoto</option>
-              <option value="hibrido">Hibrido</option>
+              <option value="hibrido">Híbrido</option>
               <option value="presencial">Presencial</option>
             </select>
           </label>
           <label className="mc-field">
-            <span>Nivel desejado</span>
+            <span>Nível desejado</span>
             <select value={form.seniority} onChange={e => setForm(p => ({ ...p, seniority: e.target.value }))}>
               <option value="">Qualquer</option>
-              <option value="estagio">Estagio</option>
-              <option value="junior">Junior</option>
+              <option value="estagio">Estágio</option>
+              <option value="junior">Júnior</option>
               <option value="pleno">Pleno</option>
-              <option value="senior">Senior</option>
+              <option value="senior">Sênior</option>
             </select>
           </label>
         </div>

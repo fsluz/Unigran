@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
-import { Avatar } from '../components/ui';
+import { Avatar, Spinner } from '../components/ui';
 import { createComment, fetchComments, fetchPosts, likePost, unlikePost } from '../services/posts';
 import { followUser, unfollowUser } from '../services/users';
 import { relativeTime } from '../utils/time';
@@ -449,7 +449,7 @@ export default function ZuniPage({ onOpenProfile }) {
 
           {hasMore && posts.length > 0 && (
             <button ref={moreRef} className="zuni-more" onClick={() => loadPage(page + 1, true)} disabled={loading}>
-              {loading ? 'Carregando...' : 'Carregar mais'}
+              {loading ? <Spinner size={16} color="currentColor" /> : 'Carregar mais'}
             </button>
           )}
         </main>

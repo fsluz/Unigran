@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Avatar } from '../ui';
+import EmojiPicker from '../ui/EmojiPicker';
 import { createComment, deleteComment, likeComment, unlikeComment, updateComment } from '../../services/posts';
 import { relativeTime } from '../../utils/time';
 import { hasPermission } from '../../modules/shared/permissions';
@@ -193,6 +194,7 @@ export function CommentRow({
 
         {replyOpen && (
           <div className="comment-inline-reply">
+            <EmojiPicker onSelect={emoji => setReplyText(v => v + emoji)} />
             <input
               value={replyText}
               onChange={e => setReplyText(e.target.value)}

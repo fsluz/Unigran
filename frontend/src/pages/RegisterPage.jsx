@@ -14,6 +14,9 @@ export default function RegisterPage({ onGoLogin }) {
 
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedCookies, setAcceptedCookies] = useState(false);
 
   const set = key => e => setForm(prev => ({ ...prev, [key]: e.target.value }));
 
@@ -81,7 +84,11 @@ export default function RegisterPage({ onGoLogin }) {
     const { name, username, email, password, confirm } = form;
 
     if (!name || !username || !email || !password || !confirm) {
-      setError('Preencha todos os campos obrigatrios.');
+      setError('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    if (!acceptedTerms || !acceptedCookies) {
+      setConsentOpen(true);
       return;
     }
     if (password !== confirm) {
@@ -104,7 +111,7 @@ export default function RegisterPage({ onGoLogin }) {
       const res = await apiFetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, username, email, phone: form.phone, password }),
+        body: JSON.stringify({ name, username, email, phone: form.phone, password, acceptedTerms, acceptedCookies }),
       });
       const data = await res.json();
 
@@ -189,6 +196,34 @@ export default function RegisterPage({ onGoLogin }) {
             </div>
           </div>
 
+          {/* Checkbox de consentimento */}
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={e => setAcceptedTerms(e.target.checked)}
+                style={{ marginTop: 2, flexShrink: 0 }}
+              />
+              <span>
+                Aceito os{' '}
+                <button type="button" onClick={() => setConsentOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600, fontSize: 13, padding: 0 }}>
+                  Termos de Uso e Política de Privacidade
+                </button>
+                {' '}da plataforma. *
+              </span>
+            </label>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)' }}>
+              <input
+                type="checkbox"
+                checked={acceptedCookies}
+                onChange={e => setAcceptedCookies(e.target.checked)}
+                style={{ marginTop: 2, flexShrink: 0 }}
+              />
+              <span>Aceito o uso de cookies para melhorar minha experiência na plataforma. *</span>
+            </label>
+          </div>
+
           <button
             className="btn btn-primary"
             style={{ width: '100%', justifyContent: 'center', marginTop: 18, padding: '11px 0', fontSize: 16, fontWeight: 600 }}
@@ -201,10 +236,53 @@ export default function RegisterPage({ onGoLogin }) {
           <div ref={googleButtonRef} style={{ width: '100%', marginTop: 10, display: 'flex', justifyContent: 'center' }} />
 
           <div className="auth-footer" style={{ marginTop: 18, textAlign: 'center', fontSize: 14 }}>
-            Ja tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faca login</a>
+            Já tem conta? <a className="auth-inline-link" style={{ fontWeight: 600, cursor: 'pointer' }} onClick={onGoLogin}>Faça login</a>
           </div>
         </div>
       </div>
+
+      {/* Modal de Termos e Privacidade */}
+      {consentOpen && (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && setConsentOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 560 }}>
+            <div className="modal-header">
+              <span className="modal-title">Termos de Uso e Privacidade</span>
+              <button type="button" className="modal-close" onClick={() => setConsentOpen(false)} aria-label="Fechar">×</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-muted)' }}>
+              <h4 style={{ color: 'var(--text)', marginBottom: 8 }}>1. Coleta de Dados (LGPD — Lei 13.709/2018)</h4>
+              <p>A plataforma Unigran coleta dados pessoais como nome, e-mail, foto de perfil e conteúdo publicado. Esses dados são utilizados exclusivamente para funcionamento da plataforma, personalização da experiência e comunicação institucional.</p>
+
+              <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>2. Uso dos Dados</h4>
+              <p>Seus dados <strong>não são vendidos</strong> a terceiros. Podem ser compartilhados com parceiros institucionais da Unigran para fins acadêmicos, mediante consentimento prévio.</p>
+
+              <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>3. Seus Direitos (LGPD Art. 18)</h4>
+              <p>Você tem direito a: acessar seus dados, corrigir informações, solicitar exclusão da conta e revogar consentimento a qualquer momento nas Configurações da plataforma.</p>
+
+              <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>4. Cookies</h4>
+              <p>Utilizamos cookies essenciais para autenticação e funcionamento da plataforma, e cookies opcionais para análise de uso e melhoria de funcionalidades.</p>
+
+              <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>5. Segurança</h4>
+              <p>Seus dados são armazenados com criptografia e acessos são registrados em logs de auditoria. Mensagens privadas utilizam criptografia de ponta a ponta (E2EE).</p>
+
+              <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>6. Contato</h4>
+              <p>Para questões relacionadas à privacidade, entre em contato: <strong>privacidade@unigran.br</strong></p>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => { setAcceptedTerms(true); setAcceptedCookies(true); setConsentOpen(false); }}
+              >
+                Aceitar e continuar
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setConsentOpen(false)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthLayout>
   );
 }

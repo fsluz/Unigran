@@ -31,7 +31,7 @@ function normalizeCommunity(item, index = 0) {
   };
 }
 
-export default function CommunitiesPage({ onOpenProfile }) {
+export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId, onClearInitial }) {
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const [communities, setCommunities] = useState([]);
@@ -56,6 +56,15 @@ export default function CommunitiesPage({ onOpenProfile }) {
   };
 
   useEffect(loadCommunities, [token, showToast]);
+
+  useEffect(() => {
+    if (!initialOpenCommunityId || !communities.length) return;
+    const target = communities.find(c => c.id === initialOpenCommunityId);
+    if (target) {
+      loadCommunityData(target);
+      onClearInitial?.();
+    }
+  }, [initialOpenCommunityId, communities]);
 
   const filtered = useMemo(() => {
     if (filter === 'mine') return communities.filter(c => c.joined);
@@ -181,7 +190,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
         <Topbar
           title="Comunidade"
           left={<Button variant="secondary" size="sm" onClick={() => setActiveCommunity(null)}>Voltar</Button>}
-          right={<Button variant="secondary" onClick={() => setManageOpen(true)}>Opcoes</Button>}
+          right={<Button variant="secondary" onClick={() => setManageOpen(true)}>Opções</Button>}
         />
 
         <div className="community-profile-shell">
@@ -198,7 +207,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
               </div>
               <button className="community-title-button" onClick={() => setManageOpen(true)}>
                 <h1>{activeCommunity.name}</h1>
-                <span>{activeCommunity.description || 'Sem descricao.'}</span>
+                <span>{activeCommunity.description || 'Sem descrição.'}</span>
               </button>
               <div className="community-actions">
                 <Button variant={activeCommunity.joined ? 'secondary' : 'primary'} onClick={() => toggleJoin(activeCommunity)}>
@@ -219,7 +228,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
             <aside className="community-side">
               <section className="community-box">
                 <h3>Sobre</h3>
-                <p>{activeCommunity.description || 'Sem descricao.'}</p>
+                <p>{activeCommunity.description || 'Sem descrição.'}</p>
               </section>
               <section className="community-box">
                 <h3>Membros {members.length}</h3>
@@ -342,7 +351,7 @@ export default function CommunitiesPage({ onOpenProfile }) {
                 </span>
               </button>
 
-              <p>{com.description || 'Sem descricao.'}</p>
+              <p>{com.description || 'Sem descrição.'}</p>
               <div className="community-tags">{com.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}</div>
               <div className="community-card-actions">
                 <Button variant={com.joined ? 'secondary' : 'primary'} onClick={() => toggleJoin(com)}>{com.joined ? 'Membro' : 'Entrar'}</Button>
