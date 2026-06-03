@@ -581,7 +581,7 @@ export default function CampusPage({ onBackToPortal }) {
         <section className="campus-metrics">
           <MetricCard label="Atividades pendentes" value={summary.pendingActivities ?? 0} hint="inclui prazos proximos" />
           <MetricCard label="Progresso medio" value={`${summary.averageProgress ?? 0}%`} hint="materiais + entregas" />
-          <MetricCard label="Notificacoes" value={summary.notifications ?? 0} hint="feedbacks e avisos" />
+          <MetricCard label="Notificações" value={summary.notifications ?? 0} hint="feedbacks e avisos" />
           <MetricCard label="Proxima entrega" value={summary.nextActivity ? formatDate(summary.nextActivity.due) : 'Livre'} hint={summary.nextActivity?.title || 'sem pendencias'} />
         </section>
 
@@ -1134,7 +1134,7 @@ export default function CampusPage({ onBackToPortal }) {
               <div className="campus-panel-head">
                 <div>
                   <span>Avisos</span>
-                  <h2>Notificacoes</h2>
+                  <h2>Notificações</h2>
                 </div>
               </div>
               {(ava?.notifications || []).slice(0, 5).map(item => (

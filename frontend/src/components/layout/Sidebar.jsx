@@ -8,12 +8,12 @@ import { hasPermission } from '../../modules/shared/permissions';
 import MobileBottomNav from './MobileBottomNav';
 
 const SOCIAL_NAV = [
-  { id: 'home', label: 'Inicio', icon: 'home' },
+  { id: 'home', label: 'Início', icon: 'home' },
   { id: 'explore', label: 'Explorar', icon: 'explore' },
   { id: 'communities', label: 'Comunidades', icon: 'communities' },
   { id: 'zuni', label: 'Zuni', icon: 'zuni' },
   { id: 'messages', label: 'Mensagens', icon: 'messages', badge: 'messages' },
-  { id: 'notifications', label: 'Notificacoes', icon: 'bell', badge: 'notifications', action: 'notifications' },
+  { id: 'notifications', label: 'Notificações', icon: 'bell', badge: 'notifications', action: 'notifications' },
 ];
 
 const PORTAL_NAV = [
@@ -166,9 +166,9 @@ export default function Sidebar({
         </div>
 
         <div className="sidebar-wide-bottom desktop-only-nav">
-          <button type="button" className={`sidebar-wide-item ${isActive('settings') ? 'active' : ''}`} onClick={() => onNavigate('settings')} title="Configuracoes">
+          <button type="button" className={`sidebar-wide-item ${isActive('settings') ? 'active' : ''}`} onClick={() => onNavigate('settings')} title="Configurações">
             <span className="sidebar-wide-icon"><SidebarIcon name="settings" /></span>
-            {!collapsed && <span className="sidebar-wide-label">Configuracoes</span>}
+            {!collapsed && <span className="sidebar-wide-label">Configurações</span>}
           </button>
         </div>
       </aside>
