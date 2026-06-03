@@ -4,7 +4,7 @@ import {
   ArrowUpRight,
   BookOpen,
   Briefcase,
-  CheckCircle2,
+  Check,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -13,14 +13,10 @@ import {
   FileText,
   GraduationCap,
   Link2,
-  MapPin,
   Search,
   Tag,
-  User,
 } from 'lucide-react';
 import { fetchAva } from './platform';
-
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 function publicPortfolioLink(user, item) {
   const path = item?.shareUrl
@@ -31,6 +27,25 @@ function publicPortfolioLink(user, item) {
 function portfolioProfileUrl(username) {
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
 }
+
+const KIND_META = {
+  Frontend:  { color: '#059669', bg: 'rgba(5,150,105,0.09)'  },
+  Backend:   { color: 'var(--accent)', bg: 'var(--accent-light)' },
+  Dados:     { color: '#d97706', bg: 'rgba(217,119,6,0.09)'  },
+  Design:    { color: '#7c3aed', bg: 'rgba(124,58,237,0.09)' },
+  Academico: { color: 'var(--text-muted)', bg: 'var(--border-soft)' },
+};
+
+const SKILL_CAT_COLORS = {
+  'Frontend':   '#059669',
+  'Backend':    'var(--accent)',
+  'Dados':      '#d97706',
+  'Design':     '#7c3aed',
+  'Soft Skill': '#dc2626',
+  'Currículo':  '#0891b2',
+  'Projeto':    'var(--text-muted)',
+  'Habilidade': 'var(--text-muted)',
+};
 
 function projectKind(item = {}) {
   const text = `${item.title || ''} ${item.summary || ''} ${item.courseName || ''} ${item.externalKind || ''}`.toLowerCase();
@@ -48,14 +63,14 @@ function normalizeSkillObject(skill, index = 0) {
 }
 
 function evidenceLabel(project = {}) {
-  if (project.externalKind === 'web_app') return 'Aplicacao publicada';
-  if (project.externalKind === 'repository') return 'Repositorio';
-  if (project.externalKind === 'prototype') return 'Prototipo';
+  if (project.externalKind === 'web_app') return 'App publicado';
+  if (project.externalKind === 'repository') return 'Repositório';
+  if (project.externalKind === 'prototype') return 'Protótipo';
   if (project.externalKind === 'drive') return 'Arquivos';
   if (project.externalKind === 'article') return 'Artigo';
   if (project.externalUrl) return 'Link externo';
   if (project.documentUrl) return project.documentName || 'Documento';
-  return '';
+  return null;
 }
 
 function richInline(text = '') {
@@ -68,128 +83,178 @@ function richInline(text = '') {
   });
 }
 
-function ProjectSummary({ text }) {
+// ── Share Strip ─────────────────────────────────────────────────────────────
+
+function ShareStrip({ profileUrl }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(profileUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {}
+  };
+  return (
+    <div className="pf-share-strip">
+      <Link2 size={13} />
+      <span className="pf-share-url">{profileUrl.replace(/^https?:\/\//, '')}</span>
+      <button className="pf-share-btn" onClick={copy}>
+        {copied ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar</>}
+      </button>
+      <a href={profileUrl} target="_blank" rel="noreferrer" className="pf-share-btn">
+        <ArrowUpRight size={12} /> Abrir vitrine
+      </a>
+    </div>
+  );
+}
+
+// ── Project Card ─────────────────────────────────────────────────────────────
+
+function ProjectCard({ project, index, user }) {
   const [expanded, setExpanded] = useState(false);
-  const lines = String(text || '').split(/\r?\n/).filter(Boolean);
-  const preview = lines.slice(0, 3);
-  const hasMore = lines.length > 3;
-  const visible = expanded ? lines : preview;
-  return (
-    <div className="pi-project-summary">
-      {visible.map((line, i) => {
-        if (/^#{1,3}\s+/.test(line)) return <strong key={i}>{richInline(line.replace(/^#{1,3}\s+/, ''))}</strong>;
-        if (/^[-*]\s+/.test(line)) return <span key={i} className="pi-bullet">• {richInline(line.replace(/^[-*]\s+/, ''))}</span>;
-        return <span key={i}>{richInline(line)}</span>;
-      })}
-      {hasMore && (
-        <button className="pi-expand-btn" onClick={() => setExpanded(v => !v)}>
-          {expanded ? <><ChevronUp size={13} /> Menos</> : <><ChevronDown size={13} /> Ver mais</>}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function linkedInJobUrl(term) {
-  return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(term)}&f_WT=2%2C1%2C3`;
-}
-
-// ── Subcomponentes ─────────────────────────────────────────────────────────
-
-function EmptyState({ icon: Icon = FileText, title, text }) {
-  return (
-    <div className="pi-empty">
-      <Icon size={28} />
-      <strong>{title}</strong>
-      <span>{text}</span>
-    </div>
-  );
-}
-
-function ProjectCard({ project, user }) {
   const kind = project.kind || projectKind(project);
+  const km = KIND_META[kind] || KIND_META.Academico;
   const evidence = evidenceLabel(project);
+  const lines = String(project.summary || '').split(/\r?\n/).filter(Boolean);
+  const preview = lines.slice(0, 2);
+  const hasMore = lines.length > 2;
+  const visible = expanded ? lines : preview;
+
   return (
-    <motion.article className="pi-project-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} layout>
-      <div className="pi-project-header">
-        <div className="pi-project-meta">
-          <span className="pi-kind-tag">{kind}</span>
-          {evidence && <span className="pi-evidence-tag">{evidence}</span>}
+    <motion.article
+      className="pf-project"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      layout
+    >
+      <div className="pf-project-num">{String(index + 1).padStart(2, '0')}</div>
+      <div className="pf-project-body">
+        <div className="pf-project-meta">
+          <span
+            className="pf-project-kind"
+            style={{ color: km.color, background: km.bg, borderColor: km.color }}
+          >
+            {kind}
+          </span>
+          {evidence && <span className="pf-project-evidence">{evidence}</span>}
+          {project.courseName && (
+            <span className="pf-project-course">
+              <GraduationCap size={11} />
+              {project.courseName}
+            </span>
+          )}
         </div>
-        {project.courseName && <small className="pi-course-label"><GraduationCap size={12} /> {project.courseName}</small>}
-      </div>
-      <h3 className="pi-project-title">{project.title || project.activityTitle || 'Projeto'}</h3>
-      {project.summary && <ProjectSummary text={project.summary} />}
-      <div className="pi-project-actions">
-        {project.externalUrl && (
-          <a href={project.externalUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
-            <ExternalLink size={13} /> Abrir
-          </a>
+        <h3 className="pf-project-title">{project.title || project.activityTitle || 'Projeto'}</h3>
+        {lines.length > 0 && (
+          <div className="pf-project-desc">
+            {visible.map((line, i) => {
+              if (/^#{1,3}\s+/.test(line)) return <strong key={i}>{richInline(line.replace(/^#{1,3}\s+/, ''))}</strong>;
+              if (/^[-*]\s+/.test(line)) return <span key={i}>• {richInline(line.replace(/^[-*]\s+/, ''))}</span>;
+              return <span key={i}>{richInline(line)}</span>;
+            })}
+            {hasMore && (
+              <button className="pf-expand" onClick={() => setExpanded(v => !v)}>
+                {expanded ? <><ChevronUp size={12} /> menos</> : <><ChevronDown size={12} /> mais</>}
+              </button>
+            )}
+          </div>
         )}
-        {project.documentUrl && (
-          <a href={project.documentUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
-            <Download size={13} /> Documento
+        <div className="pf-project-actions">
+          {project.externalUrl && (
+            <a href={project.externalUrl} target="_blank" rel="noreferrer" className="pf-action pf-action-primary">
+              <ExternalLink size={12} /> Abrir
+            </a>
+          )}
+          {project.documentUrl && (
+            <a href={project.documentUrl} target="_blank" rel="noreferrer" className="pf-action">
+              <Download size={12} /> Baixar
+            </a>
+          )}
+          <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer" className="pf-action">
+            <Link2 size={12} /> Portfolio
           </a>
-        )}
-        <a href={publicPortfolioLink(user, project)} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
-          <Link2 size={13} /> Ver no portfolio
-        </a>
+        </div>
       </div>
     </motion.article>
   );
 }
 
+// ── Skills Section ────────────────────────────────────────────────────────────
+
 function SkillsSection({ skills }) {
   if (!skills.length) {
     return (
-      <EmptyState
-        icon={Tag}
-        title="Habilidades ainda nao identificadas"
-        text="Envie seu currículo ou publique projetos para que as habilidades apareçam aqui."
-      />
+      <div className="pf-empty">
+        <Tag size={22} />
+        <p>Envie seu currículo ou publique projetos para as habilidades aparecerem aqui.</p>
+      </div>
     );
   }
+
+  const grouped = {};
+  skills.forEach(([name, category]) => {
+    const cat = category || 'Habilidade';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(name);
+  });
+
   return (
-    <div className="pi-skills-grid">
-      {skills.map(([name, category], i) => (
-        <motion.div
-          key={`${name}-${i}`}
-          className="pi-skill-tag"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: i * 0.03 }}
-          whileHover={{ y: -2 }}
-        >
-          <span>{name}</span>
-          <small>{category}</small>
-        </motion.div>
+    <div className="pf-skills-cloud">
+      {Object.entries(grouped).map(([cat, names]) => (
+        <div key={cat} className="pf-skills-group">
+          <span className="pf-skills-cat" style={{ color: SKILL_CAT_COLORS[cat] || 'var(--text-muted)' }}>
+            {cat}
+          </span>
+          <div className="pf-skills-row">
+            {names.map((name, i) => (
+              <motion.span
+                key={`${name}-${i}`}
+                className="pf-skill"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.03 }}
+              >
+                {name}
+              </motion.span>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
 }
 
+// ── Resume Section ────────────────────────────────────────────────────────────
+
 function ResumeSection({ resume }) {
   const virtual = resume?.virtualResume;
+  if (!resume) return null;
   return (
-    <div className="pi-resume-card">
-      <div className="pi-resume-icon"><FileText size={20} /></div>
-      <div className="pi-resume-info">
-        <strong>{virtual?.professionalTitle || (resume ? 'Currículo conectado' : 'Currículo nao enviado')}</strong>
-        <p>{virtual?.about || resume?.summary || 'Envie um PDF ou DOCX no campo acima para preencher suas informacoes profissionais.'}</p>
-        {virtual?.skills?.length > 0 && (
-          <div className="pi-resume-skills">
-            {virtual.skills.slice(0, 6).map(skill => <span key={skill} className="pi-skill-mini">{skill}</span>)}
-          </div>
-        )}
-      </div>
-      {resume?.documentUrl && (
-        <a href={resume.documentUrl} target="_blank" rel="noreferrer" className="btn btn-secondary pi-btn-sm">
-          <Download size={13} /> Baixar
+    <div className="pf-resume-block">
+      {virtual?.professionalTitle && (
+        <div className="pf-resume-role">{virtual.professionalTitle}</div>
+      )}
+      {(virtual?.about || resume.summary) && (
+        <p className="pf-resume-about">{virtual?.about || resume.summary}</p>
+      )}
+      {(virtual?.hardSkills || virtual?.skills || []).length > 0 && (
+        <div className="pf-resume-skills">
+          {(virtual?.hardSkills || virtual?.skills || []).slice(0, 8).map(s => (
+            <span key={s} className="pf-chip">{s}</span>
+          ))}
+        </div>
+      )}
+      {resume.documentUrl && (
+        <a href={resume.documentUrl} target="_blank" rel="noreferrer" className="pf-action" style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+          <Download size={12} /> Baixar currículo
         </a>
       )}
     </div>
   );
 }
+
+// ── Careers Section ───────────────────────────────────────────────────────────
 
 function CarreirasSection({ skills, resume }) {
   const virtual = resume?.virtualResume;
@@ -198,46 +263,39 @@ function CarreirasSection({ skills, resume }) {
   const searchTerms = useMemo(() => {
     const fromSkills = skills.slice(0, 4).map(([name]) => name);
     const terms = area ? [area, ...fromSkills] : fromSkills;
-    const fallback = ['Desenvolvedor', 'Analista de Dados', 'Designer UX', 'Estagio TI'];
+    const fallback = ['Desenvolvedor', 'Analista de Dados', 'Designer UX', 'Estágio TI'];
     const final = [...new Set(terms)].filter(Boolean);
     return final.length ? final.slice(0, 6) : fallback.slice(0, 4);
   }, [skills, area]);
 
   return (
-    <div className="pi-careers-section">
-      <div className="pi-careers-intro">
-        <p>
-          Com base no seu currículo e projetos, estas buscas podem ter vagas para o seu perfil.
-          Cada link abre o LinkedIn Jobs em uma nova aba.
-        </p>
-      </div>
-      <div className="pi-careers-list">
+    <div className="pf-careers">
+      <p className="pf-careers-intro">
+        Sugestões baseadas no seu currículo e projetos. Cada card abre o LinkedIn Jobs.
+      </p>
+      <div className="pf-careers-grid">
         {searchTerms.map(term => (
-          <div key={term} className="pi-career-row">
-            <div className="pi-career-info">
-              <Briefcase size={15} />
-              <span>{term}</span>
-            </div>
-            <a
-              href={linkedInJobUrl(term)}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-secondary pi-btn-sm"
-            >
-              Buscar no LinkedIn <ArrowUpRight size={12} />
-            </a>
-          </div>
+          <a
+            key={term}
+            href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(term)}&f_WT=2%2C1%2C3`}
+            target="_blank"
+            rel="noreferrer"
+            className="pf-career-card"
+          >
+            <Briefcase size={14} />
+            <span>{term}</span>
+            <ArrowUpRight size={12} />
+          </a>
         ))}
       </div>
-      <p className="pi-careers-disclaimer">
-        As sugestoes sao geradas a partir das habilidades e titulo identificados no seu currículo.
-        O sistema abre o LinkedIn Jobs — nao armazenamos dados de vagas.
+      <p className="pf-careers-note">
+        O LinkedIn pode exigir login. Não armazenamos dados de vagas.
       </p>
     </div>
   );
 }
 
-// ── Componente principal ───────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function PortfolioIntelligencePage({
   user,
@@ -250,7 +308,6 @@ export default function PortfolioIntelligencePage({
   const [ava, setAva] = useState(null);
   const [query, setQuery] = useState('');
   const [activeKind, setActiveKind] = useState('Todos');
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(portfolioItems)) return;
@@ -286,108 +343,45 @@ export default function PortfolioIntelligencePage({
 
   const profileUrl = portfolioProfileUrl(user?.username || '');
 
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(profileUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
-
   if (initialSection === 'carreiras') {
     return (
-      <div className="pi-root">
-        <section className="pi-section">
-          <div className="pi-section-head">
-            <div>
-              <h3>Vagas para voce</h3>
-              <p>Sugestoes de busca no LinkedIn com base no seu currículo e habilidades.</p>
-            </div>
+      <div className="pf-root">
+        <div className="pf-section">
+          <div className="pf-section-head">
+            <span className="pf-section-label">Vagas para você</span>
           </div>
           <CarreirasSection skills={skills} resume={resume} />
-        </section>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="pi-root">
+    <div className="pf-root">
+      <ShareStrip profileUrl={profileUrl} />
 
-      {/* ── Vitrine ─────────────────────────────────────────────────── */}
-      <section className="pi-section">
-        <div className="pi-section-head">
-          <div>
-            <h3>Vitrine publica</h3>
-            <p>Compartilhe com recrutadores, professores ou banca avaliadora.</p>
-          </div>
-          <div className="pi-vitrine-actions">
-            <div className="pi-share-row">
-              <input
-                className="pi-share-input"
-                value={profileUrl}
-                readOnly
-                aria-label="Link publico do portfolio"
-              />
-              <button className="btn btn-secondary pi-btn-sm" onClick={copyLink}>
-                <Copy size={13} /> {copied ? 'Copiado!' : 'Copiar link'}
-              </button>
-              <a
-                href={profileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-secondary pi-btn-sm"
-              >
-                <ArrowUpRight size={13} /> Abrir vitrine
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="pi-profile-summary">
-          <div className="pi-avatar-circle">
-            {(user?.displayName || user?.username || '?').split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()}
-          </div>
-          <div>
-            <strong>{user?.displayName || user?.username}</strong>
-            <span>{resume?.virtualResume?.professionalTitle || analysis?.area || 'Perfil academico'}</span>
-            <div className="pi-profile-tags">
-              {skills.slice(0, 5).map(([name]) => <span key={name} className="pi-skill-mini">{name}</span>)}
-            </div>
-          </div>
-          <div className="pi-profile-stats">
-            <div><strong>{projects.length}</strong><span>projetos</span></div>
-            <div><strong>{skills.length}</strong><span>habilidades</span></div>
-            <div><strong>{resume ? '1' : '0'}</strong><span>currículo</span></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Projetos ─────────────────────────────────────────────────── */}
-      <section className="pi-section">
-        <div className="pi-section-head">
-          <div>
-            <h3>Projetos em destaque</h3>
-            <p>Publicacoes do portfolio e entregas do AVA.</p>
-          </div>
+      {/* Projetos */}
+      <div className="pf-section">
+        <div className="pf-section-head">
+          <span className="pf-section-label">Projetos</span>
+          {projects.length > 0 && <span className="pf-section-count">{projects.length}</span>}
         </div>
 
         {projects.length > 0 && (
-          <div className="pi-toolbar">
-            <label className="pi-search-field">
-              <Search size={14} />
+          <div className="pf-toolbar">
+            <label className="pf-search">
+              <Search size={13} />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Buscar por disciplina, tecnologia..."
+                placeholder="Buscar projeto, disciplina..."
               />
             </label>
-            <div className="pi-filter-row">
+            <div className="pf-filter-row">
               {kinds.map(k => (
                 <button
                   key={k}
-                  className={`pi-filter-btn ${activeKind === k ? 'active' : ''}`}
+                  className={`pf-filter ${activeKind === k ? 'active' : ''}`}
                   onClick={() => setActiveKind(k)}
                 >
                   {k}
@@ -398,56 +392,47 @@ export default function PortfolioIntelligencePage({
         )}
 
         {filtered.length > 0 ? (
-          <div className="pi-project-grid">
+          <div className="pf-project-list">
             <AnimatePresence>
-              {filtered.map(p => <ProjectCard key={p.id || p.activityId} project={p} user={user} />)}
+              {filtered.map((p, i) => (
+                <ProjectCard key={p.id || p.activityId} project={p} index={i} user={user} />
+              ))}
             </AnimatePresence>
           </div>
         ) : (
-          <EmptyState
-            icon={BookOpen}
-            title="Nenhum projeto publicado ainda"
-            text="Publique uma entrega no AVA ou crie uma postagem de portfolio para ela aparecer aqui."
-          />
-        )}
-      </section>
-
-      {/* ── Habilidades ──────────────────────────────────────────────── */}
-      <section className="pi-section">
-        <div className="pi-section-head">
-          <div>
-            <h3>Habilidades</h3>
-            <p>Identificadas a partir do seu currículo e dos projetos publicados.</p>
+          <div className="pf-empty">
+            <BookOpen size={22} />
+            <p>Nenhum projeto publicado ainda. Publique uma entrega no AVA para aparecer aqui.</p>
           </div>
+        )}
+      </div>
+
+      {/* Habilidades */}
+      <div className="pf-section">
+        <div className="pf-section-head">
+          <span className="pf-section-label">Habilidades</span>
+          {skills.length > 0 && <span className="pf-section-count">{skills.length}</span>}
         </div>
         <SkillsSection skills={skills} />
-      </section>
+      </div>
 
-      {/* ── Currículo ────────────────────────────────────────────────── */}
-      <section className="pi-section">
-        <div className="pi-section-head">
-          <div>
-            <h3>Seu currículo</h3>
-            <p>Informacoes extraidas do arquivo enviado.</p>
+      {/* Currículo */}
+      {resume && (
+        <div className="pf-section">
+          <div className="pf-section-head">
+            <span className="pf-section-label">Currículo</span>
           </div>
+          <ResumeSection resume={resume} />
         </div>
-        <ResumeSection resume={resume} />
-        {!resume && (
-          <p className="pi-hint">Envie um PDF ou DOCX no campo acima. As informacoes serao usadas para preencher habilidades e titulo profissional.</p>
-        )}
-      </section>
+      )}
 
-      {/* ── Vagas ────────────────────────────────────────────────────── */}
-      <section className="pi-section">
-        <div className="pi-section-head">
-          <div>
-            <h3>Vagas para voce</h3>
-            <p>Sugestoes de busca no LinkedIn com base no seu perfil.</p>
-          </div>
+      {/* Vagas */}
+      <div className="pf-section">
+        <div className="pf-section-head">
+          <span className="pf-section-label">Vagas sugeridas</span>
         </div>
         <CarreirasSection skills={skills} resume={resume} />
-      </section>
-
+      </div>
     </div>
   );
 }

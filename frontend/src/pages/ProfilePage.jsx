@@ -309,7 +309,7 @@ export default function ProfilePage({ onNavigate }) {
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.following || 0}</div>
               <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('following')}>Seguindo</div>
             </div>
-            <div className="profile-stat" onClick={() => setTab('Portfolio')}>
+            <div className="profile-stat" onClick={() => setTab('Portfólio')}>
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{portfolioItems.length}</div>
               <div className="profile-stat-label">Portfolio</div>
             </div>
@@ -371,37 +371,39 @@ export default function ProfilePage({ onNavigate }) {
           </div>
         )}
 
-        {tab === 'Portfolio' && (
-          <div className="profile-portfolio-panel">
-            <div className="profile-portfolio-hero">
-              <div>
-                <h2>Portfolio</h2>
-                <p>Seus projetos e entregas academicas organizados para visualizacao profissional.</p>
-              </div>
-              <div className="profile-portfolio-count">
-                <strong>{portfolioItems.length}</strong>
-                <span>projetos</span>
-              </div>
-            </div>
-
-            <div className="profile-resume-panel profile-resume-compact">
-              <div>
-                <strong>
-                  {safeText(virtualResume?.professionalTitle, portfolioResume ? 'Currículo conectado' : 'Adicionar currículo')}
-                </strong>
-                <p>
-                  {safeText(
-                    virtualResume?.about || portfolioResume?.summary,
-                    'Preencha o formulário para criar seu currículo profissional.'
+        {tab === 'Portfólio' && (
+          <div className="pf-panel">
+            <div className="pf-header">
+              <div className="pf-header-identity">
+                <div
+                  className="pf-header-avatar"
+                  style={profilePreview ? { backgroundImage: `url(${profilePreview})`, color: 'transparent' } : {}}
+                >
+                  {user.avatar}
+                </div>
+                <div className="pf-header-info">
+                  <div className="pf-header-name">{user.displayName}</div>
+                  <div className="pf-header-role">
+                    {safeText(virtualResume?.professionalTitle, user.institution || '')}
+                  </div>
+                  {(virtualResume?.hardSkills || virtualResume?.skills || []).length > 0 && (
+                    <div className="pf-header-chips">
+                      {(virtualResume?.hardSkills || virtualResume?.skills || []).slice(0, 5).map(s => (
+                        <span key={s} className="pf-chip">{s}</span>
+                      ))}
+                    </div>
                   )}
-                </p>
-                {(virtualResume?.hardSkills || virtualResume?.skills || []).slice(0, 6).map(s => (
-                  <span key={s} style={{ display: 'inline-block', fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700, marginRight: 4, marginTop: 6 }}>{s}</span>
-                ))}
+                </div>
               </div>
-              <button className="profile-resume-upload" style={{ cursor: 'pointer' }} onClick={() => setResumeBuilderOpen(true)}>
-                {portfolioResume ? 'Editar currículo' : 'Criar currículo'}
-              </button>
+              <div className="pf-header-actions">
+                <div className="pf-header-stats">
+                  <span><b>{portfolioItems.length}</b> projetos</span>
+                  <span><b>{stats.followers}</b> seguidores</span>
+                </div>
+                <button className="pf-resume-btn" onClick={() => setResumeBuilderOpen(true)}>
+                  {portfolioResume ? 'Editar currículo' : 'Criar currículo'}
+                </button>
+              </div>
             </div>
 
             {resumeBuilderOpen && (

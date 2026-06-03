@@ -303,27 +303,13 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         ) : (
           <div className="profile-public-stack">
             {portfolioItems.length > 0 && (
-              <section className="profile-portfolio-panel public">
-                <div className="profile-portfolio-hero">
-                  <div>
-                    <span className="profile-portfolio-kicker">Portfolio Pro</span>
-                    <h2>Perfil profissional</h2>
-                    <p>Projetos, competencias e evidencias academicas para leitura rapida.</p>
-                  </div>
-                  <div className="profile-portfolio-count">
-                    <strong>{portfolioItems.length}</strong>
-                    <span>projetos</span>
-                  </div>
-                </div>
-                <div className="profile-portfolio-master-share">
-                  <div>
-                    <strong>Link publico</strong>
-                    <span>Perfil pronto para empresas, coordenadores e banca avaliadora.</span>
-                  </div>
-                  <div className="profile-share-field">
-                    <input value={portfolioProfileUrl(profile.username)} readOnly aria-label="Link publico do portfolio academico" />
-                    <button type="button" onClick={() => copyPortfolioLink(portfolioProfileUrl(profile.username))}>Copiar</button>
-                  </div>
+              <section className="pf-panel pf-panel-public">
+                <div className="pf-public-header">
+                  <span className="pf-public-kicker">Portfolio</span>
+                  <h2 className="pf-public-title">{profile.displayName || profile.username}</h2>
+                  <p className="pf-public-sub">
+                    {portfolioItems.length} projeto{portfolioItems.length !== 1 ? 's' : ''}{profile.bio ? ` · ${profile.bio.slice(0, 70)}` : ''}
+                  </p>
                 </div>
                 <PortfolioIntelligencePage
                   user={profile}
