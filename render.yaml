@@ -43,7 +43,7 @@ services:
       - key: PORT
         value: 3001
       - key: ML_SERVICE_URL
-        value: https://unigran-ml.onrender.com
+        value: https://unigran.onrender.com
       - key: ML_SERVICE_SECRET
         sync: false
       - key: JWT_SECRET

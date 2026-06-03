@@ -42,14 +42,28 @@ class ModelRepository:
         project_ml_dir = Path(__file__).resolve().parents[1]
         self.models_dir = Path(models_dir) if models_dir else project_ml_dir / "models"
 
+    _REQUIRED = [
+        "hashing_vectorizer.pkl",
+        "modelos_subcluster_por_area.pkl",
+        "nomes_clusters.pkl",
+        "area_taxonomia.pkl",
+    ]
+
+    def _effective_models_dir(self) -> Path:
+        """
+        Retorna o diretório onde os .pkl estão de fato disponíveis.
+        Preferência: models/ (git) → csv_data/ (backup caso disco sobrescreva models/).
+        """
+        if all((self.models_dir / f).exists() for f in self._REQUIRED):
+            return self.models_dir
+        csv_data = self.models_dir.parent / "csv_data"
+        if csv_data.exists() and all((csv_data / f).exists() for f in self._REQUIRED):
+            return csv_data
+        return self.models_dir  # fallback — will fail gracefully in load_artifacts
+
     def is_ready(self) -> bool:
-        required = [
-            "hashing_vectorizer.pkl",
-            "modelos_subcluster_por_area.pkl",
-            "nomes_clusters.pkl",
-            "area_taxonomia.pkl",
-        ]
-        return all((self.models_dir / f).exists() for f in required)
+        d = self._effective_models_dir()
+        return all((d / f).exists() for f in self._REQUIRED)
 
     def load_artifacts(self) -> ModelArtifacts:
         if not self.is_ready():
@@ -61,11 +75,14 @@ class ModelRepository:
         # DEVE injetar limpar_texto em __main__ antes do load do vectorizer
         inject_into_main()
 
-        vectorizer       = joblib.load(self.models_dir / "hashing_vectorizer.pkl")
-        subcluster_models = joblib.load(self.models_dir / "modelos_subcluster_por_area.pkl")
-        cluster_names    = self._load_int_key_pkl("nomes_clusters.pkl")
-        area_taxonomia   = joblib.load(self.models_dir / "area_taxonomia.pkl")
-        config           = joblib.load(self.models_dir / "modelo_config.pkl") if (self.models_dir / "modelo_config.pkl").exists() else {}
+        d = self._effective_models_dir()
+        print(f"[ModelRepository] carregando modelos de: {d}")
+
+        vectorizer        = joblib.load(d / "hashing_vectorizer.pkl")
+        subcluster_models = joblib.load(d / "modelos_subcluster_por_area.pkl")
+        cluster_names     = self._load_int_key_pkl_from(d, "nomes_clusters.pkl")
+        area_taxonomia    = joblib.load(d / "area_taxonomia.pkl")
+        config            = joblib.load(d / "modelo_config.pkl") if (d / "modelo_config.pkl").exists() else {}
 
         # Ordem canônica das áreas (mesma do treino) → define o ID numérico
         area_ids = {area: i for i, area in enumerate(area_taxonomia.keys())}
@@ -87,6 +104,9 @@ class ModelRepository:
             vagas_csv_path=vagas_csv if vagas_csv.exists() else None,
         )
 
-    def _load_int_key_pkl(self, filename: str) -> dict[int, str]:
-        raw = joblib.load(self.models_dir / filename)
+    def _load_int_key_pkl_from(self, directory: Path, filename: str) -> dict[int, str]:
+        raw = joblib.load(directory / filename)
         return {int(k): str(v) for k, v in raw.items()}
+
+    def _load_int_key_pkl(self, filename: str) -> dict[int, str]:
+        return self._load_int_key_pkl_from(self._effective_models_dir(), filename)
