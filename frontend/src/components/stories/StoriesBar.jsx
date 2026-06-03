@@ -162,8 +162,6 @@ export default function StoriesBar({ onOpenProfile }) {
       return acc;
     }, []);
 
-  const othersStories = stories.filter(item => item.author?.username !== user?.username);
-
   return (
     <>
       <div className="stories-strip">
