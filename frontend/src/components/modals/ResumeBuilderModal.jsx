@@ -1,110 +1,166 @@
-/**
- * ResumeBuilderModal — formulário inteligente de currículo.
- * Substitui o upload de PDF/DOCX por dados estruturados inseridos pelo usuário.
- * Salva via POST /uploads/resume/structured.
- */
 import { useState } from 'react';
+import { Briefcase, GraduationCap, Link2, Plus, Save, Sparkles, Trash2, X } from 'lucide-react';
 import { apiFetch, authHeaders } from '../../utils/api';
 import { useToast } from '../../contexts/ToastContext';
 
+const EMPTY_EDUCATION = { institution: '', course: '', period: '' };
+const EMPTY_EXPERIENCE = { company: '', role: '', period: '', description: '' };
+const EMPTY_PROJECT = { title: '', description: '', link: '' };
+
 const EMPTY_FORM = {
-  name:        '',
-  email:       '',
-  phone:       '',
-  objective:   '',
-  education:   [{ institution: '', course: '', year: '' }],
-  experience:  [{ company: '', role: '', period: '', description: '' }],
-  skills:      [],
-  projects:    [{ title: '', description: '', link: '' }],
+  name: '',
+  email: '',
+  phone: '',
+  professionalTitle: '',
+  objective: '',
+  education: [{ ...EMPTY_EDUCATION }],
+  experience: [{ ...EMPTY_EXPERIENCE }],
+  skills: [],
+  projects: [{ ...EMPTY_PROJECT }],
 };
+
+function saneText(value = '') {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const bad = (text.match(/[^\x09\x0A\x0D\x20-\x7EÀ-ɏ]/g) || []).length;
+  return bad / Math.max(text.length, 1) > 0.12 ? '' : text;
+}
+
+function normalizeInitial(initial) {
+  const vr = initial?.virtualResume || {};
+  return {
+    name: saneText(vr.name) || '',
+    email: saneText(vr.email || vr.contacts?.emails?.[0]) || '',
+    phone: saneText(vr.phone || vr.contacts?.phones?.[0]) || '',
+    professionalTitle: saneText(vr.professionalTitle) || '',
+    objective: saneText(vr.about || vr.objective || initial?.summary) || '',
+    education: Array.isArray(vr.education) && vr.education.length ? vr.education : [{ ...EMPTY_EDUCATION }],
+    experience: Array.isArray(vr.experience) && vr.experience.length
+      ? vr.experience
+      : (Array.isArray(vr.experiences) && vr.experiences.length ? vr.experiences : [{ ...EMPTY_EXPERIENCE }]),
+    skills: Array.isArray(vr.hardSkills || vr.skills) ? (vr.hardSkills || vr.skills).filter(saneText) : [],
+    projects: Array.isArray(vr.projects) && vr.projects.length ? vr.projects : [{ ...EMPTY_PROJECT }],
+  };
+}
+
+function Section({ icon: Icon, title, subtitle, children }) {
+  return (
+    <section className="resume-form-section">
+      <div className="resume-form-section-head">
+        <span className="resume-form-section-icon">{Icon ? <Icon size={16} /> : <Sparkles size={16} />}</span>
+        <div>
+          <h3>{title}</h3>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function TextField({ label, value, onChange, placeholder, type = 'text', rows }) {
+  const Input = rows ? 'textarea' : 'input';
+  return (
+    <label className="resume-form-field">
+      <span>{label}</span>
+      <Input
+        className="form-input"
+        type={rows ? undefined : type}
+        rows={rows}
+        value={value || ''}
+        onChange={event => onChange(event.target.value)}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
 
 function TagInput({ values, onChange }) {
   const [input, setInput] = useState('');
+
   const add = () => {
-    const v = input.trim();
-    if (v && !values.includes(v)) onChange([...values, v]);
+    const value = input.trim();
+    if (!value) return;
+    onChange([...new Set([...values, value])].slice(0, 40));
     setInput('');
   };
-  const remove = (tag) => onChange(values.filter(t => t !== tag));
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
+    <div className="resume-tag-input">
+      <div className="resume-tag-add">
         <input
           className="form-input"
-          placeholder="Ex: React, Python, SQL..."
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          onChange={event => setInput(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              add();
+            }
+          }}
+          placeholder="React, Python, Excel, comunicação..."
         />
-        <button type="button" className="btn btn-secondary btn-sm" onClick={add}>+ Add</button>
+        <button type="button" className="btn btn-secondary" onClick={add}>
+          <Plus size={15} /> Adicionar
+        </button>
       </div>
-      {values.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {values.map(tag => (
-            <span key={tag} style={{ padding: '4px 10px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {tag}
-              <button type="button" onClick={() => remove(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontWeight: 900 }}>×</button>
-            </span>
-          ))}
+      <div className="resume-tag-list">
+        {values.map(tag => (
+          <button key={tag} type="button" onClick={() => onChange(values.filter(item => item !== tag))}>
+            {tag}
+            <X size={13} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Repeater({ items, emptyItem, onChange, children, addLabel }) {
+  const update = (index, key, value) => {
+    const next = [...items];
+    next[index] = { ...next[index], [key]: value };
+    onChange(next);
+  };
+
+  const remove = (index) => onChange(items.filter((_, itemIndex) => itemIndex !== index));
+
+  return (
+    <div className="resume-repeater">
+      {items.map((item, index) => (
+        <div key={index} className="resume-repeat-card">
+          {items.length > 1 && (
+            <button type="button" className="resume-repeat-remove" onClick={() => remove(index)} aria-label="Remover">
+              <Trash2 size={15} />
+            </button>
+          )}
+          {children(item, index, update)}
         </div>
-      )}
-    </div>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--accent)', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function FieldRow({ label, children }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, alignItems: 'start', marginBottom: 10 }}>
-      <label style={{ fontSize: 13, color: 'var(--text-muted)', paddingTop: 8, fontWeight: 600 }}>{label}</label>
-      <div>{children}</div>
+      ))}
+      <button type="button" className="resume-add-row" onClick={() => onChange([...items, { ...emptyItem }])}>
+        <Plus size={15} /> {addLabel}
+      </button>
     </div>
   );
 }
 
 export default function ResumeBuilderModal({ initial, token, onSave, onClose }) {
   const { showToast } = useToast();
-  const [form, setForm]   = useState(() => {
-    if (initial?.virtualResume) {
-      const vr = initial.virtualResume;
-      return {
-        name:       vr.name        || '',
-        email:      vr.email       || '',
-        phone:      vr.phone       || '',
-        objective:  vr.about       || vr.objective || '',
-        education:  (vr.education?.length  ? vr.education  : EMPTY_FORM.education),
-        experience: (vr.experience?.length ? vr.experience : EMPTY_FORM.experience),
-        skills:     vr.hardSkills  || vr.skills || [],
-        projects:   (vr.projects?.length   ? vr.projects   : EMPTY_FORM.projects),
-      };
-    }
-    return { ...EMPTY_FORM };
-  });
+  const [form, setForm] = useState(() => normalizeInitial(initial));
   const [saving, setSaving] = useState(false);
 
-  const setField = (key, val) => setForm(f => ({ ...f, [key]: val }));
-
-  const setArrayField = (key, idx, subKey, val) => {
-    const arr = [...form[key]];
-    arr[idx] = { ...arr[idx], [subKey]: val };
-    setField(key, arr);
-  };
-
-  const addRow = (key, empty) => setField(key, [...form[key], { ...empty }]);
-  const removeRow = (key, idx) => setField(key, form[key].filter((_, i) => i !== idx));
+  const setField = (key, value) => setForm(current => ({ ...current, [key]: value }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) { showToast('Nome obrigatório', '!'); return; }
+    if (!form.name.trim()) {
+      showToast('Informe seu nome completo', '!');
+      return;
+    }
+    if (!form.professionalTitle.trim() && !form.objective.trim()) {
+      showToast('Preencha um título ou resumo profissional', '!');
+      return;
+    }
+
     try {
       setSaving(true);
       const res = await apiFetch('/uploads/resume/structured', {
@@ -114,137 +170,110 @@ export default function ResumeBuilderModal({ initial, token, onSave, onClose }) 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao salvar currículo');
-      showToast('Currículo salvo!', 'OK');
+      showToast('Currículo salvo no portfólio', 'OK');
       onSave?.(data.resume, data.analysis);
       onClose();
     } catch (err) {
-      showToast(err.message || 'Falha ao salvar', '!');
+      showToast(err.message || 'Falha ao salvar currículo', '!');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="modal-content" style={{ maxWidth: 680, maxHeight: '88vh', overflowY: 'auto', padding: '28px 32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="modal-overlay resume-builder-overlay" onClick={event => event.target === event.currentTarget && onClose()}>
+      <div className="resume-builder-modal" role="dialog" aria-modal="true" aria-label="Currículo do portfólio">
+        <header className="resume-builder-head">
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Construtor de Currículo</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>Preencha os dados — o currículo é gerado automaticamente.</p>
+            <span className="resume-builder-kicker"><Sparkles size={14} /> Portfólio profissional</span>
+            <h2>Currículo por formulário</h2>
+            <p>Preencha seus dados com calma. A vitrine usa essas informações sem tentar ler PDF ou DOCX.</p>
           </div>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        {/* Dados pessoais */}
-        <Section title="Dados Pessoais">
-          <FieldRow label="Nome completo">
-            <input className="form-input" value={form.name} onChange={e => setField('name', e.target.value)} placeholder="Seu nome completo" />
-          </FieldRow>
-          <FieldRow label="E-mail">
-            <input className="form-input" type="email" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="seu@email.com" />
-          </FieldRow>
-          <FieldRow label="Telefone">
-            <input className="form-input" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="+55 11 99999-0000" />
-          </FieldRow>
-          <FieldRow label="Objetivo">
-            <textarea className="form-input" rows={3} value={form.objective} onChange={e => setField('objective', e.target.value)} placeholder="Descreva seu objetivo profissional..." style={{ resize: 'vertical' }} />
-          </FieldRow>
-        </Section>
-
-        {/* Formação */}
-        <Section title="Formação Acadêmica">
-          {form.education.map((ed, i) => (
-            <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
-              {form.education.length > 1 && (
-                <button type="button" onClick={() => removeRow('education', i)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16 }}>✕</button>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Instituição</label>
-                  <input className="form-input" value={ed.institution} onChange={e => setArrayField('education', i, 'institution', e.target.value)} placeholder="UNIGRAN, USP..." />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Curso</label>
-                  <input className="form-input" value={ed.course} onChange={e => setArrayField('education', i, 'course', e.target.value)} placeholder="Análise e Desenvolvimento..." />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Ano (conclusão)</label>
-                  <input className="form-input" value={ed.year} onChange={e => setArrayField('education', i, 'year', e.target.value)} placeholder="2026 / Em andamento" />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => addRow('education', { institution: '', course: '', year: '' })}>+ Adicionar formação</button>
-        </Section>
-
-        {/* Experiência */}
-        <Section title="Experiência Profissional">
-          {form.experience.map((ex, i) => (
-            <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
-              {form.experience.length > 1 && (
-                <button type="button" onClick={() => removeRow('experience', i)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16 }}>✕</button>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Empresa</label>
-                  <input className="form-input" value={ex.company} onChange={e => setArrayField('experience', i, 'company', e.target.value)} placeholder="Nome da empresa" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Cargo</label>
-                  <input className="form-input" value={ex.role} onChange={e => setArrayField('experience', i, 'role', e.target.value)} placeholder="Dev Frontend, Estágio..." />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Período</label>
-                  <input className="form-input" value={ex.period} onChange={e => setArrayField('experience', i, 'period', e.target.value)} placeholder="Jan/2024 – atual" />
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Descrição</label>
-                  <textarea className="form-input" rows={2} value={ex.description} onChange={e => setArrayField('experience', i, 'description', e.target.value)} placeholder="O que você fez nessa posição..." style={{ resize: 'vertical' }} />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => addRow('experience', { company: '', role: '', period: '', description: '' })}>+ Adicionar experiência</button>
-        </Section>
-
-        {/* Habilidades */}
-        <Section title="Habilidades">
-          <TagInput values={form.skills} onChange={val => setField('skills', val)} />
-        </Section>
-
-        {/* Projetos */}
-        <Section title="Projetos">
-          {form.projects.map((pr, i) => (
-            <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
-              {form.projects.length > 1 && (
-                <button type="button" onClick={() => removeRow('projects', i)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 16 }}>✕</button>
-              )}
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Título</label>
-                  <input className="form-input" value={pr.title} onChange={e => setArrayField('projects', i, 'title', e.target.value)} placeholder="Nome do projeto" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Descrição</label>
-                  <textarea className="form-input" rows={2} value={pr.description} onChange={e => setArrayField('projects', i, 'description', e.target.value)} placeholder="O que o projeto faz..." style={{ resize: 'vertical' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>Link (GitHub, Deploy...)</label>
-                  <input className="form-input" value={pr.link} onChange={e => setArrayField('projects', i, 'link', e.target.value)} placeholder="https://github.com/..." />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => addRow('projects', { title: '', description: '', link: '' })}>+ Adicionar projeto</button>
-        </Section>
-
-        {/* Ações */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Salvando…' : 'Salvar Currículo'}
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">
+            <X size={18} />
           </button>
+        </header>
+
+        <div className="resume-builder-body">
+          <Section title="Dados principais" subtitle="Esses campos aparecem no topo do currículo." icon={Sparkles}>
+            <div className="resume-form-grid">
+              <TextField label="Nome completo" value={form.name} onChange={value => setField('name', value)} placeholder="Seu nome completo" />
+              <TextField label="Título profissional" value={form.professionalTitle} onChange={value => setField('professionalTitle', value)} placeholder="Ex: Estudante de ADS | Frontend Junior" />
+              <TextField label="E-mail" type="email" value={form.email} onChange={value => setField('email', value)} placeholder="seu@email.com" />
+              <TextField label="Telefone" value={form.phone} onChange={value => setField('phone', value)} placeholder="+55 67 99999-0000" />
+              <div className="resume-form-wide">
+                <TextField label="Resumo profissional" rows={4} value={form.objective} onChange={value => setField('objective', value)} placeholder="Fale sobre sua área, objetivo, experiências acadêmicas e tipo de oportunidade que busca." />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Formação acadêmica" subtitle="Cursos, faculdade e período." icon={GraduationCap}>
+            <Repeater
+              items={form.education}
+              emptyItem={EMPTY_EDUCATION}
+              onChange={value => setField('education', value)}
+              addLabel="Adicionar formação"
+            >
+              {(item, index, update) => (
+                <div className="resume-form-grid">
+                  <TextField label="Instituição" value={item.institution || item.title || ''} onChange={value => update(index, 'institution', value)} placeholder="UNIGRAN" />
+                  <TextField label="Curso" value={item.course || ''} onChange={value => update(index, 'course', value)} placeholder="Análise e Desenvolvimento de Sistemas" />
+                  <TextField label="Período" value={item.period || item.year || item.description || ''} onChange={value => update(index, 'period', value)} placeholder="2024 - em andamento" />
+                </div>
+              )}
+            </Repeater>
+          </Section>
+
+          <Section title="Experiências" subtitle="Pode incluir estágio, trabalho, monitoria ou projeto aplicado." icon={Briefcase}>
+            <Repeater
+              items={form.experience}
+              emptyItem={EMPTY_EXPERIENCE}
+              onChange={value => setField('experience', value)}
+              addLabel="Adicionar experiência"
+            >
+              {(item, index, update) => (
+                <div className="resume-form-grid">
+                  <TextField label="Empresa ou contexto" value={item.company || item.title || ''} onChange={value => update(index, 'company', value)} placeholder="Empresa, laboratório, projeto acadêmico..." />
+                  <TextField label="Cargo ou papel" value={item.role || ''} onChange={value => update(index, 'role', value)} placeholder="Estagiário, desenvolvedor, pesquisador..." />
+                  <TextField label="Período" value={item.period || ''} onChange={value => update(index, 'period', value)} placeholder="Jan/2025 - atual" />
+                  <div className="resume-form-wide">
+                    <TextField label="Descrição" rows={3} value={item.description || ''} onChange={value => update(index, 'description', value)} placeholder="Conte responsabilidades, ferramentas usadas e resultados reais." />
+                  </div>
+                </div>
+              )}
+            </Repeater>
+          </Section>
+
+          <Section title="Habilidades" subtitle="Adicione tecnologias e competências que você quer destacar." icon={Sparkles}>
+            <TagInput values={form.skills} onChange={value => setField('skills', value)} />
+          </Section>
+
+          <Section title="Projetos" subtitle="Mostre evidências: GitHub, deploy, apresentação ou artigo." icon={Link2}>
+            <Repeater
+              items={form.projects}
+              emptyItem={EMPTY_PROJECT}
+              onChange={value => setField('projects', value)}
+              addLabel="Adicionar projeto"
+            >
+              {(item, index, update) => (
+                <div className="resume-form-grid">
+                  <TextField label="Título" value={item.title || ''} onChange={value => update(index, 'title', value)} placeholder="Nome do projeto" />
+                  <TextField label="Link" value={item.link || ''} onChange={value => update(index, 'link', value)} placeholder="https://..." />
+                  <div className="resume-form-wide">
+                    <TextField label="Descrição" rows={3} value={item.description || ''} onChange={value => update(index, 'description', value)} placeholder="Problema resolvido, tecnologias e resultado." />
+                  </div>
+                </div>
+              )}
+            </Repeater>
+          </Section>
         </div>
+
+        <footer className="resume-builder-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            <Save size={16} /> {saving ? 'Salvando...' : 'Salvar currículo'}
+          </button>
+        </footer>
       </div>
     </div>
   );

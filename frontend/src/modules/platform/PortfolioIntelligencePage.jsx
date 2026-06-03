@@ -63,6 +63,19 @@ function normalizeSkillObject(skill, index = 0) {
   return [skill?.name || 'Habilidade', skill?.category || 'Habilidade', Number(skill?.level || Math.max(58, 92 - index * 4))];
 }
 
+function displayText(value = '', fallback = '') {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  const badChars = (text.match(/[^\x09\x0A\x0D\x20-\x7EÀ-ɏ]/g) || []).length;
+  if (badChars / Math.max(text.length, 1) > 0.12) return fallback;
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(text)) return fallback;
+  return text;
+}
+
+function cleanList(values = []) {
+  return values.map(value => displayText(value)).filter(Boolean);
+}
+
 function evidenceLabel(project = {}) {
   if (project.externalKind === 'web_app') return 'App publicado';
   if (project.externalKind === 'repository') return 'Repositório';
@@ -250,18 +263,21 @@ function SkillsSection({ skills }) {
 
 function ResumeSection({ resume }) {
   const virtual = resume?.virtualResume;
+  const title = displayText(virtual?.professionalTitle, 'Talento acadêmico em desenvolvimento');
+  const about = displayText(virtual?.about || virtual?.objective || resume.summary, '');
+  const skills = cleanList(virtual?.hardSkills || virtual?.skills || []);
   if (!resume) return null;
   return (
     <div className="pf-resume-block">
-      {virtual?.professionalTitle && (
-        <div className="pf-resume-role">{virtual.professionalTitle}</div>
+      {title && (
+        <div className="pf-resume-role">{title}</div>
       )}
-      {(virtual?.about || resume.summary) && (
-        <p className="pf-resume-about">{virtual?.about || resume.summary}</p>
+      {about && (
+        <p className="pf-resume-about">{about}</p>
       )}
-      {(virtual?.hardSkills || virtual?.skills || []).length > 0 && (
+      {skills.length > 0 && (
         <div className="pf-resume-skills">
-          {(virtual?.hardSkills || virtual?.skills || []).slice(0, 8).map(s => (
+          {skills.slice(0, 8).map(s => (
             <span key={s} className="pf-chip">{s}</span>
           ))}
         </div>
