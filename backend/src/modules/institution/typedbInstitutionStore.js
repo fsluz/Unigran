@@ -994,15 +994,14 @@ export async function inviteInstitutionMember(universityId, payload) {
         has institution-updated-at ${createdAt};
   `);
 
-  if (role === 'student') {
+  if (role !== 'user') {
     await writeQuery(`
-      match $member isa person, has username "${safe(username)}", has user-role "user";
-      update $member has user-role "student";
+      match $member isa person, has username "${safe(username)}", has user-role $old;
+      delete $member has user-role $old;
     `).catch(() => null);
-  } else if (role !== 'user') {
     await writeQuery(`
       match $member isa person, has username "${safe(username)}";
-      update $member has user-role "${safe(role)}";
+      insert $member has user-role "${safe(role)}";
     `).catch(() => null);
   }
   invalidateRoleCache(username);
@@ -1038,15 +1037,14 @@ export async function approveMembership(universityId, membershipId) {
       $membership has institution-updated-at ${now()};
   `);
   const approvedRole = normalizeUniversityRole(rows[0].role);
-  if (approvedRole === 'student') {
+  if (approvedRole !== 'user') {
     await writeQuery(`
-      match $member isa person, has username "${safe(rows[0].username)}", has user-role "user";
-      update $member has user-role "student";
+      match $member isa person, has username "${safe(rows[0].username)}", has user-role $old;
+      delete $member has user-role $old;
     `).catch(() => null);
-  } else if (approvedRole !== 'user') {
     await writeQuery(`
       match $member isa person, has username "${safe(rows[0].username)}";
-      update $member has user-role "${safe(approvedRole)}";
+      insert $member has user-role "${safe(approvedRole)}";
     `).catch(() => null);
   }
   invalidateRoleCache(rows[0].username);
@@ -1075,8 +1073,12 @@ export async function setMembershipRole(universityId, membershipId, role) {
     insert $membership has institution-role "${safe(role)}";
   `);
   await writeQuery(`
+    match $member isa person, has username "${safe(rows[0].username)}", has user-role $old;
+    delete $member has user-role $old;
+  `).catch(() => null);
+  await writeQuery(`
     match $member isa person, has username "${safe(rows[0].username)}";
-    update $member has user-role "${safe(role)}";
+    insert $member has user-role "${safe(role)}";
   `);
   invalidateRoleCache(rows[0].username);
   return listMemberships(universityId);

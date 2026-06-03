@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import json
-import os
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -42,16 +41,9 @@ def _log(endpoint: str, username: str, area: str, score: float, latency_ms: floa
         print(f"[ML {endpoint}] {ok} area={area or '-'}{score_str} src={source} {latency_ms:.0f}ms{' ERR=' + error if error else ''}")
 
 
-inject_into_main()
-
 # Garante que limpar_texto está em __main__ antes de qualquer import de modelo
 inject_into_main()
 
-
-# ── Schemas ──────────────────────────────────────────────────────────────────
-
-class PredictRequest(BaseModel):
-    texto: str = Field(..., min_length=3, description="Habilidades, experiências ou descrição do perfil.")
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -72,11 +64,6 @@ class RecommendRequest(BaseModel):
     texto: str = Field(..., min_length=3)
     top_n: int = Field(default=10, ge=1, le=50)
 
-class RecommendRequest(BaseModel):
-    texto: str = Field(..., min_length=3)
-    top_n: int = Field(default=10, ge=1, le=50)
-
-
 class VagaRecomendada(BaseModel):
     titulo: str
     empresa: str
@@ -95,21 +82,6 @@ class RecommendResponse(BaseModel):
     skills_recomendadas: list[str]
     insight: str
 
-
-# ── Startup ───────────────────────────────────────────────────────────────────
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    inject_into_main()  # reinjecta ao subir workers
-    yield
-
-
-# ── App ───────────────────────────────────────────────────────────────────────
-
-app = FastAPI(
-    title="Unigran ML API",
-    description="Predição de compatibilidade profissional e recomendação de vagas — v2 (HashingVectorizer + subclusters).",
-    version="2.1.0",
 class VagaSyncItem(BaseModel):
     id: str = ""; titulo: str = ""; empresa: str = ""; url: str = ""
     localizacao: str = ""; modelo: str = ""; senioridade: str = ""; fonte: str = "typedb"
@@ -123,12 +95,15 @@ _vagas_store: list[dict] = []
 _vagas_lock = Lock()
 
 
-# ── App ───────────────────────────────────────────────────────────────────────
+# ── Startup ───────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     inject_into_main()
     yield
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Unigran ML API",
@@ -143,7 +118,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
 
@@ -155,12 +129,6 @@ def _load_predictor():
 
 def get_predictor():
     if not ModelRepository().is_ready():
-        raise HTTPException(
-            status_code=503,
-            detail="Modelos ML não encontrados. Verifique se os arquivos .pkl estão em backend/models/.",
-        )
-def get_predictor():
-    if not ModelRepository().is_ready():
         raise HTTPException(status_code=503, detail="Modelos ML não encontrados. Verifique se os arquivos .pkl estão em backend/project_ml/models/.")
     return _load_predictor()
 
@@ -170,19 +138,6 @@ def get_predictor():
 @app.get("/health")
 def health():
     ready = ModelRepository().is_ready()
-    return {"status": "ok" if ready else "degraded", "models_loaded": ready, "version": "2.1.0"}
-
-
-@app.post("/predict", response_model=PredictResponse)
-def predict(payload: PredictRequest):
-    """Classifica o perfil em uma área profissional e retorna score de compatibilidade."""
-    try:
-        result = get_predictor().predict(payload.texto)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return PredictResponse(**result.__dict__)
     return {"status": "ok" if ready else "degraded", "models_loaded": ready, "version": "2.2.0"}
 
 
@@ -237,28 +192,6 @@ def recommend(payload: RecommendRequest, request: Request):
         ranking=result.ranking, categoria_compatibilidade=result.categoria_compatibilidade,
         vagas_recomendadas=[VagaRecomendada(**v) for v in result.vagas_recomendadas],
         skills_recomendadas=result.skills_recomendadas, insight=result.insight,
-    )
-
-
-@app.post("/recommend", response_model=RecommendResponse)
-def recommend(payload: RecommendRequest):
-    """Retorna vagas recomendadas + skills a desenvolver baseado no perfil do estudante."""
-    try:
-        result = get_predictor().recommend(payload.texto, top_n=payload.top_n)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return RecommendResponse(
-        cluster_previsto=result.cluster_previsto,
-        nome_cluster=result.nome_cluster,
-        area=result.area,
-        score_percentual=result.score_percentual,
-        ranking=result.ranking,
-        categoria_compatibilidade=result.categoria_compatibilidade,
-        vagas_recomendadas=[VagaRecomendada(**v) for v in result.vagas_recomendadas],
-        skills_recomendadas=result.skills_recomendadas,
-        insight=result.insight,
     )
 
 
