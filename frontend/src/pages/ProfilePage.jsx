@@ -12,16 +12,30 @@ import { fetchFollowers, fetchFollowing, fetchLikedPosts, fetchReposts, fetchUse
 import ImageCropModal from '../components/media/ImageCropModal';
 import ImageLightbox from '../components/media/ImageLightbox';
 import PortfolioIntelligencePage from '../modules/platform/PortfolioIntelligencePage';
+import ResumeBuilderModal from '../components/modals/ResumeBuilderModal';
 import { normalizeRole } from '../modules/shared/permissions';
+
+// Detecta se uma string parece conteúdo binário corrompido (lixo de PDF/DOCX)
+function isBinaryGarbage(text) {
+  if (!text || typeof text !== 'string') return false;
+  const nonPrintable = (text.match(/[^\x09\x0A\x0D\x20-\x7EÀ-ɏ]/g) || []).length;
+  return nonPrintable / text.length > 0.15;
+}
+
+function safeText(text, fallback = '') {
+  if (!text) return fallback;
+  if (isBinaryGarbage(text)) return fallback;
+  return text;
+}
 
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
-const TABS = ['Publicaes', 'Portfolio', 'Carreiras', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
+const TABS = ['Publicações', 'Portfólio', 'Carreiras', 'Reposts', 'Curtidas', 'Salvos', 'Links'];
 
 const POST_FILTERS = [
   { id: 'all',   label: 'Tudo'       },
   { id: 'text',  label: 'Texto'      },
-  { id: 'media', label: 'Foto/Vdeo' },
+  { id: 'media', label: 'Foto/Vídeo' },
   { id: 'date',  label: 'Por data'   },
 ];
 
@@ -33,7 +47,7 @@ export default function ProfilePage({ onNavigate }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
-  const [tab, setTab]               = useState('Publicaes');
+  const [tab, setTab]               = useState('Publicações');
   const [postFilter, setPostFilter] = useState('all');
   const [editOpen, setEditOpen]     = useState(false);
   const [openPost, setOpenPost]     = useState(null);
@@ -45,6 +59,7 @@ export default function ProfilePage({ onNavigate }) {
   const [portfolioResume, setPortfolioResume] = useState(null);
   const [portfolioAnalysis, setPortfolioAnalysis] = useState(null);
   const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeBuilderOpen, setResumeBuilderOpen] = useState(false);
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
@@ -157,9 +172,9 @@ export default function ProfilePage({ onNavigate }) {
       const result = await uploadPortfolioResume({ token, file });
       setPortfolioResume(result.resume);
       setPortfolioAnalysis(result.analysis);
-      showToast('Curriculo lido e conectado ao portfolio', 'OK');
+      showToast('Currículo lido e conectado ao portfolio', 'OK');
     } catch (err) {
-      showToast(err.message || 'Falha ao enviar curriculo', '!');
+      showToast(err.message || 'Falha ao enviar currículo', '!');
     } finally {
       setResumeUploading(false);
     }
@@ -284,7 +299,7 @@ export default function ProfilePage({ onNavigate }) {
           <div className="profile-stats">
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.posts || posts.length}</div>
-              <div className="profile-stat-label">Publicaes</div>
+              <div className="profile-stat-label">Publicações</div>
             </div>
             <div className="profile-stat">
               <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.followers || 0}</div>
@@ -319,7 +334,7 @@ export default function ProfilePage({ onNavigate }) {
 
       {/* Tab content */}
       <div className="profile-tab-content">
-        {tab === 'Publicaes' && (
+        {tab === 'Publicações' && (
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {/* Post filters */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
@@ -371,14 +386,32 @@ export default function ProfilePage({ onNavigate }) {
 
             <div className="profile-resume-panel profile-resume-compact">
               <div>
-                <strong>{virtualResume?.professionalTitle || (portfolioResume ? 'Curriculo conectado' : 'Adicionar curriculo')}</strong>
-                <p>{virtualResume?.about || portfolioResume?.summary || 'Envie um PDF ou DOCX para preencher suas informacoes profissionais.'}</p>
+                <strong>
+                  {safeText(virtualResume?.professionalTitle, portfolioResume ? 'Currículo conectado' : 'Adicionar currículo')}
+                </strong>
+                <p>
+                  {safeText(
+                    virtualResume?.about || portfolioResume?.summary,
+                    'Preencha o formulário para criar seu currículo profissional.'
+                  )}
+                </p>
+                {(virtualResume?.hardSkills || virtualResume?.skills || []).slice(0, 6).map(s => (
+                  <span key={s} style={{ display: 'inline-block', fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 700, marginRight: 4, marginTop: 6 }}>{s}</span>
+                ))}
               </div>
-              <label className="profile-resume-upload">
-                {resumeUploading ? 'Lendo...' : 'Enviar curriculo'}
-                <input type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={handleResumeUpload} />
-              </label>
+              <button className="profile-resume-upload" style={{ cursor: 'pointer' }} onClick={() => setResumeBuilderOpen(true)}>
+                {portfolioResume ? 'Editar currículo' : 'Criar currículo'}
+              </button>
             </div>
+
+            {resumeBuilderOpen && (
+              <ResumeBuilderModal
+                initial={portfolioResume}
+                token={token}
+                onSave={(resume, analysis) => { setPortfolioResume(resume); setPortfolioAnalysis(analysis); }}
+                onClose={() => setResumeBuilderOpen(false)}
+              />
+            )}
 
             <PortfolioIntelligencePage
               user={user}
@@ -395,7 +428,7 @@ export default function ProfilePage({ onNavigate }) {
             <div className="profile-portfolio-hero">
               <div>
                 <h2>Oportunidades</h2>
-                <p>Sugestoes de vagas com base no seu curriculo e habilidades.</p>
+                <p>Sugestoes de vagas com base no seu currículo e habilidades.</p>
               </div>
             </div>
             <PortfolioIntelligencePage

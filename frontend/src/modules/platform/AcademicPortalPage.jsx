@@ -1244,13 +1244,13 @@ export default function AcademicPortalPage({ onOpenAva }) {
 
   return (
     <div className="page-scroll academic-portal-page">
-      <Topbar title="Portal Academico" />
+      <Topbar title="Portal Acadêmico" />
       {/* Overlay FORA do grid — position:fixed não quebra o layout */}
       {navOpen && <div className="academic-nav-overlay" onClick={() => setNavOpen(false)} />}
       <main className="academic-portal-shell">
         <aside className={`academic-portal-nav ${navOpen ? 'mobile-open' : ''}`}>
           <div className="academic-portal-brand">
-            <strong>{institution?.name || activeUniversity?.name || 'Portal Academico'}</strong>
+            <strong>{institution?.name || activeUniversity?.name || 'Portal Acadêmico'}</strong>
             <span>{roleLabels[role] || role}</span>
             {navOpen && (
               <button className="academic-nav-close-btn" onClick={() => setNavOpen(false)} aria-label="Fechar menu" type="button">
@@ -1271,7 +1271,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
             <button className="academic-mobile-menu-btn" onClick={() => setNavOpen(true)} aria-label="Menu">
               <MenuIcon size={20} />
             </button>
-            <span>{institution?.name || activeUniversity?.name || 'Portal Academico'}</span>
+            <span>{institution?.name || activeUniversity?.name || 'Portal Acadêmico'}</span>
             {canStudy && (
               <button className="btn btn-primary btn-sm" onClick={onOpenAva}>AVA</button>
             )}
@@ -1280,7 +1280,7 @@ export default function AcademicPortalPage({ onOpenAva }) {
           <section className="academic-portal-hero">
             <div>
               <span>{roleLabels[role] || role}</span>
-              <h1>{institution?.name || activeUniversity?.name || 'Portal Academico'}</h1>
+              <h1>{institution?.name || activeUniversity?.name || 'Portal Acadêmico'}</h1>
               <p>Ola, {user?.displayName || user?.username}. Os dados desta area sao carregados das suas relacoes academicas persistidas.</p>
             </div>
             <div className="academic-hero-actions">

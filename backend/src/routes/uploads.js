@@ -95,6 +95,42 @@ router.post('/resume', auth, upload.single('file'), async (req, res) => {
   }
 });
 
+// POST /uploads/resume/structured — currículo via formulário (sem upload de arquivo)
+router.post('/resume/structured', auth, async (req, res) => {
+  try {
+    const { name, email, phone, objective, education, experience, skills, projects } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'Nome é obrigatório' });
+
+    const virtualResume = {
+      name:            String(name).trim().slice(0, 200),
+      email:           String(email || '').trim().slice(0, 200),
+      phone:           String(phone || '').trim().slice(0, 80),
+      professionalTitle: String(objective || '').trim().slice(0, 300),
+      about:           String(objective || '').trim().slice(0, 1000),
+      education:       Array.isArray(education)   ? education.slice(0, 10)  : [],
+      experience:      Array.isArray(experience)  ? experience.slice(0, 10) : [],
+      hardSkills:      Array.isArray(skills)       ? skills.map(s => String(s).trim()).filter(Boolean).slice(0, 40)  : [],
+      skills:          Array.isArray(skills)       ? skills.map(s => String(s).trim()).filter(Boolean).slice(0, 40)  : [],
+      projects:        Array.isArray(projects)     ? projects.slice(0, 10)  : [],
+    };
+
+    const resume = await savePortfolioResume(req.user, {
+      virtualResume,
+      summary: virtualResume.about,
+      documentUrl: null,
+      documentName: 'curriculo-formulario.json',
+      documentStorage: 'structured',
+      mimeType: 'application/json',
+    });
+
+    const analysis = await getPortfolioMlAnalysis(req.user.username).catch(() => null);
+    res.status(201).json({ resume, analysis });
+  } catch (err) {
+    console.error('[upload resume structured]', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Falha ao salvar currículo' });
+  }
+});
+
 export default router;
 
 

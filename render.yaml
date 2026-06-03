@@ -1,0 +1,74 @@
+## render.yaml — UNIGRAN Comunidades
+## https://render.com/docs/infrastructure-as-code
+
+services:
+
+  - type: web
+    name: unigran-ml
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements-ml.txt
+    startCommand: python project_ml/startup.py && uvicorn project_ml.api.app:app --host 0.0.0.0 --port $PORT --workers 2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ML_CSV_DRIVE_ID
+        value: 1JYhKufeDMCjt1Cp06V-5ZB_iPGOdfjrh
+      - key: ML_SERVICE_SECRET
+        generateValue: true
+      - key: ML_ALLOWED_ORIGINS
+        value: https://unigran-frontend.onrender.com,https://unigran-backend.onrender.com
+    disk:
+      name: ml-models
+      mountPath: /opt/render/project/src/backend/project_ml/models
+      sizeGB: 10
+
+  - type: web
+    name: unigran-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: ML_SERVICE_URL
+        value: https://unigran-ml.onrender.com
+      - key: ML_SERVICE_SECRET
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TYPEDB_ADDRESS
+        sync: false
+      - key: TYPEDB_DATABASE
+        sync: false
+      - key: TYPEDB_USERNAME
+        sync: false
+      - key: TYPEDB_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ABLY_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        value: https://unigran-frontend.onrender.com
+
+  - type: web
+    name: unigran-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://unigran-backend.onrender.com

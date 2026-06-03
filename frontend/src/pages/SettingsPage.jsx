@@ -45,11 +45,11 @@ function formatSessionSeen(value) {
 
 const BASE_GROUPS = [
   {
-    title: 'Configuracoes',
+    title: 'Configurações',
     items: [
       { id: 'pessoal',      icon: '', label: 'Dados Pessoais' },
       { id: 'privacidade',  icon: '', label: 'Privacidade'    },
-      { id: 'notificacoes', icon: '', label: 'Notificacoes'   },
+      { id: 'notificacoes', icon: '', label: 'Notificações'   },
       { id: 'mensagens',    icon: '', label: 'Mensagens'      },
       { id: 'seguranca',    icon: '', label: 'Seguranca'      },
       { id: 'dados',        icon: '', label: 'Seus Dados'     },
@@ -686,7 +686,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
         {/* Left nav */}
         <nav className="settings-sidenav">
           <div style={{ padding: '16px 16px 8px', fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            Configuracoes
+            Configurações
           </div>
           {groups.map(g => (
             <div key={g.title} className="settings-nav-group" style={{ marginBottom: 8 }}>
@@ -966,7 +966,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
           )}
 
           {section === 'notificacoes' && (<>
-            <Section title="Notificacoes Push" desc="">
+            <Section title="Notificações Push" desc="">
               <Row title="Ativar notificaes push" sub="Receba notificaes em tempo real">
                 <Toggle checked={cfg.pushNotif} onChange={() => toggle('pushNotif')} />
               </Row>
@@ -982,7 +982,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
                 </Row>
               ))}
             </Section>
-            <Section title="Notificacoes por E-mail" desc="">
+            <Section title="Notificações por E-mail" desc="">
               {[
                 ['E-mails de notificacao', 'Resumos de atividade',       'emailNotif'],
                 ['Resumo semanal',         'Destaques toda segunda',       'emailWeekly'],

@@ -89,7 +89,7 @@ function ProfileSection({ profile, onRecalculate, loading }) {
       <EmptyState
         icon={User}
         title="Perfil ainda nao calculado"
-        text="Adicione projetos ao portfolio ou envie seu curriculo para receber sugestoes personalizadas."
+        text="Adicione projetos ao portfolio ou envie seu currículo para receber sugestoes personalizadas."
         action={
           <button className="btn btn-primary mc-btn" onClick={onRecalculate} disabled={loading}>
             {loading ? 'Calculando...' : 'Calcular perfil'}
@@ -240,7 +240,7 @@ function JobsSection({ jobs, onJobAction, savedJobs, appliedJobs }) {
   const savedTitles = new Set((savedJobs || []).map(j => j.title));
   const appliedTitles = new Set((appliedJobs || []).map(j => j.title));
   if (!jobs?.readyNow?.length && !jobs?.searches?.length) {
-    return <EmptyState icon={Briefcase} title="Nenhuma sugestao de vaga" text="Complete seu curriculo ou defina um objetivo profissional para ver sugestoes." />;
+    return <EmptyState icon={Briefcase} title="Nenhuma sugestao de vaga" text="Complete seu currículo ou defina um objetivo profissional para ver sugestoes." />;
   }
   return (
     <div className="mc-jobs-root">
@@ -574,7 +574,7 @@ export default function MeuCaminhoPage() {
             className="mc-content"
           >
             {activeTab === 'perfil' && (
-              <SectionCard title="Perfil atual" subtitle="Calculado a partir dos seus projetos, curriculo e posts publicados.">
+              <SectionCard title="Perfil atual" subtitle="Calculado a partir dos seus projetos, currículo e posts publicados.">
                 <ProfileSection profile={profile} onRecalculate={handleRecalculate} loading={loading.profile} />
               </SectionCard>
             )}

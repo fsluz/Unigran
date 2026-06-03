@@ -282,69 +282,126 @@ router.get('/audit-logs', requirePermission('audit:read'), async (req, res) => {
 
 router.get('/power-bi', requirePermission('system:manage'), async (req, res) => {
   try {
-    const [ava, typedbUsers, typedbPosts, typedbComments] = await Promise.all([
+    const [ava, typedbUsers, typedbPosts, typedbComments, typedbReactions, typedbMlJobs] = await Promise.all([
       getAvaPowerBiSnapshot(),
       readQuery(`
-        match
-          $u isa person, has username $username;
-          try { $u has name $name; };
-          try { $u has user-role $role; };
-          try { $u has can-publish $can_publish; };
-        fetch {
-          "username": $username,
-          "name": $name,
-          "role": $role,
-          "can_publish": $can_publish
-        };
+        match $u isa person, has username $username;
+        try { $u has name $name; }; try { $u has user-role $role; };
+        try { $u has gender $gender; }; try { $u has can-publish $can_publish; };
+        fetch { "username": $username, "name": $name, "role": $role, "gender": $gender, "can_publish": $can_publish };
       `).catch(() => []),
       readQuery(`
-        match
-          $p isa post, has post-id $id;
-          try { $p has creation-timestamp $created_at; };
-          try { $p has post-content $content; };
-          try { $p has portfolio-id $portfolio_id; };
-        fetch {
-          "id": $id,
-          "created_at": $created_at,
-          "content": $content,
-          "portfolio_id": $portfolio_id
-        };
+        match $p isa post, has post-id $id;
+        try { $p has creation-timestamp $created_at; }; try { $p has language $lang; };
+        try { $p has portfolio-id $portfolio_id; }; try { $p has tag $tag; };
+        try { $p has post-visibility $visibility; };
+        fetch { "id": $id, "created_at": $created_at, "lang": $lang, "portfolio_id": $portfolio_id, "tag": $tag, "visibility": $visibility };
       `).catch(() => []),
       readQuery(`
-        match
-          $c isa comment, has comment-id $id;
-          try { $c has creation-timestamp $created_at; };
-        fetch {
-          "id": $id,
-          "created_at": $created_at
-        };
+        match $c isa comment, has comment-id $id; try { $c has creation-timestamp $created_at; };
+        fetch { "id": $id, "created_at": $created_at };
+      `).catch(() => []),
+      readQuery(`
+        match $r isa reaction, has emoji $emoji; try { $r has creation-timestamp $created_at; };
+        fetch { "emoji": $emoji, "created_at": $created_at };
+      `).catch(() => []),
+      readQuery(`
+        match $j isa ml-job, has ml-id $id; try { $j has ml-status $status; };
+        try { $j has ml-work-model $model; }; try { $j has ml-seniority $seniority; };
+        try { $j has ml-match-pct $match; }; try { $j has ml-source $source; };
+        fetch { "id": $id, "status": $status, "model": $model, "seniority": $seniority, "match": $match, "source": $source };
       `).catch(() => []),
     ]);
 
-    const socialPosts = typedbPosts.length;
-    const portfolioPosts = typedbPosts.filter(post => post.portfolio_id).length;
-    const activeAuthors = new Set([
-      ...ava.submissions.map(item => item.username),
-      ...ava.portfolio.map(item => item.username),
-    ]).size;
-    const interactions = typedbComments.length + ava.kpis.submissions + ava.kpis.completedMaterials;
-    const engagementPerPost = socialPosts ? Number((interactions / socialPosts).toFixed(1)) : interactions;
-    const conversion = ava.kpis.submissions ? Math.round((ava.kpis.portfolioItems / ava.kpis.submissions) * 100) : 0;
+    // ── Cálculos sociais ──────────────────────────────────────────────────────
+    const socialPosts       = typedbPosts.length;
+    const portfolioPosts    = typedbPosts.filter(p => p.portfolio_id).length;
+    const activeAuthors     = new Set([...ava.submissions.map(s => s.username), ...ava.portfolio.map(p => p.username)]).size;
+    const interactions      = typedbComments.length + ava.kpis.submissions + ava.kpis.completedMaterials;
+    const engagementPerPost = socialPosts ? Number((interactions / socialPosts).toFixed(1)) : 0;
+    const conversion        = ava.kpis.submissions ? Math.round((ava.kpis.portfolioItems / ava.kpis.submissions) * 100) : 0;
+
+    // ── Posts por hora (0-23) ─────────────────────────────────────────────────
+    const hourCounts = Array(24).fill(0);
+    for (const p of typedbPosts) {
+      const ts = p.created_at;
+      if (ts) { try { hourCounts[new Date(ts).getHours()]++; } catch {} }
+    }
+    const postsPerHour = hourCounts.map((count, hour) => ({ hour, count }));
+
+    // ── Posts por dia (últimos 30d) ───────────────────────────────────────────
+    const dayMap = {};
+    const now = Date.now();
+    for (const p of typedbPosts) {
+      if (!p.created_at) continue;
+      try {
+        const d = new Date(p.created_at);
+        if (now - d.getTime() > 30 * 86400000) continue;
+        const key = d.toISOString().slice(0, 10);
+        dayMap[key] = (dayMap[key] || 0) + 1;
+      } catch {}
+    }
+    const postsPerDay = Object.entries(dayMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
+
+    // ── Top tags ──────────────────────────────────────────────────────────────
+    const tagMap = {};
+    for (const p of typedbPosts) { if (p.tag) tagMap[p.tag] = (tagMap[p.tag] || 0) + 1; }
+    const topTags = Object.entries(tagMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([tag, count]) => ({ tag, count }));
+
+    // ── Visibilidade ──────────────────────────────────────────────────────────
+    const visMap = { public: 0, private: 0, default: 0 };
+    for (const p of typedbPosts) { const v = p.visibility || 'default'; visMap[v] = (visMap[v] || 0) + 1; }
+
+    // ── Idiomas ───────────────────────────────────────────────────────────────
+    const langMap = {};
+    for (const p of typedbPosts) { const l = p.lang || 'pt-BR'; langMap[l] = (langMap[l] || 0) + 1; }
+    const byLanguage = Object.entries(langMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([lang, count]) => ({ lang, count }));
+
+    // ── Pessoas ───────────────────────────────────────────────────────────────
+    const genderMap = { male: 0, female: 0, other: 0 };
+    const roleMap   = {};
+    for (const u of typedbUsers) {
+      const g = u.gender || 'other'; genderMap[g] = (genderMap[g] || 0) + 1;
+      const r = u.role || 'user'; roleMap[r] = (roleMap[r] || 0) + 1;
+    }
+    const byRole = Object.entries(roleMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([role, count]) => ({ role, count }));
+
+    // ── Reações ───────────────────────────────────────────────────────────────
+    const emojiMap = {};
+    for (const r of typedbReactions) { if (r.emoji) emojiMap[r.emoji] = (emojiMap[r.emoji] || 0) + 1; }
+    const byEmoji = Object.entries(emojiMap).map(([emoji, count]) => ({ emoji, count }));
+
+    // ── Vagas ML ──────────────────────────────────────────────────────────────
+    const vagasTotal  = typedbMlJobs.length;
+    const vagasSaved  = typedbMlJobs.filter(j => j.status === 'saved').length;
+    const vagasApplied = typedbMlJobs.filter(j => j.status === 'applied').length;
+    const matchValues = typedbMlJobs.map(j => Number(j.match)).filter(Boolean);
+    const avgMatch    = matchValues.length ? Number((matchValues.reduce((a, b) => a + b, 0) / matchValues.length).toFixed(1)) : 0;
+    const modelMap    = {};
+    for (const j of typedbMlJobs) { const m = j.model || 'N/D'; modelMap[m] = (modelMap[m] || 0) + 1; }
+    const seniorityMap = {};
+    for (const j of typedbMlJobs) { const s = j.seniority || 'N/D'; seniorityMap[s] = (seniorityMap[s] || 0) + 1; }
+
+    // ── Python ML health ─────────────────────────────────────────────────────
+    let mlHealth = { status: 'unavailable', models_loaded: false };
+    try {
+      const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+      const ctrl  = new AbortController();
+      setTimeout(() => ctrl.abort(), 3000);
+      const mlRes = await fetch(`${mlUrl}/health`, { signal: ctrl.signal });
+      if (mlRes.ok) mlHealth = await mlRes.json();
+    } catch {}
 
     auditLog({ action: 'POWER_BI_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
+
     res.json({
       generatedAt: new Date().toISOString(),
-      repoReference: 'https://github.com/v-cerqueira/Power-Bi',
-      source: {
-        primary: 'TypeDB',
-        secondary: 'TypeDB academic relations',
-        note: 'Endpoint de BI interno consome as entidades sociais e academicas persistidas no TypeDB.',
-      },
       kpis: {
         users: typedbUsers.length || ava.dimensions.students,
         activeAuthors,
         socialPosts,
         comments: typedbComments.length,
+        reactions: typedbReactions.length,
         interactions,
         engagementPerPost,
         portfolioItems: ava.kpis.portfolioItems,
@@ -353,26 +410,41 @@ router.get('/power-bi', requirePermission('system:manage'), async (req, res) => 
         averageProgress: ava.kpis.averageProgress,
         portfolioConversion: conversion,
         portfolioPosts,
+        vagasTotal,
+        vagasSaved,
+        vagasApplied,
+        avgMatch,
       },
+      social: { postsPerHour, postsPerDay, topTags, byVisibility: visMap, byLanguage },
+      people: { list: typedbUsers.slice(0, 30), byGender: genderMap, byRole },
+      engagement: { byEmoji },
+      vagas: {
+        total: vagasTotal,
+        saved: vagasSaved,
+        applied: vagasApplied,
+        avgMatch,
+        byModel: Object.entries(modelMap).map(([model, count]) => ({ model, count })),
+        bySeniority: Object.entries(seniorityMap).map(([seniority, count]) => ({ seniority, count })),
+      },
+      ml: { health: mlHealth, avgMatch },
       courses: ava.byCourse,
       recentPortfolio: ava.portfolio,
       recentSubmissions: ava.submissions,
-      people: typedbUsers.slice(0, 20),
       rai: {
         signal: engagementPerPost > 18 ? 'Rede aquecida' : engagementPerPost > 8 ? 'Ritmo saudavel' : 'Precisa ativacao',
         risk: activeAuthors < 4 ? 'Participacao concentrada' : 'Distribuicao saudavel',
         forecast30d: Math.round((interactions || ava.kpis.submissions || 1) * 1.18),
+        watchlist: [
+          activeAuthors < 5   ? { level: 'red',    msg: 'Menos de 5 autores ativos — baixo engajamento'         } : null,
+          engagementPerPost < 2 ? { level: 'yellow', msg: 'Taxa de engajamento abaixo de 2 interações/post'       } : null,
+          conversion < 20     ? { level: 'yellow', msg: `Conversão submissão→portfólio em ${conversion}% (meta: 30%)` } : null,
+          ava.kpis.resumes < 3  ? { level: 'yellow', msg: 'Poucos currículos cadastrados na plataforma'           } : null,
+        ].filter(Boolean),
         actions: [
           'Promover cases de portfolio com maior potencial profissional.',
           'Ativar desafios por curso para elevar publicacoes verificaveis.',
           'Priorizar alunos com curriculo e projeto conectado a stack real.',
         ],
-      },
-      modelGuidance: {
-        entities: ['person', 'post', 'comment', 'course', 'activity', 'submission', 'portfolio-item', 'resume'],
-        relationships: ['authorship', 'course-enrollment', 'activity-submission', 'portfolio-publication', 'skill-evidence'],
-        indexes: ['username', 'post-id', 'creation-timestamp', 'course-id', 'portfolio-id'],
-        normalization: 'Manter eventos sociais, academicos e portfolio em entidades separadas; gerar agregados por API/cache para BI.',
       },
     });
   } catch (err) {

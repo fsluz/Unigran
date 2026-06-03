@@ -69,7 +69,7 @@ export default function NotificationsPage() {
     setNotifs(prev => prev.map(n => ({ ...n, read: true })));
     try {
       await markAllAsRead(token);
-      showToast('Notificacoes lidas', 'OK');
+      showToast('Notificações lidas', 'OK');
     } catch {
       setNotifs(before);
       showToast('Erro ao marcar notificacoes', '!');
@@ -92,7 +92,7 @@ export default function NotificationsPage() {
   return (
     <div className="page-scroll">
       <Topbar
-        title="Notificacoes"
+        title="Notificações"
         right={
           <Button variant="secondary" size="sm" onClick={readAll} disabled={!notifs.some(n => !n.read)}>
             Marcar tudo como lido

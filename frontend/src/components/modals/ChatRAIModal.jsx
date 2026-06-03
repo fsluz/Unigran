@@ -329,7 +329,7 @@ export default function ChatRAIModal({ isOpen, onClose, token, user }) {
               <input value={scheduleDraft.title} onChange={event => setScheduleDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Novo cronograma" required />
               <select value={scheduleDraft.type} onChange={event => setScheduleDraft(prev => ({ ...prev, type: event.target.value }))}>
                 <option value="personal">Pessoal</option>
-                <option value="academic">Academico</option>
+                <option value="academic">Acadêmico</option>
                 <option value="study_plan">Estudos</option>
                 <option value="task_plan">Tarefas</option>
                 <option value="team">Equipe</option>

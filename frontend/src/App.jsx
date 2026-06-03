@@ -78,17 +78,17 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
           <button className="mobile-drawer-close" onClick={onClose} aria-label="Fechar menu">✕</button>
         </div>
         <div className="mobile-drawer-body">
-          <button className={`mobile-nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}>Inicio</button>
-          {canPortal && <button className={`mobile-nav-item ${page === 'campus' ? 'active' : ''}`} onClick={() => navigate('campus')}>Portal Academico</button>}
+          <button className={`mobile-nav-item ${page === 'home' ? 'active' : ''}`} onClick={() => navigate('home')}>Início</button>
+          {canPortal && <button className={`mobile-nav-item ${page === 'campus' ? 'active' : ''}`} onClick={() => navigate('campus')}>Portal Acadêmico</button>}
           {canAva && <button className={`mobile-nav-item ${page === 'ava' ? 'active' : ''}`} onClick={() => navigate('ava')}>AVA</button>}
           <button className={`mobile-nav-item ${page === 'meuCaminho' ? 'active' : ''}`} onClick={() => navigate('meuCaminho')}>Meu Caminho</button>
-          <button className={`mobile-nav-item ${page === 'friends' ? 'active' : ''}`} onClick={() => navigate('friends')}>Conexoes</button>
+          <button className={`mobile-nav-item ${page === 'friends' ? 'active' : ''}`} onClick={() => navigate('friends')}>Conexões</button>
           <button className={`mobile-nav-item ${page === 'communities' ? 'active' : ''}`} onClick={() => navigate('communities')}>Comunidades</button>
           <button className={`mobile-nav-item ${page === 'explore' ? 'active' : ''}`} onClick={() => navigate('explore')}>Explorar</button>
           <button className={`mobile-nav-item ${page === 'messages' ? 'active' : ''}`} onClick={() => navigate('messages')}>Mensagens</button>
-          <button className={`mobile-nav-item ${page === 'notifications' ? 'active' : ''}`} onClick={() => navigate('notifications')}>Notificacoes</button>
-          <button className={`mobile-nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>Configuracoes</button>
-          {canAdmin && <button className={`mobile-nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => navigate('admin')}>Administracao</button>}
+          <button className={`mobile-nav-item ${page === 'notifications' ? 'active' : ''}`} onClick={() => navigate('notifications')}>Notificações</button>
+          <button className={`mobile-nav-item ${page === 'settings' ? 'active' : ''}`} onClick={() => navigate('settings')}>Configurações</button>
+          {canAdmin && <button className={`mobile-nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => navigate('admin')}>Administração</button>}
         </div>
         <div className="mobile-drawer-user">
           <span>{user?.displayName || user?.username}</span>

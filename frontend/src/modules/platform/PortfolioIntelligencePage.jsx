@@ -145,7 +145,7 @@ function SkillsSection({ skills }) {
       <EmptyState
         icon={Tag}
         title="Habilidades ainda nao identificadas"
-        text="Envie seu curriculo ou publique projetos para que as habilidades apareçam aqui."
+        text="Envie seu currículo ou publique projetos para que as habilidades apareçam aqui."
       />
     );
   }
@@ -174,7 +174,7 @@ function ResumeSection({ resume }) {
     <div className="pi-resume-card">
       <div className="pi-resume-icon"><FileText size={20} /></div>
       <div className="pi-resume-info">
-        <strong>{virtual?.professionalTitle || (resume ? 'Curriculo conectado' : 'Curriculo nao enviado')}</strong>
+        <strong>{virtual?.professionalTitle || (resume ? 'Currículo conectado' : 'Currículo nao enviado')}</strong>
         <p>{virtual?.about || resume?.summary || 'Envie um PDF ou DOCX no campo acima para preencher suas informacoes profissionais.'}</p>
         {virtual?.skills?.length > 0 && (
           <div className="pi-resume-skills">
@@ -207,7 +207,7 @@ function CarreirasSection({ skills, resume }) {
     <div className="pi-careers-section">
       <div className="pi-careers-intro">
         <p>
-          Com base no seu curriculo e projetos, estas buscas podem ter vagas para o seu perfil.
+          Com base no seu currículo e projetos, estas buscas podem ter vagas para o seu perfil.
           Cada link abre o LinkedIn Jobs em uma nova aba.
         </p>
       </div>
@@ -230,7 +230,7 @@ function CarreirasSection({ skills, resume }) {
         ))}
       </div>
       <p className="pi-careers-disclaimer">
-        As sugestoes sao geradas a partir das habilidades e titulo identificados no seu curriculo.
+        As sugestoes sao geradas a partir das habilidades e titulo identificados no seu currículo.
         O sistema abre o LinkedIn Jobs — nao armazenamos dados de vagas.
       </p>
     </div>
@@ -273,7 +273,7 @@ export default function PortfolioIntelligencePage({
     const fromProjects = projects.flatMap(p => [...(p.technologies || []), ...(p.competencies || []), ...(p.tags || [])]);
     if (fromProjects.length) return [...new Set(fromProjects)].slice(0, 12).map((name, i) => [name, 'Projeto', Math.max(62, 90 - i * 3)]);
     const fromResume = resume?.virtualResume?.skills || [];
-    return fromResume.slice(0, 10).map((name, i) => [name, 'Curriculo', Math.max(60, 88 - i * 3)]);
+    return fromResume.slice(0, 10).map((name, i) => [name, 'Currículo', Math.max(60, 88 - i * 3)]);
   }, [analysis, portfolioItems, projects, resume]);
 
   const kinds = useMemo(() => ['Todos', ...new Set(projects.map(p => p.kind))], [projects]);
@@ -303,7 +303,7 @@ export default function PortfolioIntelligencePage({
           <div className="pi-section-head">
             <div>
               <h3>Vagas para voce</h3>
-              <p>Sugestoes de busca no LinkedIn com base no seu curriculo e habilidades.</p>
+              <p>Sugestoes de busca no LinkedIn com base no seu currículo e habilidades.</p>
             </div>
           </div>
           <CarreirasSection skills={skills} resume={resume} />
@@ -359,7 +359,7 @@ export default function PortfolioIntelligencePage({
           <div className="pi-profile-stats">
             <div><strong>{projects.length}</strong><span>projetos</span></div>
             <div><strong>{skills.length}</strong><span>habilidades</span></div>
-            <div><strong>{resume ? '1' : '0'}</strong><span>curriculo</span></div>
+            <div><strong>{resume ? '1' : '0'}</strong><span>currículo</span></div>
           </div>
         </div>
       </section>
@@ -417,17 +417,17 @@ export default function PortfolioIntelligencePage({
         <div className="pi-section-head">
           <div>
             <h3>Habilidades</h3>
-            <p>Identificadas a partir do seu curriculo e dos projetos publicados.</p>
+            <p>Identificadas a partir do seu currículo e dos projetos publicados.</p>
           </div>
         </div>
         <SkillsSection skills={skills} />
       </section>
 
-      {/* ── Curriculo ────────────────────────────────────────────────── */}
+      {/* ── Currículo ────────────────────────────────────────────────── */}
       <section className="pi-section">
         <div className="pi-section-head">
           <div>
-            <h3>Seu curriculo</h3>
+            <h3>Seu currículo</h3>
             <p>Informacoes extraidas do arquivo enviado.</p>
           </div>
         </div>

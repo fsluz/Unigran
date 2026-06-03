@@ -1351,7 +1351,7 @@ export default function MessagesPage() {
                   {chatMenuOpen && (
                     <div className="chat-menu">
                       <button onClick={openAbout}>{active.type === 'group' ? 'Ver grupo' : 'Ver Perfil'}</button>
-                      <button onClick={() => { setChatMenuOpen(false); showToast('Notificacoes silenciadas', 'OK'); }}>Silenciar Notificacoes</button>
+                      <button onClick={() => { setChatMenuOpen(false); showToast('Notificações silenciadas', 'OK'); }}>Silenciar Notificações</button>
                       <button onClick={() => { setMessages(prev => ({ ...prev, [active.id]: [] })); setChatMenuOpen(false); }}>Limpar Chat</button>
                       <button className="danger" onClick={() => { setChatMenuOpen(false); showToast('Usuario bloqueado', 'OK'); }}>Bloquear</button>
                     </div>
