@@ -70,8 +70,11 @@ class ModelRepository:
         # Ordem canônica das áreas (mesma do treino) → define o ID numérico
         area_ids = {area: i for i, area in enumerate(area_taxonomia.keys())}
 
-        # Arquivo de vagas para recomendações (pesado — opcional)
-        vagas_csv = self.models_dir / "base_vagas_processada_leve.csv"
+        # CSV de vagas fica no disco separado (csv_data/), não na pasta de modelos
+        csv_dir = self.models_dir.parent / "csv_data"
+        vagas_csv = csv_dir / "base_vagas_processada_leve.csv"
+        if not vagas_csv.exists():
+            vagas_csv = self.models_dir / "base_vagas_processada_leve.csv"
 
         return ModelArtifacts(
             vectorizer=vectorizer,

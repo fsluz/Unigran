@@ -50,7 +50,7 @@ def _download_with_gdown(file_id: str, dest: Path) -> None:
         )
     url = f"https://drive.google.com/uc?id={file_id}"
     print(f"  Baixando {dest.name} ({url}) ...")
-    gdown.download(url, str(dest), quiet=False, fuzzy=True)
+    gdown.download(url, str(dest), quiet=False)
 
 
 def _extract_zip(zip_path: Path, dest_dir: Path) -> None:

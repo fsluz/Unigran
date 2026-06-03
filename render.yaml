@@ -20,7 +20,7 @@ services:
         value: https://unigran-frontend.onrender.com,https://unigran-backend.onrender.com
     disk:
       name: ml-models
-      mountPath: /opt/render/project/src/backend/project_ml/models
+      mountPath: /opt/render/project/src/backend/project_ml/csv_data
       sizeGB: 10
 
   - type: web
