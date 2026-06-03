@@ -100,6 +100,19 @@ export default function StoriesBar({ onOpenProfile }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [activeIndex, stories.length]);
 
+
+  // Navegação por teclado
+  useEffect(() => {
+    if (activeIndex == null) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight') setActiveIndex(i => Math.min(stories.length - 1, i + 1));
+      if (e.key === 'ArrowLeft')  setActiveIndex(i => Math.max(0, i - 1));
+      if (e.key === 'Escape')     setActiveIndex(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeIndex, stories.length]);
+
   const pick = (e) => {
     const next = e.target.files?.[0];
     if (!next) return;
@@ -140,6 +153,14 @@ export default function StoriesBar({ onOpenProfile }) {
     setComment('');
     showToast('Comentário enviado', 'OK');
   };
+
+  const othersStories = stories
+    .filter(item => item.author?.username !== user?.username)
+    .reduce((acc, story) => {
+      const uname = story.author?.username;
+      if (!acc.find(s => s.author?.username === uname)) acc.push(story);
+      return acc;
+    }, []);
 
   const othersStories = stories.filter(item => item.author?.username !== user?.username);
 
