@@ -6,6 +6,7 @@ import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
 import { encodeHash, readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
 import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
+import { mlBiDashboard } from '../modules/ml/mlPythonClient.js';
 
 function getIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -284,7 +285,7 @@ router.get('/audit-logs', requirePermission('audit:read'), async (req, res) => {
 
 router.get('/power-bi', requirePermission('system:manage'), async (req, res) => {
   try {
-    const [ava, typedbUsers, typedbPosts, typedbComments, typedbReactions, typedbMlJobs] = await Promise.all([
+    const [ava, typedbUsers, typedbPosts, typedbComments, typedbReactions, typedbMlJobs, mlBi] = await Promise.all([
       getAvaPowerBiSnapshot(),
       readQuery(`
         match $u isa person, has username $username;
@@ -313,6 +314,7 @@ router.get('/power-bi', requirePermission('system:manage'), async (req, res) => 
         try { $j has ml-match-pct $match; }; try { $j has ml-source $source; };
         fetch { "id": $id, "status": $status, "model": $model, "seniority": $seniority, "match": $match, "source": $source };
       `).catch(() => []),
+      mlBiDashboard().catch(() => null),
     ]);
 
     // ── Cálculos sociais ──────────────────────────────────────────────────────
@@ -428,7 +430,17 @@ router.get('/power-bi', requirePermission('system:manage'), async (req, res) => 
         byModel: Object.entries(modelMap).map(([model, count]) => ({ model, count })),
         bySeniority: Object.entries(seniorityMap).map(([seniority, count]) => ({ seniority, count })),
       },
-      ml: { health: mlHealth, avgMatch },
+      ml: {
+        health: mlHealth,
+        avgMatch,
+        por_area: mlBi?.por_area ?? [],
+        clusters: mlBi?.clusters ?? [],
+        explicacao_clusters: mlBi?.explicacao_clusters ?? [],
+        top_skills: mlBi?.top_skills ?? [],
+        metricas_modelo: mlBi?.metricas_modelo ?? {},
+        resumo_geral: mlBi?.resumo_geral ?? {},
+        vagas_em_memoria: mlBi?.vagas_em_memoria ?? 0,
+      },
       courses: ava.byCourse,
       recentPortfolio: ava.portfolio,
       recentSubmissions: ava.submissions,

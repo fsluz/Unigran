@@ -67,3 +67,12 @@ export async function mlSyncVagas(vagas = []) {
 export async function mlCacheInfo() {
   return { ...cacheStats(), ml_url: ML_URL };
 }
+
+export async function mlBiDashboard() {
+  return (await _request('/bi')) ?? null;
+}
+
+export async function mlPredictDemo(texto) {
+  if (!texto || texto.length < 3) return null;
+  return _request('/predict/demo', 'POST', { texto });
+}

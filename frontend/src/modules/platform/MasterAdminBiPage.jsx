@@ -393,42 +393,329 @@ function PanelRai({ d }) {
   );
 }
 
-function PanelML({ d }) {
-  const ml  = d.ml || {};
-  const k   = d.kpis || {};
+function RankingBadge({ ranking, categoria }) {
+  const colors = ['','#6b7280','#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444'];
+  const bg = colors[Math.min(ranking || 1, 7)];
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+      background: bg + '22', border: `1px solid ${bg}66`,
+      color: bg, fontWeight: 700, fontSize: 12,
+    }}>
+      {ranking}/7 · {categoria}
+    </span>
+  );
+}
+
+function SkillPill({ label, variant = 'gap' }) {
+  const styles = {
+    gap:      { background: '#ef444420', border: '1px solid #ef444466', color: '#ef4444' },
+    present:  { background: '#10b98120', border: '1px solid #10b98166', color: '#10b981' },
+    neutral:  { background: '#6f4ff820', border: '1px solid #6f4ff866', color: '#b79cff' },
+  };
+  return (
+    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600, margin: '2px 3px', ...styles[variant] }}>
+      {label}
+    </span>
+  );
+}
+
+function PanelML({ d, token }) {
+  const ml     = d.ml || {};
+  const k      = d.kpis || {};
   const health = ml.health || {};
   const statusClass = health.status === 'ok' ? 'ok' : health.status === 'degraded' ? 'warn' : 'error';
   const statusLabel = health.status === 'ok' ? 'Operacional' : health.status === 'degraded' ? 'Degradado' : 'Indisponível';
 
+  // Widget de predição ao vivo
+  const [demoText, setDemoText]       = useState('');
+  const [demoResult, setDemoResult]   = useState(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoError, setDemoError]     = useState('');
+  const [activeArea, setActiveArea]   = useState('');
+
+  const DEMO_SAMPLES = [
+    'Python, machine learning, scikit-learn, pandas, análise de dados, SQL, visualização',
+    'React, TypeScript, Node.js, REST API, Docker, CI/CD, desenvolvimento web',
+    'UX design, Figma, pesquisa com usuário, prototipagem, acessibilidade, produto digital',
+    'gestão de projetos, scrum, backlog, stakeholders, agile, roadmap, liderança técnica',
+    'banco de dados, PostgreSQL, modelagem relacional, query optimization, DBA',
+  ];
+
+  const runDemo = async (text) => {
+    const t = (text || demoText).trim();
+    if (!t || t.length < 5) return;
+    setDemoLoading(true); setDemoError(''); setDemoResult(null);
+    try {
+      const { fetchMlPredictDemo, fetchMlRecommendDemo } = await import('./platform');
+      const [pred, rec] = await Promise.all([
+        fetchMlPredictDemo(token, t),
+        fetchMlRecommendDemo(token, t),
+      ]);
+      setDemoResult({ ...pred, ...rec, _texto: t });
+      setActiveArea(pred.area || rec.area || '');
+    } catch (err) {
+      setDemoError(err.message || 'Serviço ML indisponível');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const porArea    = ml.por_area    || [];
+  const clusters   = ml.clusters    || [];
+  const topSkills  = ml.top_skills  || [];
+  const metricas   = ml.metricas_modelo || {};
+  const explicacao = ml.explicacao_clusters || [];
+
+  const areasFiltradas = activeArea
+    ? porArea.filter(a => a.area.toLowerCase().includes(activeArea.toLowerCase().split(' / ')[0]))
+    : porArea;
+
   return (
     <>
+      {/* ── KPIs de status ──────────────────────────────────────────── */}
       <div className="mbi-kpi-grid">
-        <KpiCard label="Vagas registradas" icon={Briefcase}  value={fmt(k.vagasTotal)}  sub="no sistema ML" accent="accent-purple" />
-        <KpiCard label="Candidaturas"      icon={Activity}   value={fmt(k.vagasApplied)} sub="enviadas pelos usuários" accent="accent-cyan" />
-        <KpiCard label="Match médio"       icon={TrendingUp} value={fmtPct(k.avgMatch)} sub="aderência do perfil" accent="accent-green" />
-        <div className="mbi-kpi-card">
-          <span className="mbi-kpi-label"><Cpu size={13} /> Serviço Python</span>
-          <span className={`mbi-status-badge ${statusClass}`} style={{ marginTop: 6 }}>
-            <span className="mbi-status-dot-sm" />{statusLabel}
-          </span>
-          <small className="mbi-kpi-sub">v{health.version || '—'} · modelos: {health.models_loaded ? 'carregados' : 'ausentes'}</small>
-        </div>
+        <KpiCard label="Serviço Python" icon={Cpu}
+          value={<span className={`mbi-status-badge ${statusClass}`} style={{ fontSize: 13 }}>{statusLabel}</span>}
+          sub={`v${health.version || '—'} · modelos: ${health.models_loaded ? 'carregados ✓' : 'ausentes ✗'}`}
+          accent={health.status === 'ok' ? 'accent-green' : 'accent-amber'} />
+        <KpiCard label="Vagas em memória" icon={Briefcase}
+          value={fmt(ml.vagas_em_memoria ?? k.vagasTotal)}
+          sub="prontas para recomendação em tempo real" accent="accent-purple" />
+        <KpiCard label="Candidaturas" icon={Activity}
+          value={fmt(k.vagasApplied)}
+          sub={`${fmt(k.vagasSaved)} salvas · match médio ${fmtPct(k.avgMatch)}`} accent="accent-cyan" />
+        <KpiCard label="Áreas mapeadas" icon={TrendingUp}
+          value={fmt(porArea.length || clusters.length)}
+          sub={`${fmt(clusters.length)} subclusters de especialização`} accent="accent-green" />
       </div>
+
+      {/* ── Widget de predição ao vivo ───────────────────────────────── */}
+      <Card title="Demo ao vivo — Classificação de Perfil" chip="IA" span2>
+        <div style={{ marginBottom: 10 }}>
+          <p style={{ fontSize: 12, color: 'rgba(219,228,255,.6)', marginBottom: 8 }}>
+            Digite habilidades, experiências ou cole um trecho do currículo. O modelo classifica em tempo real.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {DEMO_SAMPLES.map((s, i) => (
+              <button key={i} onClick={() => { setDemoText(s); runDemo(s); }}
+                style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(111,79,248,.4)',
+                  background: 'rgba(111,79,248,.1)', color: '#b79cff', cursor: 'pointer' }}>
+                Exemplo {i + 1}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <textarea value={demoText} onChange={e => setDemoText(e.target.value)}
+              rows={2} placeholder="ex: python, machine learning, pandas, análise de dados..."
+              style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.12)',
+                background: 'rgba(255,255,255,.05)', color: '#f0f4ff', fontSize: 13, resize: 'vertical' }} />
+            <button onClick={() => runDemo()} disabled={demoLoading || demoText.length < 3}
+              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#6f4ff8',
+                color: '#fff', fontWeight: 700, cursor: 'pointer', minWidth: 100, opacity: demoLoading ? .6 : 1 }}>
+              {demoLoading ? '⏳ Analisando…' : '⚡ Classificar'}
+            </button>
+          </div>
+          {demoError && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{demoError}</p>}
+        </div>
+
+        {demoResult && (
+          <div style={{ marginTop: 12, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+            {/* Resultado principal */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 2 }}>ÁREA DETECTADA</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#b79cff' }}>{demoResult.area}</div>
+                <div style={{ fontSize: 13, color: 'rgba(219,228,255,.7)', marginTop: 2 }}>{demoResult.nome_cluster}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 4 }}>SCORE DE COMPATIBILIDADE</div>
+                <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 8, overflow: 'hidden', height: 10, marginBottom: 6 }}>
+                  <div style={{ height: '100%', width: `${demoResult.score_percentual || 0}%`,
+                    background: 'linear-gradient(90deg,#6f4ff8,#3ad6ff)', borderRadius: 8, transition: 'width .6s' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: '#3ad6ff', fontWeight: 700 }}>{fmtPct(demoResult.score_percentual)}</span>
+                  <RankingBadge ranking={demoResult.ranking} categoria={demoResult.categoria_compatibilidade} />
+                </div>
+              </div>
+            </div>
+
+            {/* Áreas alternativas */}
+            {(demoResult.areas_alternativas || []).length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 4 }}>ÁREAS ALTERNATIVAS</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {demoResult.areas_alternativas.map((a, i) => (
+                    <span key={i} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20,
+                      background: `rgba(111,79,248,${0.15 - i * 0.04})`,
+                      border: '1px solid rgba(111,79,248,.3)', color: '#b79cff' }}>
+                      {a.area} · {fmtPct(a.score)} ({a.confianca})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Keywords ativas */}
+            {(demoResult.keywords_ativas || []).length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 4 }}>KEYWORDS QUE ATIVARAM A CLASSIFICAÇÃO</div>
+                <div>{(demoResult.keywords_ativas || []).map((k, i) => <SkillPill key={i} label={k} variant="neutral" />)}</div>
+              </div>
+            )}
+
+            {/* Skills gap */}
+            {((demoResult.skills_presentes || []).length > 0 || (demoResult.skills_gap || []).length > 0) && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 4 }}>ANÁLISE DE SKILLS</div>
+                {(demoResult.skills_presentes || []).length > 0 && (
+                  <div style={{ marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: '#10b981', marginRight: 6 }}>✓ presentes:</span>
+                    {(demoResult.skills_presentes || []).map((s, i) => <SkillPill key={i} label={s} variant="present" />)}
+                  </div>
+                )}
+                {(demoResult.skills_gap || []).length > 0 && (
+                  <div>
+                    <span style={{ fontSize: 11, color: '#ef4444', marginRight: 6 }}>⊕ gap:</span>
+                    {(demoResult.skills_gap || []).map((s, i) => <SkillPill key={i} label={s} variant="gap" />)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Insight */}
+            {demoResult.insight && (
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(111,79,248,.12)',
+                border: '1px solid rgba(111,79,248,.25)', fontSize: 13, color: 'rgba(219,228,255,.85)',
+                lineHeight: 1.5, marginBottom: 10 }}>
+                💡 {demoResult.insight}
+              </div>
+            )}
+
+            {/* Trilha de evolução */}
+            {(demoResult.trilha_evolucao || []).length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 6 }}>TRILHA DE EVOLUÇÃO</div>
+                {(demoResult.trilha_evolucao || []).map((step, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 6, alignItems: 'flex-start' }}>
+                    <span style={{ minWidth: 22, height: 22, borderRadius: '50%', background: COLORS[i % COLORS.length] + '33',
+                      border: `1px solid ${COLORS[i % COLORS.length]}66`, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: 11, fontWeight: 700, color: COLORS[i % COLORS.length] }}>
+                      {i + 1}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'rgba(219,228,255,.8)', lineHeight: 1.4 }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Vagas recomendadas */}
+            {(demoResult.vagas_recomendadas || []).length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)', marginBottom: 6 }}>VAGAS COMPATÍVEIS</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {(demoResult.vagas_recomendadas || []).slice(0, 4).map((v, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.04)',
+                      border: '1px solid rgba(255,255,255,.07)' }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#f0f4ff' }}>{v.titulo}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(219,228,255,.5)' }}>{v.empresa} · {v.area}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#3ad6ff' }}>{fmtPct(v.score_percentual)}</span>
+                        {v.url && <a href={v.url} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#6f4ff820',
+                            border: '1px solid #6f4ff855', color: '#b79cff', textDecoration: 'none' }}>Ver vaga</a>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 10, color: 'rgba(219,228,255,.3)', marginTop: 10, textAlign: 'right' }}>
+              fonte: {demoResult.source || demoResult.fonte || 'modelo'} · latência: {demoResult.latency_ms ? `${demoResult.latency_ms}ms` : '—'}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Distribuição por área ────────────────────────────────────── */}
+      {porArea.length > 0 && (
+        <div className="mbi-chart-grid-2">
+          <Card title="Distribuição por área profissional" chip="CSV">
+            <HBarChart items={porArea.map(a => ({ label: a.area, value: a.total || a.pct || 1 }))} maxItems={10} />
+          </Card>
+          <Card title="Áreas — proporção" chip="Donut">
+            <DonutChart segments={porArea.slice(0, 7).map(a => ({ label: a.area.split(' / ')[0], value: a.total || a.pct || 1 }))} />
+          </Card>
+        </div>
+      )}
+
+      {/* ── Clusters e skills ─────────────────────────────────────────── */}
+      <div className="mbi-chart-grid-2">
+        {clusters.length > 0 && (
+          <Card title="Subclusters de especialização" chip="Modelo">
+            <HBarChart items={clusters.filter(c => c.total > 0).map(c => ({ label: c.nome.length > 30 ? c.nome.slice(0, 30) + '…' : c.nome, value: c.total }))} maxItems={10} />
+          </Card>
+        )}
+        {topSkills.length > 0 && (
+          <Card title="Skills mais demandadas" chip="Mercado">
+            <HBarChart items={topSkills.map(s => ({ label: s.skill, value: s.freq }))} maxItems={10} />
+          </Card>
+        )}
+        {clusters.length === 0 && topSkills.length === 0 && (
+          <Card title="Skills e clusters" chip="Carregando">
+            <p className="mbi-empty">Dados disponíveis após deploy do serviço Python.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* ── Métricas do modelo ───────────────────────────────────────── */}
+      {Object.keys(metricas).length > 0 && (
+        <Card title="Métricas de qualidade do modelo" chip="Silhouette · Davies-Bouldin">
+          <div className="mbi-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))' }}>
+            {Object.entries(metricas).slice(0, 6).map(([key, val]) => (
+              <div key={key} style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,.04)',
+                border: '1px solid rgba(255,255,255,.07)', textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'rgba(219,228,255,.5)', textTransform: 'uppercase', marginBottom: 4 }}>{key.replace(/_/g, ' ')}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#3ad6ff' }}>{typeof val === 'number' ? val.toFixed(3) : val}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Funil de candidaturas ────────────────────────────────────── */}
       <div className="mbi-chart-grid-2">
         <Card title="Funil de candidaturas" chip="Funil">
           <FunnelChart steps={[
-            { label: 'Vagas totais', value: k.vagasTotal   || 0 },
-            { label: 'Salvas',       value: k.vagasSaved   || 0 },
-            { label: 'Aplicadas',    value: k.vagasApplied || 0 },
+            { label: 'Vagas no sistema',   value: k.vagasTotal    || 0 },
+            { label: 'Salvas',             value: k.vagasSaved    || 0 },
+            { label: 'Candidaturas',       value: k.vagasApplied  || 0 },
           ]} />
         </Card>
-        <Card title="Modelo de trabalho preferido" chip="Donut">
+        <Card title="Modelo de trabalho" chip="Donut">
           <DonutChart segments={(d.vagas?.byModel || []).map(m => ({ label: m.model || 'N/D', value: m.count }))} />
         </Card>
       </div>
-      <Card title="Senioridade" chip="Barra">
-        <HBarChart items={(d.vagas?.bySeniority || []).map(s => ({ label: s.seniority || 'N/D', value: s.count }))} />
-      </Card>
+
+      {/* ── Explicação dos clusters ──────────────────────────────────── */}
+      {explicacao.length > 0 && (
+        <Card title="Perfis de cluster — o modelo viu isso" chip="Interpretabilidade" span2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 8 }}>
+            {explicacao.slice(0, 8).map((c, i) => (
+              <div key={i} style={{ padding: '10px 12px', borderRadius: 8,
+                background: `${COLORS[i % COLORS.length]}11`, border: `1px solid ${COLORS[i % COLORS.length]}33` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS[i % COLORS.length], marginBottom: 4 }}>{c.nome}</div>
+                {c.descricao && <div style={{ fontSize: 11, color: 'rgba(219,228,255,.65)', lineHeight: 1.4 }}>{c.descricao}</div>}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </>
   );
 }
@@ -542,7 +829,7 @@ export default function MasterAdminBiPage() {
               {panel === 'people'     && <PanelPessoas      d={data} />}
               {panel === 'vagas'      && <PanelVagas        d={data} />}
               {panel === 'rai'        && <PanelRai          d={data} />}
-              {panel === 'ml'         && <PanelML           d={data} />}
+              {panel === 'ml'         && <PanelML           d={data} token={token} />}
             </>
           )}
         </div>

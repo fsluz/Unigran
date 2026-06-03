@@ -13,8 +13,11 @@ class EvaluationReport:
     """Lê métricas já geradas pelo pipeline de clusterização."""
 
     def __init__(self, outputs_dir: str | Path | None = None) -> None:
-        backend_dir = Path(__file__).resolve().parents[2]
-        self.outputs_dir = Path(outputs_dir) if outputs_dir else backend_dir / "outputs"
+        if outputs_dir:
+            self.outputs_dir = Path(outputs_dir)
+        else:
+            from project_ml.ml.prediction import _find_data_dir
+            self.outputs_dir = _find_data_dir()
 
     def clustering_metrics(self) -> list[dict]:
         path = self.outputs_dir / "metricas_clusterizacao.csv"

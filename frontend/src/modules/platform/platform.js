@@ -538,6 +538,24 @@ export async function gradeTeacherSubmission(token, submissionId, payload) {
   return readJson(res, 'Erro ao corrigir entrega');
 }
 
+export async function fetchMlPredictDemo(token, texto) {
+  const res = await apiFetch('/platform/v1/ml/predict', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ texto }),
+  });
+  return readJson(res, 'Erro ao classificar perfil');
+}
+
+export async function fetchMlRecommendDemo(token, texto) {
+  const res = await apiFetch('/platform/v1/ml/recommend', {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ texto, top_n: 6 }),
+  });
+  return readJson(res, 'Erro ao gerar recomendações');
+}
+
 export async function fetchPowerBiAnalytics(token) {
   const res = await apiFetch('/admin/power-bi', {
     headers: authHeaders(token),
