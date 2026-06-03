@@ -23,6 +23,7 @@ import { setupSocket }     from './socket/handlers.js';
 import { auditRequests }    from './middleware/audit.js';
 import reportsRouter from './routes/reports.js';
 import { startRaiReminderScheduler } from './services/raiScheduler.service.js';
+import { startVagasSync } from './modules/ml/mlVagasSync.js';
 
 const app    = express();
 const server = createServer(app);
@@ -81,6 +82,7 @@ app.use((err, _req, res, _next) => {
 /*  Socket.io  */
 setupSocket(io);
 startRaiReminderScheduler();
+startVagasSync();
 
 /*  Start  */
 const PORT = process.env.PORT || 3001;
