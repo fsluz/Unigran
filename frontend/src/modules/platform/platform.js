@@ -1,9 +1,45 @@
 import { apiFetch, authHeaders, formatApiError } from '../../utils/api';
 
+// Mapa de mensagens Zod → português
+const ZOD_PT = {
+  'String must contain at least': 'Mínimo de',
+  'String must contain at most': 'Máximo de',
+  'characters': 'caracteres',
+  'Required': 'Campo obrigatório',
+  'Invalid email': 'E-mail inválido',
+  'Invalid url': 'URL inválida',
+  'Expected number': 'Deve ser um número',
+  'Invalid date': 'Data inválida',
+  'Invalid enum value': 'Opção inválida',
+};
+
+function translateZodMessage(msg) {
+  if (!msg) return msg;
+  let out = String(msg);
+  for (const [en, pt] of Object.entries(ZOD_PT)) {
+    out = out.replace(new RegExp(en, 'gi'), pt);
+  }
+  return out;
+}
+
 function apiErrorMessage(data, fallbackMessage) {
   if (typeof data?.message === 'string' && data.message.trim()) return data.message;
   if (typeof data?.detail === 'string' && data.detail.trim()) return data.detail;
-  return formatApiError(data?.error, fallbackMessage || 'Erro na requisicao.');
+
+  // Zod flatten: { formErrors: [...], fieldErrors: { field: [...] } }
+  const zodError = data?.error;
+  if (zodError && typeof zodError === 'object' && (zodError.formErrors || zodError.fieldErrors)) {
+    const parts = [];
+    for (const m of (zodError.formErrors || [])) if (m) parts.push(translateZodMessage(m));
+    for (const [field, msgs] of Object.entries(zodError.fieldErrors || {})) {
+      if (Array.isArray(msgs) && msgs.length) {
+        parts.push(`${field}: ${msgs.map(translateZodMessage).filter(Boolean).join(', ')}`);
+      }
+    }
+    if (parts.length) return parts.join(' — ');
+  }
+
+  return formatApiError(zodError, fallbackMessage || 'Erro na requisição.');
 }
 
 async function readJson(res, fallbackMessage) {

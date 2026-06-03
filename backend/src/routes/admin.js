@@ -143,6 +143,8 @@ router.patch('/users/:username/role', requirePermission('users:platform_manage')
         $u has user-role "${role}";
     `);
     auditLog({ action: 'USER_ROLE_CHANGED', category: 'ADMIN', actor: req.user?.username, target: req.params.username, ip: getIp(req), meta: { newRole: role } });
+    const { invalidateRoleCache } = await import('../middleware/auth.js');
+    invalidateRoleCache(req.params.username);
     res.json({ username: req.params.username, role });
   } catch (err) {
     console.error('[admin role]', err);

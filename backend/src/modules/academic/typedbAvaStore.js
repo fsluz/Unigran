@@ -71,7 +71,7 @@ function authorizationMatch(user, offering = '$offering') {
     return viewer; // no additional filter – super_admin sees everything
   }
   if (roleOf(user) === 'admin') {
-    return `${viewer} $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; { $membership has institution-role "university_admin"; } or { $membership has institution-role "admin"; };`;
+    return `${viewer} $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved", has institution-role "admin";`;
   }
   if (roleOf(user) === 'coordination') {
     return `${viewer} $membership isa institution-membership, links (member: $viewer, university: $institution), has institution-status "approved"; $subject isa institution-subject; academic-offering-subject-link(offering: ${offering}, subject: $subject); $managed_course isa institution-course; institution-subject-link(course: $managed_course, subject: $subject); $scope isa institution-course-coordination, links (coordinator: $viewer, course: $managed_course), has institution-status "approved";`;

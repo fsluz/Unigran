@@ -1,6 +1,7 @@
 ﻿import 'dotenv/config';
 import express        from 'express';
 import cors           from 'cors';
+import cookieParser   from 'cookie-parser';
 import { createServer } from 'http';
 import { Server as IO  } from 'socket.io';
 
@@ -41,9 +42,24 @@ app.get('/api/hello', (_req, res) => res.json({ message: 'Hello, world!' }));
 
 /*  Global middleware  */
 app.use(cors({ origin: corsOrigin, credentials: true }));
+app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 app.use(auditRequests);
+
+// Rejeita requisicoes de mutacao sem Content-Type: application/json
+app.use((req, res, next) => {
+  const mutationMethods = ['POST', 'PUT', 'PATCH'];
+  if (!mutationMethods.includes(req.method)) return next();
+  const ct = req.headers['content-type'] || '';
+  // Permite multipart/form-data (uploads) e requisicoes sem body (Content-Length: 0)
+  const bodyless = req.headers['content-length'] === '0' || !req.headers['content-length'];
+  if (bodyless || ct.includes('multipart/form-data') || ct.includes('application/x-www-form-urlencoded')) return next();
+  if (!ct.includes('application/json')) {
+    return res.status(415).json({ error: 'Content-Type deve ser application/json' });
+  }
+  next();
+});
 
 // Handle preflight requests
 app.options('*', cors({ origin: corsOrigin, credentials: true }));
@@ -69,6 +85,17 @@ app.use('/api/crypto',        cryptoRouter);
 app.use('/api/admin/reports', reportsRouter);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, timestamp: new Date() }));
+
+app.get('/api/healthz', async (_req, res) => {
+  let db = 'unknown';
+  try {
+    const { readQuery } = await import('./db/typedb.js');
+    await readQuery('match $x isa thing; limit 1; fetch { "x": { $x.* } };');
+    db = 'connected';
+  } catch { db = 'error'; }
+  const uptime = Math.floor(process.uptime());
+  res.json({ status: db === 'connected' ? 'ok' : 'degraded', uptime, db, version: process.env.npm_package_version || '1.0.0' });
+});
 
 /*  Catch-all 404  */
 app.use((_req, res) => res.status(404).json({ error: 'Rota nao encontrada' }));

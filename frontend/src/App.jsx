@@ -32,6 +32,24 @@ import MeuCaminhoPage      from './pages/MeuCaminhoPage';
 import { hasPermission }   from './modules/shared/permissions';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
 
+function NotFoundPage({ onBack }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, padding: 32, textAlign: 'center' }}>
+      <div style={{ fontSize: 64, lineHeight: 1 }}>404</div>
+      <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary, #fff)' }}>Página não encontrada</h2>
+      <p style={{ margin: 0, color: 'var(--text-muted, #9ca3af)', maxWidth: 360 }}>
+        A seção que você tentou acessar não existe ou você não tem permissão para visualizá-la.
+      </p>
+      <button
+        onClick={onBack}
+        style={{ marginTop: 8, padding: '10px 24px', borderRadius: 8, border: 'none', background: 'var(--accent, #6d28d9)', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+      >
+        Voltar ao início
+      </button>
+    </div>
+  );
+}
+
 function NoUniversityGate() {
   return (
     <div className="no-university-gate">
@@ -100,7 +118,7 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
 }
 
 function AppShell() {
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, loading } = useAuth();
   const { universities, activeUniversity, hasUniversity, initialized: uniInitialized } = useUniversity();
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
@@ -151,6 +169,15 @@ function AppShell() {
       window.removeEventListener('unigran:navigate', nav);
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #0f1117)' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--accent, #6d28d9)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   if (!user) {
     return authView === 'login'
@@ -238,7 +265,7 @@ function AppShell() {
         sidebarCollapsed={sidebarCollapsed}
       />
       <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
-        {pages[page] ?? <HomePage />}
+        {pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />}
       </ErrorBoundary>
       <FloatingAssistants />
       {enteringPortal && (

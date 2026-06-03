@@ -14,16 +14,15 @@ export function UniversityProvider({ children, token, userRole }) {
   const [initialized, setInitialized] = useState(false);
 
   const loadUniversities = useCallback(async () => {
-    if (!token) {
-      setUniversities([]);
-      setInitialized(true);
-      return;
-    }
     setLoading(true);
     try {
-      const res = await apiFetch('/auth/me/universities', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await apiFetch('/auth/me/universities', { headers });
+      if (!res.ok) {
+        setUniversities([]);
+        setInitialized(true);
+        return;
+      }
       const data = await res.json();
       const list = data.universities || [];
       console.log('[UNIVERSITY] universidades carregadas:', list.map(u => `${u.name}(${u.id}) role=${u.membershipRole}`));

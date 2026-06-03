@@ -92,6 +92,8 @@ export const DIRECT_ROLE_PERMISSIONS = {
     'roles:assign',
   ],
   admin: [
+    'institutions:read',
+    'institutions:update',
     'faculties:manage',
     'departments:manage',
     'users:institution_manage',

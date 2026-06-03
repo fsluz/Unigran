@@ -359,7 +359,7 @@ router.post('/universities/:universityId/semesters/:semesterId/subjects/:subject
   }
 });
 
-router.patch('/universities/:universityId', requirePermission('institutions:update'), async (req, res) => {
+router.patch('/universities/:universityId', requireInstitutionPermission('institutions:update'), async (req, res) => {
   const parsed = UniversityUpdateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {

@@ -8,16 +8,37 @@ export const API_BASE_URL =
     ? ''
     : 'https://unigran-backend.vercel.app/api');
 
-export function apiFetch(path, options = {}) {
-  if (/^https?:\/\//i.test(path)) return fetch(path, options);
+const DEFAULT_TIMEOUT_MS = 15000;
 
-  const base = API_BASE_URL.replace(/\/$/, '');
-  const rawPath = path.startsWith('/') ? path : `/${path}`;
-  const apiPath = rawPath.startsWith('/api/') ? rawPath : `/api${rawPath}`;
-  const url = base.endsWith('/api')
-    ? `${base}${apiPath.slice(4)}`
-    : `${base}${apiPath}`;
-  return fetch(url, options);
+export function apiFetch(path, options = {}) {
+  const { timeout = DEFAULT_TIMEOUT_MS, signal: externalSignal, ...restOptions } = options;
+
+  const controller = new AbortController();
+  const timer = timeout > 0
+    ? setTimeout(() => controller.abort(new DOMException('Request timeout', 'TimeoutError')), timeout)
+    : null;
+
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort(externalSignal.reason));
+  }
+
+  // credentials: 'include' envia o cookie HttpOnly automaticamente
+  const fetchOptions = { credentials: 'include', ...restOptions, signal: controller.signal };
+
+  let fetchPromise;
+  if (/^https?:\/\//i.test(path)) {
+    fetchPromise = fetch(path, fetchOptions);
+  } else {
+    const base = API_BASE_URL.replace(/\/$/, '');
+    const rawPath = path.startsWith('/') ? path : `/${path}`;
+    const apiPath = rawPath.startsWith('/api/') ? rawPath : `/api${rawPath}`;
+    const url = base.endsWith('/api')
+      ? `${base}${apiPath.slice(4)}`
+      : `${base}${apiPath}`;
+    fetchPromise = fetch(url, fetchOptions);
+  }
+
+  return fetchPromise.finally(() => { if (timer) clearTimeout(timer); });
 }
 
 export function authHeaders(token, extra = {}) {

@@ -29,9 +29,15 @@ services:
     rootDir: backend
     buildCommand: npm install
     startCommand: node src/index.js
+    disk:
+      name: backend-logs
+      mountPath: /opt/render/project/src/backend/logs
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
+      - key: AUDIT_LOG_DIR
+        value: /opt/render/project/src/backend/logs
       - key: PORT
         value: 3001
       - key: ML_SERVICE_URL

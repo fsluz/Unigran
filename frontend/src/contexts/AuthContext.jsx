@@ -5,40 +5,34 @@ import { publishOwnPublicKey } from '../services/e2ee';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]   = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [user, setUser]     = useState(null);
+  // Token mantido em memória apenas — nunca em localStorage (segurança XSS)
+  // O cookie HttpOnly é enviado automaticamente pelo browser via credentials:'include'
+  const [token, setToken]   = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Hidratação inicial via cookie HttpOnly — sem depender de localStorage
   useEffect(() => {
-    if (!token) return;
-    apiFetch('/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch('/auth/me', { timeout: 10000 })
       .then(r => r.json())
       .then(data => {
         if (data.user) setUser(data.user);
-        else {
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-        }
       })
-      .catch(() => {
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
-      });
-  }, [token]);
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
 
+  // Heartbeat de presença — 60s é suficiente para manter "online"
   useEffect(() => {
-    if (!token) return undefined;
+    if (!user) return undefined;
     const ping = () => apiFetch('/conversations/online/heartbeat', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
     }).catch(() => null);
     ping();
-    const interval = setInterval(ping, 25000);
+    const interval = setInterval(ping, 60000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     if (!token || !user?.username) return;
@@ -47,13 +41,18 @@ export function AuthProvider({ children }) {
 
   function login(userData, jwt) {
     setUser(userData);
+    // jwt ainda é aceito para compatibilidade com headers Bearer (mobile/API externa)
+    // mas o cookie HttpOnly já foi setado pelo backend e é o mecanismo principal
     setToken(jwt);
-    localStorage.setItem('token', jwt);
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST', timeout: 5000 });
+    } catch {}
     setUser(null);
     setToken(null);
+    // Limpa resquícios de localStorage de versões anteriores
     localStorage.removeItem('token');
   }
 
@@ -62,10 +61,10 @@ export function AuthProvider({ children }) {
   }
 
   async function refreshUser() {
-    if (!token) return;
     try {
       const r = await apiFetch('/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        timeout: 10000,
       });
       const data = await r.json();
       if (data.user) setUser(data.user);
@@ -73,7 +72,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateUser, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateUser, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { normalizeUniversityRole } from '../auth/rbac.js';
 import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../../db/typedb.js';
+import { invalidateRoleCache } from '../../middleware/auth.js';
 
 function safe(value) {
   return typeqlLiteral(value ?? '');
@@ -165,7 +166,7 @@ export async function createUniversity(user, payload) {
       $creator_link isa institution-university-creator, links (creator: $creator, university: $university);
   `);
   const creatorRole = ['super_admin', 'admin'].includes(normalizeUniversityRole(user?.role)) ? 'admin' : 'coordination';
-  await inviteInstitutionMember(universityId, { username: user.username, role: creatorRole }).catch(() => null);
+  await inviteInstitutionMember(id, { username: user.username, role: creatorRole }).catch(() => null);
   return getUniversityHierarchy(id);
 }
 
@@ -1004,6 +1005,7 @@ export async function inviteInstitutionMember(universityId, payload) {
       update $member has user-role "${safe(role)}";
     `).catch(() => null);
   }
+  invalidateRoleCache(username);
 
   return { memberships: await listMemberships(universityId), username, role, status: 'approved' };
 }
@@ -1047,6 +1049,7 @@ export async function approveMembership(universityId, membershipId) {
       update $member has user-role "${safe(approvedRole)}";
     `).catch(() => null);
   }
+  invalidateRoleCache(rows[0].username);
   return listMemberships(universityId);
 }
 
@@ -1075,6 +1078,7 @@ export async function setMembershipRole(universityId, membershipId, role) {
     match $member isa person, has username "${safe(rows[0].username)}";
     update $member has user-role "${safe(role)}";
   `);
+  invalidateRoleCache(rows[0].username);
   return listMemberships(universityId);
 }
 

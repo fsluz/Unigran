@@ -635,6 +635,22 @@ export default function CampusPage({ onBackToPortal }) {
               </div>
             )}
 
+            {loading && (
+              <div className="ava-workspace-skeleton" aria-busy="true" aria-label="Carregando disciplina...">
+                <div className="skeleton-block" style={{ height: 110, borderRadius: 14, marginBottom: 16 }} />
+                <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                  {[80, 90, 80, 100, 70].map((w, i) => (
+                    <div key={i} className="skeleton-block" style={{ width: w, height: 32, borderRadius: 8 }} />
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {[140, 120, 160, 130].map((h, i) => (
+                    <div key={i} className="skeleton-block" style={{ height: h, borderRadius: 12 }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {!selectedCourse && !loading && <EmptyState text="Nenhuma disciplina disponivel." />}
 
             {selectedCourse && (

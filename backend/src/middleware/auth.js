@@ -12,6 +12,24 @@ import {
   roleLevel,
 } from '../modules/auth/rbac.js';
 
+// Cache de role + banned por username — TTL de 5 min
+const _roleCache = new Map();
+const ROLE_CACHE_TTL = 5 * 60 * 1000;
+
+function getCachedRole(username) {
+  const entry = _roleCache.get(username);
+  if (entry && Date.now() - entry.ts < ROLE_CACHE_TTL) return entry;
+  return null;
+}
+
+function setCachedRole(username, role, banned) {
+  _roleCache.set(username, { role, banned, ts: Date.now() });
+}
+
+export function invalidateRoleCache(username) {
+  _roleCache.delete(username);
+}
+
 export const ROLES = {
   user: 0,
   student: 10,
@@ -33,28 +51,37 @@ function attrBoolTrue(value) {
 }
 
 export async function auth(req, res, next) {
+  // Aceita token via HttpOnly cookie (preferencial) ou header Authorization (retrocompat)
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
+  const rawToken = req.cookies?.jwt || (header?.startsWith('Bearer ') ? header.slice(7) : null);
+  if (!rawToken) {
     return res.status(401).json({ error: 'Token nao fornecido' });
   }
 
   try {
-    const decoded = jwt.verify(header.slice(7), jwtSecret());
+    const decoded = jwt.verify(rawToken, jwtSecret());
     req.user = { ...decoded, role: normalizeRole(decoded.role) };
     const username = decoded.username || decoded.id;
     if (username) {
       try {
-        const rows = await readQuery(`
-          match
-            $u isa person, has username "${typeqlLiteral(username)}";
-            try { $u has is-banned $banned; };
-            try { $u has user-role $role; };
-          fetch {
-            "banned": $banned,
-            "role": $role
-          };
-        `);
-        if (attrBoolTrue(rows[0]?.banned)) {
+        let cached = getCachedRole(username);
+        if (!cached) {
+          const rows = await readQuery(`
+            match
+              $u isa person, has username "${typeqlLiteral(username)}";
+              try { $u has is-banned $banned; };
+              try { $u has user-role $role; };
+            fetch {
+              "banned": $banned,
+              "role": $role
+            };
+          `);
+          const dbRole = rows[0]?.role ? normalizeRole(rows[0].role) : null;
+          const banned = attrBoolTrue(rows[0]?.banned);
+          setCachedRole(username, dbRole, banned);
+          cached = { role: dbRole, banned };
+        }
+        if (cached.banned) {
           auditLog({
             action: 'BANNED_TOKEN_BLOCKED',
             category: 'AUTH',
@@ -64,16 +91,7 @@ export async function auth(req, res, next) {
           });
           return res.status(403).json({ error: 'Conta banida' });
         }
-        const dbRole = rows[0]?.role;
-        if (dbRole) {
-          const normalized = normalizeRole(dbRole);
-          if (normalized !== req.user.role) {
-            console.log(`[AUTH] role atualizado: token="${req.user.role}" db="${normalized}" user="${username}"`);
-          }
-          req.user.role = normalized;
-        } else {
-          console.log(`[AUTH] usuario sem user-role no TypeDB: "${username}" — usando role do token: "${req.user.role}"`);
-        }
+        if (cached.role) req.user.role = cached.role;
       } catch (err) {
         throw err;
       }

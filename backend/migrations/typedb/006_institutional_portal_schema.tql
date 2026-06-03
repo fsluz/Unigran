@@ -1,0 +1,458 @@
+## Migration 006 — Portal Institucional + AVA (Academic Virtual Environment)
+## Aplica TODAS as entities, relations e atributos do Portal Acadêmico e do AVA.
+##
+## Pré-requisito: migrations 001-005 já aplicadas (person, page, educational-institute,
+## academic-content, academic-url, academic-datetime, academic-title, etc. devem existir).
+##
+## Esta migration é IDEMPOTENTE: re-aplicar não quebra dados existentes.
+## Atributos já existentes com o mesmo tipo de valor são no-op no TypeDB 3.x.
+
+define
+
+  # ════════════════════════════════════════════════════════════════════
+  # ATRIBUTOS — Instituição
+  # ════════════════════════════════════════════════════════════════════
+
+  attribute institution-id,               value string;
+  attribute institution-slug,             value string;
+  attribute institution-cnpj,             value string;
+  attribute institution-logo,             value string;
+  attribute institution-description,      value string;
+  attribute institution-status,           value string;
+  attribute institution-created-at,       value datetime;
+  attribute institution-updated-at,       value datetime;
+  attribute institution-membership-id,    value string;
+  attribute institution-role,             value string;
+  attribute institution-campus-id,        value string;
+  attribute institution-city,             value string;
+  attribute institution-state,            value string;
+  attribute institution-course-id,        value string;
+  attribute institution-degree-type,      value string;
+  attribute institution-duration,         value integer;
+  attribute institution-semester-id,      value string;
+  attribute institution-year,             value integer;
+  attribute institution-period-number,    value integer;
+  attribute institution-active,           value boolean;
+  attribute institution-class-group-id,   value string;
+  attribute institution-shift,            value string;
+  attribute institution-subject-id,       value string;
+  attribute institution-workload,         value integer;
+  attribute institution-academic-code,    value string;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ATRIBUTOS — AVA / Acadêmico (alguns podem já existir em 001-003)
+  # ════════════════════════════════════════════════════════════════════
+
+  attribute academic-institution-code,    value string;
+  attribute academic-course-id,          value string;
+  attribute academic-code,               value string;
+  attribute academic-title,              value string;
+  attribute academic-description,        value string;
+  attribute academic-color,              value string;
+  attribute academic-tag,                value string;
+  attribute academic-offering-id,        value string;
+  attribute academic-period,             value string;
+  attribute academic-schedule,           value string;
+  attribute academic-room,               value string;
+  attribute academic-material-id,        value string;
+  attribute academic-material-type,      value string;
+  attribute academic-duration,           value string;
+  attribute academic-required,           value boolean;
+  attribute academic-url,                value string;
+  attribute academic-document-name,      value string;
+  attribute academic-document-storage,   value string;
+  attribute academic-activity-id,        value string;
+  attribute academic-points,             value integer;
+  attribute academic-xp,                 value integer;
+  attribute academic-datetime,           value datetime;
+  attribute academic-content,            value string;
+  attribute academic-submission-id,      value string;
+  attribute academic-feedback,           value string;
+  attribute academic-score,              value double;
+  attribute academic-share-url,          value string;
+  attribute academic-external-kind,      value string;
+  attribute academic-external-label,     value string;
+  attribute academic-enrollment-id,      value string;
+  attribute academic-registration,       value string;
+  attribute academic-attendance-rate,    value double;
+  attribute academic-risk,               value string;
+  attribute academic-role,               value string;
+  attribute academic-status,             value string;
+  attribute academic-forum-post-id,      value string;
+  attribute academic-forum-comment-id,   value string;
+  attribute academic-attendance-session-id, value string;
+  attribute academic-date,               value date;
+  attribute academic-justification,      value string;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — educational-institute (base da universidade)
+  # ════════════════════════════════════════════════════════════════════
+  # Pode já existir em migrações anteriores. Definir aqui adiciona owns/plays.
+
+  entity educational-institute,
+    owns institution-id @key,
+    owns institution-slug           @card(0..1),
+    owns institution-cnpj           @card(0..1),
+    owns institution-logo           @card(0..1),
+    owns institution-description    @card(0..1),
+    owns institution-status         @card(0..1),
+    owns institution-created-at     @card(0..1),
+    owns institution-updated-at     @card(0..1),
+    owns academic-institution-code  @card(0..1),
+    owns name                       @card(0..1),
+    plays institution-membership:university,
+    plays institution-campus-link:university,
+    plays institution-university-creator:university,
+    plays academic-course-offering:institution;
+
+  # university é subtipo de educational-institute (e provavelmente de page).
+  # Se já existir, apenas garante a herança.
+  entity university sub educational-institute;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Campus
+  # ════════════════════════════════════════════════════════════════════
+
+  entity institution-campus,
+    owns institution-campus-id @key,
+    owns academic-title         @card(0..1),
+    owns institution-city       @card(0..1),
+    owns institution-state      @card(0..1),
+    owns institution-created-at @card(0..1),
+    owns institution-updated-at @card(0..1),
+    plays institution-campus-link:campus,
+    plays institution-course-link:campus;
+
+  relation institution-campus-link,
+    relates university,
+    relates campus;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Curso (institution-course)
+  # ════════════════════════════════════════════════════════════════════
+
+  entity institution-course,
+    owns institution-course-id  @key,
+    owns academic-title         @card(0..1),
+    owns institution-degree-type @card(0..1),
+    owns institution-duration   @card(0..1),
+    owns institution-created-at @card(0..1),
+    owns institution-updated-at @card(0..1),
+    plays institution-course-link:course,
+    plays institution-semester-link:course,
+    plays institution-subject-link:course,
+    plays institution-course-coordination:course;
+
+  relation institution-course-link,
+    relates campus,
+    relates course;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Semestre
+  # ════════════════════════════════════════════════════════════════════
+
+  entity institution-semester,
+    owns institution-semester-id    @key,
+    owns institution-year           @card(0..1),
+    owns institution-period-number  @card(0..1),
+    owns institution-active         @card(0..1),
+    owns institution-created-at     @card(0..1),
+    owns institution-updated-at     @card(0..1),
+    plays institution-semester-link:semester,
+    plays institution-class-group-link:semester,
+    plays institution-enrollment:semester,
+    plays institution-professor-subject:semester;
+
+  relation institution-semester-link,
+    relates course,
+    relates semester;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Turma (class-group)
+  # ════════════════════════════════════════════════════════════════════
+
+  entity institution-class-group,
+    owns institution-class-group-id @key,
+    owns academic-code              @card(0..1),
+    owns institution-shift          @card(0..1),
+    owns institution-created-at     @card(0..1),
+    owns institution-updated-at     @card(0..1),
+    plays institution-class-group-link:class-group,
+    plays institution-class-subject:class-group,
+    plays institution-enrollment:class-group,
+    plays academic-offering-class-group-link:class-group;
+
+  relation institution-class-group-link,
+    relates semester,
+    relates class-group;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Disciplina (institution-subject)
+  # ════════════════════════════════════════════════════════════════════
+
+  entity institution-subject,
+    owns institution-subject-id @key,
+    owns academic-title         @card(0..1),
+    owns institution-workload   @card(0..1),
+    owns institution-created-at @card(0..1),
+    owns institution-updated-at @card(0..1),
+    plays institution-subject-link:subject,
+    plays institution-class-subject:subject,
+    plays institution-professor-subject:subject,
+    plays academic-offering-subject-link:subject;
+
+  relation institution-subject-link,
+    relates course,
+    relates subject;
+
+  # ════════════════════════════════════════════════════════════════════
+  # RELATION — institution-membership (vínculo usuário ↔ universidade)
+  # ════════════════════════════════════════════════════════════════════
+
+  relation institution-membership,
+    relates member,
+    relates university,
+    relates campus,
+    owns institution-membership-id @key,
+    owns institution-role          @card(0..1),
+    owns institution-status        @card(0..1),
+    owns institution-created-at    @card(0..1),
+    owns institution-updated-at    @card(0..1);
+
+  # ════════════════════════════════════════════════════════════════════
+  # RELATION — Ligações turma-disciplina, coordenação, matrícula, professor
+  # ════════════════════════════════════════════════════════════════════
+
+  relation institution-class-subject,
+    relates class-group,
+    relates subject;
+
+  relation institution-course-coordination,
+    relates coordinator,
+    relates course,
+    owns institution-status        @card(0..1),
+    owns institution-created-at    @card(0..1),
+    owns institution-updated-at    @card(0..1);
+
+  # Matrícula no Portal (turma + semestre)
+  relation institution-enrollment,
+    relates student,
+    relates class-group,
+    relates semester,
+    owns institution-status        @card(0..1),
+    owns institution-created-at    @card(0..1),
+    owns institution-updated-at    @card(0..1);
+
+  # Atribuição de professor à disciplina por semestre
+  relation institution-professor-subject,
+    relates professor,
+    relates subject,
+    relates semester,
+    owns institution-status        @card(0..1),
+    owns institution-created-at    @card(0..1),
+    owns institution-updated-at    @card(0..1);
+
+  # Criador da universidade
+  relation institution-university-creator,
+    relates creator,
+    relates university;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — academic-course  (disciplina do AVA)
+  # ════════════════════════════════════════════════════════════════════
+
+  entity academic-course,
+    owns academic-course-id   @key,
+    owns academic-code        @card(0..1),
+    owns academic-title       @card(0..1),
+    owns academic-description @card(0..1),
+    owns academic-color       @card(0..1),
+    owns academic-tag,
+    plays academic-course-offering:course;
+
+  # ════════════════════════════════════════════════════════════════════
+  # RELATION — academic-course-offering  (sala virtual = course × institution)
+  # ════════════════════════════════════════════════════════════════════
+
+  relation academic-course-offering,
+    relates institution,
+    relates course,
+    owns academic-offering-id @key,
+    owns academic-period      @card(0..1),
+    owns academic-schedule    @card(0..1),
+    owns academic-room        @card(0..1),
+    owns academic-status      @card(0..1),
+    plays academic-enrollment:offering,
+    plays academic-teaching-assignment:offering,
+    plays academic-offering-material:offering,
+    plays academic-offering-activity:offering,
+    plays academic-offering-forum:offering,
+    plays academic-offering-attendance:offering,
+    plays academic-offering-subject-link:offering,
+    plays academic-offering-class-group-link:offering;
+
+  # Links Portal → AVA
+  relation academic-offering-subject-link,
+    relates offering,
+    relates subject;
+
+  relation academic-offering-class-group-link,
+    relates offering,
+    relates class-group;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Material
+  # ════════════════════════════════════════════════════════════════════
+
+  entity academic-material,
+    owns academic-material-id      @key,
+    owns academic-title            @card(0..1),
+    owns academic-material-type    @card(0..1),
+    owns academic-duration         @card(0..1),
+    owns academic-required         @card(0..1),
+    owns academic-status           @card(0..1),
+    owns academic-url              @card(0..1),
+    owns academic-document-name    @card(0..1),
+    owns academic-document-storage @card(0..1),
+    owns academic-document-path    @card(0..1),
+    plays academic-offering-material:material,
+    plays academic-material-completion:material;
+
+  relation academic-offering-material,
+    relates offering,
+    relates material;
+
+  relation academic-material-completion,
+    relates material,
+    relates student,
+    owns academic-status   @card(0..1),
+    owns academic-datetime @card(0..1);
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Atividade + Entrega
+  # ════════════════════════════════════════════════════════════════════
+
+  entity academic-activity,
+    owns academic-activity-id  @key,
+    owns academic-title        @card(0..1),
+    owns academic-description  @card(0..1),
+    owns academic-datetime     @card(0..1),
+    owns academic-points       @card(0..1),
+    owns academic-xp           @card(0..1),
+    plays academic-offering-activity:activity,
+    plays academic-activity-submission:activity;
+
+  relation academic-offering-activity,
+    relates offering,
+    relates activity;
+
+  entity academic-submission,
+    owns academic-submission-id    @key,
+    owns academic-content          @card(0..1),
+    owns academic-status           @card(0..1),
+    owns academic-score            @card(0..1),
+    owns academic-feedback         @card(0..1),
+    owns academic-datetime         @card(0..1),
+    owns academic-url              @card(0..1),
+    owns academic-document-name    @card(0..1),
+    owns academic-document-storage @card(0..1),
+    owns academic-document-path    @card(0..1),
+    owns academic-external-kind    @card(0..1),
+    owns academic-external-label   @card(0..1),
+    owns academic-share-url        @card(0..1),
+    plays academic-activity-submission:submission;
+
+  relation academic-activity-submission,
+    relates activity,
+    relates submission,
+    relates student;
+
+  # ════════════════════════════════════════════════════════════════════
+  # RELATION — Matrícula AVA e Atribuição de Professor AVA
+  # ════════════════════════════════════════════════════════════════════
+
+  relation academic-enrollment,
+    relates student,
+    relates offering,
+    owns academic-enrollment-id    @key,
+    owns academic-registration     @card(0..1),
+    owns academic-status           @card(0..1),
+    owns academic-score            @card(0..1),
+    owns academic-attendance-rate  @card(0..1),
+    owns academic-risk             @card(0..1),
+    owns academic-datetime         @card(0..1);
+
+  relation academic-teaching-assignment,
+    relates teacher,
+    relates offering,
+    owns academic-role   @card(0..1),
+    owns academic-status @card(0..1);
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Fórum
+  # ════════════════════════════════════════════════════════════════════
+
+  entity academic-forum-post,
+    owns academic-forum-post-id @key,
+    owns academic-content       @card(0..1),
+    owns academic-datetime      @card(0..1),
+    plays academic-offering-forum:post,
+    plays academic-forum-authorship:post,
+    plays academic-forum-comment-link:post;
+
+  relation academic-offering-forum,
+    relates offering,
+    relates post;
+
+  relation academic-forum-authorship,
+    relates author,
+    relates post;
+
+  entity academic-forum-comment,
+    owns academic-forum-comment-id @key,
+    owns academic-content          @card(0..1),
+    owns academic-datetime         @card(0..1),
+    plays academic-forum-comment-link:comment;
+
+  relation academic-forum-comment-link,
+    relates post,
+    relates comment,
+    relates author;
+
+  # ════════════════════════════════════════════════════════════════════
+  # ENTITY — Frequência
+  # ════════════════════════════════════════════════════════════════════
+
+  entity academic-attendance-session,
+    owns academic-attendance-session-id @key,
+    owns academic-date                  @card(0..1),
+    owns academic-title                 @card(0..1),
+    plays academic-offering-attendance:session,
+    plays academic-attendance-entry:session;
+
+  relation academic-offering-attendance,
+    relates offering,
+    relates session;
+
+  relation academic-attendance-entry,
+    relates session,
+    relates student,
+    owns academic-status       @card(0..1),
+    owns academic-justification @card(0..1);
+
+  # ════════════════════════════════════════════════════════════════════
+  # EXTENSÃO DE person — novos plays (adicionar sem quebrar existente)
+  # ════════════════════════════════════════════════════════════════════
+
+  person plays institution-membership:member;
+  person plays institution-course-coordination:coordinator;
+  person plays institution-enrollment:student;
+  person plays institution-professor-subject:professor;
+  person plays institution-university-creator:creator;
+  person plays academic-enrollment:student;
+  person plays academic-teaching-assignment:teacher;
+  person plays academic-material-completion:student;
+  person plays academic-activity-submission:student;
+  person plays academic-forum-authorship:author;
+  person plays academic-forum-comment-link:author;
+  person plays academic-attendance-entry:student;

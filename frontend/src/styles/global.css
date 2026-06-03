@@ -187,6 +187,17 @@ img { display: block; max-width: 100%; }
   margin-bottom: 12px;
 }
 
+.skeleton-block {
+  background: linear-gradient(90deg, var(--border), var(--card), var(--border));
+  background-size: 480px 100%;
+  animation: shimmer 1.2s infinite linear;
+}
+
+.ava-workspace-skeleton {
+  padding: 8px 0;
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+}
+
 .post-card-skeleton {
   padding: 16px;
 }

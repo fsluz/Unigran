@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
 import { normalizeRole } from '../middleware/auth.js';
-import { permissionsForRole } from '../modules/auth/rbac.js';
+import { normalizeUniversityRole, permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp, generateBackupCodes, hashBackupCode, verifyBackupCode, removeUsedBackupCode } from '../services/totp.service.js';
 import { sendPasswordResetCode } from '../services/email.service.js';
@@ -23,7 +23,7 @@ const RegisterSchema = z.object({
   username: z.string().min(3).regex(/^[a-zA-Z0-9_]+$/),
   email: z.preprocess(v => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.string().email()),
   phone: z.string().optional(),
-  password: z.string().min(6),
+  password: z.string().min(10, 'A senha deve ter no mínimo 10 caracteres'),
   acceptedTerms: z.boolean().optional(),
   acceptedCookies: z.boolean().optional(),
 });
@@ -43,6 +43,18 @@ const GoogleSchema = z.object({
 
 function sign(payload) {
   return jwt.sign(payload, jwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+}
+
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
+
+function setAuthCookie(res, token) {
+  res.cookie('jwt', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: COOKIE_MAX_AGE,
+    path: '/',
+  });
 }
 
 function attrBoolTrue(v) {
@@ -255,7 +267,9 @@ router.post('/login', async (req, res) => {
     };
     resetRateLimit(req); // login bem-sucedido — zera o contador do IP
     auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
-    res.json({ token: sign(payload), user: payload });
+    const token = sign(payload);
+    setAuthCookie(res, token);
+    res.json({ token, user: payload });
   } catch (err) {
     console.error('[login]', err);
     res.status(500).json({ error: 'Erro interno' });
@@ -311,18 +325,26 @@ router.post('/google', async (req, res) => {
       role: normalizeRole(row.role),
       permissions: permissionsForRole(normalizeRole(row.role)),
     };
-    res.json({ token: sign(payload), user: payload });
+    const token = sign(payload);
+    setAuthCookie(res, token);
+    res.json({ token, user: payload });
   } catch (err) {
     console.error('[google auth]', err);
     res.status(500).json({ error: 'Erro Google Auth' });
   }
 });
 
+router.post('/logout', (req, res) => {
+  res.clearCookie('jwt', { path: '/' });
+  res.json({ ok: true });
+});
+
 router.get('/me', async (req, res) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  const rawToken = req.cookies?.jwt || (header?.startsWith('Bearer ') ? header.slice(7) : null);
+  if (!rawToken) return res.status(401).json({ error: 'Nao autenticado' });
   try {
-    const decoded = jwt.verify(header.slice(7), jwtSecret());
+    const decoded = jwt.verify(rawToken, jwtSecret());
     const rows = await readQuery(`
       match
         $u isa person, has username "${typeqlLiteral(decoded.username)}", has email $email;
@@ -394,9 +416,10 @@ router.get('/me', async (req, res) => {
 
 router.get('/me/universities', async (req, res) => {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Nao autenticado' });
+  const rawToken = req.cookies?.jwt || (header?.startsWith('Bearer ') ? header.slice(7) : null);
+  if (!rawToken) return res.status(401).json({ error: 'Nao autenticado' });
   let decoded;
-  try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
+  try { decoded = jwt.verify(rawToken, jwtSecret()); }
   catch { return res.status(401).json({ error: 'Token invalido' }); }
 
   const username = typeqlLiteral(decoded.username);
@@ -443,7 +466,7 @@ router.get('/me/universities', async (req, res) => {
 
     const seen = new Set();
     const universities = rows
-      .map(r => mapUniv(r.university || {}, r.mrole || 'student'))
+      .map(r => mapUniv(r.university || {}, normalizeUniversityRole(r.mrole || 'student')))
       .filter(u => {
         if (!u.id || u.status === 'inactive') return false;
         if (seen.has(u.id)) return false;
