@@ -204,6 +204,7 @@ export default function StoriesBar({ onOpenProfile }) {
               </Button>
             </>
           }
+          
         >
           <textarea
             className="form-input"
