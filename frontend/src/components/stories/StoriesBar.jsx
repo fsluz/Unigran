@@ -141,7 +141,14 @@ export default function StoriesBar({ onOpenProfile }) {
     showToast('Comentário enviado', 'OK');
   };
 
-  const othersStories = stories.filter(item => item.author?.username !== user?.username);
+  const othersStories = stories
+    .filter(item => item.author?.username !== user?.username)
+    .reduce((acc, story) => {
+      const uname = story.author?.username;
+      if (!acc.find(s => s.author?.username === uname)) acc.push(story);
+      return acc;
+    }, []);
+
 
   return (
     <>
