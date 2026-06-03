@@ -4,7 +4,7 @@
  */
 import { cacheGet, cacheSet, cacheStats } from './mlCache.js';
 
-const ML_URL    = (process.env.ML_SERVICE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const ML_URL    = (process.env.ML_SERVICE_URL || 'https://unigran.onrender.com').replace(/\/$/, '');
 const ML_SECRET = process.env.ML_SERVICE_SECRET || '';
 const TIMEOUT   = Number(process.env.ML_TIMEOUT_MS  || 5000);
 const MAX_RETRY = Number(process.env.ML_MAX_RETRIES  || 2);

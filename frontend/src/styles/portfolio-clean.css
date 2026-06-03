@@ -504,3 +504,366 @@
   .pf-careers-grid { grid-template-columns: 1fr; }
   .pf-share-strip { gap: 6px; }
 }
+
+/* Portfolio tab polish */
+.pf-panel {
+  max-width: 1040px;
+  padding: 0 20px 96px;
+}
+
+.pf-root {
+  gap: 18px;
+}
+
+.pf-header {
+  margin: 18px 0;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent-3, #0891b2) 20%, transparent), transparent 32%),
+    radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
+    var(--gradient-soft, var(--card));
+  box-shadow: var(--shadow-sm);
+}
+
+.pf-header-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  box-shadow: 0 16px 38px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.pf-header-name {
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+}
+
+.pf-header-role {
+  max-width: 640px;
+  color: var(--text-2);
+}
+
+.pf-header-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.pf-header-stats span {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+}
+
+.pf-resume-btn,
+.pf-share-btn,
+.pf-action {
+  min-height: 34px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+
+.pf-resume-btn {
+  width: 100%;
+  background: var(--gradient-brand, var(--accent));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.pf-share-strip {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.pf-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  gap: 18px;
+  align-items: stretch;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 10%, color-mix(in srgb, var(--accent-warm, #f97316) 16%, transparent), transparent 28%),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--accent-3, #0891b2) 20%, transparent), transparent 36%),
+    linear-gradient(135deg, color-mix(in srgb, var(--card) 92%, var(--page-bg)), color-mix(in srgb, var(--card) 72%, var(--accent-light)));
+  box-shadow: var(--shadow);
+}
+
+.pf-showcase-copy {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.pf-showcase-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  color: var(--accent);
+  font-size: .75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.pf-showcase h2 {
+  max-width: 620px;
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: clamp(1.55rem, 3.4vw, 2.55rem);
+  line-height: 1.04;
+}
+
+.pf-showcase p {
+  max-width: 620px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .96rem;
+}
+
+.pf-showcase-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.pf-showcase-stats span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  color: var(--text-muted);
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.pf-showcase-stats b {
+  color: var(--text);
+  font-family: var(--font-head);
+  font-size: 1.15rem;
+}
+
+.pf-section {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.pf-section:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.pf-section-head {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.pf-section-label {
+  color: var(--text);
+  font-size: .8rem;
+  letter-spacing: .07em;
+}
+
+.pf-section-count {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 900;
+}
+
+.pf-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  align-items: start;
+}
+
+.pf-search,
+.pf-filter,
+.pf-skill,
+.pf-career-card {
+  border-radius: 12px;
+}
+
+.pf-search {
+  min-height: 44px;
+  background: color-mix(in srgb, var(--card) 72%, var(--page-bg));
+}
+
+.pf-filter-row {
+  justify-content: flex-end;
+}
+
+.pf-project-list {
+  gap: 12px;
+}
+
+.pf-project {
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 92%, transparent), color-mix(in srgb, var(--card) 78%, var(--page-bg)));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.pf-project:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.pf-project-featured {
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+  min-height: 220px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pf-project-featured .pf-project-num {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  min-height: 220px;
+  padding: 18px;
+  text-align: left;
+  color: #fff;
+  font-size: 3rem;
+  background:
+    linear-gradient(160deg, rgba(6, 11, 31, .86), rgba(109, 40, 217, .62)),
+    radial-gradient(circle at 80% 16%, rgba(34, 211, 238, .62), transparent 34%),
+    var(--gradient-brand, var(--accent));
+}
+
+.pf-project-featured .pf-project-body {
+  justify-content: center;
+  padding: 22px 22px 22px 0;
+}
+
+.pf-project-featured .pf-project-title {
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+}
+
+.pf-project-title {
+  font-size: 1.08rem;
+}
+
+.pf-project-kind {
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.pf-project-evidence,
+.pf-project-course {
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--page-bg) 78%, transparent);
+}
+
+.pf-action-primary {
+  background: var(--gradient-brand, var(--accent));
+  border-color: transparent;
+}
+
+.pf-skills-cloud,
+.pf-careers {
+  gap: 16px;
+}
+
+.pf-skills-group {
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--page-bg) 58%, transparent);
+}
+
+.pf-skill {
+  background: var(--card);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.pf-resume-block {
+  padding: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--page-bg) 58%, transparent);
+}
+
+.pf-career-card {
+  min-height: 58px;
+}
+
+@media (max-width: 860px) {
+  .pf-showcase,
+  .pf-toolbar,
+  .pf-project-featured {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-project-featured .pf-project-num {
+    min-height: 108px;
+    align-items: center;
+  }
+
+  .pf-project-featured .pf-project-body {
+    padding: 0 18px 18px;
+  }
+
+  .pf-filter-row {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .pf-panel {
+    padding: 0 12px 84px;
+  }
+
+  .pf-header,
+  .pf-showcase,
+  .pf-section {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .pf-header-actions,
+  .pf-resume-btn {
+    width: 100%;
+  }
+
+  .pf-header-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pf-project {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-project:not(.pf-project-featured) .pf-project-num {
+    display: none;
+  }
+
+  .pf-careers-grid {
+    grid-template-columns: 1fr;
+  }
+}

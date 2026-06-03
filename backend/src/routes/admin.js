@@ -6,7 +6,7 @@ import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
 import { encodeHash, readQuery, typeqlLiteral, writeQuery } from '../db/typedb.js';
 import { auditLog, readAuditLogs } from '../services/audit.service.js';
 import { getAvaPowerBiSnapshot } from '../modules/academic/typedbAvaStore.js';
-import { mlBiDashboard } from '../modules/ml/mlPythonClient.js';
+import { mlBiDashboard, mlHealth as fetchMlHealth } from '../modules/ml/mlPythonClient.js';
 
 function getIp(req) {
   return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
@@ -386,15 +386,8 @@ router.get('/power-bi', requirePermission('system:manage'), async (req, res) => 
     const seniorityMap = {};
     for (const j of typedbMlJobs) { const s = j.seniority || 'N/D'; seniorityMap[s] = (seniorityMap[s] || 0) + 1; }
 
-    // ── Python ML health ─────────────────────────────────────────────────────
-    let mlHealth = { status: 'unavailable', models_loaded: false };
-    try {
-      const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-      const ctrl  = new AbortController();
-      setTimeout(() => ctrl.abort(), 3000);
-      const mlRes = await fetch(`${mlUrl}/health`, { signal: ctrl.signal });
-      if (mlRes.ok) mlHealth = await mlRes.json();
-    } catch {}
+    // ── Python ML health via mlPythonClient (mesma URL de mlRoutes) ──
+    let mlHealth = await fetchMlHealth().catch(() => ({ status: 'unavailable', models_loaded: false }));
 
     auditLog({ action: 'POWER_BI_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
 

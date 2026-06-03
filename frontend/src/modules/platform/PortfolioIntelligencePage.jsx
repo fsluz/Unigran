@@ -15,6 +15,7 @@ import {
   Link2,
   Search,
   Tag,
+  Trophy,
 } from 'lucide-react';
 import { fetchAva } from './platform';
 
@@ -110,6 +111,26 @@ function ShareStrip({ profileUrl }) {
 
 // ── Project Card ─────────────────────────────────────────────────────────────
 
+function ShowcaseSummary({ projects, skills, resume }) {
+  return (
+    <section className="pf-showcase">
+      <div className="pf-showcase-copy">
+        <span className="pf-showcase-kicker">
+          <Trophy size={14} />
+          Vitrine acadêmica
+        </span>
+        <h2>Projetos que contam sua evolução</h2>
+        <p>Uma apresentação organizada para mostrar entregas, habilidades e currículo com cara de oportunidade.</p>
+      </div>
+      <div className="pf-showcase-stats" aria-label="Resumo do portfólio">
+        <span><b>{projects.length}</b> projetos</span>
+        <span><b>{skills.length}</b> habilidades</span>
+        <span><b>{resume ? 'Pronto' : 'Pendente'}</b> currículo</span>
+      </div>
+    </section>
+  );
+}
+
 function ProjectCard({ project, index, user }) {
   const [expanded, setExpanded] = useState(false);
   const kind = project.kind || projectKind(project);
@@ -122,7 +143,7 @@ function ProjectCard({ project, index, user }) {
 
   return (
     <motion.article
-      className="pf-project"
+      className={`pf-project ${index === 0 ? 'pf-project-featured' : ''}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04 }}
@@ -359,6 +380,7 @@ export default function PortfolioIntelligencePage({
   return (
     <div className="pf-root">
       <ShareStrip profileUrl={profileUrl} />
+      <ShowcaseSummary projects={projects} skills={skills} resume={resume} />
 
       {/* Projetos */}
       <div className="pf-section">
