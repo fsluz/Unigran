@@ -15,7 +15,7 @@ function resourceTypeFromMime(mimetype = '') {
 
 function safeFolder(folder = 'unigran/posts') {
   const value = String(folder || 'unigran/posts').replace(/\\/g, '/');
-  const allowed = ['unigran/posts', 'unigran/comments', 'unigran/zuni', 'unigran/stories', 'unigran/profiles', 'unigran/groups'];
+  const allowed = ['unigran/posts', 'unigran/comments', 'unigran/zuni', 'unigran/stories', 'unigran/profiles', 'unigran/groups', 'unigran/messages'];
   return allowed.includes(value) ? value : 'unigran/posts';
 }
 
@@ -179,6 +179,48 @@ export async function uploadMediaBuffer(file, folder = 'unigran/posts', limits =
     url: result.secure_url,
     public_id: result.public_id,
     resource_type: result.resource_type,
+  };
+}
+
+export async function uploadAudioBuffer(file, folder = 'unigran/messages') {
+  if (!file?.buffer) throw new Error('Audio invalido para upload');
+  if (!String(file.mimetype || '').startsWith('audio/')) {
+    const err = new Error('Envie um arquivo de audio valido.');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary nao configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+  }
+
+  const result = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: safeFolder(folder),
+        resource_type: 'video',
+        format: 'mp3',
+        audio_codec: 'mp3',
+        video_codec: 'none',
+        use_filename: true,
+        unique_filename: true,
+        overwrite: false,
+      },
+      (err, uploadResult) => {
+        if (err) return reject(err);
+        resolve(uploadResult);
+      },
+    );
+    stream.end(file.buffer);
+  });
+
+  return {
+    url: result.secure_url,
+    public_id: result.public_id,
+    resource_type: result.resource_type,
+    type: 'audio',
+    format: 'mp3',
+    duration: Number(result.duration || 0),
+    bytes: Number(result.bytes || file.size || 0),
   };
 }
 

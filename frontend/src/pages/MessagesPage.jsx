@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, toggleMessageReaction, updateConversation, updateMessage } from '../services/conversations';
-import { uploadMedia } from '../services/posts';
+import { uploadAudio, uploadMedia } from '../services/posts';
 import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
 import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, isEncryptedText, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
@@ -779,14 +779,24 @@ export default function MessagesPage() {
       let media = null;
       if (chosenFile) {
         if (chosenFile.size > 25 * 1024 * 1024) throw new Error('Arquivo muito grande');
-        media = await uploadMedia({ token, file: chosenFile });
+        media = chosenFile.type?.startsWith('audio/')
+          ? await uploadAudio({ token, file: chosenFile })
+          : await uploadMedia({ token, file: chosenFile });
       }
+      const encryptedMedia = media ? {
+        url: media.url,
+        type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || ''),
+        format: media.format || '',
+        publicId: media.public_id || '',
+        duration: media.duration || 0,
+        bytes: media.bytes || chosenFile?.size || 0,
+      } : null;
       const encryptedContent = await encryptMessage({
         token,
         conversationId: active.id,
         usernames: participantUsernames(),
         content,
-        media: media ? { url: media.url, type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || '') } : null,
+        media: encryptedMedia,
       });
       const createdEncrypted = await sendMessage({
         token,
@@ -798,7 +808,7 @@ export default function MessagesPage() {
       const created = {
         ...createdEncrypted,
         content,
-        media: media ? { url: media.url, type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || '') } : null,
+        media: encryptedMedia,
         encrypted: true,
       };
       setMessages(prev => ({
@@ -869,13 +879,21 @@ export default function MessagesPage() {
         if (!blob.size) return;
         setSendingMedia(true);
         try {
-          const media = await uploadMedia({ token, file: audioFile });
+          const media = await uploadAudio({ token, file: audioFile });
+          const encryptedMedia = {
+            url: media?.url || '',
+            type: 'audio',
+            format: media?.format || 'mp3',
+            publicId: media?.public_id || '',
+            duration: media?.duration || 0,
+            bytes: media?.bytes || audioFile.size || 0,
+          };
           const encryptedContent = await encryptMessage({
             token,
             conversationId: active.id,
             usernames: participantUsernames(),
             content: '',
-            media: { url: media?.url || '', type: 'audio' },
+            media: encryptedMedia,
           });
           const createdEncrypted = await sendMessage({
             token,
@@ -884,7 +902,7 @@ export default function MessagesPage() {
             mediaUrl: '',
             mediaType: '',
           });
-          const created = { ...createdEncrypted, content: '', media: { url: media?.url || '', type: 'audio' }, encrypted: true };
+          const created = { ...createdEncrypted, content: '', media: encryptedMedia, encrypted: true };
           setMessages(prev => ({ ...prev, [active.id]: [...(prev[active.id] || []), created] }));
           bumpConversation(active.id, created);
           getConversationChannel(token, active.id).publish('message_sent', { message: createdEncrypted }).catch(() => null);

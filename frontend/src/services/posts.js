@@ -186,6 +186,17 @@ export async function uploadMedia({ token, file }) {
   return parseResponse(res, 'Erro ao enviar midia');
 }
 
+export async function uploadAudio({ token, file }) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await apiFetch('/uploads/audio', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: fd,
+  });
+  return parseResponse(res, 'Erro ao enviar audio');
+}
+
 export async function likePost({ token, postId }) {
   const res = await apiFetch(`/posts/${postId}/like`, { method: 'POST', headers: authHeaders(token) });
   return parseResponse(res, 'Erro ao curtir');
