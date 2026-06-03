@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import PostCard from '../components/post/PostCard';
 import { Avatar, Button } from '../components/ui';
@@ -7,6 +7,10 @@ import { useToast } from '../contexts/ToastContext';
 import { fetchFollowers, fetchFollowing, fetchUserPortfolioDetails, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
 import ImageLightbox from '../components/media/ImageLightbox';
 import PortfolioIntelligencePage from '../modules/platform/PortfolioIntelligencePage';
+import { fetchStories, likeStory, viewStory, commentStory } from '../services/stories';
+import { relativeTime } from '../utils/time';
+
+const STORY_DURATION_MS = 5000;
 
 function portfolioProfileUrl(username) {
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
@@ -27,6 +31,17 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
   const [lightbox, setLightbox] = useState(null);
   const [followRequested, setFollowRequested] = useState(false);
 
+  // --- Stories ---
+  const [profileStories, setProfileStories] = useState([]); // todos os stories do perfil visitado
+  const [storyIndex, setStoryIndex] = useState(null);       // null = fechado
+  const [storyComment, setStoryComment] = useState('');
+  const [storyProgress, setStoryProgress] = useState(0);
+  const progressRafRef = useRef(null);
+  const progressStartRef = useRef(null);
+
+  const activeStory = storyIndex != null ? profileStories[storyIndex] : null;
+  const hasStories = profileStories.length > 0;
+
   useEffect(() => {
     if (!username) return;
     let alive = true;
@@ -44,11 +59,82 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         setPortfolioResume(portfolioData.resume);
         setPortfolioAnalysis(portfolioData.analysis);
         setFollowRequested(false);
+        fetchStories(token)
+          .then(allStories => {
+            if (!alive) return;
+            const mine = allStories.filter(s => s.author?.username === username);
+            setProfileStories(mine);
+          })
+          .catch(() => setProfileStories([]));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar perfil', '!'))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [token, username, showToast]);
+
+  // Barra de progresso — idêntica ao StoriesBar
+  useEffect(() => {
+    if (storyIndex == null || !activeStory || activeStory.video) {
+      setStoryProgress(0);
+      if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current);
+      return;
+    }
+    setStoryProgress(0);
+    progressStartRef.current = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - progressStartRef.current;
+      const pct = Math.min(100, (elapsed / STORY_DURATION_MS) * 100);
+      setStoryProgress(pct);
+      if (pct < 100) {
+        progressRafRef.current = requestAnimationFrame(animate);
+      } else {
+        // avança pro próximo ou fecha
+        setStoryIndex(i => (i == null || i >= profileStories.length - 1 ? null : i + 1));
+      }
+    };
+    progressRafRef.current = requestAnimationFrame(animate);
+    return () => { if (progressRafRef.current) cancelAnimationFrame(progressRafRef.current); };
+  }, [storyIndex, activeStory?.id, activeStory?.video, profileStories.length]);
+
+  // Marcar como visto
+  useEffect(() => {
+    if (activeStory?.id) {
+      viewStory({ token, storyId: activeStory.id }).catch(() => null);
+    }
+  }, [activeStory?.id, token]);
+
+  // Teclado
+  useEffect(() => {
+    if (storyIndex == null) return;
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight') setStoryIndex(i => (i >= profileStories.length - 1 ? null : i + 1));
+      if (e.key === 'ArrowLeft')  setStoryIndex(i => Math.max(0, i - 1));
+      if (e.key === 'Escape')     setStoryIndex(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [storyIndex, profileStories.length]);
+
+  const handleAvatarClick = () => {
+    if (hasStories) {
+      setStoryIndex(0);
+    } else if (profile?.profilePicture) {
+      setLightbox(profile.profilePicture);
+    }
+  };
+
+  const likeActiveStory = async () => {
+    if (!activeStory) return;
+    await likeStory({ token, storyId: activeStory.id }).catch(() => null);
+    showToast('Curtido ❤️', 'OK');
+  };
+
+  const sendStoryComment = async () => {
+    if (!activeStory || !storyComment.trim()) return;
+    await commentStory({ token, storyId: activeStory.id, content: storyComment.trim() }).catch(() => null);
+    setStoryComment('');
+    showToast('Comentário enviado', 'OK');
+  };
 
   const toggleFollow = async () => {
     const before = profile;
@@ -137,7 +223,17 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
         <div className="profile-info-wrap">
           <div className="profile-top-row">
             <div className="profile-avatar-pull">
-              <div onClick={() => profile.profilePicture && setLightbox(profile.profilePicture)} className="profile-big-avatar" style={profile.profilePicture ? { backgroundImage: `url(${profile.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent', cursor: 'zoom-in' } : {}}>
+              <div
+                onClick={handleAvatarClick}
+                className="profile-big-avatar"
+                style={{
+                  ...(profile.profilePicture ? { backgroundImage: `url(${profile.profilePicture})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : {}),
+                  cursor: (hasStories || profile.profilePicture) ? 'pointer' : 'default',
+                  outline: hasStories ? '3px solid var(--accent)' : 'none',
+                  outlineOffset: hasStories ? '3px' : '0',
+                  boxShadow: hasStories ? '0 0 0 5px var(--bg), 0 0 0 8px var(--accent)' : 'none',
+                }}
+              >
                 {(profile.displayName || profile.username || '?').slice(0, 2)}
               </div>
             </div>
@@ -306,8 +402,131 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
           </div>
         </div>
       )}
+
+      {/* Story viewer */}
+      {activeStory && (
+        <div
+          className="story-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Story de ${profile.displayName || profile.username}`}
+          onClick={e => { if (e.target === e.currentTarget) setStoryIndex(null); }}
+        >
+          <button className="story-close" onClick={() => setStoryIndex(null)} aria-label="Fechar">✕</button>
+
+          <button
+            className="story-nav prev"
+            onClick={() => setStoryIndex(i => Math.max(0, i - 1))}
+            aria-label="Story anterior"
+            style={{ opacity: storyIndex === 0 ? 0.3 : 1 }}
+          >‹</button>
+
+          <div className="story-frame">
+            {/* Barras de progresso — uma por story, igual Instagram */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, display: 'flex', gap: 3, padding: '6px 8px' }}>
+              {profileStories.map((s, i) => (
+                <div
+                  key={s.id}
+                  style={{
+                    flex: 1,
+                    height: 3,
+                    borderRadius: 2,
+                    background: 'rgba(255,255,255,0.35)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      background: '#fff',
+                      borderRadius: 2,
+                      width: i < storyIndex ? '100%' : i === storyIndex ? `${activeStory.video ? 100 : storyProgress}%` : '0%',
+                      transition: i === storyIndex && !activeStory.video ? 'none' : 'none',
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Cabeçalho */}
+            <div className="story-head" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <Avatar
+                  size={38}
+                  src={profile.profilePicture || null}
+                  name={profile.displayName || profile.username || ''}
+                  initials={(profile.displayName || profile.username || '?').slice(0, 2)}
+                />
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{profile.displayName || profile.username}</div>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{relativeTime(activeStory.created)}</span>
+                </div>
+              </div>
+              {profile.profilePicture && (
+                <button
+                  onClick={() => { setStoryIndex(null); setLightbox(profile.profilePicture); }}
+                  style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 20, padding: '5px 12px', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  📷 Ver foto
+                </button>
+              )}
+            </div>
+
+            {/* Mídia */}
+            <div className="story-media">
+              {activeStory.video
+                ? (
+                  <video
+                    key={activeStory.id}
+                    src={activeStory.video}
+                    controls
+                    autoPlay
+                    style={{ width: '100%', maxHeight: '60vh', borderRadius: 12 }}
+                    onEnded={() => setStoryIndex(i => (i >= profileStories.length - 1 ? null : i + 1))}
+                  />
+                )
+                : activeStory.image
+                  ? <img key={activeStory.id} src={activeStory.image} alt="story" style={{ width: '100%', maxHeight: '60vh', objectFit: 'cover', borderRadius: 12 }} />
+                  : <div className="story-text-only">{activeStory.text}</div>}
+            </div>
+
+            {activeStory.text && (activeStory.image || activeStory.video) && (
+              <div className="story-caption">{activeStory.text}</div>
+            )}
+
+            {/* Ações */}
+            <div className="story-actions">
+              <button onClick={likeActiveStory} aria-label="Curtir story" style={{ padding: '8px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18 }}>
+                ❤️
+              </button>
+              <input
+                value={storyComment}
+                onChange={e => setStoryComment(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendStoryComment()}
+                placeholder="Responder..."
+                aria-label="Responder ao story"
+                style={{ flex: 1, borderRadius: 20, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '8px 14px', fontSize: 13 }}
+              />
+              <button
+                onClick={sendStoryComment}
+                aria-label="Enviar resposta"
+                style={{ padding: '8px 14px', borderRadius: 20, background: 'var(--accent)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+
+          <button
+            className="story-nav next"
+            onClick={() => setStoryIndex(i => (i >= profileStories.length - 1 ? null : i + 1))}
+            aria-label="Próximo story"
+            style={{ opacity: storyIndex >= profileStories.length - 1 ? 0.3 : 1 }}
+          >›</button>
+        </div>
+      )}
+
       <ImageLightbox src={lightbox} onClose={() => setLightbox(null)} />
     </div>
   );
 }
-
