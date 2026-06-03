@@ -90,9 +90,9 @@ Desenvolver uma plataforma academica integrada capaz de conectar portal instituc
 
 ---
 
-## Proposta de Solucao
+## Proposta  de  Solucao
 
-A solucao proposta e um ecossistema academico em que cada modulo possui papel claro, mas todos se conectam.
+A solucao  proposta e um ecossistema academico em que cada modulo possui papel claro, mas todos se conectam.
 
 ```mermaid
 flowchart LR
