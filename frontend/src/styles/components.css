@@ -102,6 +102,140 @@
 .settings-page .settings-content,
 .settings-page .settings-sidenav { scrollbar-gutter: stable; }
 
+/* Theme refresh: composer, comments, Zuni comments and settings stability. */
+.comment-author-avatar-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: max-content;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.comment-author-avatar-btn:disabled { cursor: default; }
+.post-detail-comment-author {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.post-detail-comment-author:disabled { cursor: default; }
+.post-detail-comment-author:hover:not(:disabled) { color: var(--accent); }
+
+.zuni-comments .post-detail-comment-card {
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  padding: 10px;
+  margin: 0;
+}
+.zuni-comments .post-detail-comment-card.depth-1,
+.zuni-comments .post-detail-comment-card.depth-2 {
+  margin-left: 12px;
+  margin-top: 8px;
+  background: color-mix(in srgb, var(--page-bg) 82%, transparent);
+}
+.zuni-comments .post-detail-comment-main { gap: 4px; min-width: 0; }
+.zuni-comments .post-detail-comment-top { gap: 8px; align-items: flex-start; }
+.zuni-comments .post-detail-comment-text {
+  margin: 4px 0 6px;
+  line-height: 1.42;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.zuni-comments .post-detail-comment-actions {
+  gap: 12px;
+  margin-top: 2px;
+}
+.zuni-comments .comment-inline-reply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--page-bg) 82%, transparent);
+}
+.zuni-comments .comment-inline-reply input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--text);
+  padding: 8px 12px;
+}
+.zuni-comments .comment-inline-reply button:last-child,
+.zuni-comment-form button {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+  color: #fff;
+  font-weight: 800;
+}
+.zuni-comments .comment-inline-reply button:last-child:hover,
+.zuni-comment-form button:hover {
+  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4);
+}
+
+.post-composer {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
+    color-mix(in srgb, var(--card) 94%, transparent);
+}
+.composer-textarea {
+  border: 1px solid color-mix(in srgb, var(--accent) 46%, var(--border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--input-bg) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.composer-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.composer-footer {
+  border-top: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+}
+.composer-mode-select,
+.composer-btn {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  color: var(--text);
+}
+.composer-btn:hover,
+.composer-mode-select:focus {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.post-card-model .post-action-btn,
+.post-card .post-action-btn {
+  color: var(--text-muted);
+}
+.post-card-model .post-action-btn:hover,
+.post-card .post-action-btn:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.settings-page .settings-shell {
+  min-height: calc(100vh - 84px);
+  align-items: stretch;
+}
+.settings-page .settings-content {
+  min-height: calc(100vh - 108px);
+}
+.settings-page .settings-section,
+.settings-page .settings-panel-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .zuni-video-stage {
   box-shadow:
     0 0 0 1px rgba(255,255,255,.08) inset,
@@ -130,6 +264,202 @@
 .zuni-progress,
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
+
+/* Current request overrides. Last block wins. */
+.zuni-reel.comments-open .zuni-comments {
+  flex: 0 0 min(520px, 32vw) !important;
+  width: min(520px, 32vw) !important;
+  min-width: min(520px, 32vw) !important;
+  overflow: hidden !important;
+}
+.zuni-comments .post-detail-comment-card {
+  display: flex !important;
+  gap: 10px !important;
+  padding: 10px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: color-mix(in srgb, var(--card) 72%, transparent) !important;
+}
+.zuni-comments .post-detail-comment-card.depth-1,
+.zuni-comments .post-detail-comment-card.depth-2 {
+  margin-left: 12px !important;
+  margin-top: 8px !important;
+}
+.zuni-comments .post-detail-comment-text {
+  margin: 4px 0 6px !important;
+  line-height: 1.42 !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+}
+.zuni-comments .post-detail-comment-actions {
+  gap: 12px !important;
+  margin-top: 2px !important;
+}
+.zuni-comments .comment-inline-reply {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+}
+.zuni-comments .comment-inline-reply input {
+  min-width: 0 !important;
+  flex: 1 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: var(--input-bg) !important;
+  color: var(--text) !important;
+  padding: 8px 12px !important;
+}
+.comment-author-avatar-btn {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+}
+.post-detail-comment-author {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  color: var(--text) !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+.post-detail-comment-author:hover:not(:disabled) { color: var(--accent) !important; }
+
+.post-composer {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border)) !important;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
+    color-mix(in srgb, var(--card) 94%, transparent) !important;
+}
+.composer-textarea {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border)) !important;
+  background: color-mix(in srgb, var(--input-bg) 92%, transparent) !important;
+  color: var(--text) !important;
+}
+.composer-textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+.composer-mode-select,
+.composer-btn {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border)) !important;
+  background: color-mix(in srgb, var(--card) 88%, transparent) !important;
+  color: var(--text) !important;
+}
+.composer-submit-btn {
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff) !important;
+}
+.composer-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4) !important;
+}
+.settings-page .settings-shell {
+  min-height: calc(100vh - 84px) !important;
+  align-items: stretch !important;
+}
+.settings-page .settings-content {
+  min-height: calc(100vh - 108px) !important;
+}
+.settings-page .settings-section,
+.settings-page .settings-panel-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 760px) {
+  .zuni-reel.comments-open .zuni-comments {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: initial !important;
+  }
+}
+
+/* Final polish for current theme. Keep last to win older blocks. */
+.zuni-reel.comments-open .zuni-comments {
+  flex: 0 0 min(520px, 32vw) !important;
+  width: min(520px, 32vw) !important;
+  min-width: min(520px, 32vw) !important;
+  overflow: hidden !important;
+}
+.zuni-comments .post-detail-comment-card {
+  display: flex !important;
+  gap: 10px !important;
+  padding: 10px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: color-mix(in srgb, var(--card) 72%, transparent) !important;
+}
+.zuni-comments .post-detail-comment-card.depth-1,
+.zuni-comments .post-detail-comment-card.depth-2 {
+  margin-left: 12px !important;
+  margin-top: 8px !important;
+}
+.zuni-comments .post-detail-comment-text {
+  margin: 4px 0 6px !important;
+  line-height: 1.42 !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+}
+.zuni-comments .post-detail-comment-actions {
+  gap: 12px !important;
+  margin-top: 2px !important;
+}
+.comment-author-avatar-btn,
+.post-detail-comment-author {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.post-detail-comment-author {
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+.post-detail-comment-author:hover:not(:disabled) { color: var(--accent); }
+
+.post-composer {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border)) !important;
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
+    color-mix(in srgb, var(--card) 94%, transparent) !important;
+}
+.composer-textarea {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border)) !important;
+  background: color-mix(in srgb, var(--input-bg) 92%, transparent) !important;
+  color: var(--text) !important;
+}
+.composer-mode-select,
+.composer-btn {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border)) !important;
+  background: color-mix(in srgb, var(--card) 88%, transparent) !important;
+  color: var(--text) !important;
+}
+.composer-submit-btn {
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff) !important;
+}
+.composer-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4) !important;
+}
+.settings-page .settings-shell {
+  min-height: calc(100vh - 84px) !important;
+  align-items: stretch !important;
+}
+.settings-page .settings-content {
+  min-height: calc(100vh - 108px) !important;
+}
+.settings-page .settings-section,
+.settings-page .settings-panel-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 760px) {
+  .zuni-reel.comments-open .zuni-comments {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: initial !important;
+  }
+}
 
 /* Zuni final: tela cheia, um video, comentarios largos. */
 @media (min-width: 1001px) {

@@ -205,6 +205,14 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
   const [liked, setLiked] = useState(post.liked || false);
   const [likes, setLikes] = useState(post.likes || 0);
   const [saved, setSaved] = useState(post.saved || false);
+  const author = post.author?.username === user?.username
+    ? {
+      ...post.author,
+      displayName: user?.displayName || post.author?.displayName,
+      profilePicture: user?.profilePicture || post.author?.profilePicture,
+      role: user?.role || post.author?.role,
+    }
+    : post.author;
 
   const sortedComments = useMemo(() => {
     const list = [...comments];
@@ -257,7 +265,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     await sharePost({ token, postId: post.id }).catch(() => null);
     const shareUrl = `${window.location.origin}/?post=${encodeURIComponent(post.id)}`;
     if (navigator.share) {
-      await navigator.share({ title: post.author?.displayName || 'Unigran', url: shareUrl }).catch(() => null);
+      await navigator.share({ title: author?.displayName || 'Unigran', url: shareUrl }).catch(() => null);
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(shareUrl).catch(() => null);
     }
@@ -279,18 +287,18 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
         {/* ── Lado esquerdo: post ── */}
         <section className="post-detail-left">
           <header className="post-detail-head">
-            <button type="button" className="post-detail-author-btn" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
-              <Avatar size={44} src={post.author?.profilePicture || null} name={post.author?.displayName || ''} initials={post.author?.avatar || post.author?.displayName?.slice(0, 2)} />
+            <button type="button" className="post-detail-author-btn" onClick={() => author?.username && onOpenProfile?.(author.username)}>
+              <Avatar size={44} src={author?.profilePicture || null} name={author?.displayName || ''} initials={author?.avatar || author?.displayName?.slice(0, 2)} />
             </button>
             <div className="post-detail-author-meta">
               <div className="post-detail-author-line">
-                <button type="button" className="post-detail-author-name" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
-                  {post.author?.displayName}
+                <button type="button" className="post-detail-author-name" onClick={() => author?.username && onOpenProfile?.(author.username)}>
+                  {author?.displayName}
                 </button>
-                {isVerifiedAuthor(post.author) && <VerifiedIcon />}
-                <RoleBadge role={post.author?.role} />
+                {isVerifiedAuthor(author) && <VerifiedIcon />}
+                <RoleBadge role={author?.role} />
               </div>
-              <div className="post-detail-author-sub">@{post.author?.username} · {relativeTime(post.time)}</div>
+              <div className="post-detail-author-sub">@{author?.username} · {relativeTime(post.time)}</div>
             </div>
           </header>
 
@@ -360,8 +368,9 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
                   key={c.id}
                   comment={c}
                   postId={post.id}
-                  postAuthorUsername={post.author?.username}
+                  postAuthorUsername={author?.username}
                   onMutate={setComments}
+                  onOpenProfile={onOpenProfile}
                 />
               ))
             )}

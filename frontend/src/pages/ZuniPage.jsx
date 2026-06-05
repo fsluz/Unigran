@@ -5,6 +5,7 @@ import { Avatar, Spinner } from '../components/ui';
 import { createComment, fetchComments, fetchPosts, likePost, unlikePost } from '../services/posts';
 import { followUser, unfollowUser } from '../services/users';
 import { relativeTime } from '../utils/time';
+import { CommentRow } from '../components/post/PostCommentThread';
 
 function ZuniIcon({ name, size = 20 }) {
   const common = {
@@ -272,14 +273,36 @@ export default function ZuniPage({ onOpenProfile }) {
     if (!content) return;
     const created = await createComment({ token, postId: post.id, content }).catch(() => null);
     if (!created) return;
+    const nextComment = {
+      id: created.id,
+      content: created.content || content,
+      text: created.text || created.content || content,
+      time: created.time || created.createdAt || new Date().toISOString(),
+      likes: Number(created.likes || 0),
+      liked: Boolean(created.liked),
+      edited: Boolean(created.edited),
+      replies: created.replies || [],
+      author: created.author || {
+        username: user?.username,
+        displayName: user?.displayName,
+        profilePicture: user?.profilePicture,
+      },
+    };
     setCommentsByPost(prev => ({
       ...prev,
-      [post.id]: [...(prev[post.id] || []), created],
+      [post.id]: [...(prev[post.id] || []), nextComment],
     }));
     setPosts(prev => prev.map(item => (
       item.id === post.id ? { ...item, comments: Number(item.comments || 0) + 1 } : item
     )));
     setCommentText('');
+  };
+
+  const mutateZuniComments = (postId, updater) => {
+    setCommentsByPost(prev => ({
+      ...prev,
+      [postId]: typeof updater === 'function' ? updater(prev[postId] || []) : updater,
+    }));
   };
 
   return (
@@ -428,13 +451,17 @@ export default function ZuniPage({ onOpenProfile }) {
                       <div className="zuni-comments-empty">Sem comentarios.</div>
                     ) : (
                       (commentsByPost[post.id] || []).map(comment => (
-                        <div key={comment.id || `${post.id}-${comment.time}-${comment.content}`} className="zuni-comment">
-                          <Avatar size={28} src={comment.author?.profilePicture || null} name={comment.author?.displayName || comment.author?.username || ''} initials={(comment.author?.displayName || comment.author?.username || '?').slice(0, 2)} />
-                          <div>
-                            <strong>{comment.author?.displayName || comment.author?.username || 'Usuario'}</strong>
-                            <p>{comment.text || comment.content}</p>
-                          </div>
-                        </div>
+                        <CommentRow
+                          key={comment.id || `${post.id}-${comment.time}-${comment.content}`}
+                          comment={comment}
+                          postId={post.id}
+                          postAuthorUsername={post.author?.username}
+                          onReply={() => setPosts(prev => prev.map(item => (
+                            item.id === post.id ? { ...item, comments: Number(item.comments || 0) + 1 } : item
+                          )))}
+                          onMutate={(updater) => mutateZuniComments(post.id, updater)}
+                          onOpenProfile={onOpenProfile}
+                        />
                       ))
                     )}
                   </div>

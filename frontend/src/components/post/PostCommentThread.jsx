@@ -59,6 +59,7 @@ export function CommentRow({
   depth = 0,
   onReply,
   onMutate,
+  onOpenProfile,
 }) {
   const { token, user } = useAuth();
   const [liked, setLiked] = useState(Boolean(comment.liked));
@@ -75,6 +76,9 @@ export function CommentRow({
   const isPostOwner = user?.username === postAuthorUsername;
   const canDelete = isAuthor || isPostOwner || hasPermission(user, 'posts:moderate');
   const canEdit = isAuthor || hasPermission(user, 'posts:moderate');
+  const openAuthorProfile = () => {
+    if (comment.author?.username) onOpenProfile?.(comment.author.username);
+  };
 
   const toggleLike = async () => {
     const next = !liked;
@@ -149,16 +153,31 @@ export function CommentRow({
 
   return (
     <article className={`post-detail-comment-card depth-${depth}`}>
-      <Avatar
-        size={depth > 0 ? 32 : 40}
-        src={comment.author?.profilePicture}
-        name={comment.author?.displayName || comment.author?.username}
-        initials={(comment.author?.displayName || comment.author?.username || 'U').slice(0, 2)}
-      />
+      <button
+        type="button"
+        className="comment-author-avatar-btn"
+        onClick={openAuthorProfile}
+        disabled={!comment.author?.username}
+        aria-label="Abrir perfil"
+      >
+        <Avatar
+          size={depth > 0 ? 32 : 40}
+          src={comment.author?.profilePicture}
+          name={comment.author?.displayName || comment.author?.username}
+          initials={(comment.author?.displayName || comment.author?.username || 'U').slice(0, 2)}
+        />
+      </button>
       <div className="post-detail-comment-main">
         <div className="post-detail-comment-top">
           <div>
-            <span className="post-detail-comment-author">{comment.author?.displayName || comment.author?.username}</span>
+            <button
+              type="button"
+              className="post-detail-comment-author"
+              onClick={openAuthorProfile}
+              disabled={!comment.author?.username}
+            >
+              {comment.author?.displayName || comment.author?.username}
+            </button>
             {edited && <span className="post-detail-comment-edited">(editado)</span>}
           </div>
           <div className="post-detail-comment-top-right">
@@ -214,6 +233,7 @@ export function CommentRow({
             depth={depth + 1}
             onReply={onReply}
             onMutate={onMutate}
+            onOpenProfile={onOpenProfile}
           />
         ))}
       </div>
