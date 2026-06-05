@@ -17,7 +17,7 @@
   unlikePost,
 } from '../services/post.service.js';
 import { typeqlLiteral, writeQuery } from '../db/typedb.js';
-import { listKeywordPosts, listTrends } from '../repositories/post.repository.js';
+import { listKeywordPosts, listTrends, fetchPostLikers } from '../repositories/post.repository.js';
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
@@ -250,3 +250,12 @@ export async function reportPostController(req, res) {
   }
 }
 
+export async function getPostLikersController(req, res) {
+  try {
+    const likers = await fetchPostLikers({ postId: req.params.id });
+    res.json({ likers });
+  } catch (err) {
+    console.error('[posts likers]', err);
+    res.status(500).json({ error: 'Erro ao buscar curtidas' });
+  }
+}

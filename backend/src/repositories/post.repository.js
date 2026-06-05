@@ -1174,3 +1174,24 @@ export async function deleteCommentById(commentId) {
   return { deleted: true };
 }
 
+export async function fetchPostLikers({ postId }) {
+  const safePost = typeqlLiteral(postId);
+  const rows = await readQuery(`
+    match
+      $post isa post, has post-id "${safePost}";
+      $author isa person, has username $username;
+      $r isa reaction, links (author: $author, parent: $post);
+      try { $author has name $name; };
+      try { $author has profile-picture $pic; };
+    fetch {
+      "username": $username,
+      "name": $name,
+      "profilePicture": $pic
+    };
+  `);
+  return rows.map(row => ({
+    username: row.username || '',
+    displayName: row.name || row.username || '',
+    profilePicture: row.profilePicture || null,
+  }));
+}

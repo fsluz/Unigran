@@ -240,3 +240,7 @@ export async function updatePost({ token, postId, content }) {
   return parseResponse(res, 'Erro ao editar post');
 }
 
+export async function fetchPostLikers({ token, postId }) {
+  const res = await apiFetch(`/posts/${postId}/likers`, { headers: authHeaders(token) });
+  return parseResponse(res, 'Erro ao buscar curtidas');
+}

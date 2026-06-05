@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge } from '../ui';
 import { relativeTime } from '../../utils/time';
-import { createComment, deletePost as deletePostRequest, fetchComments, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
+import { createComment, deletePost as deletePostRequest, fetchComments, fetchPostLikers, likeComment, likePost, reportPost, savePost, sharePost, unlikeComment, unlikePost, unsavePost, updatePost } from '../../services/posts';
 import EmojiPicker from '../ui/EmojiPicker';
 import { apiFetch, authHeaders } from '../../utils/api';
 import ImageLightbox from '../media/ImageLightbox';
@@ -330,6 +330,112 @@ function CommentItem({ comment, onReply, onToggleLike }) {
   );
 }
 
+
+function LikersPopover({ postId, token, count, liked, currentUser, onOpenProfile, onToggleLike }) {
+  const [open, setOpen] = useState(false);
+  const [likers, setLikers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  const loadLikers = async () => {
+    setLoading(true);
+    const data = await fetchPostLikers({ token, postId }).catch(() => ({ likers: [] }));
+    setLikers(data?.likers || []);
+    setLoading(false);
+  };
+
+  const toggle = async () => {
+    if (count === 0) return;
+    if (!open) await loadLikers();
+    setOpen(v => !v);
+  };
+
+  // Atualiza lista otimisticamente ao curtir/descurtir sem re-fetch
+  const handleToggleLike = () => {
+    onToggleLike();
+    if (liked) {
+      // descurtindo: remove o usuário atual da lista
+      setLikers(prev => prev.filter(l => l.username !== currentUser?.username));
+    } else {
+      // curtindo: adiciona o usuário atual no topo
+      setLikers(prev => {
+        if (prev.some(l => l.username === currentUser?.username)) return prev;
+        return [{ username: currentUser?.username, displayName: currentUser?.displayName || currentUser?.username, profilePicture: currentUser?.profilePicture || null }, ...prev];
+      });
+    }
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 4 }}>
+      {/* Coração */}
+      <button
+        onClick={handleToggleLike}
+        aria-label="Curtir"
+        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: liked ? "#e0245e" : "var(--text-muted)", display: "flex", alignItems: "center", transition: "color 0.15s" }}
+      >
+        <svg width={19} height={19} viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
+        </svg>
+      </button>
+      {/* Número clicável */}
+      <button
+        onClick={toggle}
+        style={{
+          background: "none", border: "none", padding: "0 2px",
+          color: open ? "var(--accent)" : "var(--text-muted)",
+          fontWeight: 600, fontSize: 13, cursor: count > 0 ? "pointer" : "default",
+          lineHeight: 1, transition: "color 0.15s",
+        }}
+      >
+        {Number(count || 0)}
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", bottom: "110%", left: "50%", transform: "translateX(-50%)",
+          background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14,
+          boxShadow: "var(--shadow)", zIndex: 80, minWidth: 220, maxWidth: 280,
+          padding: "10px 0", animation: "fadeInMenu 0.15s ease",
+        }}>
+          <div style={{ padding: "2px 14px 8px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", borderBottom: "1px solid var(--border)", marginBottom: 6 }}>
+            Curtido por
+          </div>
+          {loading ? (
+            <div style={{ padding: "12px 14px", color: "var(--text-muted)", fontSize: 13, textAlign: "center" }}>Carregando...</div>
+          ) : likers.length === 0 ? (
+            <div style={{ padding: "12px 14px", color: "var(--text-muted)", fontSize: 13, textAlign: "center" }}>Nenhuma curtida ainda</div>
+          ) : (
+            <div style={{ maxHeight: 240, overflowY: "auto" }}>
+              {likers.map(liker => (
+                <button
+                  key={liker.username}
+                  onClick={() => { onOpenProfile?.(liker.username); setOpen(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "7px 14px", border: "none", background: "none", cursor: "pointer", textAlign: "left" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--hover)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "none"}
+                >
+                  <Avatar size={32} src={liker.profilePicture || null} name={liker.displayName || liker.username} initials={(liker.displayName || liker.username || "?").slice(0, 2)} style={{ flexShrink: 0 }} />
+                  <div style={{ overflow: "hidden" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{liker.displayName || liker.username}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>@{liker.username}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenProfile, onLoadComments, onAddComment, onOpenCommunity }) {
   const { user, token }      = useAuth();
   const { showToast } = useToast();
@@ -641,14 +747,17 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
 
       {/* Actions */}
       <div className="post-footer">
-        <button className={`post-action-btn ${liked ? 'liked' : ''}`} onClick={toggleLike} aria-label="Curtir">
-          <span className="post-action-main">
-            <svg width={19} height={19} viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
-            </svg>
-            <span className="post-action-count">{Number(likes || 0)}</span>
-          </span>
-        </button>
+        <span className={`post-action-btn ${liked ? 'liked' : ''}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <LikersPopover
+            postId={post.id}
+            token={token}
+            count={likes}
+            liked={liked}
+            currentUser={user}
+            onOpenProfile={onOpenProfile}
+            onToggleLike={toggleLike}
+          />
+        </span>
         <button
           className="post-action-btn"
           onClick={async () => {
