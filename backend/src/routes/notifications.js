@@ -38,16 +38,18 @@ router.get('/', auth, async (req, res) => {
     res.json({
       notifications: rows
         .map(row => {
-          const text = String(row.text || '');
+          const raw = String(row.text || '');
+          const [text, postId = null] = raw.split('||');
           const actor = people.find(person =>
             text.startsWith(person.username || '__none__') ||
             text.startsWith(person.name || '__none__')
           );
           return {
             id: row.id,
-            text,
+            text: text.trim(),
             type: row.type,
             time: row.time,
+            postId: postId ? postId.trim() : null,
             actor: actor?.username || '',
             actorName: actor?.name || '',
             actorPicture: actor?.profile_picture || null,

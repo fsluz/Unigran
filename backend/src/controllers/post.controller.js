@@ -17,7 +17,7 @@
   unlikePost,
 } from '../services/post.service.js';
 import { typeqlLiteral, writeQuery } from '../db/typedb.js';
-import { listKeywordPosts, listTrends, fetchPostLikers } from '../repositories/post.repository.js';
+import { listKeywordPosts, listTrends, fetchPostLikers, getPostById } from '../repositories/post.repository.js';
 
 function cloudinaryAwareError(res, err, fallback) {
   const message = String(err?.message || '');
@@ -257,5 +257,16 @@ export async function getPostLikersController(req, res) {
   } catch (err) {
     console.error('[posts likers]', err);
     res.status(500).json({ error: 'Erro ao buscar curtidas' });
+  }
+}
+
+export async function getPostByIdController(req, res) {
+  try {
+    const post = await getPostById({ postId: req.params.id, viewerUsername: req.user?.username });
+    if (!post) return res.status(404).json({ error: 'Post nao encontrado' });
+    res.json({ post });
+  } catch (err) {
+    console.error('[posts getById]', err);
+    res.status(500).json({ error: 'Erro ao buscar post' });
   }
 }

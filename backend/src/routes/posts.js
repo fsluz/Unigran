@@ -22,6 +22,7 @@ import {
   unlikePostController,
   unsavePostController,
   getPostLikersController,
+  getPostByIdController,
 } from '../controllers/post.controller.js';
 
 const router = Router();
@@ -37,6 +38,7 @@ router.delete('/:id', auth, deletePostController);
 router.post('/:id/like', auth, likePostController);
 router.delete('/:id/like', auth, unlikePostController);
 router.get('/:id/likers', auth, getPostLikersController);
+router.get('/:id', auth, getPostByIdController);
 router.post('/comments/:commentId/like', auth, likeCommentController);
 router.delete('/comments/:commentId/like', auth, unlikeCommentController);
 router.patch('/comments/:commentId', auth, editCommentController);

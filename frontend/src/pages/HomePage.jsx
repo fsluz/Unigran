@@ -15,7 +15,7 @@ import { useAchievements } from '../contexts/AchievementsContext';
 import { EmptyState } from '../components/ui';
 
 
-export default function HomePage({ onOpenProfile, onNavigateToCommunity }) {
+export default function HomePage({ onOpenProfile, onNavigateToCommunity, initialPostId, onConsumePostId }) {
   const { token } = useAuth();
   const { showToast } = useToast();
   const { unlock } = useAchievements();
@@ -64,6 +64,23 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity }) {
       .then(data => setServerTrends(data.trends || []))
       .catch(() => setServerTrends([]));
   }, [token]);
+
+  useEffect(() => {
+    if (!initialPostId || !token) return;
+    apiFetch(`/posts/${encodeURIComponent(initialPostId)}`, { headers: authHeaders(token) })
+      .then(r => r.json())
+      .then(async data => {
+        if (!data?.post) return;
+        const post = data.post;
+        // busca comentários e curtidas para o modal ficar completo
+        const [commentsData] = await Promise.all([
+          fetchComments({ token, postId: post.id }).catch(() => []),
+        ]);
+        setOpenPost({ ...post, _comments: commentsData });
+      })
+      .catch(() => {})
+      .finally(() => onConsumePostId?.());
+  }, [initialPostId, token]);
 
   const openTrend = async (tag) => {
     setTrendTitle(tag);

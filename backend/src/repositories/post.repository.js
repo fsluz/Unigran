@@ -252,7 +252,7 @@ async function notifyPostOwner({ actorUsername, postId, type, text }) {
     insert
       $notification isa notification,
         has notification-id "${notificationId}",
-        has notification-text "${typeqlLiteral(`${actorUsername} ${text}`)}",
+        has notification-text "${typeqlLiteral(`${actorUsername} ${text}||${postId}`)}",
         has notification-type "${typeqlLiteral(type)}",
         has creation-timestamp ${now};
       $delivery isa notification-delivery, links (recipient: $recipient, notification: $notification);
@@ -1194,4 +1194,56 @@ export async function fetchPostLikers({ postId }) {
     displayName: row.name || row.username || '',
     profilePicture: row.profilePicture || null,
   }));
+}
+
+export async function getPostById({ postId, viewerUsername }) {
+  const safePost = typeqlLiteral(postId);
+  const rows = await readQuery(`
+    match
+      $post isa post, has post-id "${safePost}";
+      posting(post: $post, page: $user);
+      $user isa person, has username $username, has name $user_name;
+      try { $user has profile-picture $user_profile_pic; };
+      try { $post has post-text $post_text; };
+      try { $post has post-image $post_image; };
+      try { $post has post-video $post_video; };
+      try { $post has creation-timestamp $post_ts; };
+    fetch {
+      "created_at": $post_ts,
+      "post_text": $post_text,
+      "post_image": $post_image,
+      "post_video": $post_video,
+      "author": {
+        "username": $username,
+        "name": $user_name,
+        "profile_picture": $user_profile_pic
+      }
+    };
+  `);
+  if (!rows.length) return null;
+  const entry = rows[0];
+  const attrs = entry?.post_all_attributes || {};
+  const postText = entry?.post_text || '';
+  const imageUrl = entry?.post_image || null;
+  const videoUrl = entry?.post_video || null;
+  const mediaUrl = imageUrl || videoUrl;
+  const [metrics] = await Promise.all([loadPostMetrics(viewerUsername)]);
+  const metric = metrics.get(postId) || { likes: 0, comments: 0, liked: false };
+  return {
+    id: postId,
+    content: postText,
+    time: entry?.created_at || null,
+    media: mediaUrl ? { url: mediaUrl, resource_type: videoUrl ? 'video' : 'image' } : null,
+    author: {
+      id: entry?.author?.username || 'unknown',
+      username: entry?.author?.username || 'unknown',
+      displayName: entry?.author?.name || 'Usuario',
+      profilePicture: entry?.author?.profile_picture || null,
+      role: 'user',
+    },
+    likes: metric.likes,
+    liked: metric.liked,
+    comments: metric.comments,
+    saved: false,
+  };
 }

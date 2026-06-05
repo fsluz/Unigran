@@ -23,6 +23,12 @@ function navigateNotification(notification) {
     window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'messages' }));
     return;
   }
+  // Curtida ou comentário com postId → abre o post
+  if (['like', 'comment', 'reply'].includes(notification.type) && notification.postId) {
+    window.dispatchEvent(new CustomEvent('unigran:open-post', { detail: notification.postId }));
+    return;
+  }
+  // Qualquer outro caso (follow, ou like/comment sem postId) → abre perfil do actor
   if (notification.actor) {
     window.dispatchEvent(new CustomEvent('unigran:open-profile', { detail: notification.actor }));
     return;

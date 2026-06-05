@@ -123,6 +123,7 @@ function AppShell() {
   const [page, setPage]         = useState('home');
   const [profileUsername, setProfileUsername] = useState(null);
   const [openCommunityId, setOpenCommunityId] = useState(null);
+  const [initialPostId, setInitialPostId] = useState(null);
   const [authView, setAuthView] = useState('login');
   const [enteringPortal, setEnteringPortal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
@@ -162,11 +163,17 @@ function AppShell() {
   useEffect(() => {
     const open = (event) => openProfile(event.detail);
     const nav = (event) => setPage(event.detail);
+    const openPost = (event) => {
+      setInitialPostId(event.detail);
+      setPage('home');
+    };
     window.addEventListener('unigran:open-profile', open);
     window.addEventListener('unigran:navigate', nav);
+    window.addEventListener('unigran:open-post', openPost);
     return () => {
       window.removeEventListener('unigran:open-profile', open);
       window.removeEventListener('unigran:navigate', nav);
+      window.removeEventListener('unigran:open-post', openPost);
     };
   }, []);
 
@@ -196,7 +203,7 @@ function AppShell() {
   const needsUniversityForPortal = isPortalRoute && !isAdminGlobal && uniInitialized && !hasUniversity;
 
   const pages = {
-    home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} />,
+    home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
     profile:       <ProfilePage onNavigate={setPage} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
