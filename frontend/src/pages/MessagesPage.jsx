@@ -798,6 +798,9 @@ export default function MessagesPage() {
         content,
         media: encryptedMedia,
       });
+      if (encryptedMedia && !isEncryptedText(encryptedContent)) {
+        throw new Error('E2EE sem chave para audio. Abra a conversa no outro usuario para gerar chave.');
+      }
       const createdEncrypted = await sendMessage({
         token,
         conversationId: active.id,
@@ -895,6 +898,9 @@ export default function MessagesPage() {
             content: '',
             media: encryptedMedia,
           });
+          if (!isEncryptedText(encryptedContent)) {
+            throw new Error('E2EE sem chave para audio. Abra a conversa no outro usuario para gerar chave.');
+          }
           const createdEncrypted = await sendMessage({
             token,
             conversationId: active.id,
