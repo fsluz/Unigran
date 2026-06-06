@@ -43,7 +43,7 @@ function portfolioProfileUrl(username) {
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}/portfolio/${username}`;
 }
 
-export default function ProfilePage({ onNavigate }) {
+export default function ProfilePage({ onNavigate, profileKey }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }        = useToast();
 
@@ -90,7 +90,7 @@ export default function ProfilePage({ onNavigate }) {
         setPortfolioAnalysis(details.analysis);
       })
       .catch(() => setPortfolioItems([]));
-  }, [token, user?.username]);
+}, [token, user?.username, profileKey]);
 
   useEffect(() => {
     if (!token || !user?.username) return;
@@ -117,18 +117,19 @@ export default function ProfilePage({ onNavigate }) {
     }
   }, [tab, token, user?.username]);
 
+  
   useEffect(() => {
-    if (!user?.username || !token) return;
-    apiFetch(`/users/${user.username}`, {
-      headers: authHeaders(token),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data?.user) return;
-        const serverUser = data.user;
-        setProfilePreview(serverUser.profilePicture || null);
-        setCoverPreview(serverUser.coverPicture || null);
-        setStats(serverUser.stats || { posts: 0, followers: 0, following: 0 });
+  if (!user?.username || !token) return;
+  apiFetch(`/users/${user.username}`, {
+    headers: authHeaders(token),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data?.user) return;
+      const serverUser = data.user;
+      setProfilePreview(serverUser.profilePicture || null);
+      setCoverPreview(serverUser.coverPicture || null);
+      setStats(serverUser.stats || { posts: 0, followers: 0, following: 0 });
         setEditForm((prev) => ({
           ...prev,
           displayName: serverUser.displayName || prev.displayName,
@@ -140,7 +141,7 @@ export default function ProfilePage({ onNavigate }) {
         });
       })
       .catch(() => {});
-  }, [token, user?.username]);
+}, [token, user?.username, profileKey]);
 
   const openPeople = async (type) => {
     setPeopleModal(type);
@@ -601,10 +602,15 @@ export default function ProfilePage({ onNavigate }) {
             <Button variant="danger" onClick={async () => {
               const target = confirmPerson.person.username || confirmPerson.person.id;
               try {
-                if (confirmPerson.type === 'followers') await removeFollower({ token, username: user.username, followerUsername: target });
-                else await unfollowUser(token, target);
-                setPeople(list => list.filter(p => (p.username || p.id) !== target));
-                showToast('Acao feita', 'OK');
+              if (confirmPerson.type === 'followers') {
+                await removeFollower({ token, username: user.username, followerUsername: target });
+                setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+              } else {
+                await unfollowUser(token, target);
+                setStats(prev => ({ ...prev, following: Math.max(0, prev.following - 1) }));
+              }
+              setPeople(list => list.filter(p => (p.username || p.id) !== target));
+              showToast('Acao feita', 'OK');
               } catch (err) {
                 showToast(err.message || 'Erro', '!');
               }

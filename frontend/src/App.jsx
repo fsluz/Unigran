@@ -120,6 +120,7 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
 }
 
 function AppShell() {
+  const [profileKey, setProfileKey] = useState(0);
   const { user, logout, token, loading } = useAuth();
   const { universities, activeUniversity, hasUniversity, initialized: uniInitialized } = useUniversity();
   const [page, setPage]         = useState('home');
@@ -142,17 +143,18 @@ function AppShell() {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  const navigate = (id) => {
-    if (id === 'campus' && hasPermission(user, 'platform:read')) {
-      if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
-        setPage('campus');
-        return;
-      }
-      setEnteringPortal(true);
-      return;
-    }
-    setPage(id);
-  };
+      const navigate = (id) => {
+        if (id === 'profile') setProfileKey(k => k + 1);
+        if (id === 'campus' && hasPermission(user, 'platform:read')) {
+          if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
+            setPage('campus');
+            return;
+          }
+          setEnteringPortal(true);
+          return;
+        }
+        setPage(id);
+      };
 
   const openProfile = (username) => {
     if (username) {
@@ -211,7 +213,6 @@ function AppShell() {
 
   const pages = {
     home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
-    profile:       <ProfilePage onNavigate={setPage} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
     communities:   <CommunitiesPage onOpenProfile={openProfile} initialOpenCommunityId={openCommunityId} onClearInitial={() => setOpenCommunityId(null)} />,
@@ -279,7 +280,10 @@ function AppShell() {
         sidebarCollapsed={sidebarCollapsed}
       />
       <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
-        {pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />}
+        js{page === 'profile'
+          ? <ProfilePage key={profileKey} onNavigate={setPage} />
+          : (pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />)
+        }
       </ErrorBoundary>
       <CookieConsentBanner />
       <FloatingAssistants />

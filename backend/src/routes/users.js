@@ -21,13 +21,13 @@ async function getFollowStats(username, viewerUsername) {
       fetch { "username": $username };
     `),
     // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
-    readQuery(`
-      match
-        $user isa person, has username "${safeId}";
-        $page isa page, has page-id $page_id;
-        following(follower: $user, page: $page);
-      fetch { "page_id": $page_id };
-    `),
+readQuery(`
+  match
+    $user isa person, has username "${safeId}";
+    $page isa person, has username $followed_username;
+    following(follower: $user, page: $page);
+  fetch { "followed_username": $followed_username };
+`),
     // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
@@ -45,6 +45,14 @@ async function getFollowStats(username, viewerUsername) {
       fetch { "following": $target_username };
     `) : Promise.resolve([]),
   ]);
+
+  console.log('[DEBUG STATS]', { followingRows, followingCount: followingRows.length });
+  return {
+    posts: postRows.length,
+    followers: followerRows.length,
+    following: followingRows.length,
+    viewerFollowing: viewerRows.length > 0,
+  };
 
   return {
     posts: postRows.length,
@@ -152,6 +160,8 @@ router.get('/:id/portfolio', auth, async (req, res) => {
     if (visibility === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
       return res.json({ portfolio: [], private: true });
     }
+    console.log('[DEBUG PROFILE RESPONSE] stats:', stats);
+
 
     const [portfolio, resume, analysis] = await Promise.all([
       listPublicPortfolioItems(req.params.id),

@@ -63,7 +63,6 @@ async function loadFriendSet(username) {
 async function loadFollowingSet(username) {
   if (!username) return new Set();
   const safeUsername = typeqlLiteral(username);
-  // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
   const rows = await readQuery(`
     match
       $me isa person, has username "${safeUsername}";
@@ -71,7 +70,9 @@ async function loadFollowingSet(username) {
       following(follower: $me, page: $page);
     fetch { "followed_username": $followed_username };
   `);
-  return new Set(rows.map(row => row.followed_username).filter(Boolean));
+  const result = new Set(rows.map(row => row.followed_username).filter(Boolean));
+  console.log('[DEBUG followingSet] username:', username, '-> seguindo:', [...result]);
+  return result;
 }
 
 async function loadLikedKeywords(username) {
@@ -310,6 +311,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     loadPostCommunityMap(),
     loadUserCommunitySet(viewerUsername),
   ]);
+  
 
   const normalized = rows.filter((entry) => {
     const authorUsername = entry?.author?.username || '';
@@ -322,9 +324,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     if (feed === 'zuni') return isZuni;
     if (isZuni) return false;
     if (feed === 'following') {
-      const postCommunity = communityMap.get(entry?.post_id || attrs['post-id'] || '');
-      const inJoinedCommunity = postCommunity && userCommunitySet.has(postCommunity.id);
-      return authorUsername === viewerUsername || followingSet.has(authorUsername) || inJoinedCommunity;
+      return followingSet.has(authorUsername);
     }
     if (feed === 'trending') return true;
     if (feed === 'explore') {
