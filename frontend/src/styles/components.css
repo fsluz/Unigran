@@ -124,6 +124,27 @@
 .post-detail-comment-author:disabled { cursor: default; }
 .post-detail-comment-author:hover:not(:disabled) { color: var(--accent); }
 
+/* Post actions: transparent base, soft hover. */
+.post-footer .post-action-btn,
+.post-detail-actions .post-action-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-radius: 14px;
+  color: var(--text-muted);
+}
+
+.post-footer .post-action-btn:hover,
+.post-detail-actions .post-action-btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+
+.post-footer .post-action-btn.liked,
+.post-detail-actions .post-action-btn.liked {
+  color: var(--red) !important;
+}
+
 .zuni-comments .post-detail-comment-card {
   border: 0;
   border-radius: 14px;
@@ -264,6 +285,405 @@
 .zuni-progress,
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
+
+/* Composer estilo neon */
+.post-composer {
+  position: relative;
+  overflow: visible !important;
+  padding: 26px 28px 24px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 54%, var(--border)) !important;
+  border-radius: 32px !important;
+  background:
+    radial-gradient(circle at 9% 18%, rgba(106,0,244,.24), transparent 30%),
+    radial-gradient(circle at 86% 14%, rgba(0,168,255,.14), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--card) 88%, transparent), color-mix(in srgb, var(--page-bg) 94%, transparent)) !important;
+  box-shadow:
+    0 0 0 1px rgba(106,0,244,.18),
+    0 0 44px rgba(106,0,244,.16),
+    0 24px 70px rgba(0,0,0,.26) !important;
+}
+
+.post-composer::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(106,0,244,.58), rgba(54,102,255,.28) 55%, rgba(0,168,255,.36));
+  opacity: .28;
+  filter: blur(14px);
+  z-index: -1;
+}
+
+.post-composer .composer-row,
+.home-page .post-composer .composer-row {
+  align-items: flex-start;
+  gap: 22px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+.post-composer .avatar {
+  flex: 0 0 auto;
+  border: 3px solid color-mix(in srgb, var(--accent) 64%, #36f);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.12) inset,
+    0 0 20px rgba(106,0,244,.48);
+}
+
+.post-composer .composer-editor {
+  min-width: 0;
+}
+
+.post-composer .composer-textarea,
+.home-page .post-composer .composer-textarea {
+  min-height: 112px !important;
+  padding: 28px 34px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border)) !important;
+  border-radius: 28px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent),
+    color-mix(in srgb, var(--page-bg) 78%, transparent) !important;
+  color: var(--text) !important;
+  font-size: 22px !important;
+  font-weight: 600;
+  line-height: 1.35 !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    0 0 28px rgba(106,0,244,.12);
+  resize: vertical;
+}
+
+.post-composer .composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--text-2) 70%, transparent) !important;
+}
+
+.post-composer .composer-footer,
+.home-page .post-composer .composer-footer {
+  align-items: center;
+  flex-wrap: nowrap !important;
+  gap: 22px !important;
+  min-height: 0 !important;
+  padding: 22px 0 0 !important;
+  border-top: 0 !important;
+}
+
+.post-composer .composer-mode-select,
+.home-page .post-composer .composer-mode-select {
+  width: 188px !important;
+  height: 64px !important;
+  padding: 0 54px 0 28px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)) !important;
+  border-radius: 24px !important;
+  background-color: color-mix(in srgb, var(--page-bg) 74%, transparent) !important;
+  color: var(--text) !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.14);
+}
+
+.post-composer .composer-btn,
+.home-page .post-composer .composer-btn {
+  width: 62px !important;
+  height: 62px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent),
+    color-mix(in srgb, var(--page-bg) 76%, transparent) !important;
+  color: color-mix(in srgb, var(--text) 88%, #9bb8ff) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    0 12px 28px rgba(0,0,0,.16);
+}
+
+.post-composer .composer-btn:hover,
+.home-page .post-composer .composer-btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border)) !important;
+  box-shadow:
+    0 0 22px rgba(106,0,244,.2),
+    0 12px 28px rgba(0,0,0,.18);
+}
+
+.post-composer .composer-submit-wrap,
+.home-page .post-composer .composer-submit-wrap {
+  margin-left: auto !important;
+}
+
+.post-composer .composer-submit-btn,
+.home-page .post-composer .composer-submit-btn {
+  min-width: 160px !important;
+  height: 64px !important;
+  padding: 0 34px !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff) !important;
+  color: #fff !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  box-shadow:
+    0 18px 38px rgba(54,102,255,.24),
+    0 0 28px rgba(106,0,244,.25) !important;
+}
+
+.post-composer .composer-submit-btn:hover,
+.home-page .post-composer .composer-submit-btn:hover {
+  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4) !important;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  .post-composer {
+    padding: 14px !important;
+    border-radius: 24px !important;
+  }
+
+  .post-composer .composer-row,
+  .home-page .post-composer .composer-row {
+    gap: 10px !important;
+  }
+
+  .post-composer .composer-textarea,
+  .home-page .post-composer .composer-textarea {
+    min-height: 78px !important;
+    padding: 16px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+  }
+
+  .post-composer .composer-footer,
+  .home-page .post-composer .composer-footer {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding-top: 14px !important;
+  }
+
+  .post-composer .composer-mode-select,
+  .home-page .post-composer .composer-mode-select {
+    width: 122px !important;
+    height: 44px !important;
+    padding: 0 36px 0 14px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+
+  .post-composer .composer-btn,
+  .home-page .post-composer .composer-btn {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 14px !important;
+  }
+
+  .post-composer .composer-submit-btn,
+  .home-page .post-composer .composer-submit-btn {
+    min-width: 104px !important;
+    height: 44px !important;
+    padding: 0 18px !important;
+    border-radius: 16px !important;
+    font-size: 15px !important;
+  }
+}
+
+/* Final visual polish for post action bars. */
+.post-card-model .post-footer .post-action-btn,
+.post-card .post-footer .post-action-btn,
+.post-detail-actions .post-action-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-radius: 14px !important;
+  color: var(--text-muted);
+}
+
+.post-card-model .post-footer .post-action-btn:hover,
+.post-card .post-footer .post-action-btn:hover,
+.post-detail-actions .post-action-btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+
+.post-card-model .post-footer .post-action-btn.liked,
+.post-card .post-footer .post-action-btn.liked,
+.post-detail-actions .post-action-btn.liked {
+  color: var(--red) !important;
+}
+
+/* Composer model: large glass card like reference. */
+.home-page .post-composer,
+.post-composer {
+  position: relative;
+  overflow: hidden;
+  border-radius: 34px !important;
+  padding: 26px 28px 24px;
+  border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--border)) !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(106,0,244,.28), transparent 34%),
+    radial-gradient(circle at 92% 100%, rgba(0,168,255,.14), transparent 34%),
+    linear-gradient(180deg, rgba(17,24,54,.86), rgba(9,14,34,.92)) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.035) inset,
+    0 24px 70px rgba(0,0,0,.3),
+    0 0 42px rgba(106,0,244,.16);
+}
+
+.post-composer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(106,0,244,.28), transparent 28%, transparent 72%, rgba(0,168,255,.16));
+  opacity: .45;
+}
+
+.home-page .composer-row,
+.composer-row {
+  position: relative;
+  z-index: 1;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px !important;
+  min-height: 132px !important;
+  padding: 0 !important;
+  align-items: start;
+}
+
+.composer-row .avatar,
+.composer-row [class*="avatar"] {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 76%, transparent),
+    0 0 24px rgba(106,0,244,.52);
+}
+
+.home-page .composer-editor,
+.composer-editor {
+  min-height: 118px;
+}
+
+.home-page .composer-textarea,
+.composer-textarea {
+  min-height: 118px !important;
+  width: 100%;
+  padding: 28px 32px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border)) !important;
+  border-radius: 28px !important;
+  background: rgba(6, 10, 30, .36) !important;
+  color: var(--text) !important;
+  font-size: clamp(18px, 2vw, 27px) !important;
+  line-height: 1.35 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), inset 0 0 34px rgba(0,0,0,.18);
+}
+
+.composer-textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 72%, transparent) !important;
+  font-weight: 700;
+}
+
+.home-page .composer-footer,
+.composer-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px !important;
+  min-height: 74px !important;
+  margin-top: 28px;
+  padding: 0 !important;
+  border-top: 0 !important;
+}
+
+.home-page .composer-mode-select,
+.composer-mode-select {
+  width: 192px !important;
+  height: 64px !important;
+  padding: 0 52px 0 28px !important;
+  border-radius: 24px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border)) !important;
+  background: rgba(6, 10, 30, .34) !important;
+  color: var(--text) !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 12px 28px rgba(0,0,0,.16);
+}
+
+.home-page .composer-btn,
+.composer-btn {
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 18px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border)) !important;
+  background: rgba(6, 10, 30, .34) !important;
+  color: #e6e7ff !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 12px 26px rgba(0,0,0,.14);
+}
+
+.composer-btn:hover {
+  background: color-mix(in srgb, var(--accent) 16%, rgba(6,10,30,.5)) !important;
+  color: #fff !important;
+  transform: translateY(-2px);
+}
+
+.composer-submit-wrap {
+  margin-left: auto !important;
+}
+
+.home-page .composer-submit-btn,
+.composer-submit-btn {
+  min-width: 154px !important;
+  height: 64px !important;
+  padding: 0 34px !important;
+  border-radius: 24px !important;
+  font-size: 23px !important;
+  font-weight: 900 !important;
+  background: linear-gradient(135deg,#8d3dff,#6a00f4 45%,#36f 76%,#00a8ff) !important;
+  box-shadow: 0 18px 38px rgba(106,0,244,.34), 0 0 34px rgba(54,102,255,.2) !important;
+}
+
+@media (max-width: 720px) {
+  .post-composer {
+    border-radius: 22px !important;
+    padding: 16px !important;
+  }
+
+  .composer-row {
+    gap: 12px !important;
+    min-height: 88px !important;
+  }
+
+  .composer-textarea {
+    min-height: 88px !important;
+    padding: 16px 18px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+  }
+
+  .composer-footer {
+    gap: 8px !important;
+    margin-top: 14px;
+  }
+
+  .composer-mode-select {
+    width: 122px !important;
+    height: 44px !important;
+    padding: 0 12px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+
+  .composer-btn {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 13px !important;
+  }
+
+  .composer-submit-btn {
+    min-width: 94px !important;
+    height: 44px !important;
+    padding: 0 18px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+}
 
 /* Current request overrides. Last block wins. */
 .zuni-reel.comments-open .zuni-comments {

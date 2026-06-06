@@ -17,6 +17,36 @@ function formatContent(text = '') {
   );
 }
 
+function getEmbeds(text = '') {
+  const urls = String(text).match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) || [];
+  return urls.slice(0, 3).map(raw => {
+    const url = raw.startsWith('http') ? raw : `https://${raw}`;
+    let host = '';
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return null;
+    }
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/);
+    if (yt?.[1]) return { type: 'youtube', url, embedUrl: `https://www.youtube.com/embed/${yt[1]}`, host };
+    if (host.includes('instagram.com')) return { type: 'link', url, host, title: 'Instagram', text: 'Abrir post no Instagram' };
+    if (host === 'x.com' || host === 'twitter.com') return { type: 'link', url, host, title: 'X', text: 'Abrir post no X' };
+    return { type: 'link', url, host, title: host, text: url };
+  }).filter(Boolean);
+}
+
+function stripEmbedLinks(text = '') {
+  const embeds = getEmbeds(text);
+  if (!embeds.length) return text;
+  let next = String(text || '');
+  for (const embed of embeds) {
+    next = next.replace(embed.url, '');
+    if (embed.url.startsWith('https://www.')) next = next.replace(embed.url.replace('https://www.', 'www.'), '');
+    if (embed.url.startsWith('https://')) next = next.replace(embed.url.replace('https://', ''), '');
+  }
+  return next.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function normalizeComment(comment) {
   return {
     id: comment.id,
@@ -213,6 +243,8 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
       role: user?.role || post.author?.role,
     }
     : post.author;
+  const embeds = useMemo(() => getEmbeds(post.content || ''), [post.content]);
+  const bodyText = useMemo(() => stripEmbedLinks(post.content || ''), [post.content]);
 
   const sortedComments = useMemo(() => {
     const list = [...comments];
@@ -302,7 +334,31 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
             </div>
           </header>
 
-          {post.content && <div className="post-detail-body">{formatContent(post.content)}</div>}
+          {bodyText && <div className="post-detail-body">{formatContent(bodyText)}</div>}
+
+          {embeds.length > 0 && (
+            <div className="post-detail-embeds">
+              {embeds.map((embed, index) => (
+                embed.type === 'youtube' ? (
+                  <div className="post-detail-embed post-detail-embed--youtube" key={`${embed.url}-${index}`}>
+                    <iframe
+                      className="post-detail-embed-frame"
+                      src={embed.embedUrl}
+                      title={`YouTube ${index + 1}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <a className="post-detail-link-preview" href={embed.url} target="_blank" rel="noreferrer" key={`${embed.url}-${index}`}>
+                    <strong>{embed.title}</strong>
+                    <span>{embed.text}</span>
+                    <small>{embed.host}</small>
+                  </a>
+                )
+              ))}
+            </div>
+          )}
 
           {post.media?.url && (
             <div className="post-detail-media">

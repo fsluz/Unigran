@@ -931,10 +931,10 @@ export async function listComments(parentPostId, viewerUsername) {
     };
   `);
 
+  // FIXED: previous query only loaded one reply level. Fetch all comment-to-comment
+  // links, then build the nested tree in code so replies can be infinite depth.
   const replyRows = await readQuery(`
     match
-      $post isa post, has post-id "${safePostId}";
-      commenting(parent: $post, comment: $parent);
       $parent isa comment, has comment-id $parent_id;
       commenting(parent: $parent, comment: $reply, author: $author);
       $reply isa comment, has comment-id $reply_id, has comment-text $reply_text, has creation-timestamp $reply_ts;
@@ -973,11 +973,12 @@ export async function listComments(parentPostId, viewerUsername) {
   }
 
   const repliesByParent = new Map();
+  const replyById = new Map();
   for (const row of replyRows) {
     if (!row?.parent_id) continue;
     if (!repliesByParent.has(row.parent_id)) repliesByParent.set(row.parent_id, []);
     const metric = metrics.get(row.comment_id) || { likes: 0, liked: false };
-    repliesByParent.get(row.parent_id).push({
+    const reply = {
       id: row.comment_id,
       content: row.text,
       time: row.created_at,
@@ -989,18 +990,34 @@ export async function listComments(parentPostId, viewerUsername) {
         displayName: row.author_name,
         profilePicture: row.author_profile_picture || null,
       },
-    });
+    };
+    replyById.set(reply.id, reply);
+    repliesByParent.get(row.parent_id).push(reply);
   }
+
+  const attachReplies = (comment, seen = new Set()) => {
+    if (!comment?.id || seen.has(comment.id)) return { ...comment, replies: [] };
+    const nextSeen = new Set(seen);
+    nextSeen.add(comment.id);
+    const directReplies = repliesByParent.get(comment.id) || [];
+    return {
+      ...comment,
+      replies: directReplies.map(reply => attachReplies(reply, nextSeen)),
+    };
+  };
+
+  const topLevelIds = new Set(rows.map(row => row.comment_id));
+  for (const topId of topLevelIds) replyById.delete(topId);
 
   return rows.map((row) => {
     const metric = metrics.get(row.comment_id) || { likes: 0, liked: false };
-    return ({
+    return attachReplies({
     id: row.comment_id,
     content: row.text,
     time: row.created_at,
     likes: metric.likes,
     liked: metric.liked,
-    replies: repliesByParent.get(row.comment_id) || [],
+    replies: [],
     author: {
       username: row.author_username,
       displayName: row.author_name,
