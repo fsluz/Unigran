@@ -586,7 +586,12 @@ function dt(value) {
 }
 
 async function hasResult(query) {
-  const rows = await readQuery(query);
+  // TypeDB 3 usa fetch; converte `select $var;` automaticamente
+  const normalized = query.trim().replace(
+    /\bselect\s+(\$\w+)\s*;?\s*$/,
+    'fetch { "r": { $1.* } };',
+  );
+  const rows = await readQuery(normalized);
   return rows.length > 0;
 }
 
@@ -656,27 +661,60 @@ async function ensurePerson(person) {
   return person.username;
 }
 
+const UNIGRAN_ID = 'university-unigran';
+
 async function ensureInstitution() {
-  if (await hasResult(`match $institution isa educational-institute, has academic-institution-code "unigran"; select $institution;`)) {
-    console.log('skip institution UNIGRAN');
+  // Busca por academic-institution-code (entidade já tem o código)
+  const byCode = await readQuery(`
+    match $institution isa educational-institute, has academic-institution-code "unigran";
+    fetch { "institution": { $institution.* } };
+  `);
+  if (byCode.length) {
+    const existing = byCode[0]?.institution || {};
+    if (!existing['institution-id']) {
+      await writeQuery(`
+        match $institution isa educational-institute, has academic-institution-code "unigran";
+        insert $institution has institution-id "${UNIGRAN_ID}";
+      `);
+      console.log('link institution-id UNIGRAN');
+    } else {
+      console.log('skip institution UNIGRAN');
+    }
     return;
   }
-  if (await hasResult(`match $institution isa educational-institute, has name "UNIGRAN"; select $institution;`)) {
+
+  // Busca por nome (entidade existe mas sem código)
+  const byName = await readQuery(`
+    match $institution isa educational-institute, has name "UNIGRAN";
+    fetch { "institution": { $institution.* } };
+  `);
+  if (byName.length) {
     await writeQuery(`
       match $institution isa educational-institute, has name "UNIGRAN";
       insert $institution has academic-institution-code "unigran";
     `);
-    console.log('link institution UNIGRAN');
+    await writeQuery(`
+      match $institution isa educational-institute, has name "UNIGRAN";
+      insert $institution has institution-id "${UNIGRAN_ID}";
+    `);
+    console.log('link institution UNIGRAN codes');
     return;
   }
+
+  // Cria do zero com todos os atributos necessários
   await writeQuery(`
     insert
       $institution isa university,
         has name "UNIGRAN",
+        has username "unigran",
+        has institution-id "${UNIGRAN_ID}",
         has academic-institution-code "unigran",
+        has institution-status "approved",
+        has page-visibility "public",
         has is-active true,
         has is-visible true,
-        has can-publish false;
+        has can-publish false,
+        has page-creation-timestamp ${typeqlDatetime()};
   `);
   console.log('add  institution UNIGRAN');
 }
