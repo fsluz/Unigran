@@ -111,7 +111,7 @@ const people = [
     username: 'coord_academica',
     email: 'coordenacao.demo@unigran.local',
     name: 'Coordenacao Academica',
-    role: 'coordination',
+    role: 'admin',
     phone: '(67) 99992-3001',
     language: 'pt-BR',
     gender: 'other',
@@ -655,7 +655,8 @@ async function ensurePerson(person) {
         has can-publish true,
         has user-role "${esc(person.role)}",
         has page-visibility "public",
-        has post-visibility "public";
+        has post-visibility "public",
+        has page-creation-timestamp ${dt()};
   `);
   console.log(`add  person: ${person.email} (${person.role})`);
   return person.username;
@@ -1156,6 +1157,45 @@ function messagePayload(username, content) {
   });
 }
 
+// Mapeia role global para role institucional válido no @values do TypeDB
+const INSTITUTION_ROLE_MAP = {
+  admin: 'admin',
+  super_admin: 'admin',
+  coordination: 'coordination',
+  professor: 'professor',
+  secretary: 'secretary',
+  student: 'student',
+  moderator: 'moderator',
+  user: 'student',
+};
+
+async function ensureMembership(username, globalRole) {
+  const institutionRole = INSTITUTION_ROLE_MAP[globalRole] || 'student';
+  const membershipId = `membership-seed-${esc(username)}`;
+  await insertUnlessExists(
+    `
+      match
+        $member isa person, has username "${esc(username)}";
+        $university isa educational-institute, has institution-id "${UNIGRAN_ID}";
+        $membership isa institution-membership, links (member: $member, university: $university);
+      select $membership;
+    `,
+    `
+      match
+        $member isa person, has username "${esc(username)}";
+        $university isa educational-institute, has institution-id "${UNIGRAN_ID}";
+      insert
+        $membership isa institution-membership, links (member: $member, university: $university),
+          has institution-membership-id "${membershipId}",
+          has institution-role "${esc(institutionRole)}",
+          has institution-status "approved",
+          has institution-created-at ${dt('2026-02-01T00:00:00.000Z')},
+          has institution-updated-at ${dt('2026-02-01T00:00:00.000Z')};
+    `,
+    `membership ${username} → UNIGRAN (${institutionRole})`,
+  );
+}
+
 async function ensureConversation(conversation) {
   const participant0 = userRef(conversation.participants[0]);
   const participant1 = userRef(conversation.participants[1]);
@@ -1208,6 +1248,13 @@ async function main() {
   }
 
   await ensureInstitution();
+
+  // Vincular todos os usuários à UNIGRAN com institution-membership
+  // Habilita: seletor de universidade, wizard de coordenação, busca de membros
+  for (const person of people) {
+    const username = userRef(person.username);
+    if (username) await ensureMembership(username, person.role);
+  }
 
   for (const course of courses) {
     await ensureCourse(course);

@@ -97,7 +97,7 @@ GET http://localhost:3001/api/platform/v1/ava → requer login, deve retornar cu
 | `joao_silva` | `Demo@2026` | Aluno (nota 5.9–6.1, risco alto) |
 | `marina_alves` | `Demo@2026` | Aluna regular (nota 8.0) |
 | `lucas_costa` | `Demo@2026` | Aluno regular (nota 7.7) |
-| `coord_academica` | `Demo@2026` | Coordenação |
+| `coord_academica` | `Demo@2026` | Admin institucional — acessa wizard de coordenação completo |
 
 ---
 
@@ -143,7 +143,16 @@ GET http://localhost:3001/api/platform/v1/ava → requer login, deve retornar cu
 4. Clicar em **Classificar** ou **Recomendar**
 5. **O que demonstra:** integração com o serviço Python de ML
 
-### Fluxo 6: Dashboard de dados (BI)
+#### Fluxo 6: Wizard de coordenação — criar nova disciplina no AVA
+
+1. Login como `coord_academica` / `Demo@2026`
+2. Menu → **Portal Acadêmico** → aba **Coordenação**
+3. Selecionar universidade UNIGRAN no seletor (aparece porque o seed criou `institution-membership`)
+4. Criar: Campus → Curso → Semestre → Turma → Disciplina → Vincular à turma → Abrir AVA Offering → Matricular aluno → Vincular professor
+5. Voltar ao AVA como professor atribuído → nova disciplina aparece
+6. **O que demonstra:** wizard completo de setup institucional, integração Portal ↔ AVA
+
+### Fluxo 7: Dashboard de dados (BI) [era Fluxo 6]
 
 1. Login como `coord_academica` ou `gabrielaozoio`
 2. Menu → **Admin Hub** → **Power BI** (ou endpoint direto `/admin/power-bi`)
