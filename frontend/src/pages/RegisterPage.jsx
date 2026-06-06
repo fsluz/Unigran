@@ -207,9 +207,9 @@ export default function RegisterPage({ onGoLogin }) {
               />
               <span>
                 Aceito os{' '}
-                <button type="button" onClick={() => setConsentOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontWeight: 600, fontSize: 13, padding: 0 }}>
+                <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                   Termos de Uso e Política de Privacidade
-                </button>
+                </a>
                 {' '}da plataforma. *
               </span>
             </label>

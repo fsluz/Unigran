@@ -286,6 +286,240 @@
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
 
+/* Final compact composer + transparent actions. */
+.home-page .post-composer,
+.post-composer {
+  max-width: 100%;
+  padding: 16px 18px !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+}
+
+.home-page .post-composer .composer-row,
+.post-composer .composer-row,
+.home-page .composer-row,
+.composer-row {
+  min-height: 74px !important;
+  padding: 0 !important;
+  gap: 14px !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start !important;
+}
+
+.home-page .post-composer .composer-textarea,
+.post-composer .composer-textarea,
+.home-page .composer-textarea,
+.composer-textarea {
+  min-height: 74px !important;
+  max-height: 170px !important;
+  padding: 18px 22px !important;
+  border-radius: 20px !important;
+  font-size: 18px !important;
+  line-height: 1.35 !important;
+}
+
+.home-page .post-composer .composer-footer,
+.post-composer .composer-footer,
+.home-page .composer-footer,
+.composer-footer {
+  margin-top: 14px !important;
+  padding: 0 !important;
+  min-height: 48px !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+}
+
+.home-page .post-composer .composer-mode-select,
+.post-composer .composer-mode-select,
+.home-page .composer-mode-select,
+.composer-mode-select {
+  width: 132px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  border-radius: 16px !important;
+  font-size: 16px !important;
+  padding: 0 38px 0 18px !important;
+}
+
+.home-page .post-composer .composer-btn,
+.post-composer .composer-btn,
+.home-page .composer-btn,
+.composer-btn {
+  width: 46px !important;
+  height: 46px !important;
+  min-width: 46px !important;
+  min-height: 46px !important;
+  border-radius: 14px !important;
+}
+
+.home-page .post-composer .composer-submit-btn,
+.post-composer .composer-submit-btn,
+.home-page .composer-submit-btn,
+.composer-submit-btn {
+  min-width: 116px !important;
+  width: auto !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 24px !important;
+  border-radius: 16px !important;
+  font-size: 17px !important;
+}
+
+.home-page .post-card-model .post-footer,
+.post-card-model .post-footer,
+.post-card .post-footer,
+.post-footer {
+  background: transparent !important;
+}
+
+.home-page .post-card-model .post-action-btn,
+.post-card-model .post-action-btn,
+.post-card .post-action-btn,
+.post-action-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.home-page .post-card-model .post-action-btn:hover,
+.post-card-model .post-action-btn:hover,
+.post-card .post-action-btn:hover,
+.post-action-btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent) !important;
+}
+
+.cookie-consent {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 120;
+  width: min(620px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  box-shadow: 0 18px 60px rgba(0,0,0,.32);
+  backdrop-filter: blur(18px);
+}
+
+.cookie-consent strong {
+  color: var(--text);
+}
+
+.cookie-consent p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.cookie-consent button,
+.terms-back {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 18px;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(135deg,#6a00f4,#36f 60%,#00a8ff);
+}
+
+.cookie-consent button:hover,
+.terms-back:hover {
+  background: linear-gradient(135deg,#00a8ff,#36f 60%,#6a00f4);
+}
+
+.terms-page {
+  min-height: 100dvh;
+  padding: 48px 18px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(106,0,244,.22), transparent 34%),
+    radial-gradient(circle at 82% 8%, rgba(0,168,255,.16), transparent 30%),
+    var(--page-bg);
+}
+
+.terms-card {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 44px);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: 0 28px 90px rgba(0,0,0,.28);
+}
+
+.terms-kicker {
+  margin: 26px 0 8px;
+  color: var(--accent);
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.terms-card h1 {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.terms-lead,
+.terms-card p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.terms-card h2 {
+  margin: 24px 0 8px;
+  color: var(--text);
+  font-size: 18px;
+}
+
+@media (max-width: 640px) {
+  .home-page .post-composer,
+  .post-composer {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .home-page .post-composer .composer-row,
+  .post-composer .composer-row,
+  .home-page .composer-row,
+  .composer-row {
+    min-height: 62px !important;
+    gap: 10px !important;
+  }
+
+  .home-page .post-composer .composer-textarea,
+  .post-composer .composer-textarea,
+  .home-page .composer-textarea,
+  .composer-textarea {
+    min-height: 62px !important;
+    padding: 14px 16px !important;
+    font-size: 15px !important;
+  }
+
+  .home-page .post-composer .composer-footer,
+  .post-composer .composer-footer,
+  .home-page .composer-footer,
+  .composer-footer {
+    flex-wrap: wrap !important;
+  }
+
+  .home-page .post-composer .composer-mode-select,
+  .post-composer .composer-mode-select {
+    width: 112px !important;
+  }
+
+  .cookie-consent {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 /* Composer estilo neon */
 .post-composer {
   position: relative;

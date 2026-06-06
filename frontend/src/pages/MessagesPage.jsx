@@ -648,10 +648,16 @@ export default function MessagesPage() {
         picture = media?.url || '';
       }
       const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants, picture });
-      setConversations(prev => [conversation, ...prev]);
+      const hydratedConversation = {
+        ...conversation,
+        participants: selectedGroupUsers,
+        groupPicture: picture || conversation.groupPicture || '',
+        type: 'group',
+      };
+      setConversations(prev => [hydratedConversation, ...prev]);
       closeRealtime();
       setRealtimeRevision(value => value + 1);
-      setActive(conversation);
+      setActive(hydratedConversation);
       setMobileChatOpen(true);
       setSelectedGroupUsers([]);
       setGroupSearch('');
@@ -670,6 +676,12 @@ export default function MessagesPage() {
     setLoading(true);
     try {
       await addGroupParticipants({ token, conversationId: active.id, participants });
+      setActive(prev => prev?.id === active.id
+        ? { ...prev, participants: [...(prev.participants || []), ...selectedGroupUsers] }
+        : prev);
+      setConversations(prev => prev.map(conv => conv.id === active.id
+        ? { ...conv, participants: [...(conv.participants || []), ...selectedGroupUsers] }
+        : conv));
       setSelectedGroupUsers([]);
       setGroupSearch('');
       setGroupResults([]);

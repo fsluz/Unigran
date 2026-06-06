@@ -22,8 +22,10 @@ import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
+import CookieConsentBanner from './components/layout/CookieConsentBanner';
 import { AchievementsProvider } from './contexts/AchievementsContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import TermsPage from './pages/TermsPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
@@ -133,6 +135,7 @@ function AppShell() {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : false;
   });
+  const [termsOpen, setTermsOpen] = useState(() => window.location.pathname === '/terms' || window.location.pathname === '/termos');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -184,6 +187,10 @@ function AppShell() {
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
+  }
+
+  if (termsOpen) {
+    return <TermsPage onBack={() => { window.history.pushState({}, '', '/'); setTermsOpen(false); }} />;
   }
 
   if (!user) {
@@ -274,6 +281,7 @@ function AppShell() {
       <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
         {pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />}
       </ErrorBoundary>
+      <CookieConsentBanner />
       <FloatingAssistants />
       {enteringPortal && (
         <PortalEntryTransition

@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
 import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
-import { normalizeRole } from '../middleware/auth.js';
+import { auth, normalizeRole } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp, generateBackupCodes, hashBackupCode, verifyBackupCode, removeUsedBackupCode } from '../services/totp.service.js';
@@ -35,6 +35,7 @@ const LoginSchema = z.object({
   ),
   password: z.string().min(1),
   twoFactorCode: z.string().optional(),
+  remember: z.boolean().optional(),
 });
 
 const GoogleSchema = z.object({
@@ -47,14 +48,15 @@ function sign(payload) {
 
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
 
-function setAuthCookie(res, token) {
-  res.cookie('jwt', token, {
+function setAuthCookie(res, token, remember = true) {
+  const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    maxAge: COOKIE_MAX_AGE,
     path: '/',
-  });
+  };
+  if (remember) options.maxAge = COOKIE_MAX_AGE;
+  res.cookie('jwt', token, options);
 }
 
 function attrBoolTrue(v) {
@@ -120,8 +122,10 @@ router.post('/register', async (req, res) => {
           has approved-cookies ${acceptedCookies};
     `);
     const payload = { id: username, username, email, role: 'user', permissions: permissionsForRole('user'), displayName: name, phone: phone || null };
+    const token = sign(payload);
+    setAuthCookie(res, token, true);
     auditLog({ action: 'REGISTER', category: 'AUTH', actor: username, target: username, ip: getIp(req), meta: { email } });
-    res.status(201).json({ token: sign(payload), user: payload });
+    res.status(201).json({ token, user: payload });
   } catch (err) {
     if (err.message?.includes('unique') || err.message?.includes('key')) {
       return res.status(409).json({ error: 'Email ou username ja em uso' });
@@ -175,7 +179,7 @@ router.post('/login', async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { email, password } = parsed.data;
+  const { email, password, remember = false } = parsed.data;
   const ip = getIp(req);
 
   // Bloquear IPs com muitas tentativas
@@ -268,7 +272,7 @@ router.post('/login', async (req, res) => {
     resetRateLimit(req); // login bem-sucedido — zera o contador do IP
     auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
     const token = sign(payload);
-    setAuthCookie(res, token);
+    setAuthCookie(res, token, remember);
     res.json({ token, user: payload });
   } catch (err) {
     console.error('[login]', err);
@@ -337,6 +341,28 @@ router.post('/google', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('jwt', { path: '/' });
   res.json({ ok: true });
+});
+
+router.post('/cookies/accept', auth, async (req, res) => {
+  try {
+    await writeQuery(`
+      match
+        $u isa person, has username "${typeqlLiteral(req.user.username)}";
+      update
+        $u has approved-cookies true;
+    `);
+    auditLog({
+      action: 'COOKIES_ACCEPTED',
+      category: 'PRIVACY',
+      actor: req.user.username,
+      target: req.user.username,
+      ip: getIp(req),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[cookies accept]', err);
+    res.status(500).json({ error: 'Erro ao salvar consentimento' });
+  }
 });
 
 router.get('/me', async (req, res) => {

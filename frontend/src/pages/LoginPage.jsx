@@ -113,7 +113,7 @@ export default function LoginPage({ onGoRegister }) {
       const res = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, twoFactorCode: needs2FA ? twoFactorCode : undefined }),
+        body: JSON.stringify({ email, password, remember, twoFactorCode: needs2FA ? twoFactorCode : undefined }),
       });
       const data = await res.json();
 
