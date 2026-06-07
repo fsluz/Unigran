@@ -143,8 +143,9 @@ function AppShell() {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-      const navigate = (id) => {
+      const navigate = (id, detail = null) => {
         if (id === 'profile') setProfileKey(k => k + 1);
+        if (id === 'communities' && detail?.communityId) setOpenCommunityId(detail.communityId);
         if (id === 'campus' && hasPermission(user, 'platform:read')) {
           if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
             setPage('campus');
@@ -258,7 +259,7 @@ function AppShell() {
       </button>
       <Sidebar
         page={page}
-        onNavigate={id => { setNotifPanelOpen(false); navigate(id); }}
+        onNavigate={(id, detail) => { setNotifPanelOpen(false); navigate(id, detail); }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         onOpenNotifications={() => {
@@ -280,7 +281,7 @@ function AppShell() {
         sidebarCollapsed={sidebarCollapsed}
       />
       <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
-        js{page === 'profile'
+        {page === 'profile'
           ? <ProfilePage key={profileKey} onNavigate={setPage} />
           : (pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />)
         }

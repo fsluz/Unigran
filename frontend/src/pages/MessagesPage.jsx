@@ -248,7 +248,7 @@ export default function MessagesPage() {
           return { ...conv, lastMessagePreview: text || '' };
         }));
         setConversations(decorated);
-        setActive(prev => prev || (isMobileMessagesView() ? null : (loaded[0] || null)));
+        setActive(prev => prev || (isMobileMessagesView() ? null : (decorated[0] || null)));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
   }, [token, showToast]);
@@ -273,7 +273,7 @@ export default function MessagesPage() {
               ? conv
               : { ...conv, lastMessagePreview: existing?.lastMessagePreview || '' };
           }));
-          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (loaded[0] || null)));
+          setActive(prev => prev ? (decorated.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (decorated[0] || null)));
         })
         .catch(() => null);
     }, 10000);

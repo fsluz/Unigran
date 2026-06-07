@@ -65,8 +65,9 @@ router.get('/', auth, async (req, res) => {
       description: r.description || '',
       type: r.type,
       picture: r.picture || null,
-      members: (membersByGroup.get(r.id) || []).length,
-      joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username),
+      members: (membersByGroup.get(r.id) || []).filter(m => !['pending', 'banned'].includes(m.rank || '')).length,
+      joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && !['pending', 'banned'].includes(m.rank || '')),
+      requested: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && m.rank === 'pending'),
       role: (membersByGroup.get(r.id) || []).find(m => m.username === req.user.username)?.rank || '',
     }))});
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
@@ -90,7 +91,8 @@ router.get('/:id', auth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Comunidade nao encontrada' });
     const members = await communityMembers(req.params.id);
     const role = members.find(m => m.username === req.user.username)?.rank || '';
-    res.json({ community: { ...rows[0], members: members.length, joined: Boolean(role), role } });
+    const activeMembers = members.filter(m => !['pending', 'banned'].includes(m.rank));
+    res.json({ community: { ...rows[0], members: activeMembers.length, joined: Boolean(role && !['pending', 'banned'].includes(role)), requested: role === 'pending', role } });
   } catch (err) {
     console.error('[community GET]', err);
     res.status(500).json({ error: 'Erro ao carregar comunidade' });
@@ -171,16 +173,24 @@ router.post('/', auth, async (req, res) => {
 router.post('/:id/join', auth, async (req, res) => {
   const now = typeqlDatetime();
   try {
+    const groupRows = await readQuery(`
+      match
+        $g isa group, has group-id "${typeqlLiteral(req.params.id)}", has page-visibility $visibility;
+      fetch { "visibility": $visibility };
+    `);
+    const visibility = groupRows[0]?.visibility || 'public';
+    const rank = visibility === 'private' ? 'pending' : 'member';
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
         $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
+        not { $old isa group-membership, links (member: $u, group: $g); };
       insert
         $m isa group-membership, links (member: $u, group: $g),
-          has rank "member",
+          has rank "${rank}",
           has start-timestamp ${now};
     `);
-    res.json({ joined: true });
+    res.json({ joined: rank === 'member', requested: rank === 'pending', rank });
   } catch (err) { console.error('[join]', err); res.status(500).json({ error: 'Erro ao entrar' }); }
 });
 
@@ -259,7 +269,7 @@ router.delete('/:id', auth, requirePermission('posts:moderate'), async (req, res
 /* PUT /api/communities/:id/members/:uid */
 router.put('/:id/members/:uid', auth, async (req, res) => {
   const { rank } = req.body || {};
-  if (!['admin', 'moderator', 'member'].includes(rank)) {
+  if (!['admin', 'moderator', 'member', 'pending', 'banned'].includes(rank)) {
     return res.status(400).json({ error: 'Cargo invalido' });
   }
   try {

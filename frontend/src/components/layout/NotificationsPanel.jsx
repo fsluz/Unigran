@@ -46,7 +46,10 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed }) 
     if (!open || !token) return;
     setLoading(true);
     fetchNotifications(token)
-      .then(setItems)
+      .then((notifications) => {
+        setItems(notifications);
+        if (notifications.length) markAllAsRead(token).catch(() => null);
+      })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, [open, token]);

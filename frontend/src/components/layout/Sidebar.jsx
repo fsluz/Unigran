@@ -56,12 +56,18 @@ export default function Sidebar({
   useEffect(() => {
     if (!token) return;
     fetchConversations(token)
-      .then(items => setMessageCount((items || []).reduce((s, i) => s + Number(i.receivedUnreadCount || 0), 0)))
+      .then(items => setMessageCount((items || []).filter(i => Number(i.receivedUnreadCount || 0) > 0).length))
       .catch(() => setMessageCount(0));
     fetchNotifications(token)
-      .then(items => setNotifCount((items || []).length))
+      .then(items => setNotifCount((items || []).filter(i => !i.read).length))
       .catch(() => setNotifCount(0));
   }, [token, page]);
+
+  useEffect(() => {
+    const base = 'Unigran - Rede Social Academica';
+    document.title = messageCount > 0 ? `(${messageCount}) ${base}` : base;
+    return () => { document.title = base; };
+  }, [messageCount]);
 
   useEffect(() => {
     if (notifClearKey) setNotifCount(0);
@@ -127,7 +133,7 @@ export default function Sidebar({
             <>
               <div className="sidebar-wide-section-label"><span>Comunidades seguidas</span></div>
               {followedCommunities.length ? followedCommunities.slice(0, 5).map(c => (
-                <button key={c.id} type="button" className="sidebar-wide-comm" onClick={() => onNavigate('communities')}>
+                <button key={c.id} type="button" className="sidebar-wide-comm" onClick={() => onNavigate('communities', { communityId: c.id })}>
                   <div className="sidebar-comm-icon" style={{ background: `${c.color}22`, color: c.color }}>{c.icon || (c.name || '?').slice(0, 2)}</div>
                   <div className="sidebar-comm-info">
                     <div className="sidebar-comm-name">{c.name}</div>
