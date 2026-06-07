@@ -402,10 +402,95 @@ function PostsModal({ token, onClose }) {
   );
 }
 
+const RANK_LABEL = { admin: 'Admin', moderator: 'Mod', member: 'Membro', pending: 'Pendente', banned: 'Banido' };
+const RANK_COLOR = { admin: '#ef4444', moderator: '#f97316', member: '#10b981', pending: '#f59e0b', banned: '#6b7280' };
+
+function CommunityMembersPanel({ token, community, onBack }) {
+  const [members, setMembers]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+
+  useEffect(() => {
+    apiFetch('/communities/' + community.id + '/members', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => setMembers(d.members || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token, community.id]);
+
+  const filtered = members.filter(m =>
+    !search || (m.displayName + ' ' + m.username).toLowerCase().includes(search.toLowerCase())
+  );
+
+  const rankCounts = members.reduce((acc, m) => {
+    const r = m.rank || 'member';
+    acc[r] = (acc[r] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <>
+      <div className="umodal-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="umodal-close" onClick={onBack} style={{ fontSize: '1.1rem', padding: '4px 8px' }}>←</button>
+          <div className="umodal-avatar" style={{ background: '#10b981', width: 30, height: 30, fontSize: '0.85rem', flexShrink: 0 }}>
+            {community.name[0].toUpperCase()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{community.name}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary,#888)', fontWeight: 400 }}>
+              {members.length} membro{members.length !== 1 ? 's' : ''}
+              {Object.keys(rankCounts).filter(r => r !== 'member' && r !== 'pending' && r !== 'banned').map(r =>
+                <span key={r} style={{ marginLeft: 6, color: RANK_COLOR[r] || '#9ca3af' }}>· {rankCounts[r]} {RANK_LABEL[r] || r}</span>
+              )}
+            </span>
+          </div>
+        </div>
+        <span className="umodal-role" style={{ background: community.type === 'public' ? '#10b98122' : '#f59e0b22', color: community.type === 'public' ? '#10b981' : '#f59e0b' }}>
+          {community.type === 'public' ? 'pública' : 'privada'}
+        </span>
+      </div>
+      <div className="umodal-search">
+        <input
+          placeholder="Buscar membro..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          autoFocus
+        />
+      </div>
+      <div className="umodal-body">
+        {loading ? (
+          <div className="umodal-loading"><div className="dash-spinner" /> Carregando membros...</div>
+        ) : filtered.length === 0 ? (
+          <div className="umodal-empty">Nenhum membro encontrado</div>
+        ) : filtered.map(m => (
+          <div key={m.username} className="umodal-row">
+            <div className="umodal-avatar" style={{ background: '#6366f122', color: '#6366f1' }}>
+              {(m.displayName || m.username)[0].toUpperCase()}
+            </div>
+            <div className="umodal-info">
+              <span className="umodal-name">{m.displayName || m.username}</span>
+              <span className="umodal-username">@{m.username}</span>
+            </div>
+            <span className="umodal-role" style={{ background: (RANK_COLOR[m.rank] || '#9ca3af') + '22', color: RANK_COLOR[m.rank] || '#9ca3af' }}>
+              {RANK_LABEL[m.rank] || m.rank || 'Membro'}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="umodal-footer">
+        {filtered.length} membro{filtered.length !== 1 ? 's' : ''}
+        {search && <span style={{ marginLeft: 6, opacity: 0.6 }}>· filtrado</span>}
+      </div>
+    </>
+  );
+}
+
 function CommunitiesModal({ token, onClose }) {
-  const [communities, setCommunities] = useState([]);
-  const [loadingC, setLoadingC]       = useState(true);
-  const [search, setSearch]           = useState('');
+  const [communities, setCommunities]   = useState([]);
+  const [loadingC, setLoadingC]         = useState(true);
+  const [search, setSearch]             = useState('');
+  const [selected, setSelected]         = useState(null);
 
   useEffect(() => {
     apiFetch('/communities', { headers: { Authorization: 'Bearer ' + token } })
@@ -419,44 +504,57 @@ function CommunitiesModal({ token, onClose }) {
     !search || (c.name + ' ' + (c.description || '')).toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleBack = () => { setSelected(null); setSearch(''); };
+
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box" onClick={e => e.stopPropagation()}>
-        <div className="umodal-header">
-          <span>Comunidades</span>
-          <button className="umodal-close" onClick={onClose}>X</button>
-        </div>
-        <div className="umodal-search">
-          <input
-            placeholder="Buscar comunidade..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div className="umodal-body">
-          {loadingC ? (
-            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
-          ) : filtered.length === 0 ? (
-            <div className="umodal-empty">Nenhuma comunidade encontrada</div>
-          ) : filtered.map(c => (
-            <div key={c.id} className="umodal-row">
-              <div className="umodal-avatar" style={{ background: '#10b981' }}>
-                {c.name[0].toUpperCase()}
-              </div>
-              <div className="umodal-info">
-                <span className="umodal-name">{c.name}</span>
-                <span className="umodal-username">
-                  {c.members} membro{c.members !== 1 ? 's' : ''} - {c.description || 'Sem descricao'}
-                </span>
-              </div>
-              <span className="umodal-role" style={{ background: c.type === 'public' ? '#10b98122' : '#f59e0b22', color: c.type === 'public' ? '#10b981' : '#f59e0b' }}>
-                {c.type === 'public' ? 'publica' : 'privada'}
-              </span>
+        {selected ? (
+          <CommunityMembersPanel token={token} community={selected} onBack={handleBack} />
+        ) : (
+          <>
+            <div className="umodal-header">
+              <span>Comunidades</span>
+              <button className="umodal-close" onClick={onClose}>✕</button>
             </div>
-          ))}
-        </div>
-        <div className="umodal-footer">{filtered.length} comunidade(s)</div>
+            <div className="umodal-search">
+              <input
+                placeholder="Buscar comunidade..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="umodal-body">
+              {loadingC ? (
+                <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+              ) : filtered.length === 0 ? (
+                <div className="umodal-empty">Nenhuma comunidade encontrada</div>
+              ) : filtered.map(c => (
+                <div
+                  key={c.id}
+                  className="umodal-row umodal-row-clickable"
+                  onClick={() => { setSelected(c); setSearch(''); }}
+                >
+                  <div className="umodal-avatar" style={{ background: '#10b981' }}>
+                    {c.name[0].toUpperCase()}
+                  </div>
+                  <div className="umodal-info">
+                    <span className="umodal-name">{c.name}</span>
+                    <span className="umodal-username">
+                      {c.members} membro{c.members !== 1 ? 's' : ''}{c.description ? ' · ' + c.description : ''}
+                    </span>
+                  </div>
+                  <span className="umodal-role" style={{ background: c.type === 'public' ? '#10b98122' : '#f59e0b22', color: c.type === 'public' ? '#10b981' : '#f59e0b' }}>
+                    {c.type === 'public' ? 'pública' : 'privada'}
+                  </span>
+                  <span style={{ color: 'var(--text-secondary,#aaa)', fontSize: '1rem', flexShrink: 0 }}>›</span>
+                </div>
+              ))}
+            </div>
+            <div className="umodal-footer">{filtered.length} comunidade(s)</div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1255,6 +1353,8 @@ export default function AdminDashboardPage() {
         .umodal-body { overflow-y: auto; flex: 1; }
         .umodal-row { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border-color, #f3f4f6); }
         .umodal-row:hover { background: var(--bg-secondary, #f9fafb); }
+        .umodal-row-clickable { cursor: pointer; }
+        .umodal-row-clickable:hover { background: var(--bg-secondary, #f3f4f6); }
         .umodal-avatar { width: 34px; height: 34px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
         .umodal-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .umodal-name { font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #111); }
