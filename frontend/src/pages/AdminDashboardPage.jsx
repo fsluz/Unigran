@@ -176,9 +176,10 @@ function XAxis({ data, labelKey = 'day' }) {
 }
 
 function UsersModal({ token, onClose }) {
-  const [users, setUsers]       = useState([]);
-  const [loadingU, setLoadingU] = useState(true);
-  const [search, setSearch]     = useState('');
+  const [users, setUsers]           = useState([]);
+  const [loadingU, setLoadingU]     = useState(true);
+  const [search, setSearch]         = useState('');
+  const [roleFilter, setRoleFilter] = useState('todos');
 
   useEffect(() => {
     apiFetch('/admin/users', { headers: { Authorization: 'Bearer ' + token } })
@@ -188,22 +189,60 @@ function UsersModal({ token, onClose }) {
       .finally(() => setLoadingU(false));
   }, [token]);
 
-  const filtered = users.filter(u =>
-    !search || (u.name + ' ' + u.username + ' ' + u.email).toLowerCase().includes(search.toLowerCase())
-  );
-
   const ROLE_COLOR = {
     super_admin: '#ef4444', admin: '#f97316', coordination: '#8b5cf6',
     moderator: '#06b6d4', professor: '#10b981', student: '#3b82f6', user: '#9ca3af',
   };
+  const ROLE_LABEL = {
+    super_admin: 'Super Admin', admin: 'Admin', coordination: 'Coordenação',
+    moderator: 'Moderador', professor: 'Professor', student: 'Aluno', user: 'Usuário',
+  };
+
+  const roleCounts = users.reduce((acc, u) => {
+    acc[u.role] = (acc[u.role] || 0) + 1;
+    return acc;
+  }, {});
+  const existingRoles = Object.keys(roleCounts).sort((a, b) => roleCounts[b] - roleCounts[a]);
+
+  const filtered = users.filter(u => {
+    const matchRole   = roleFilter === 'todos' || u.role === roleFilter;
+    const matchSearch = !search || (u.name + ' ' + u.username + ' ' + u.email).toLowerCase().includes(search.toLowerCase());
+    return matchRole && matchSearch;
+  });
 
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box" onClick={e => e.stopPropagation()}>
         <div className="umodal-header">
-          <span>Usuarios cadastrados</span>
-          <button className="umodal-close" onClick={onClose}>X</button>
+          <span>Usuários cadastrados</span>
+          <button className="umodal-close" onClick={onClose}>✕</button>
         </div>
+
+        <div className="umodal-role-filters">
+          <button
+            className={'umodal-role-tab' + (roleFilter === 'todos' ? ' active' : '')}
+            onClick={() => setRoleFilter('todos')}
+          >
+            Todos <span className="umodal-role-count">{users.length}</span>
+          </button>
+          {existingRoles.map(role => (
+            <button
+              key={role}
+              className={'umodal-role-tab' + (roleFilter === role ? ' active' : '')}
+              style={roleFilter === role ? { borderBottomColor: ROLE_COLOR[role] || '#9ca3af', color: ROLE_COLOR[role] || '#9ca3af' } : {}}
+              onClick={() => setRoleFilter(role)}
+            >
+              {ROLE_LABEL[role] || role}
+              <span
+                className="umodal-role-count"
+                style={roleFilter === role ? { background: (ROLE_COLOR[role] || '#9ca3af') + '22', color: ROLE_COLOR[role] || '#9ca3af' } : {}}
+              >
+                {roleCounts[role]}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="umodal-search">
           <input
             placeholder="Buscar por nome, username ou e-mail..."
@@ -216,22 +255,25 @@ function UsersModal({ token, onClose }) {
           {loadingU ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
           ) : filtered.length === 0 ? (
-            <div className="umodal-empty">Nenhum usuario encontrado</div>
+            <div className="umodal-empty">Nenhum usuário encontrado</div>
           ) : filtered.map(u => (
             <div key={u.username} className="umodal-row">
               <div className="umodal-avatar">{(u.name || u.username)[0].toUpperCase()}</div>
               <div className="umodal-info">
                 <span className="umodal-name">{u.name || u.username}</span>
-                <span className="umodal-username">@{u.username} - {u.email}</span>
+                <span className="umodal-username">@{u.username} · {u.email}</span>
               </div>
               <span className="umodal-role" style={{ background: (ROLE_COLOR[u.role] || '#9ca3af') + '22', color: ROLE_COLOR[u.role] || '#9ca3af' }}>
-                {u.role}
+                {ROLE_LABEL[u.role] || u.role}
               </span>
               {u.banned && <span className="umodal-banned">banido</span>}
             </div>
           ))}
         </div>
-        <div className="umodal-footer">{filtered.length} usuario(s)</div>
+        <div className="umodal-footer">
+          {filtered.length} usuário(s)
+          {roleFilter !== 'todos' && <span style={{ marginLeft: 6, opacity: 0.6 }}>· filtrado por: {ROLE_LABEL[roleFilter] || roleFilter}</span>}
+        </div>
       </div>
     </div>
   );
@@ -1195,13 +1237,20 @@ export default function AdminDashboardPage() {
         .dash-btn-retry { padding: 8px 20px; border-radius: 8px; border: none; background: #6366f1; color: #fff; cursor: pointer; font-size: 0.85rem; }
         @media (max-width: 900px) { .dash-row-2 { grid-template-columns: 1fr; } .dash-row-3 { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 600px) { .dash-page { padding: 16px; } .dash-row-3 { grid-template-columns: 1fr; } .dash-metrics-grid { grid-template-columns: repeat(2, 1fr); } .dash-action-row { grid-template-columns: 24px 1fr 60px; } .dash-action-bar-wrap { display: none; } }
+        .umodal-role-filters { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
+        .umodal-role-filters::-webkit-scrollbar { display: none; }
+        .umodal-role-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary, #888); font-size: 0.8rem; font-weight: 500; cursor: pointer; border-radius: 6px 6px 0 0; white-space: nowrap; transition: color 0.15s, background 0.15s, border-color 0.15s; font-family: inherit; }
+        .umodal-role-tab:hover { color: var(--text-primary, #111); background: var(--bg-secondary, #f3f4f6); }
+        .umodal-role-tab.active { color: var(--text-primary, #111); border-bottom-color: var(--accent, #6366f1); font-weight: 600; }
+        .umodal-role-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 1px 6px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #888); transition: background 0.15s, color 0.15s; }
+        .umodal-role-filters { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
         .umodal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-        .umodal-box { background: var(--bg-primary, #fff); border-radius: 16px; width: 100%; max-width: 760px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.28); }
-        .umodal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+        .umodal-box { background: var(--bg-primary, #fff); border-radius: 16px; width: 100%; max-width: 760px; height: 88vh; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.28); color: var(--text-primary, #111); }
+        .umodal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); color: var(--text-primary, #111); }
         .umodal-close { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text-secondary, #666); padding: 4px 8px; border-radius: 6px; }
         .umodal-close:hover { background: var(--bg-secondary, #f3f4f6); }
         .umodal-search { padding: 12px 20px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
-        .umodal-search input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--bg-secondary, #f9fafb); }
+        .umodal-search input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.85rem; outline: none; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); }
         .umodal-search input:focus { border-color: #6366f1; }
         .umodal-body { overflow-y: auto; flex: 1; }
         .umodal-row { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border-color, #f3f4f6); }
