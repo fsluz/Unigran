@@ -173,16 +173,23 @@ export async function readAuditLogs(filters = {}) {
       const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
       const limit = Math.min(parseInt(filters.limit) || 500, 1000);
 
-      const { rows } = await db.query(
-        `SELECT id, timestamp, level, category, action, actor, target, ip, meta
-         FROM audit_logs
-         ${where}
-         ORDER BY timestamp DESC
-         LIMIT $${idx}`,
-        [...values, limit]
-      );
+      // Busca logs + total real em paralelo
+      const [{ rows }, { rows: countRows }] = await Promise.all([
+        db.query(
+          `SELECT id, timestamp, level, category, action, actor, target, ip, meta
+           FROM audit_logs
+           ${where}
+           ORDER BY timestamp DESC
+           LIMIT $${idx}`,
+          [...values, limit]
+        ),
+        db.query(
+          `SELECT COUNT(*)::int as total FROM audit_logs ${where}`,
+          values
+        ),
+      ]);
 
-      return rows.map(row => ({
+      const logs = rows.map(row => ({
         ...row,
         timestamp: row.timestamp instanceof Date
           ? row.timestamp.toISOString()
@@ -191,18 +198,21 @@ export async function readAuditLogs(filters = {}) {
           ? (() => { try { return JSON.parse(row.meta); } catch { return {}; } })()
           : (row.meta || {}),
       }));
+
+      return { logs, total: countRows[0]?.total || logs.length };
     } catch (err) {
       console.error('[audit] Falha ao ler Supabase, usando arquivo local:', err.message);
     }
   }
 
   // Fallback: arquivo local
-  if (!fs.existsSync(LOG_FILE)) return [];
-  return fs.readFileSync(LOG_FILE, 'utf8')
+  if (!fs.existsSync(LOG_FILE)) return { logs: [], total: 0 };
+  const logs = fs.readFileSync(LOG_FILE, 'utf8')
     .split('\n')
     .filter(Boolean)
     .map(line => { try { return JSON.parse(line); } catch { return null; } })
     .filter(Boolean)
     .reverse()
     .slice(0, 500);
+  return { logs, total: logs.length };
 }

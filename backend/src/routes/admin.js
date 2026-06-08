@@ -273,10 +273,10 @@ router.get('/audit-logs', requirePermission('audit:read'), async (req, res) => {
     const { category, action, actor, level, from, to, limit } = req.query;
 
     // Filtros passados direto pro service (query no banco, não em memória)
-    const logs = await readAuditLogs({ category, action, actor, level, from, to, limit });
+    const { logs, total } = await readAuditLogs({ category, action, actor, level, from, to, limit });
 
     auditLog({ action: 'AUDIT_LOGS_ACCESSED', category: 'ADMIN', actor: req.user?.username, ip: getIp(req) });
-    res.json({ logs, total: logs.length });
+    res.json({ logs, total });
   } catch (err) {
     console.error('[audit-logs]', err);
     res.status(500).json({ error: 'Erro ao ler logs' });

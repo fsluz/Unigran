@@ -943,98 +943,146 @@ function BlockedLoginsModal({ token, onClose }) {
 
 
 function AuditLogsModal({ token, initialLevel, onClose }) {
-  const LEVELS     = ['INFO', 'WARN', 'ALERT', 'ERROR'];
-  const CATEGORIES = ['AUTH', 'ADMIN', 'POST', 'COMMUNITY', 'USER', 'SECURITY', 'SYSTEM'];
+  const LEVELS   = ['INFO', 'WARN', 'ALERT', 'ERROR'];
+  const CATS     = ['AUTH', 'ADMIN', 'PRIVACY', 'DATA'];
   const LEVEL_COLOR = { INFO: '#6366f1', WARN: '#f59e0b', ALERT: '#f97316', ERROR: '#ef4444' };
-  const LEVEL_ICON  = { INFO: 'ℹ️', WARN: '⚠️', ALERT: '🔔', ERROR: '🔴' };
+  const LEVEL_ICON  = { INFO: 'ℹ️',    WARN: '⚠️',       ALERT: '🔔',      ERROR: '🔴' };
+  const CAT_COLOR   = { AUTH: '#3b82f6', ADMIN: '#8b5cf6', PRIVACY: '#06b6d4', DATA: '#10b981' };
 
   const [logs, setLogs]         = useState([]);
+  const [allLogs, setAllLogs]   = useState([]);   // cache completo pra filtrar no cliente
   const [loading, setLoading]   = useState(false);
   const [total, setTotal]       = useState(0);
   const [expanded, setExpanded] = useState(null);
 
   const [level,    setLevel]    = useState(initialLevel || '');
   const [category, setCategory] = useState('');
-  const [action,   setAction]   = useState('');
-  const [actor,    setActor]    = useState('');
+  const [search,   setSearch]   = useState('');
   const [from,     setFrom]     = useState('');
   const [to,       setTo]       = useState('');
 
+  // Busca todos os logs (sem filtros de nível/cat — fazemos no cliente)
   const fetchLogs = useCallback(() => {
     setLoading(true);
     setExpanded(null);
-    const params = new URLSearchParams({ limit: 200 });
-    if (level)        params.set('level',    level);
-    if (category)     params.set('category', category);
-    if (action.trim()) params.set('action',  action.trim());
-    if (actor.trim())  params.set('actor',   actor.trim());
-    if (from)         params.set('from',     from + 'T00:00:00Z');
-    if (to)           params.set('to',       to   + 'T23:59:59Z');
+    const params = new URLSearchParams({ limit: 500 });
+    if (from) params.set('from', from + 'T00:00:00Z');
+    if (to)   params.set('to',   to   + 'T23:59:59Z');
     apiFetch('/admin/audit-logs?' + params.toString(), { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
-      .then(d => { setLogs(d.logs || []); setTotal(d.total || (d.logs || []).length); })
+      .then(d => {
+        const all = d.logs || [];
+        setAllLogs(all);
+        setTotal(d.total ?? all.length);  // total real do banco, não só os carregados
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token, level, category, action, actor, from, to]);
+  }, [token, from, to]);
 
   useEffect(() => { fetchLogs(); }, []);
 
-  const clearFilters = () => { setLevel(''); setCategory(''); setAction(''); setActor(''); setFrom(''); setTo(''); };
-  const hasFilters   = level || category || action.trim() || actor.trim() || from || to;
-  const handleKey    = e => { if (e.key === 'Enter') fetchLogs(); };
+  // Filtragem no cliente — instantânea ao clicar nas pills
+  const filtered = allLogs.filter(log => {
+    if (level    && log.level    !== level)    return false;
+    if (category && log.category !== category) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!(
+        (log.action || '').toLowerCase().includes(q) ||
+        (log.actor  || '').toLowerCase().includes(q) ||
+        (log.target || '').toLowerCase().includes(q) ||
+        (log.ip     || '').toLowerCase().includes(q)
+      )) return false;
+    }
+    return true;
+  });
+
+  // Contagens para os badges dos filtros
+  const levelCounts = allLogs.reduce((a, l) => { a[l.level] = (a[l.level]||0)+1; return a; }, {});
+  const catCounts   = allLogs.reduce((a, l) => { a[l.category] = (a[l.category]||0)+1; return a; }, {});
+
+  const clearFilters = () => { setLevel(''); setCategory(''); setSearch(''); setFrom(''); setTo(''); };
+  const hasFilters   = level || category || search.trim() || from || to;
 
   return (
     <div className="umodal-overlay" onClick={onClose}>
       <div className="umodal-box alog-box" onClick={e => e.stopPropagation()}>
 
+        {/* Header */}
         <div className="umodal-header">
           <div className="alog-header-left">
             <span>📋</span>
             <span>Audit Logs</span>
-            {total > 0 && <span className="dash-badge">{total} evento{total !== 1 ? 's' : ''}</span>}
+            {total > 0 && <span className="dash-badge">{total.toLocaleString('pt-BR')} evento{total !== 1 ? 's' : ''}{allLogs.length < total ? ` · ${allLogs.length} carregados` : ''}</span>}
           </div>
-          <button className="umodal-close" onClick={onClose}>×</button>
+          <button className="umodal-close" onClick={onClose}>✕</button>
         </div>
 
+        {/* Filtros */}
         <div className="alog-filters">
 
+          {/* Nível */}
           <div className="alog-filter-group">
             <span className="alog-filter-label">Nível</span>
             <div className="alog-level-btns">
-              <button className={`alog-level-btn${!level ? ' alog-active-all' : ''}`}
-                onClick={() => setLevel('')}>Todos</button>
+              <button
+                className={'alog-level-btn' + (!level ? ' alog-active-all' : '')}
+                onClick={() => setLevel('')}
+              >
+                Todos
+                <span className="umodal-role-count" style={{ marginLeft: 5 }}>{allLogs.length}</span>
+              </button>
               {LEVELS.map(l => (
                 <button key={l}
-                  className={`alog-level-btn alog-level-${l.toLowerCase()}${level === l ? ' alog-active' : ''}`}
-                  onClick={() => setLevel(level === l ? '' : l)}>
+                  className={'alog-level-btn alog-level-' + l.toLowerCase() + (level === l ? ' alog-active' : '') + (!levelCounts[l] ? ' alog-level-empty' : '')}
+                  onClick={() => levelCounts[l] && setLevel(level === l ? '' : l)}
+                  title={!levelCounts[l] ? 'Nenhum evento desse nível nos logs carregados' : ''}
+                >
                   {LEVEL_ICON[l]} {l}
+                  <span className="umodal-role-count" style={{ marginLeft: 5, ...(level === l ? { background: LEVEL_COLOR[l] + '22', color: LEVEL_COLOR[l] } : {}) }}>
+                    {levelCounts[l] || 0}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Categoria */}
           <div className="alog-filter-group">
             <span className="alog-filter-label">Categoria</span>
             <div className="alog-cat-pills">
-              <button className={`alog-cat-pill${!category ? ' alog-active' : ''}`}
-                onClick={() => setCategory('')}>Todas</button>
-              {CATEGORIES.map(c => (
-                <button key={c} className={`alog-cat-pill${category === c ? ' alog-active' : ''}`}
-                  onClick={() => setCategory(category === c ? '' : c)}>{c}</button>
+              <button
+                className={'alog-cat-pill' + (!category ? ' alog-active' : '')}
+                onClick={() => setCategory('')}
+              >
+                Todas
+                <span className="umodal-role-count" style={{ marginLeft: 5 }}>{allLogs.length}</span>
+              </button>
+              {CATS.filter(c => catCounts[c] > 0).map(c => (
+                <button key={c}
+                  className={'alog-cat-pill' + (category === c ? ' alog-active' : '')}
+                  style={category === c ? { background: CAT_COLOR[c] + '1a', color: CAT_COLOR[c], borderColor: CAT_COLOR[c] + '55' } : {}}
+                  onClick={() => setCategory(category === c ? '' : c)}
+                >
+                  {c}
+                  <span className="umodal-role-count" style={{ marginLeft: 5, ...(category === c ? { background: CAT_COLOR[c] + '22', color: CAT_COLOR[c] } : {}) }}>
+                    {catCounts[c] || 0}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
 
+          {/* Busca + data + ações */}
           <div className="alog-filter-row">
-            <div className="alog-input-wrap">
+            <div className="alog-input-wrap" style={{ flex: 2 }}>
               <span className="alog-input-icon">🔍</span>
-              <input className="alog-input" placeholder="Ação..." value={action}
-                onChange={e => setAction(e.target.value)} onKeyDown={handleKey} />
-            </div>
-            <div className="alog-input-wrap">
-              <span className="alog-input-icon">👤</span>
-              <input className="alog-input" placeholder="Usuário / ator..." value={actor}
-                onChange={e => setActor(e.target.value)} onKeyDown={handleKey} />
+              <input
+                className="alog-input"
+                placeholder="Buscar por ação, usuário, target ou IP..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setExpanded(null); }}
+              />
             </div>
             <div className="alog-date-range">
               <input className="alog-input alog-date" type="date" value={from}
@@ -1043,35 +1091,37 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
               <input className="alog-input alog-date" type="date" value={to}
                 onChange={e => setTo(e.target.value)} title="Até" />
             </div>
+            <div className="alog-filter-actions" style={{ flexShrink: 0 }}>
+              <button className="alog-btn-apply" onClick={fetchLogs} disabled={loading}>
+                {loading ? <span className="alog-spin" /> : '↺'} Recarregar
+              </button>
+              {hasFilters && (
+                <button className="alog-btn-clear" onClick={clearFilters}>✕ Limpar</button>
+              )}
+            </div>
           </div>
 
-          <div className="alog-filter-actions">
-            <button className="alog-btn-apply" onClick={fetchLogs} disabled={loading}>
-              {loading ? <span className="alog-spin" /> : null} Filtrar
-            </button>
-            {hasFilters && (
-              <button className="alog-btn-clear" onClick={clearFilters}>× Limpar</button>
-            )}
-          </div>
         </div>
 
+        {/* Lista */}
         <div className="umodal-body">
           {loading ? (
             <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
-          ) : logs.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="umodal-empty">Nenhum log encontrado com esses filtros</div>
-          ) : logs.map((log, i) => {
-            const color  = LEVEL_COLOR[log.level] || '#9ca3af';
-            const icon   = LEVEL_ICON[log.level]  || '📋';
-            const ts     = new Date(log.timestamp).toLocaleString('pt-BR', {
+          ) : filtered.map((log, i) => {
+            const color     = LEVEL_COLOR[log.level] || '#9ca3af';
+            const icon      = LEVEL_ICON[log.level]  || '📋';
+            const catColor  = CAT_COLOR[log.category] || '#9ca3af';
+            const ts        = new Date(log.timestamp).toLocaleString('pt-BR', {
               day: '2-digit', month: '2-digit', year: '2-digit',
               hour: '2-digit', minute: '2-digit', second: '2-digit'
             });
-            const isOpen  = expanded === i;
-            const hasMeta = Object.keys(log.meta || {}).length > 0;
+            const isOpen    = expanded === i;
+            const hasMeta   = Object.keys(log.meta || {}).length > 0;
             const canExpand = hasMeta || log.target;
             return (
-              <div key={i} className={`alog-row${isOpen ? ' alog-row-open' : ''}`}
+              <div key={i} className={'alog-row' + (isOpen ? ' alog-row-open' : '')}
                 onClick={() => canExpand && setExpanded(isOpen ? null : i)}>
                 <div className="alog-row-main">
                   <div className="alog-level-bar" style={{ background: color }} />
@@ -1081,17 +1131,19 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
                       <code className="alog-action" style={{ color }}>{log.action}</code>
                       <div className="alog-badges">
                         <span className="alog-badge" style={{ background: color + '1a', color }}>{log.level}</span>
-                        <span className="alog-badge alog-badge-cat">{log.category}</span>
+                        {log.category && (
+                          <span className="alog-badge" style={{ background: catColor + '1a', color: catColor }}>{log.category}</span>
+                        )}
                       </div>
                     </div>
                     <div className="alog-row-meta">
                       <span className="alog-meta-ts">{ts}</span>
-                      {log.actor && <><span className="alog-dot">·</span><span>{log.actor}</span></>}
-                      {log.ip    && <><span className="alog-dot">·</span><span className="alog-ip">{log.ip}</span></>}
+                      {log.actor && <><span className="alog-dot">·</span><span>👤 {log.actor}</span></>}
+                      {log.ip    && <><span className="alog-dot">·</span><span className="alog-ip">🌐 {log.ip}</span></>}
                     </div>
                   </div>
                   {canExpand && (
-                    <span className={`alog-chevron${isOpen ? ' open' : ''}`}>›</span>
+                    <span className={'alog-chevron' + (isOpen ? ' open' : '')}>›</span>
                   )}
                 </div>
                 {isOpen && canExpand && (
@@ -1113,11 +1165,243 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
         </div>
 
         <div className="umodal-footer">
-          {logs.length < total
-            ? <>{logs.length} de {total} eventos exibidos</>
-            : <>{total} evento{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}</>
+          {hasFilters
+            ? <>{filtered.length} de {allLogs.length} exibidos <span style={{ opacity: 0.6 }}>· filtrado</span></>
+            : allLogs.length < total
+              ? <>{allLogs.length} carregados de <strong>{total.toLocaleString('pt-BR')}</strong> no banco <span style={{ opacity: 0.6 }}>· use filtros de data para refinar</span></>
+              : <>{total.toLocaleString('pt-BR')} evento{total !== 1 ? 's' : ''}</>
           }
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+const LEVEL_CONFIG = {
+  INFO:  { color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', icon: 'ℹ️',  label: 'Info'   },
+  WARN:  { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', icon: '⚠️',  label: 'Aviso'  },
+  ALERT: { color: '#f97316', bg: '#fff7ed', border: '#fed7aa', icon: '🔔',  label: 'Alerta' },
+  ERROR: { color: '#ef4444', bg: '#fef2f2', border: '#fecaca', icon: '🔴',  label: 'Erro'   },
+};
+
+const CAT_CONFIG = {
+  AUTH:    { color: '#3b82f6', label: 'Auth'       },
+  ADMIN:   { color: '#8b5cf6', label: 'Admin'      },
+  DATA:    { color: '#10b981', label: 'Dados'      },
+  PRIVACY: { color: '#06b6d4', label: 'Privacidade'},
+};
+
+function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
+  const [logs, setLogs]         = useState([]);
+  const [allLogs, setAllLogs]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [level, setLevel]       = useState('');
+  const [category, setCategory] = useState('');
+  const [search, setSearch]     = useState('');
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    apiFetch('/admin/audit-logs?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => { const l = d.logs || []; setAllLogs(l); setLogs(l); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  const filtered = allLogs.filter(log => {
+    if (level    && log.level    !== level)    return false;
+    if (category && log.category !== category) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (!((log.action||'').toLowerCase().includes(q) || (log.actor||'').toLowerCase().includes(q) || (log.ip||'').toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+
+  const levelCounts = allLogs.reduce((a, l) => { a[l.level] = (a[l.level]||0)+1; return a; }, {});
+  const catCounts   = allLogs.reduce((a, l) => { a[l.category] = (a[l.category]||0)+1; return a; }, {});
+  const totalLogs   = levelBreakdown.reduce((s, d) => s + (d.value || 0), 0);
+
+  const warnTotal  = (levelBreakdown.find(d => d.name === 'WARN')?.value  || 0);
+  const alertTotal = (levelBreakdown.find(d => d.name === 'ALERT')?.value || 0);
+  const errorTotal = (levelBreakdown.find(d => d.name === 'ERROR')?.value || 0);
+  const infoTotal  = (levelBreakdown.find(d => d.name === 'INFO')?.value  || 0);
+
+  const hasCritical = alertTotal > 0 || errorTotal > 0;
+
+  return (
+    <div className="els-section">
+      {/* Header */}
+      <div className="els-header">
+        <div className="els-header-left">
+          <span className="els-title">Eventos no Log</span>
+          <span className="dash-badge">{fmtNum(totalLogs)} total · 30 dias</span>
+          {hasCritical && (
+            <button className="els-critical-badge" onClick={() => onOpenLogsWithLevel('ALERT')}>
+              ⚠️ {alertTotal + errorTotal} crítico{alertTotal + errorTotal !== 1 ? 's' : ''} — ver no detalhe ›
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Level summary cards */}
+      <div className="els-level-cards">
+        {[
+          { key: 'WARN',  value: warnTotal  },
+          { key: 'ALERT', value: alertTotal },
+          { key: 'ERROR', value: errorTotal },
+          { key: 'INFO',  value: infoTotal  },
+        ].map(({ key, value }) => {
+          const cfg = LEVEL_CONFIG[key];
+          const isActive = level === key;
+          return (
+            <button
+              key={key}
+              className={'els-level-card' + (isActive ? ' els-level-card-active' : '')}
+              style={{ '--lc': cfg.color, '--lb': cfg.bg, '--lbr': cfg.border }}
+              onClick={() => {
+                if (isActive) {
+                  // segundo clique: abre o modal filtrado nesse nível
+                  onOpenLogsWithLevel(key);
+                } else {
+                  setLevel(key);
+                  setExpanded(null);
+                }
+              }}
+            >
+              <div className="els-lc-top">
+                <span className="els-lc-icon">{cfg.icon}</span>
+                <span className="els-lc-label">{cfg.label}</span>
+              </div>
+              <span className="els-lc-value">{fmtNum(value)}</span>
+              {isActive && (
+                <span className="els-lc-hint">clique novamente para ver todos ›</span>
+              )}
+              {!isActive && key === 'WARN' && value > 0 && <span className="els-lc-dot" />}
+              {!isActive && (key === 'ALERT' || key === 'ERROR') && value > 0 && <span className="els-lc-dot els-lc-dot-red" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="els-filters">
+        <div className="els-filter-search">
+          <span className="els-search-icon">🔍</span>
+          <input
+            className="els-search-input"
+            placeholder="Buscar ação, usuário ou IP..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setExpanded(null); }}
+          />
+          {search && (
+            <button className="els-search-clear" onClick={() => setSearch('')}>✕</button>
+          )}
+        </div>
+        <div className="els-cat-pills">
+          {Object.entries(CAT_CONFIG).filter(([k]) => catCounts[k] > 0).map(([k, cfg]) => (
+            <button
+              key={k}
+              className={'els-cat-pill' + (category === k ? ' active' : '')}
+              style={category === k ? { background: cfg.color + '18', color: cfg.color, borderColor: cfg.color + '55' } : {}}
+              onClick={() => { setCategory(category === k ? '' : k); setExpanded(null); }}
+            >
+              {cfg.label}
+              <span className="els-pill-count">{catCounts[k] || 0}</span>
+            </button>
+          ))}
+          {(level || category || search) && (
+            <button className="els-cat-pill els-clear-all" onClick={() => { setLevel(''); setCategory(''); setSearch(''); setExpanded(null); }}>
+              ✕ Limpar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Log list */}
+      <div className="els-list">
+        {loading ? (
+          <div className="els-empty"><div className="dash-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> Carregando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="els-empty">Nenhum evento encontrado com esses filtros</div>
+        ) : filtered.slice(0, 25).map((log, i) => {
+          const cfg    = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.INFO;
+          const catCfg = CAT_CONFIG[log.category];
+          const isOpen = expanded === i;
+          const hasMeta = Object.keys(log.meta || {}).length > 0;
+          const canExpand = hasMeta || log.target;
+          const ts = new Date(log.timestamp).toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+          });
+          return (
+            <div
+              key={i}
+              className={'els-row' + (isOpen ? ' els-row-open' : '') + (canExpand ? ' els-row-clickable' : '')}
+              onClick={() => canExpand && setExpanded(isOpen ? null : i)}
+            >
+              <div className="els-row-main">
+                <div className="els-level-bar" style={{ background: cfg.color }} />
+                <div className="els-level-icon-wrap" style={{ background: cfg.bg }}>
+                  <span style={{ fontSize: '0.85rem', lineHeight: 1 }}>{cfg.icon}</span>
+                </div>
+                <div className="els-row-body">
+                  <div className="els-row-top">
+                    <code className="els-action" style={{ color: cfg.color }}>{log.action}</code>
+                    <div className="els-badges">
+                      <span className="els-badge" style={{ background: cfg.color + '18', color: cfg.color }}>{cfg.label}</span>
+                      {catCfg && (
+                        <span className="els-badge" style={{ background: catCfg.color + '18', color: catCfg.color }}>{catCfg.label}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="els-row-meta">
+                    <span className="els-ts">{ts}</span>
+                    {log.actor && <><span className="els-dot">·</span><span>👤 {log.actor}</span></>}
+                    {log.ip    && <><span className="els-dot">·</span><span className="els-ip">🌐 {log.ip}</span></>}
+                  </div>
+                </div>
+                {canExpand && <span className={'els-chevron' + (isOpen ? ' open' : '')}>›</span>}
+              </div>
+              {isOpen && canExpand && (
+                <div className="els-detail">
+                  {log.target && (
+                    <div className="els-detail-row">
+                      <span className="els-detail-key">Target</span>
+                      <code className="els-detail-val">{log.target}</code>
+                    </div>
+                  )}
+                  {hasMeta && (
+                    <pre className="els-pre">{JSON.stringify(log.meta, null, 2)}</pre>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {filtered.length > 25 && (
+          <div className="els-show-more">
+            <button className="els-btn-full" onClick={() => onOpenLogsWithLevel(level)}>
+              + {filtered.length - 25} eventos a mais — abrir log{level ? ` de ${LEVEL_CONFIG[level]?.label || level}` : 's'} completo ›
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="els-footer">
+        {(level || category || search)
+          ? <>
+              {filtered.length} de {allLogs.length} exibidos <span className="els-footer-muted">· filtrado</span>
+              {level && (
+                <button className="els-footer-link" onClick={() => onOpenLogsWithLevel(level)}>
+                  · ver todos os {LEVEL_CONFIG[level]?.label || level} no log completo ›
+                </button>
+              )}
+            </>
+          : <>{Math.min(filtered.length, 25)} de {allLogs.length} mais recentes · <button className="els-footer-link" onClick={() => onOpenLogsWithLevel('')}>ver log completo ›</button></>
+        }
       </div>
     </div>
   );
@@ -1180,10 +1464,6 @@ export default function AdminDashboardPage() {
   const { overview = {}, security = {}, roleChart = [], actionsPerDay = [],
           categoryBreakdown = [], levelBreakdown = [], topActions = [], errorRate = [] } = data || {};
 
-  const totalLogs  = levelBreakdown.reduce((s, d) => s + (d.value || 0), 0);
-  const alertCount = levelBreakdown.find(d => d.name === 'ALERT')?.value || 0;
-  const warnCount  = levelBreakdown.find(d => d.name === 'WARN')?.value  || 0;
-
   return (
     <div className="dash-page">
       <div className="dash-header">
@@ -1207,9 +1487,7 @@ export default function AdminDashboardPage() {
           onClick={() => setShowPosts(true)} hint="Ver lista" />
         <MetricCard label="Comunidades"    value={overview.totalCommunities}  icon="🏛" accent="#10b981"
           onClick={() => setShowCommunities(true)} hint="Ver lista" />
-        <MetricCard label="Eventos no log" value={totalLogs}                  icon="📋" accent="#f59e0b"
-          sub={`${alertCount} alertas · ${warnCount} avisos`}
-          onClick={() => { setAuditInitLevel(''); setShowAuditLogs(true); }} hint="Ver logs" />
+
         <MetricCard label="Logins OK"      value={security.loginSuccess}      icon="✅" accent="#10b981"
           onClick={() => setShowSuccessLogins(true)} hint="Ver lista" />
         <MetricCard label="Logins falhos"  value={security.loginFailed}       icon="🚫" accent="#ef4444"
@@ -1219,6 +1497,12 @@ export default function AdminDashboardPage() {
         <MetricCard label="Resets de senha" value={security.passwordResets}   icon="🔑" accent="#8b5cf6"
           onClick={() => setShowPasswordResets(true)} hint="Ver lista" />
       </div>
+
+      <EventsLogSection
+        token={token}
+        levelBreakdown={levelBreakdown}
+        onOpenLogsWithLevel={(lvl) => { setAuditInitLevel(lvl || ''); setShowAuditLogs(true); }}
+      />
 
       <div className="dash-row-2">
         <div className="dash-card dash-card-wide">
@@ -1375,6 +1659,8 @@ export default function AdminDashboardPage() {
         .alog-level-btns { display: flex; gap: 6px; flex-wrap: wrap; }
         .alog-level-btn { padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #666); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .alog-level-btn:hover { background: var(--bg-hover, #e5e7eb); }
+        .alog-level-empty { opacity: 0.38; cursor: default !important; }
+        .alog-level-empty:hover { background: var(--bg-secondary, #f3f4f6) !important; }
         .alog-active-all { background: var(--bg-hover, #e5e7eb) !important; color: var(--text-primary, #111) !important; border-color: transparent; }
         .alog-level-info.alog-active  { background: #6366f11a; color: #6366f1; border-color: #6366f155; }
         .alog-level-warn.alog-active  { background: #f59e0b1a; color: #f59e0b; border-color: #f59e0b55; }
@@ -1427,6 +1713,76 @@ export default function AdminDashboardPage() {
         .alog-detail-key { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 52px; }
         .alog-detail-val { font-size: 0.8rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
         .alog-pre { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.75rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.55; }
+
+        /* ── Events Log Section ──────────────────────────────────── */
+        .els-section { background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+        .els-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border-color, #e5e7eb); flex-wrap: wrap; }
+        .els-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .els-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary, #111); }
+        .els-critical-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; animation: els-pulse 2s ease-in-out infinite; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+        .els-critical-badge:hover { background: #fde68a; }
+        @keyframes els-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .els-btn-full { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: inherit; }
+        .els-btn-full:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #111); }
+
+        .els-level-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+        .els-level-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: none; border-right: 1px solid var(--border-color, #e5e7eb); background: transparent; cursor: pointer; transition: background 0.15s; text-align: left; font-family: inherit; position: relative; min-height: 88px; overflow: visible; }
+        .els-level-card:last-child { border-right: none; }
+        .els-level-card:hover { background: var(--lb); }
+        .els-level-card-active { background: var(--lb) !important; border-bottom: 2px solid var(--lc); }
+        .els-lc-top { display: flex; align-items: center; gap: 6px; }
+        .els-lc-icon { font-size: 0.9rem; line-height: 1; }
+        .els-lc-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; }
+        .els-lc-value { font-size: 1.35rem; font-weight: 700; color: var(--lc, #111); line-height: 1; }
+        .els-lc-hint { font-size: 0.6rem; color: var(--lc); opacity: 0.9; font-weight: 600; line-height: 1.3; white-space: normal; word-break: break-word; margin-top: 2px; }
+        .els-lc-dot { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; animation: els-pulse 1.5s ease-in-out infinite; }
+        .els-lc-dot-red { background: #ef4444; }
+
+        .els-filters { padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .els-filter-search { position: relative; flex: 1; min-width: 200px; }
+        .els-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
+        .els-search-input { width: 100%; padding: 7px 28px 7px 30px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.82rem; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); outline: none; box-sizing: border-box; font-family: inherit; transition: border-color 0.15s; }
+        .els-search-input:focus { border-color: #6366f1; background: var(--bg-primary, #fff); }
+        .els-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary, #aaa); font-size: 0.8rem; padding: 2px; }
+        .els-cat-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .els-cat-pill { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #666); font-size: 0.72rem; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; font-family: inherit; }
+        .els-cat-pill:hover { background: var(--bg-secondary, #f3f4f6); }
+        .els-pill-count { font-size: 0.65rem; font-weight: 700; opacity: 0.7; }
+        .els-clear-all { color: #ef4444; border-color: #fecaca; }
+        .els-clear-all:hover { background: #fef2f2; }
+
+        .els-list { }
+        .els-row { border-bottom: 1px solid var(--border-color, #f3f4f6); transition: background 0.1s; }
+        .els-row:last-child { border-bottom: none; }
+        .els-row:hover { background: var(--bg-secondary, #f9fafb); }
+        .els-row-clickable { cursor: pointer; }
+        .els-row-open { background: var(--bg-secondary, #f9fafb); }
+        .els-row-main { display: flex; align-items: center; gap: 10px; padding: 9px 16px; }
+        .els-level-bar { width: 3px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+        .els-level-icon-wrap { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .els-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .els-row-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .els-action { font-size: 0.8rem; font-weight: 600; font-family: 'Courier New', monospace; }
+        .els-badges { display: flex; gap: 4px; }
+        .els-badge { font-size: 0.64rem; font-weight: 600; padding: 1px 6px; border-radius: 20px; white-space: nowrap; }
+        .els-row-meta { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text-secondary, #888); flex-wrap: wrap; }
+        .els-ts { font-variant-numeric: tabular-nums; }
+        .els-dot { opacity: 0.35; }
+        .els-ip { font-family: monospace; font-size: 0.68rem; opacity: 0.75; }
+        .els-chevron { font-size: 1rem; color: var(--text-secondary, #aaa); transition: transform 0.2s; flex-shrink: 0; }
+        .els-chevron.open { transform: rotate(90deg); }
+        .els-detail { padding: 0 16px 12px 57px; }
+        .els-detail-row { display: flex; gap: 10px; align-items: baseline; margin-bottom: 5px; }
+        .els-detail-key { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 50px; }
+        .els-detail-val { font-size: 0.78rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
+        .els-pre { margin: 4px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.72rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.5; }
+        .els-show-more { padding: 10px 16px; text-align: center; }
+        .els-footer { padding: 8px 18px; font-size: 0.75rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); }
+        .els-footer-muted { opacity: 0.65; }
+        .els-footer-link { background: none; border: none; cursor: pointer; color: #6366f1; font-size: 0.75rem; font-weight: 500; padding: 0; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
+        .els-footer-link:hover { color: #4f46e5; }
+        .els-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px; color: var(--text-secondary, #888); font-size: 0.83rem; }
+        @media (max-width: 700px) { .els-level-cards { grid-template-columns: repeat(2, 1fr); } }
       `}</style>
 
       {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
