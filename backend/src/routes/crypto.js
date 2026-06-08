@@ -69,17 +69,32 @@ router.put('/devices/current', auth, async (req, res) => {
     const name = typeqlLiteral(parsed.data.deviceName || 'Navegador');
     const key = typeqlLiteral(parsed.data.publicKey);
     const now = typeqlDatetime();
-    const existing = await readQuery(`
+    // Check globally (not just for this owner) to avoid @unique conflict on race conditions.
+    const globalExisting = await readQuery(`
       match
-        $owner isa person, has username "${typeqlLiteral(req.user.username)}";
         $device isa crypto-device, has crypto-device-id "${deviceId}";
-        crypto-device-owner(owner: $owner, device: $device);
         try { $device has crypto-device-revoked $revoked; };
       fetch { "revoked": $revoked };
-    `);
+    `).catch(() => []);
 
-    if (existing.length) {
-      if (existing[0].revoked === true || String(existing[0].revoked).toLowerCase() === 'true') {
+    const ownerExisting = globalExisting.length
+      ? await readQuery(`
+          match
+            $owner isa person, has username "${typeqlLiteral(req.user.username)}";
+            $device isa crypto-device, has crypto-device-id "${deviceId}";
+            crypto-device-owner(owner: $owner, device: $device);
+          fetch { "ok": $device };
+        `).catch(() => [])
+      : [];
+
+    if (globalExisting.length && !ownerExisting.length) {
+      // Device exists but belongs to another user — reject.
+      return res.status(409).json({ error: 'ID de aparelho já registrado por outro usuário' });
+    }
+
+    if (ownerExisting.length) {
+      const revoked = globalExisting[0]?.revoked;
+      if (revoked === true || String(revoked).toLowerCase() === 'true') {
         return res.status(403).json({ error: 'Aparelho removido' });
       }
       await writeQuery(`

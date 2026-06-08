@@ -2407,7 +2407,7 @@
   margin: 0 14px 10px 58px;
   overflow: hidden;
   border-radius: 16px;
-  background: #050505;
+  background: color-mix(in srgb, var(--card) 10%, #000);
   min-height: 180px;
   border: 1px solid var(--border);
 }
@@ -3936,7 +3936,36 @@
 [data-theme="light"] .modal-box { background: #fff; }
 [data-theme="light"] .settings-sidenav { background: #f8f6ff; border-right: 1px solid var(--border); }
 
-/* 
+[data-theme="light"] .post-composer {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 2px 12px rgba(109,40,217,0.07) !important;
+}
+[data-theme="light"] .composer-textarea {
+  background: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
+}
+[data-theme="light"] .composer-footer {
+  border-top-color: var(--border) !important;
+}
+[data-theme="light"] .composer-btn,
+[data-theme="light"] .composer-mode-select {
+  background: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+[data-theme="light"] .composer-btn:hover {
+  background: var(--accent-light) !important;
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border)) !important;
+}
+[data-theme="light"] .composer-preview-wrap {
+  background: #1a1625 !important;
+  border-color: var(--border) !important;
+}
+
+/*
    POST COMMENTS
  */
 .post-comment-input {
@@ -6228,6 +6257,8 @@
 .ava-course-workspace {
   min-width: 0;
   padding: 16px;
+  position: relative;
+  z-index: 15;
 }
 .ava-course-cover {
   position: relative;
@@ -6322,6 +6353,13 @@
   padding: 8px 12px;
   font-weight: 900;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.ava-tabs button:not(.active):hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 .ava-tabs button.active {
   background: linear-gradient(135deg, var(--accent), #00a8ff);

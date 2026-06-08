@@ -688,6 +688,8 @@
 
 .ava-course-workspace {
   padding: 18px;
+  position: relative;
+  z-index: 15;
 }
 
 .ava-course-cover {
@@ -719,6 +721,8 @@
   border-color: var(--portal-line);
   border-radius: 16px;
   background: color-mix(in srgb, var(--portal-surface-strong) 72%, transparent);
+  position: relative;
+  z-index: 1;
 }
 
 .ava-tabs button {
@@ -726,6 +730,7 @@
   border-color: transparent;
   border-radius: 12px;
   color: var(--portal-muted);
+  cursor: pointer;
 }
 
 .ava-tabs button:hover {
