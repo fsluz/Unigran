@@ -332,7 +332,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
       <div className="community-index-shell">
         <section className="page-hero" style={{ marginBottom: 18 }}>
           <div>
-            <span className="page-badge">UNIGRAN</span>
+            <span className="page-badge">UNIGRAM</span>
             <h1 style={{ marginTop: 12, fontFamily: 'var(--font-head)', color: 'var(--text)' }}>Comunidades</h1>
             <p style={{ color: 'var(--text-muted)', maxWidth: 620 }}>Crie grupos, entre em comunidades, veja membros e organize conversas por interesse.</p>
           </div>

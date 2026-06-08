@@ -106,7 +106,7 @@ export default function NotificationsPanel({ open, onClose, sidebarCollapsed }) 
               {group.items.map(n => (
                 <button key={n.id} type="button" className="notif-panel-item" onClick={() => openOne(n)}>
                   <span className="notif-panel-dot" />
-                  <Avatar size={38} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigran'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
+                  <Avatar size={38} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigram'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
                   <div>
                     <p>{n.actorName && <strong>{n.actorName} </strong>}{n.text}</p>
                     <time>{relativeTime(n.time)}</time>

@@ -205,7 +205,7 @@ export default function LoginPage({ onGoRegister }) {
               <input
                 className="form-input"
                 type="email"
-                placeholder="seu@unigran.com.br"
+                placeholder="seu@unigram.com.br"
                 value={resetEmail}
                 onChange={e => setResetEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleResetRequest()}
@@ -353,7 +353,7 @@ export default function LoginPage({ onGoRegister }) {
             <input
               className="form-input"
               type="email"
-              placeholder="seu@unigran.com.br"
+              placeholder="seu@unigram.com.br"
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}

@@ -3,7 +3,7 @@ export default function TermsPage({ onBack }) {
     <div className="terms-page page-scroll">
       <main className="terms-card">
         <button type="button" className="terms-back" onClick={onBack}>Voltar</button>
-        <p className="terms-kicker">UNIGRAN</p>
+        <p className="terms-kicker">UNIGRAM</p>
         <h1>Termos de Uso e Privacidade</h1>
         <p className="terms-lead">
           Este documento explica como a plataforma usa dados, cookies e registros.
@@ -37,7 +37,7 @@ export default function TermsPage({ onBack }) {
 
         <section>
           <h2>Contato</h2>
-          <p>Pedidos LGPD podem ser enviados para privacidade@unigran.br.</p>
+          <p>Pedidos LGPD podem ser enviados para privacidade@unigram.br.</p>
         </section>
       </main>
     </div>

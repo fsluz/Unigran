@@ -613,7 +613,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `unigran-${user?.username || 'meus-dados'}.csv`;
+      a.download = `unigram-${user?.username || 'meus-dados'}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1040,7 +1040,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
                   boxShadow: '0 18px 45px rgba(54, 102, 255, 0.28)',
                 }}>
                   <div style={{ fontSize: 13, opacity: 0.82, marginBottom: 4 }}>Centro de controle</div>
-                  <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>Rede Social Unigran</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1 }}>Rede Social Unigram</div>
                   <div style={{ fontSize: 13, opacity: 0.85, marginTop: 8 }}>Crie acessos, modere conteudo e trate denuncias da comunidade.</div>
                 </div>
 

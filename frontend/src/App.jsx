@@ -94,7 +94,7 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
     <div className="mobile-drawer-overlay" onClick={onClose}>
       <nav className="mobile-drawer" ref={drawerRef} onClick={e => e.stopPropagation()}>
         <div className="mobile-drawer-header">
-          <span className="mobile-drawer-brand">Unigran</span>
+          <span className="mobile-drawer-brand">Unigram</span>
           <button className="mobile-drawer-close" onClick={onClose} aria-label="Fechar menu">✕</button>
         </div>
         <div className="mobile-drawer-body">

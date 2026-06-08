@@ -505,7 +505,7 @@ export default function ProfilePage({ onNavigate, profileKey }) {
             {[
               ['', 'Email',       user.email],
               ['', 'Telefone',    user.phone],
-              ['', 'Instituio', user.institution.split('*')[1]?.trim() || 'UNIGRAN'],
+              ['', 'Instituio', user.institution.split('*')[1]?.trim() || 'UNIGRAM'],
               ['', 'Funcao',   normalizeRole(user.role)],
             ].map(([icon, label, val]) => (
               <div key={label} style={{ display: 'flex', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--border-soft)' }}>

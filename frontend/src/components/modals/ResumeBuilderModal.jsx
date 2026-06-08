@@ -216,7 +216,7 @@ export default function ResumeBuilderModal({ initial, token, onSave, onClose }) 
             >
               {(item, index, update) => (
                 <div className="resume-form-grid">
-                  <TextField label="Instituição" value={item.institution || item.title || ''} onChange={value => update(index, 'institution', value)} placeholder="UNIGRAN" />
+                  <TextField label="Instituição" value={item.institution || item.title || ''} onChange={value => update(index, 'institution', value)} placeholder="UNIGRAM" />
                   <TextField label="Curso" value={item.course || ''} onChange={value => update(index, 'course', value)} placeholder="Análise e Desenvolvimento de Sistemas" />
                   <TextField label="Período" value={item.period || item.year || item.description || ''} onChange={value => update(index, 'period', value)} placeholder="2024 - em andamento" />
                 </div>
