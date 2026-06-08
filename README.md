@@ -1,72 +1,82 @@
-# UNIGRAN Comunidades
+# UNIGRAM — Plataforma Acadêmica Inteligente
 
-> Plataforma academica integrada para portal institucional, AVA, rede social universitaria, portfolio inteligente, reputacao profissional verificavel e analytics interno.
+> TCC · Tecnologia em Análise e Desenvolvimento de Sistemas · UniCesumar · 2026
 
 ![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react&logoColor=111827)
 ![Node.js](https://img.shields.io/badge/Node.js-Express-3c873a?style=for-the-badge&logo=node.js&logoColor=white)
 ![TypeDB](https://img.shields.io/badge/TypeDB-Cloud-6d28d9?style=for-the-badge)
 ![Supabase](https://img.shields.io/badge/Supabase-Storage-3ecf8e?style=for-the-badge&logo=supabase&logoColor=062b20)
-![Framer Motion](https://img.shields.io/badge/Framer_Motion-UI-111827?style=for-the-badge&logo=framer&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646cff?style=for-the-badge&logo=vite&logoColor=white)
 
-## Sumario
+---
+
+## Equipe e Contexto Acadêmico
+
+| | |
+|---|---|
+| **Curso** | Tecnologia em Análise e Desenvolvimento de Sistemas |
+| **Instituição** | UniCesumar |
+| **Ano** | 2026 |
+| **Orientador** | Prof. Me. Alexandre Rodizio Bento |
+| **Integrantes** | Fábio Henrique Rodrigues · Felipe Santos da Luz · Gabriel Ozório Franco · Jhonathan Lima · Vinicius Cerqueira Silva |
+
+---
+
+## Sumário
 
 1. [Resumo do Projeto](#resumo-do-projeto)
 2. [Problema de Pesquisa](#problema-de-pesquisa)
 3. [Objetivos](#objetivos)
-4. [Proposta de Solucao](#proposta-de-solucao)
-5. [Modulos do Sistema](#modulos-do-sistema)
+4. [Escopo — MVP](#escopo--mvp)
+5. [Módulos Implementados](#módulos-implementados)
 6. [Arquitetura](#arquitetura)
 7. [Fluxo Principal](#fluxo-principal)
 8. [Tecnologias](#tecnologias)
-9. [Estrutura do Repositorio](#estrutura-do-repositorio)
-10. [Configuracao do Ambiente](#configuracao-do-ambiente)
+9. [Estrutura do Repositório](#estrutura-do-repositório)
+10. [Configuração do Ambiente](#configuração-do-ambiente)
 11. [Como Executar](#como-executar)
 12. [Principais Rotas da API](#principais-rotas-da-api)
-13. [Modelagem de Dados](#modelagem-de-dados)
-14. [Machine Learning e Analytics](#machine-learning-e-analytics)
-15. [Seguranca e Permissoes](#seguranca-e-permissoes)
-16. [Evidencias para TCC](#evidencias-para-tcc)
-17. [Limitacoes Conhecidas](#limitacoes-conhecidas)
-18. [Roadmap](#roadmap)
-19. [Autores e Contexto Academico](#autores-e-contexto-academico)
+13. [Segurança e Permissões](#segurança-e-permissões)
+14. [Machine Learning e Assistente RAi](#machine-learning-e-assistente-rai)
+15. [Validação Funcional](#validação-funcional)
+16. [Limitações Conhecidas](#limitações-conhecidas)
+17. [Trabalhos Futuros](#trabalhos-futuros)
+18. [Metodologia de Pesquisa](#metodologia-de-pesquisa)
+19. [Modelagem de Dados](#modelagem-de-dados)
 
 ---
 
 ## Resumo do Projeto
 
-O **UNIGRAN Comunidades** e uma plataforma academica moderna que integra tres experiencias fundamentais:
+A **UNIGRAM** é uma plataforma acadêmica inteligente desenvolvida como TCC do curso de ADS na UniCesumar. Ela integra, em um único ecossistema, cinco ambientes que hoje operam de forma fragmentada nas instituições de ensino superior:
 
-- **Portal Academico:** area institucional, informativa e publica.
-- **AVA:** ambiente operacional para disciplinas, materiais, atividades, entregas, notas, forum e acompanhamento.
-- **Portfolio Inteligente:** vitrine profissional publica do aluno, alimentada automaticamente por entregas academicas.
+- **Portal Institucional** — área pública com vitrine acadêmica, cursos, eventos e talentos.
+- **AVA** — ambiente virtual de aprendizagem com disciplinas, materiais, atividades, entregas, notas e fórum.
+- **Portfólio Inteligente** — central profissional do aluno, alimentada automaticamente pelas entregas do AVA.
+- **Rede Social Acadêmica** — feed, comunidades, mensagens diretas e stories.
+- **Painel Administrativo** — controle institucional hierárquico, auditoria e dashboard de BI.
 
-A proposta central e transformar atividades academicas em **evidencias profissionais verificaveis**. Em vez de o aluno criar manualmente um portfolio externo, o sistema aproveita aquilo que ele ja produz no AVA, organiza como case profissional e disponibiliza para recrutadores em um formato moderno, objetivo e confiavel.
+O diferencial central da plataforma é a **integração nativa entre o AVA e o portfólio profissional**: uma entrega acadêmica avaliada pode virar uma evidência pública verificável com um único clique, carregando metadados de disciplina, semestre, nota e instituição. Isso nenhuma plataforma consolidada (Moodle, Canvas, LinkedIn) oferece de forma nativa.
 
-O produto busca aproximar universidade, aluno e mercado de trabalho por meio de uma experiencia inspirada em plataformas como LinkedIn, GitHub, Behance, dashboards SaaS e ambientes educacionais premium.
+Este repositório contém o MVP funcional validado. Não é um produto de produção — é a prova de viabilidade técnica da arquitetura proposta.
 
 ---
 
 ## Problema de Pesquisa
 
-Em muitos ambientes universitarios, existe uma separacao clara entre:
+Instituições de ensino superior operam com múltiplos sistemas desconectados: um para gestão acadêmica, outro para o AVA, outro para comunicação, outro para portfólio. Essa fragmentação gera:
 
-- o que o aluno aprende;
-- o que o aluno entrega nas disciplinas;
-- o que a instituicao consegue acompanhar;
-- o que empresas conseguem avaliar sobre esse aluno.
-
-Essa separacao cria varios problemas:
-
-- trabalhos academicos ficam restritos ao AVA;
-- entregas relevantes nao viram reputacao profissional;
-- recrutadores nao conseguem avaliar competencias reais rapidamente;
-- portfolios precisam ser cadastrados manualmente em ferramentas externas;
-- coordenadores e professores tem pouca visibilidade sobre evolucao profissional;
-- dashboards institucionais costumam ser desconectados da jornada do aluno.
+- trabalhos e entregas relevantes restritos ao AVA, sem visibilidade externa;
+- alunos que precisam recriar manualmente portfólios em ferramentas externas;
+- recrutadores sem acesso a evidências verificáveis da produção acadêmica;
+- coordenadores com pouca visibilidade sobre a trajetória e o desempenho dos alunos;
+- ausência de rastreabilidade entre o que foi ensinado, entregue e aprendido.
 
 ### Pergunta Norteadora
 
-Como uma plataforma academica pode transformar atividades, entregas e evidencias do AVA em um portfolio profissional verificavel, facilitando a avaliacao de competencias por recrutadores e melhorando a gestao academica da instituicao?
+> Como uma plataforma acadêmica pode transformar atividades, entregas e evidências do AVA em um portfólio profissional verificável, facilitando a avaliação de competências por recrutadores e melhorando a gestão acadêmica da instituição?
+
+O problema foi fundamentado na literatura (Moran, 2015; Kenski, 2019) e na análise comparativa de plataformas existentes. A lacuna aparece concretamente na análise: nenhuma das plataformas consolidadas marca "Sim" na linha "Conversão em evidências profissionais verificáveis".
 
 ---
 
@@ -74,324 +84,209 @@ Como uma plataforma academica pode transformar atividades, entregas e evidencias
 
 ### Objetivo Geral
 
-Desenvolver uma plataforma academica integrada capaz de conectar portal institucional, AVA, portfolio inteligente e analytics interno, transformando atividades academicas em reputacao profissional verificavel.
+Desenvolver e analisar criticamente uma plataforma acadêmica inteligente que integre gestão institucional hierárquica, AVA, rede social acadêmica, portfólio profissional e assistência contextual por IA — promovendo melhor organização dos fluxos educacionais, maior visibilidade da trajetória discente e apoio à decisão institucional.
 
-### Objetivos Especificos
+### Objetivos Específicos
 
-- Criar uma experiencia academica moderna e responsiva.
-- Reorganizar o portal institucional com foco em cursos, eventos, noticias, projetos e talentos.
-- Separar melhor os fluxos de aluno, professor, coordenacao e administracao.
-- Melhorar o AVA com dashboards, progresso, atividades, entregas, notificacoes e suporte contextual.
-- Criar um fluxo de publicacao que transforme entregas academicas em cases profissionais.
-- Gerar portfolio publico com projetos, competencias, tecnologias, evidencias e curriculo vivo.
-- Disponibilizar visual recruiter-friendly para leitura rapida de perfil.
-- Criar um endpoint de BI interno para administracao/master admin.
-- Documentar a modelagem de banco necessaria para evolucao enterprise.
+- Modelar a hierarquia institucional (instituição → campus → curso → semestre → turma → disciplina) com controle de acesso baseado em papéis e escopos.
+- Implementar um AVA funcional com materiais, atividades, entregas, notas, fórum e acompanhamento de progresso.
+- Criar o fluxo de conversão de entrega acadêmica em case profissional verificável.
+- Gerar um portfólio público com projetos, competências, tecnologias e evidências.
+- Implementar o assistente RAi com acesso restrito ao contexto autorizado do usuário.
+- Desenvolver feed social, comunidades, mensagens e notificações.
+- Criar painéis administrativos com auditoria e indicadores de BI.
+- Analisar criticamente a solução, incluindo limitações técnicas e trabalhos futuros.
 
 ---
 
-## Proposta  de  Solucao
+## Escopo — MVP
 
-A solucao  proposta e um ecossistema academico em que cada modulo possui papel claro, mas todos se conectam.
+Este trabalho entrega um **MVP (Minimum Viable Product)**. O objetivo é demonstrar viabilidade técnica, não lançar um produto comercial. A distinção é deliberada:
 
-```mermaid
-flowchart LR
-  Portal["Portal Academico"] --> AVA["AVA"]
-  AVA --> Entrega["Entrega Academica"]
-  Entrega --> Modal{"Publicar no Portfolio?"}
-  Modal -->|Sim| Perfil["Perfil social do aluno"]
-  Modal -->|Nao| Historico["Historico Academico"]
-  Perfil --> Portfolio["Aba Portfolio Pro"]
-  Portfolio --> Recruiter["Recruiter View"]
-  AVA --> BI["Master Admin BI"]
-  Perfil --> BI
-  Portal --> Vitrine["Vitrine Academica"]
+| Aspecto | Status no MVP |
+|---|---|
+| Fluxos críticos (AVA, portfólio, RBAC, RAi) | ✅ Implementados e validados |
+| Migrações TypeDB completas e versionadas | ⚠️ Parcial |
+| E2EE em modo estrito | ⚠️ Parcial |
+| Painéis administrativos conectados à navegação | ⚠️ Parcial |
+| Testes automatizados | ❌ Ausente (trabalho futuro prioritário) |
+| React Router (deep links) | ❌ Ausente (navegação por estado) |
+
+O que está provado é a **viabilidade técnica da arquitetura proposta**.
+
+---
+
+## Módulos Implementados
+
+### 1. Portal Institucional
+
+Área pública da plataforma.
+
+- Home institucional com cards de acesso aos módulos.
+- Vitrine acadêmica com projetos em destaque.
+- Área de talentos e perfis públicos.
+- Destaques de cursos e eventos.
+- Acesso ao AVA e ao portfólio público.
+
+### 2. AVA — Ambiente Virtual de Aprendizagem
+
+Ambiente operacional para alunos e professores.
+
+**Painel do aluno:**
+- Disciplinas matriculadas com progresso visual.
+- Atividades pendentes e próximas entregas.
+- Materiais (vídeo, PDF, links externos).
+- Entregas com suporte a PDF, DOCX, imagens, vídeos, GitHub, Figma, deploy e Drive.
+- Notas, feedback do professor e histórico.
+- Fórum por disciplina.
+- Sistema de XP e metas acadêmicas.
+
+**Painel do professor:**
+- Criação e gestão de materiais e atividades.
+- Visualização e correção de entregas.
+- Publicação de notas e feedback.
+- Acompanhamento de frequência e progresso da turma.
+
+**Fluxo de publicação no portfólio:**
+
+```
+Aluno envia entrega → Professor corrige e publica nota
+→ Sistema pergunta: "Deseja adicionar ao portfólio?"
+→ Aluno confirma → Backend gera case com metadados verificáveis
+→ Portfólio atualizado com link público
 ```
 
-### Ideia Central
+### 3. Portfólio Inteligente
 
-O aluno nao deve precisar cadastrar tudo manualmente. O sistema deve aproveitar dados reais ja existentes no AVA:
+Central profissional do aluno, não uma galeria simples.
 
-- disciplina;
-- atividade;
-- professor;
-- semestre;
-- nota;
-- feedback;
-- arquivo enviado;
-- link externo;
-- tecnologias inferidas;
-- competencias desenvolvidas;
-- timeline de desenvolvimento.
+Cada projeto no portfólio contém:
+- Título, thumbnail e banner.
+- Resumo profissional e problema resolvido.
+- Disciplina, professor/orientador e semestre de origem.
+- Tecnologias utilizadas e competências desenvolvidas.
+- Nota, status e nível de dificuldade.
+- Evidências (PDF, DOCX, imagens, vídeos, GitHub, Figma, deploy).
+- Timeline de desenvolvimento.
+- Link público verificável com metadados institucionais.
 
-Esses dados passam a alimentar automaticamente o portfolio, o curriculo vivo, a vitrine institucional e os indicadores internos.
+### 4. Perfil Público
 
----
+Rotas públicas para portfólio e perfil profissional:
 
-## Modulos do Sistema
-
-## 1. Portal Academico
-
-O Portal Academico e a area institucional e publica da plataforma.
-
-### Funcionalidades
-
-- Home institucional moderna.
-- Cards de acesso aos principais modulos.
-- Vitrine academica com projetos em destaque.
-- Area de talentos.
-- Destaques de cursos, eventos e calendario academico.
-- Integracao com login.
-- Acesso ao AVA.
-- Acesso ao portfolio publico.
-
-### Objetivo no TCC
-
-Demonstrar como a instituicao pode expor sua producao academica e valorizar alunos, projetos e competencias de forma publica e organizada.
-
----
-
-## 2. AVA
-
-O AVA e o ambiente operacional academico do aluno e do professor.
-
-### Painel do Aluno
-
-- Disciplinas matriculadas.
-- Progresso academico.
-- Atividades pendentes.
-- Proxima entrega.
-- Notificacoes.
-- Forum.
-- Materiais.
-- Entregas.
-- Metas e XP academico.
-- Portfolio conectado.
-
-### Experiencia por Disciplina
-
-Cada disciplina possui:
-
-- visao geral;
-- materiais;
-- atividades;
-- forum;
-- status visual;
-- progresso;
-- notas;
-- IA contextual;
-- acompanhamento de entregas.
-
-### Fluxo de Entrega
-
-1. O aluno escreve a resposta.
-2. Anexa documento, link externo, GitHub, Figma, Drive ou deploy.
-3. Envia a atividade.
-4. O sistema pergunta se a entrega deve virar case profissional.
-5. Se confirmado, o sistema cria o item no portfolio.
-
----
-
-## 3. Portfolio Inteligente
-
-O Portfolio Inteligente e o **Academic Case Hub** do aluno.
-
-Ele nao funciona como uma galeria simples. Ele e uma central profissional que organiza:
-
-- projetos;
-- competencias;
-- tecnologias;
-- certificados;
-- entregas;
-- curriculo vivo;
-- timeline;
-- evidencias;
-- score profissional;
-- visual recruiter-friendly.
-
-### Dados de um Projeto
-
-Cada projeto pode conter:
-
-- titulo;
-- thumbnail;
-- banner;
-- resumo profissional;
-- problema resolvido;
-- disciplina relacionada;
-- professor/orientador;
-- semestre;
-- tecnologias utilizadas;
-- competencias desenvolvidas;
-- nota;
-- status;
-- dificuldade;
-- evidencias;
-- links externos;
-- timeline.
-
-### Evidencias
-
-O projeto suporta evidencias como:
-
-- PDF;
-- DOCX;
-- imagens;
-- videos;
-- GitHub;
-- deploy;
-- Figma;
-- documentacao;
-- Drive;
-- anexos do AVA.
-
----
-
-## 4. Perfil Publico
-
-O sistema oferece rota publica para portfolio:
-
-```http
+```
 GET /portfolio/:username
 GET /portfolio/:username/:activityId
 GET /u/:username
 ```
 
-O perfil publico apresenta:
+O perfil público apresenta identidade profissional, projetos, stack tecnológica, competências, timeline e currículo — com uma visão específica otimizada para recrutadores (*Recruiter View*).
 
-- identidade profissional;
-- projetos;
-- stack tecnologica;
-- competencias;
-- timeline;
-- curriculo;
-- links profissionais;
-- recruiter view.
+### 5. Rede Social Acadêmica
 
----
+- Feed com posts, comentários, curtidas e reposts.
+- Stories (conteúdo efêmero).
+- Comunidades e grupos.
+- Sistema de seguidores e amigos.
+- Mensagens diretas com criptografia ponta a ponta (E2EE parcial no MVP).
+- Notificações em tempo real.
 
-## 5. Master Admin BI
+### 6. Painel Administrativo e BI
 
-O BI interno e um modulo administrativo separado do Portal Academico e do Portfolio Pro. Ele consome dados consolidados por API e fica restrito a perfis master/admin.
+Restrito a perfis `admin` e `super_admin`.
+
+- Wizard de configuração institucional (instituição → campus → curso → semestre → turma → disciplina).
+- Gestão de usuários e atribuição de papéis.
+- Auditoria de operações sensíveis.
+- Dashboard BI com indicadores de engajamento, entregas, portfólios e progresso acadêmico.
 
 ```http
 GET /api/admin/power-bi
 ```
 
-Esse endpoint agrega dados de:
-
-- usuarios;
-- posts;
-- comentarios;
-- entregas;
-- portfolios;
-- progresso academico;
-- cursos;
-- indicadores de engajamento.
-
-No frontend, o acesso aparece como item proprio de navegacao: **Master BI**.
-
-O objetivo e permitir uma visao gerencial sem duplicar toda a base transacional.
-
 ---
 
 ## Arquitetura
 
-### Visao Geral
+Arquitetura **cliente-servidor em quatro camadas**:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  1. Frontend  │  React 18 + Vite · SPA              │
+├─────────────────────────────────────────────────────┤
+│  2. Backend   │  Node.js + Express · REST · JWT · RBAC │
+├─────────────────────────────────────────────────────┤
+│  3. Banco     │  TypeDB Cloud (grafo semântico)      │
+├─────────────────────────────────────────────────────┤
+│  4. Arq. / IA │  Supabase Storage · Cloudinary · RAi │
+└─────────────────────────────────────────────────────┘
+```
 
 ```mermaid
 flowchart TB
-  Browser["Navegador"]
-  React["Frontend React + Vite"]
-  API["Backend Express"]
+  Browser["Navegador (SPA React)"]
+  API["Backend Node.js + Express"]
   TypeDB[("TypeDB Cloud")]
   Supabase[("Supabase Storage")]
   Cloudinary[("Cloudinary")]
   Ably["Ably Realtime"]
-  ML["Modulo ML Python"]
+  RAi["Assistente RAi (Groq / Llama)"]
+  ML["Módulo ML (Python)"]
 
-  Browser --> React
-  React --> API
+  Browser --> API
   API --> TypeDB
   API --> Supabase
   API --> Cloudinary
   API --> Ably
+  API --> RAi
   API --> ML
 ```
 
-### Frontend
+### Por que TypeDB?
 
-- React 18.
-- Vite.
-- Framer Motion.
-- Lucide Icons.
-- Context API para autenticacao e toasts.
-- CSS global com identidade visual propria.
-- Layout responsivo.
-- Componentes reutilizaveis.
+O domínio acadêmico tem relações complexas: aluno em turma, professor em disciplina e semestre, oferta AVA ligada a disciplina e turma. O TypeDB trata entidades e relações como objetos de primeira classe, permitindo atravessar a hierarquia institucional sem múltiplos JOINs explícitos. A escolha foi pelo encaixe semântico com o domínio, não por modismo — com o trade-off reconhecido de maturidade menor que PostgreSQL.
 
-### Backend
+### Organização do backend por domínio
 
-- Node.js.
-- Express.
-- Socket.io.
-- JWT.
-- Zod para validacao.
-- TypeDB Cloud via HTTP driver.
-- Supabase Storage para documentos.
-- Cloudinary para midias visuais.
-- Ably para recursos realtime.
-
-### Armazenamento
-
-| Camada | Responsabilidade |
-|---|---|
-| TypeDB | Usuarios, posts, relacoes, metadados, autenticacao, portfolio e dados estruturados |
-| Supabase Storage | Documentos do AVA, PDFs, DOCX e entregas academicas |
-| Cloudinary | Imagens, videos, posts e midias sociais |
-| Arquivos locais temporarios | Estado de demonstracao do AVA em desenvolvimento |
+```
+src/
+  modules/
+    auth/          # RBAC e papéis
+    institution/   # Hierarquia institucional
+    academic/      # AVA, entregas, portfólio
+    rai/           # Assistente contextual
+    ml/            # Recomendações e análise
+    schedules/     # Agendamentos
+```
 
 ---
 
 ## Fluxo Principal
 
-### Da Atividade ao Portfolio
+### Da Entrega ao Portfólio
 
 ```mermaid
 sequenceDiagram
   participant Aluno
   participant AVA
   participant API
-  participant Storage
+  participant TypeDB
   participant Portfolio
 
-  Aluno->>AVA: Envia atividade
+  Aluno->>AVA: Envia atividade com evidências
   AVA->>API: POST /activities/:id/submissions
-  API->>Storage: Salva documento enviado
-  API-->>AVA: Retorna entrega registrada
-  AVA->>Aluno: Deseja adicionar ao portfolio?
-  Aluno->>AVA: Confirma publicacao
+  API->>TypeDB: Persiste entrega com metadados
+  API-->>AVA: Entrega registrada
+  AVA->>Aluno: Deseja publicar no portfólio?
+  Aluno->>AVA: Confirma publicação
   AVA->>API: POST /submissions/:id/portfolio
-  API->>Portfolio: Gera case com metadados
-  Portfolio-->>Aluno: Link publico verificavel
+  API->>Portfolio: Gera case com metadados verificáveis
+  Portfolio-->>Aluno: Link público com disciplina, semestre, nota
 ```
 
-### Metadados Gerados
+### Metadados gerados na publicação
 
-Ao publicar a entrega no portfolio, o backend gera:
-
-- resumo;
-- tecnologias;
-- competencias;
-- tags;
-- dificuldade;
-- status;
-- nota;
-- professor;
-- semestre;
-- evidencias;
-- timeline;
-- link publico.
+`disciplina` · `professor` · `semestre` · `nota` · `instituição` · `tecnologias` · `competências` · `evidências` · `status` · `timeline` · `link público verificável`
 
 ---
 
@@ -399,180 +294,182 @@ Ao publicar a entrega no portfolio, o backend gera:
 
 ### Frontend
 
-| Tecnologia | Uso |
-|---|---|
-| React | Interface SPA |
-| Vite | Build e dev server |
-| Framer Motion | Animacoes e microinteracoes |
-| Lucide React | Iconografia |
-| CSS custom | Design system visual do projeto |
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| React | 18.3.1 | Interface SPA |
+| Vite | 5.4.2 | Build e dev server |
+| Framer Motion | 12.40 | Animações e micro-interações |
+| Lucide React | 1.16 | Iconografia |
+| Ably | 2.21 | Realtime (notificações e feed) |
+| CSS custom | — | Design system visual próprio |
 
 ### Backend
 
-| Tecnologia | Uso |
-|---|---|
-| Node.js | Runtime |
-| Express | API REST |
-| Socket.io | Realtime |
-| JWT | Autenticacao |
-| Zod | Validacao |
-| TypeDB HTTP Driver | Banco principal |
-| Multer | Upload |
-| Supabase Storage | Documentos |
-| Cloudinary | Midias |
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| Node.js | 18+ | Runtime |
+| Express | 4.19 | API REST |
+| Socket.io | 4.7.5 | Realtime complementar |
+| TypeDB HTTP Driver | 3.8.1 | Banco principal |
+| JWT + bcryptjs | 9.0 / 2.4 | Autenticação e hash de senhas |
+| Zod | 3.23 | Validação de entrada |
+| Multer | 2.0 | Upload de arquivos |
+| Supabase Storage | — | Documentos do AVA (PDF, DOCX) |
+| Cloudinary | 2.8 | Imagens e vídeos |
+| Nodemailer | 8.0 | E-mail (reset de senha, notificações) |
 
 ### Dados e IA
 
 | Tecnologia | Uso |
 |---|---|
-| TypeDB | Dados conectados e relacionais/semanticos |
-| Python | Modulo de ML |
-| scikit-learn | Modelos de clusterizacao e recomendacao |
-| CSV/JSON | Outputs analiticos |
+| TypeDB Cloud | Banco principal — entidades, relações e metadados semânticos |
+| Python + scikit-learn | Módulo ML (clusterização, recomendação de vagas) |
+| Groq / Llama 3.3 70B | Geração de respostas do assistente RAi |
+| Tavily Search | Pesquisa web contextual pelo RAi |
 
 ---
 
-## Estrutura do Repositorio
+## Estrutura do Repositório
 
 ```text
 Unigran/
   README.md
+  COMO_RODAR.md          # Roteiro de demonstração e usuários de demo
+  render.yaml            # Configuração de deploy (Render.com)
   docs/
     architecture-report.md
     ml-artifacts.md
     modelagem-bd-ecossistema-academico.pdf
     modelagem-bd-ecossistema-academico.html
+  tcc unigran/           # Documentos acadêmicos do TCC
+    _UNIGRAM_TCC_.docx
+    UNIGRAM_Documentacao_Tecnica.pdf
+    UNIGRAM_Apresentacao.pptx
+    UNIGRAM_Perguntas_Banca.pdf
 
   frontend/
     index.html
-    package.json
     vite.config.js
+    package.json
     src/
-      App.jsx
+      App.jsx            # Roteamento por estado e layout global
       main.jsx
-      styles/
-        global.css
-        components.css
-      contexts/
-        AuthContext.jsx
-        ToastContext.jsx
-      components/
-        layout/
-        post/
-        community/
-        media/
-        ui/
+      pages/             # 18 páginas (login, home, perfil, admin, etc.)
       modules/
-        platform/
-          AcademicPortalPage.jsx
-          CampusPage.jsx
-          MasterAdminBiPage.jsx
-          PortfolioIntelligencePage.jsx
-          platform.js
-        shared/
-          permissions.js
-      pages/
-        LoginPage.jsx
-        RegisterPage.jsx
-        HomePage.jsx
-        ProfilePage.jsx
-        PublicProfilePage.jsx
+        platform/        # Portal, AVA, BI, portfólio
+        shared/          # Permissões compartilhadas
+      components/
+        layout/          # Sidebar, Topbar, navegação mobile
+        post/            # PostCard, PostComposer, comentários
+        community/       # Cards e detalhes de comunidade
+        media/           # Lightbox, crop de imagem
+        modals/          # RAi, resume builder
+        stories/         # Stories bar
+        assistants/      # Assistentes flutuantes
+      contexts/          # Auth, Toast, University, Achievements
+      services/          # Clientes de API (posts, users, e2ee, etc.)
+      styles/            # 11 folhas de estilo CSS
 
   backend/
     package.json
     src/
-      index.js
+      index.js           # Servidor Express + Socket.io
       db/
-        typedb.js
+        typedb.js        # Driver HTTP TypeDB Cloud
+        supabase.js      # Integração Supabase
       middleware/
-        auth.js
-        audit.js
-      routes/
-        auth.js
-        admin.js
-        users.js
-        posts.js
-        portfolio.js
-        uploads.js
+        auth.js          # Validação JWT
+        audit.js         # Registro de auditoria
+      routes/            # auth, admin, users, posts, portfolio, etc.
       modules/
-        index.js
-        platformData.js
-        auth/
-          rbac.js
-        academic/
-          avaRoutes.js
-          typedbAvaStore.js
-          typedbPortfolioStore.js
-          avaStore.js (legado)
-      services/
-        portfolio-ml.service.js
-        resume.service.js
-        cloudinary.service.js
-        audit.service.js
+        auth/rbac.js     # RBAC com escopos institucionais
+        academic/        # avaRoutes, typedbAvaStore, typedbPortfolioStore
+        institution/     # institutionRoutes, typedbInstitutionStore
+        rai/             # raiRoutes, typedbRaiMemoryStore
+        ml/              # mlEngine, mlRoutes, mlCache
+        schedules/       # scheduleRoutes
+      services/          # portfolio-ml, resume, cloudinary, rai, email, etc.
       socket/
-        handlers.js
-    typeql/
-      portfolio-schema.typeql
-      e2ee-schema.typeql
-    supabase/
-      001_portfolio_academico.sql
-    project_ml/
+        handlers.js      # Handlers Socket.io
+    scripts/             # Seeds de dados para demonstração
+    typeql/              # Schemas TypeDB (.typeql)
+    supabase/            # Schemas SQL auxiliares
+    project_ml/          # Módulo Python (FastAPI + scikit-learn)
 ```
 
 ---
 
-## Configuracao do Ambiente
+## Configuração do Ambiente
 
-### Pre-requisitos
+### Pré-requisitos
 
-- Node.js 18 ou superior.
-- npm.
-- Conta/configuracao no TypeDB Cloud.
-- Opcional: Supabase para documentos.
-- Opcional: Cloudinary para midias.
-- Opcional: Ably para realtime.
-- Opcional: Python 3.10+ para modulo ML.
+- Node.js 18 ou superior
+- npm
+- Conta no TypeDB Cloud com banco criado e schema aplicado
+- Opcional: Supabase (documentos), Cloudinary (mídias), Ably (realtime), Python 3.10+ (ML)
 
-### Variaveis do Backend
+### Variáveis do backend
 
-Crie `backend/.env` com base nos exemplos do projeto.
+Crie o arquivo `backend/.env` com as credenciais dos serviços:
 
 ```env
+# TypeDB Cloud
 TYPEDB_ADDRESS=https://seu-cluster.typedb.com:80
 TYPEDB_DATABASE=unigran_db
 TYPEDB_USERNAME=admin
 TYPEDB_PASSWORD=sua_senha
 
-JWT_SECRET=troque_este_segredo
+# JWT
+JWT_SECRET=troque_este_segredo_em_producao
 JWT_EXPIRES_IN=7d
 
+# Servidor
 PORT=3001
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 PUBLIC_APP_URL=http://localhost:5173
 PUBLIC_PORTFOLIO_BASE_URL=http://localhost:5173
 
+# Cloudinary (mídias visuais)
 CLOUDINARY_CLOUD_NAME=demo
 CLOUDINARY_API_KEY=123456789012345
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 
+# Supabase (documentos do AVA)
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
 SUPABASE_DOCUMENTS_BUCKET=ava-entregas
 
+# Ably (realtime)
 ABLY_API_KEY=your_ably_root_api_key
+
+# RAi — Assistente contextual
+RAI_AI_API_KEY=sua_chave_groq
+RAI_AI_API_URL=https://api.groq.com/openai/v1/chat/completions
+RAI_AI_MODEL=llama-3.3-70b-versatile
+RAI_WEB_SEARCH_ENABLED=true
+TAVILY_API_KEY=tvly-sua_chave
+
+# Moderação de conteúdo
 JIGSAWSTACK_API_KEY=your_jigsawstack_api_key
 JIGSAWSTACK_NSFW_THRESHOLD=0.72
-
-ML_OUTPUTS_DRIVE_URL=https://drive.google.com/...
-ML_MODELS_DRIVE_URL=https://drive.google.com/...
 ```
 
-> Importante: o arquivo `.env` contem credenciais sensiveis e nao deve ser versionado.
+> O arquivo `.env` contém credenciais sensíveis e não deve ser versionado.
 
-### Observacao sobre TypeDB em Desenvolvimento
+### Aplicar schema e seeds
 
-O sistema nao possui acesso sem login nem fallback de usuario local. Mesmo em desenvolvimento, as rotas protegidas exigem JWT valido emitido pelo login real. Se o TypeDB Cloud estiver indisponivel ou com credenciais invalidas, a autenticacao deve falhar ate que o banco seja corrigido.
+```bash
+# Aplica as migrations TypeDB
+cd backend
+npm run db:migrate:typedb
+
+# Popula com dados de demonstração (professores, alunos, disciplinas,
+# atividades, entregas, portfólios, posts, comunidades, etc.)
+npm run db:seed:academic
+```
+
+> Antes do seed, defina `SEED_DEFAULT_PASSWORD` no `.env` para criar as contas dos professores.
 
 ---
 
@@ -584,16 +481,10 @@ O sistema nao possui acesso sem login nem fallback de usuario local. Mesmo em de
 cd backend
 npm install
 npm run dev
-```
-
-Backend padrao:
-
-```text
-http://localhost:3001
+# Servidor em http://localhost:3001
 ```
 
 Health check:
-
 ```http
 GET http://localhost:3001/api/health
 ```
@@ -604,142 +495,237 @@ GET http://localhost:3001/api/health
 cd frontend
 npm install
 npm run dev
+# Interface em http://localhost:5173
 ```
 
-Frontend padrao:
+### Módulo ML (opcional)
 
-```text
-http://localhost:5173
+```bash
+cd backend
+pip install -r requirements-ml.txt
+uvicorn project_ml.api.app:app --reload --port 8000
 ```
 
-### Build de Producao
+```http
+POST http://localhost:8000/predict
+Content-Type: application/json
+
+{ "texto": "Desenvolvi um dashboard em Power BI com SQL e análise de dados." }
+```
+
+### Build de produção
 
 ```bash
 cd frontend
-npm run build
-```
-
-### Preview do Build
-
-```bash
-cd frontend
-npm run preview
+npm run build   # Gera dist/
+npm run preview # Preview do build
 ```
 
 ---
 
 ## Principais Rotas da API
 
-### Autenticacao
+### Autenticação
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/auth/register` | Cadastro de usuario |
+| POST | `/api/auth/register` | Cadastro de usuário |
 | POST | `/api/auth/login` | Login com JWT |
-| GET | `/api/auth/me` | Sessao atual |
-| POST | `/api/auth/google` | Login com Google |
-| POST | `/api/auth/reset-password/request` | Solicita codigo de reset |
-| POST | `/api/auth/reset-password/verify` | Valida codigo |
+| GET | `/api/auth/me` | Sessão atual |
+| POST | `/api/auth/google` | Login com Google OAuth |
+| POST | `/api/auth/reset-password/request` | Solicita código de reset |
+| POST | `/api/auth/reset-password/verify` | Valida código |
 | PUT | `/api/auth/reset-password` | Redefine senha |
+| POST | `/api/auth/2fa/setup` | Configura TOTP (2FA) |
 
-### Plataforma Academica
+### Plataforma Acadêmica
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/platform/v1/modules` | Lista modulos por permissao |
+| GET | `/api/platform/v1/modules` | Lista módulos por permissão |
 | GET | `/api/platform/v1/dashboard` | Dashboard por role |
 | POST | `/api/platform/v1/ai/assistant` | Assistente RAi |
-| GET | `/api/platform/v1/ava` | Estado do AVA |
-
-#### RAi Assistente
-
-O RAi recebe a mensagem atual e o historico recente da conversa:
-
-```json
-{
-  "prompt": "Tenho prova hoje de algoritmos",
-  "messages": [{ "role": "user", "content": "Curso Sistemas de Informacao" }],
-  "selectedCourseId": "curso-opcional",
-  "useWebSearch": true
-}
-```
-
-O backend consulta apenas o contexto academico autorizado para o usuario autenticado, detecta perfil, intencao, tom, area e dificuldade, e gera a resposta usando o prompt base do RAi. Para habilitar a conversa generativa com Groq, configure `RAI_AI_API_KEY`, `RAI_AI_API_URL=https://api.groq.com/openai/v1/chat/completions` e `RAI_AI_MODEL=llama-3.3-70b-versatile`. Sem provedor, o RAi informa somente fatos recuperados do portal, sem inventar orientacoes.
-
-O contexto interno e filtrado por escopo: estudante usa somente sua jornada; professor usa disciplinas e turmas atribuidas; coordenacao usa cursos sob responsabilidade; secretaria e admin usam apenas instituicoes vinculadas; super admin pode consultar a estrutura global. O historico permite continuidade da conversa, mas nao treina permanentemente o modelo com dados dos usuarios.
-
-No RBAC administrativo, `super_admin` e o admin global: cria instituicoes, nomeia administradores e acessa auditoria/dashboards globais. `admin` e institucional e opera apenas nas instituicoes com vinculo aprovado. `social_admin` administra logins e moderacao da rede social, sem receber acesso a estrutura academica institucional.
-
-Para complementar perguntas gerais com fontes publicas do Tavily Search, configure:
-
-```env
-RAI_WEB_SEARCH_ENABLED=true
-TAVILY_API_KEY=tvly-sua_chave
-```
-
-A pesquisa publica usa o modo `basic` do Tavily para economizar creditos e complementa explicacoes e referencias; ela nao amplia acesso a aulas, salas, turmas, notas ou qualquer dado institucional interno.
+| GET | `/api/platform/v1/ava` | Estado do AVA do usuário |
 
 ### AVA
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/platform/v1/ava/materials/:materialId/complete` | Marca material como concluido |
+| POST | `/api/platform/v1/ava/materials/:materialId/complete` | Marca material concluído |
 | POST | `/api/platform/v1/ava/activities/:activityId/submissions` | Envia atividade |
-| POST | `/api/platform/v1/ava/submissions/:submissionId/portfolio` | Transforma entrega em case profissional |
-| POST | `/api/platform/v1/ava/courses/:courseId/forum` | Cria topico no forum |
-| POST | `/api/platform/v1/ava/courses/:courseId/forum/:postId/comments` | Comenta no forum |
-| POST | `/api/platform/v1/ava/coordination/courses/:courseId/enrollments` | Matricula aluno em disciplina |
-| PUT | `/api/platform/v1/ava/coordination/courses/:courseId/teacher` | Designa professor responsavel |
+| POST | `/api/platform/v1/ava/submissions/:submissionId/portfolio` | Converte entrega em case profissional |
+| POST | `/api/platform/v1/ava/courses/:courseId/forum` | Cria tópico no fórum |
 
 ### Professor
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/platform/v1/ava/teacher/submissions` | Lista entregas |
+| GET | `/api/platform/v1/ava/teacher/submissions` | Lista entregas da turma |
 | POST | `/api/platform/v1/ava/teacher/courses/:courseId/materials` | Cria material |
 | POST | `/api/platform/v1/ava/teacher/courses/:courseId/activities` | Cria atividade |
 | PATCH | `/api/platform/v1/ava/teacher/submissions/:submissionId` | Publica nota e feedback |
 
-### Portfolio
+### Portfólio Público
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| GET | `/portfolio/:username` | Portfolio publico |
-| GET | `/portfolio/:username/:activityId` | Case especifico |
-| GET | `/u/:username` | Alias de perfil publico profissional |
-| GET | `/api/users/:id/portfolio` | Portfolio via API autenticada |
+| GET | `/portfolio/:username` | Portfólio público completo |
+| GET | `/portfolio/:username/:activityId` | Case específico |
+| GET | `/u/:username` | Alias de perfil profissional |
+| GET | `/api/users/:id/portfolio` | Portfólio via API autenticada |
 
 ### Admin e BI
 
-| Metodo | Rota | Descricao |
+| Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/admin/users` | Usuarios |
-| GET | `/api/admin/reports` | Denuncias |
-| GET | `/api/admin/audit-logs` | Auditoria |
-| GET | `/api/admin/power-bi` | Snapshot interno para BI |
+| GET | `/api/admin/users` | Listagem de usuários |
+| GET | `/api/admin/reports` | Denúncias e moderação |
+| GET | `/api/admin/audit-logs` | Trilha de auditoria |
+| GET | `/api/admin/power-bi` | Snapshot de indicadores para BI |
+
+---
+
+## Segurança e Permissões
+
+### Autenticação
+
+- JWT com HttpOnly cookies (resistente a XSS).
+- Senhas com bcrypt.
+- 2FA via TOTP.
+- Reset de senha por código temporário via e-mail.
+- Google OAuth.
+
+### RBAC com Escopos Institucionais
+
+O diferencial do RBAC da UNIGRAM é a combinação de **papel + escopo institucional**: não basta saber que alguém é professor — o sistema verifica em qual oferta, disciplina ou curso o vínculo está aprovado e ativo. Um professor não acessa o diário de uma turma que não é dele.
+
+| Papel | Escopo de acesso |
+|---|---|
+| `student` / `user` | AVA próprio, entregas, portfólio, rede social |
+| `professor` | Disciplinas e turmas atribuídas |
+| `coordination` | Cursos sob responsabilidade |
+| `secretary` | Matrículas e registros institucionais |
+| `moderator` | Denúncias e moderação de conteúdo |
+| `social_admin` | Logins e administração da rede social (sem acesso acadêmico) |
+| `admin` | Estrutura e usuários da instituição vinculada |
+| `super_admin` | Controle global, instituições, admins, auditoria e BI |
+
+### LGPD
+
+A UNIGRAM atua como **operadora** dos dados, sendo a instituição a **controladora**. Medidas implementadas: coleta mínima, consentimento explícito para publicar no portfólio, RBAC com escopos, auditoria de operações sensíveis, direito ao esquecimento e memórias do RAi identificáveis e excluíveis pelo usuário.
+
+---
+
+## Machine Learning e Assistente RAi
+
+### Assistente RAi
+
+O RAi é o assistente contextual da plataforma. Ele opera com acesso estritamente restrito ao contexto autorizado do usuário — o mesmo RBAC do restante do sistema.
+
+**Pipeline de resposta:**
+
+1. Recebe prompt + histórico da conversa.
+2. Identifica papel e vínculos do usuário autenticado.
+3. Busca apenas dados do AVA e da instituição autorizados para aquele papel.
+4. Opcionalmente complementa com pesquisa web (Tavily) para contexto público.
+5. Gera resposta com o modelo LLM (Groq / Llama 3.3 70B).
+6. Persiste memória da conversa no TypeDB.
+
+```json
+{
+  "prompt": "Qual é o prazo da minha próxima atividade?",
+  "messages": [{ "role": "user", "content": "Curso de Sistemas de Informação" }],
+  "selectedCourseId": "curso-opcional",
+  "useWebSearch": false
+}
+```
+
+> Sem `RAI_AI_API_KEY`, o RAi retorna apenas fatos recuperados do portal, sem geração.
+
+### Módulo ML
+
+Localizado em `backend/project_ml/`. Objetivos:
+
+- Sugerir áreas profissionais a partir de textos de entregas.
+- Recomendar skills e vagas compatíveis.
+- Gerar outputs para os dashboards de BI.
+- Apoiar leitura automática de competências.
+
+---
+
+## Validação Funcional
+
+A validação do MVP foi realizada por sete **cenários funcionais** (CF01–CF07) que percorrem os fluxos críticos ponta a ponta. Todos os cenários tiveram resultado **"Conforme"**.
+
+| Cenário | Fluxo validado |
+|---|---|
+| CF01 | Cadastro, login e autenticação com JWT |
+| CF02 | Configuração da hierarquia institucional pelo admin |
+| CF03 | Professor cria atividade → aluno entrega → professor corrige → aluno recebe nota |
+| CF04 | Aluno publica entrega no portfólio e visualiza link público |
+| CF05 | RAi responde sobre prazo de atividade sem retornar dados de outros usuários |
+| CF06 | Backend retorna HTTP 403 quando aluno tenta acessar oferta sem matrícula |
+| CF07 | Dashboard BI exibe indicadores consolidados para o admin |
+
+Não houve testes com usuários externos em larga escala — a validação foi funcional por cenários representativos dos perfis reais.
+
+---
+
+## Limitações Conhecidas
+
+As limitações abaixo são documentadas com transparência — reconhecê-las faz parte do objetivo de analisar criticamente a solução.
+
+| Limitação | Impacto | Situação |
+|---|---|---|
+| Migrações TypeDB incompletas | Dificulta instalação limpa em ambiente novo | Parcial |
+| Ausência de testes automatizados | Aumenta risco de regressão em evolução | Trabalho futuro prioritário |
+| Navegação por estado (sem React Router) | Impede deep links e URLs compartilháveis | Trabalho futuro |
+| Painéis administrativos não integrados à navegação | Acesso manual por rota direta | Trabalho futuro |
+| E2EE sem modo estrito | Criptografia ponta a ponta parcialmente implementada | Parcial |
+
+---
+
+## Trabalhos Futuros
+
+Na ordem de prioridade técnica:
+
+1. **Testes automatizados** — unitários, integração e interface para RBAC, AVA e RAi.
+2. **Migrações TypeDB completas** — versionadas e reproduzíveis para instalação limpa.
+3. **React Router** — navegação real com deep links e URLs compartilháveis.
+4. **E2EE em modo estrito** — hardening de segurança das mensagens diretas.
+5. **Learning Analytics avançado** — detecção precoce de risco de evasão.
+6. **Validação com usuários reais** — estudo com alunos, professores e recrutadores.
+7. **Multi-instituição completo** — suporte a múltiplas instituições em um único ambiente.
+
+---
+
+## Metodologia de Pesquisa
+
+| Dimensão | Classificação |
+|---|---|
+| **Natureza** | Pesquisa aplicada (Gil, 2019) |
+| **Abordagem** | Qualitativa |
+| **Procedimento técnico** | Estudo de caso (Yin, 2015) — tendo a própria plataforma como objeto |
+
+**Gestão do desenvolvimento:** princípios do Scrum (backlog, sprints, revisão) combinados com Kanban visual de quatro etapas: *Pendentes → Em Desenvolvimento → Validação → Pronto para Demo*.
+
+**Instrumentos de modelagem:** diagramas UML (casos de uso, classes), DER, fluxos BPMN em swimlanes, tabelas de requisitos e regras de negócio, protótipos de interface.
+
+**Referências fundamentais:** Moran (2015), Kenski (2019), Sommerville (2019), Sandhu et al. (1996), Robinson, Webber & Eifrem (2015), Gil (2019), Creswell & Creswell (2021), Yin (2015).
 
 ---
 
 ## Modelagem de Dados
 
-A modelagem completa esta documentada em PDF:
+A modelagem completa está documentada em:
 
-```text
+```
 docs/modelagem-bd-ecossistema-academico.pdf
+tcc unigran/_UNIGRAM_TCC_.docx
+tcc unigran/UNIGRAM_Documentacao_Tecnica.pdf
 ```
 
-Esse documento descreve:
-
-- entidades principais;
-- campos recomendados;
-- relacionamentos;
-- indices;
-- permissoes;
-- privacidade;
-- APIs recomendadas;
-- roadmap de migrations.
-
-### Dominios de Dados
+### Diagrama de entidades principais
 
 ```mermaid
 erDiagram
@@ -757,267 +743,42 @@ erDiagram
   PERSON ||--o{ ACADEMIC_TIMELINE_EVENT : generates
 ```
 
-### Principio de Normalizacao
+### Princípio de normalização
 
-O sistema deve evitar duplicar dados entre AVA e portfolio. A entrega academica e a fonte original; o portfolio deve referenciar a entrega e enriquecer com metadados profissionais.
+A entrega acadêmica é a **fonte original**. O portfólio referencia a entrega e a enriquece com metadados profissionais — não duplica dados entre AVA e portfólio.
 
----
+### Armazenamento por responsabilidade
 
-## Machine Learning e Analytics
-
-O projeto possui uma camada de Machine Learning em:
-
-```text
-backend/project_ml
-```
-
-### Objetivos da Camada ML
-
-- analisar textos de postagens ou entregas;
-- sugerir areas profissionais;
-- recomendar skills;
-- apoiar matching com vagas;
-- gerar outputs para dashboards;
-- apoiar leitura automatica de competencias.
-
-### Executar API Python
-
-```bash
-cd backend
-pip install -r requirements-ml.txt
-uvicorn project_ml.api.app:app --reload --port 8000
-```
-
-Endpoint principal:
-
-```http
-POST http://localhost:8000/predict
-```
-
-Exemplo:
-
-```json
-{
-  "texto": "Desenvolvi um dashboard em Power BI usando SQL, indicadores e analise de dados."
-}
-```
-
-### BI Interno
-
-O endpoint `/api/admin/power-bi` consolida indicadores como:
-
-- usuarios;
-- autores ativos;
-- posts;
-- comentarios;
-- interacoes;
-- progresso medio;
-- entregas;
-- portfolios;
-- taxa de conversao entrega -> case;
-- cursos mais ativos;
-- insights RAi.
-
----
-
-## Seguranca e Permissoes
-
-### Autenticacao
-
-- JWT.
-- Senhas com bcrypt.
-- Rotas protegidas por middleware.
-- Suporte a 2FA.
-- Reset de senha por codigo.
-
-### Roles
-
-| Role | Permissoes principais |
+| Camada | Responsabilidade |
 |---|---|
-| aluno / student / user | AVA, entregas, portfolio, rede social |
-| professor | materiais, atividades, correcao, feedback |
-| coordination | leitura academica, turmas, alunos em risco |
-| secretary | matriculas, registros e documentos institucionais |
-| moderator | denuncias e moderacao de conteudo |
-| social_admin | logins e administracao da rede social |
-| admin | estrutura e usuarios da instituicao atribuida |
-| super_admin | controle global, instituicoes, admins, auditoria e BI |
-
-### Privacidade
-
-O portfolio deve respeitar:
-
-- visibilidade publica ou privada;
-- exibicao opcional de nota;
-- exibicao opcional de telefone/email;
-- controle sobre curriculo;
-- controle sobre evidencias sensiveis;
-- auditoria de acessos administrativos.
-
----
-
-## Evidencias para TCC
-
-Este repositorio pode ser usado como base pratica para TCC porque contempla:
-
-### Produto
-
-- plataforma funcional;
-- interface moderna;
-- fluxo academico real;
-- integracao AVA -> portfolio;
-- perfil publico profissional;
-- dashboard interno.
-
-### Engenharia
-
-- frontend React;
-- backend Express;
-- autenticacao JWT;
-- upload de documentos;
-- controle de roles;
-- APIs REST;
-- integracao com banco externo;
-- arquitetura modular.
-
-### Pesquisa Aplicada
-
-- problema claro;
-- impacto educacional;
-- conexao com empregabilidade;
-- proposta de reputacao profissional verificavel;
-- uso de dados academicos para apoiar recrutamento.
-
-### Documentacao
-
-- README completo;
-- PDF de modelagem de banco;
-- relatorios de arquitetura;
-- documentacao de ML;
-- schemas TypeQL e SQL auxiliares.
-
----
-
-## Limitacoes Conhecidas
-
-Alguns pontos ainda estao em evolucao:
-
-- As migrations TypeDB estao em `backend/migrations/typedb/`: `001_portfolio_schema_extension.tql`, `002_university_roles_extension.tql` e `003_academic_platform_schema.tql`. Aplique com `cd backend && npm run db:migrate:typedb`, depois crie as ofertas iniciais com `npm run db:seed:academic`.
-- O Portal Academico ativo grava em TypeDB; `backend/data/ava-store.json` e `avaStore.js` sao apenas legado, sem uso nas rotas do portal.
-- `npm run db:seed:academic` executa o seed completo de rede e AVA: professores, alunos, disciplinas, matriculas, materiais, atividades, frequencia, forum, entregas, portfolios, posts, stories, comentarios, curtidas, comunidades, notificacoes e conversas. Para criar contas ausentes, defina `SEED_DEFAULT_PASSWORD` ou as senhas especificas dos professores no `.env`.
-- O parser completo de PDF/DOCX para curriculo vivo ainda deve ser aprofundado.
-- Visualizador interno de PDF/DOCX ainda pode evoluir para zoom, paginacao e fullscreen.
-- Code splitting ainda pode ser melhorado para reduzir tamanho do bundle.
-- Credenciais reais de TypeDB/Supabase/Cloudinary precisam estar corretas no ambiente.
-- O fallback de login existe apenas para desenvolvimento e nao deve ser usado em producao.
-
----
-
-## Roadmap
-
-### Curto Prazo
-
-- Finalizar schema definitivo do banco.
-- Criar migrations pequenas por dominio.
-- Persistir AVA totalmente no banco.
-- Melhorar viewer de documentos.
-- Criar tela dedicada de vitrine academica publica.
-- Adicionar upload de thumbnail/banner do projeto.
-
-### Medio Prazo
-
-- Implementar parser de curriculo PDF/DOCX.
-- Criar score profissional mais robusto.
-- Adicionar busca de talentos por skill.
-- Criar painel de coordenacao com alunos em risco.
-- Adicionar recomendacao de vagas.
-- Criar cache de analytics.
-
-### Longo Prazo
-
-- Multi-instituicao completo.
-- Recrutadores com conta propria.
-- Marketplace de talentos academicos.
-- Assinaturas digitais de certificados.
-- IA contextual por disciplina.
-- Analytics preditivo institucional.
+| TypeDB Cloud | Usuários, relações, metadados, autenticação, portfólio, AVA e hierarquia institucional |
+| Supabase Storage | Documentos do AVA (PDFs, DOCX, entregas acadêmicas) |
+| Cloudinary | Imagens, vídeos e mídias do feed social |
 
 ---
 
 ## Como Demonstrar o Sistema
 
-### Roteiro de Demonstracao
+Para o roteiro completo com usuários de demonstração e fluxos pré-populados, consulte:
 
-1. Entrar no sistema.
-2. Abrir Portal Academico.
-3. Mostrar Home Institucional e Vitrine Academica.
-4. Abrir AVA.
-5. Selecionar disciplina.
-6. Enviar atividade.
-7. Confirmar publicacao no portfolio.
-8. Abrir a aba Portfolio no perfil social.
-9. Mostrar Recruiter View.
-10. Abrir rota publica `/u/:username`.
-11. Abrir Master BI com usuario admin.
-12. Apresentar PDF de modelagem do banco.
+```
+COMO_RODAR.md
+```
 
-### Login em Desenvolvimento
+Roteiro resumido:
 
-Use uma conta real cadastrada no banco configurado no `backend/.env`. O projeto nao deve ser demonstrado com usuario falso, token fixo ou bypass de autenticacao.
+1. Login com conta cadastrada no banco configurado em `backend/.env`.
+2. Abrir o Portal Institucional — Home e Vitrine Acadêmica.
+3. Acessar o AVA — selecionar disciplina, enviar atividade.
+4. Confirmar publicação no portfólio.
+5. Abrir a aba Portfólio no perfil social.
+6. Visualizar o perfil público em `/u/:username` (*Recruiter View*).
+7. Acessar o Master BI com usuário admin.
+
+> O sistema não possui bypass de autenticação. Use contas reais cadastradas no banco.
 
 ---
 
-## Verificacoes Realizadas
+## Licença
 
-Comandos utilizados durante validacao:
-
-```bash
-cd frontend
-npm run build
-```
-
-```bash
-cd backend
-node --check src/index.js
-node --check src/modules/academic/avaRoutes.js
-node --check src/modules/academic/typedbAvaStore.js
-node --check src/modules/academic/typedbPortfolioStore.js
-```
-
-Health check:
-
-```http
-GET http://localhost:3001/api/health
-```
-
----
-
-## Autores e Contexto Academico
-
-Projeto desenvolvido como base de pesquisa e implementacao para um sistema academico moderno, com foco em:
-
-- educacao superior;
-- plataformas SaaS;
-- experiencia do usuario;
-- empregabilidade;
-- portfolios academicos;
-- inteligencia institucional;
-- reputacao profissional verificavel.
-
-### Tema Sugerido para TCC
-
-**Desenvolvimento de uma plataforma academica integrada para transformacao de atividades do AVA em portfolios profissionais verificaveis.**
-
-### Possivel Linha de Pesquisa
-
-- Sistemas de informacao.
-- Engenharia de software.
-- UX em plataformas educacionais.
-- Transformacao digital na educacao.
-- Inteligencia aplicada a empregabilidade academica.
-
----
-
-## Licenca
-
-Este projeto e de uso academico e experimental. Ajuste a licenca conforme as regras da instituicao, dos autores e dos servicos externos utilizados.
+Este projeto é de uso acadêmico. Desenvolvido como TCC do curso de Tecnologia em Análise e Desenvolvimento de Sistemas na UniCesumar (2026). Ajuste a licença conforme as regras da instituição e dos serviços externos utilizados.
