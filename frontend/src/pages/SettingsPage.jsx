@@ -226,6 +226,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [backupCodes, setBackupCodes] = useState(null);
+  const [disableModal, setDisableModal] = useState(false);
+  const [disableCredential, setDisableCredential] = useState('');
+  const [disableLoading, setDisableLoading] = useState(false);
   const [cryptoDevices, setCryptoDevices] = useState([]);
   const [cryptoDevicesLoading, setCryptoDevicesLoading] = useState(false);
   const profileInputRef = useRef(null);
@@ -627,26 +630,33 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
       setExportLoading(false);
     }
   }
-  async function disable2FA() {
-    const credential = window.prompt('Digite sua senha atual ou o codigo 2FA de 6 digitos para desativar');
-    if (!credential) return;
-    const cleanCode = credential.replace(/\D/g, '');
-    const body = cleanCode.length === 6 && cleanCode === credential.replace(/\s/g, '')
+  async function confirmDisable2FA() {
+    const cred = disableCredential.trim();
+    if (!cred) { showToast('Preencha a senha ou o codigo do app', '!'); return; }
+    const cleanCode = cred.replace(/\D/g, '');
+    const body = cleanCode.length === 6 && cleanCode === cred.replace(/\s/g, '')
       ? { totpCode: cleanCode }
-      : { password: credential };
-    const res = await apiFetch('/auth/2fa/disable', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return showToast(data.error || 'Erro 2FA', '!');
-    updateUser({ twoFactorEnabled: false });
-    setCfg(p => ({ ...p, twoFactor: false }));
-    setTwoFactorSetup(null);
-    setTwoFactorCode('');
-    setBackupCodes(null);
-    showToast('2FA desligado', 'OK');
+      : { password: cred };
+    setDisableLoading(true);
+    try {
+      const res = await apiFetch('/auth/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { showToast(data.error || 'Credencial invalida', '!'); return; }
+      updateUser({ twoFactorEnabled: false });
+      setCfg(p => ({ ...p, twoFactor: false }));
+      setTwoFactorSetup(null);
+      setTwoFactorCode('');
+      setBackupCodes(null);
+      setDisableModal(false);
+      setDisableCredential('');
+      showToast('2FA desativado', 'OK');
+    } finally {
+      setDisableLoading(false);
+    }
   }
 
   async function loadCryptoDevices() {
@@ -801,8 +811,21 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
 
           {section === 'seguranca' && (<>
             <Section title="Autenticacao em Dois Fatores (2FA)" desc="">
-              <Row title="Ativar 2FA" sub="Camada extra de segurana">
-                <Toggle checked={Boolean(user?.twoFactorEnabled || cfg.twoFactor)} onChange={() => user?.twoFactorEnabled ? disable2FA() : start2FA()} />
+              <Row title="Ativar 2FA" sub="Camada extra de seguranca">
+                <Toggle
+                  checked={Boolean(user?.twoFactorEnabled || cfg.twoFactor)}
+                  onChange={() => {
+                    if (user?.twoFactorEnabled) {
+                      setDisableModal(true);
+                    } else if (twoFactorSetup) {
+                      // Cancelar configuracao ativa sem regenerar o secret
+                      setTwoFactorSetup(null);
+                      setTwoFactorCode('');
+                    } else {
+                      start2FA();
+                    }
+                  }}
+                />
               </Row>
               {twoFactorSetup && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginTop: 10 }}>
@@ -847,6 +870,41 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
                     ))}
                   </div>
                   <Button variant="secondary" size="sm" onClick={() => setBackupCodes(null)}>Ja guardei</Button>
+                </div>
+              )}
+              {disableModal && (
+                <div style={{ border: '1px solid rgba(239,68,68,0.35)', borderRadius: 12, padding: 16, marginTop: 10, background: 'rgba(239,68,68,0.06)' }}>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Desativar autenticacao em dois fatores</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                    Para confirmar, insira sua <strong>senha</strong> ou o <strong>codigo de 6 digitos</strong> do app autenticador.
+                  </div>
+                  <input
+                    className="form-input"
+                    type="text"
+                    inputMode="text"
+                    placeholder="Senha ou codigo do app (6 digitos)"
+                    value={disableCredential}
+                    onChange={e => setDisableCredential(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && confirmDisable2FA()}
+                    style={{ marginBottom: 12 }}
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Button
+                      variant="danger"
+                      onClick={confirmDisable2FA}
+                      disabled={disableLoading || !disableCredential.trim()}
+                    >
+                      {disableLoading ? 'Desativando...' : 'Confirmar desativacao'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => { setDisableModal(false); setDisableCredential(''); }}
+                      disabled={disableLoading}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
               )}
             </Section>
