@@ -805,8 +805,8 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           const shareUrl = `${window.location.origin}/?post=${encodeURIComponent(post.id)}`;
           if (navigator.share) {
             await navigator.share({
-              title: author?.displayName || 'Unigran',
-              text: post.text || 'Post Unigran',
+              title: author?.displayName || 'Unigram',
+              text: post.text || 'Post Unigram',
               url: shareUrl,
             }).catch(() => null);
           } else if (navigator.clipboard) {

@@ -2,7 +2,7 @@
 
 const texts = [
   'Entre na sua conta para continuar',
-  'Unigran',
+  'Unigram',
   'Onde o mundo academico se encontra. :)'
 ];
 

@@ -8,12 +8,12 @@ const CAROUSEL_PHOTOS = [
   {
     id: 'characters',
     src: charactersImage,
-    alt: 'Personagens da comunidade Unigran',
+    alt: 'Personagens da comunidade Unigram',
   },
   {
     id: 'community',
     src: illustrationImage,
-    alt: 'Ilustracao da comunidade Unigran',
+    alt: 'Ilustracao da comunidade Unigram',
   },
 ];
 
@@ -59,7 +59,7 @@ function AuthLayout({ children }) {
               </div>
 
               <div className="auth-visual-copy">
-                <span>UNIGRAN SOCIAL</span>
+                <span>UNIGRAM SOCIAL</span>
                 <h2>Bem-vindo de volta</h2>
                 <p>Entre, veja sua turma, posts, mensagens e comunidades.</p>
                 <div className="auth-visual-arrow" aria-hidden="true" />

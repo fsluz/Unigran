@@ -124,7 +124,7 @@ export default function NotificationsPage() {
                 style={{ width: '100%', textAlign: 'left', background: n.read ? 'transparent' : 'var(--accent-light)', border: 'none' }}
               >
                 <span className="notif-icon">{iconFor(n.type)}</span>
-                <Avatar size={36} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigran'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
+                <Avatar size={36} src={n.actorPicture || null} name={n.actorName || n.actor || 'Unigram'} initials={(n.actorName || n.actor || 'UN').slice(0, 2)} />
                 <div className="notif-text">
                   {n.actorName || n.actor ? <strong>{n.actorName || n.actor}</strong> : null} {n.text}
                   {n.type === 'follow-request' && (

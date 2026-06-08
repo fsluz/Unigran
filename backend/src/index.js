@@ -90,7 +90,7 @@ app.get('/api/healthz', async (_req, res) => {
   let db = 'unknown';
   try {
     const { readQuery } = await import('./db/typedb.js');
-    await readQuery('match $x isa thing; limit 1; fetch { "x": { $x.* } };');
+    await readQuery('match $x isa person; limit 1; fetch { "x": { $x.* } };');
     db = 'connected';
   } catch { db = 'error'; }
   const uptime = Math.floor(process.uptime());

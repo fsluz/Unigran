@@ -64,7 +64,7 @@ export default function Sidebar({
   }, [token, page]);
 
   useEffect(() => {
-    const base = 'Unigran - Rede Social Academica';
+    const base = 'Unigram - Rede Social Academica';
     document.title = messageCount > 0 ? `(${messageCount}) ${base}` : base;
     return () => { document.title = base; };
   }, [messageCount]);
@@ -101,7 +101,7 @@ export default function Sidebar({
           <UnigranLogo />
           {!collapsed && (
             <div>
-              <div className="sidebar-wide-brand">UNIGRAN</div>
+              <div className="sidebar-wide-brand">UNIGRAM</div>
               <div className="sidebar-wide-sub">Rede social e portal</div>
             </div>
           )}

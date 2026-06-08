@@ -13,7 +13,7 @@ export const CONFIG = {
 // Chat configuration
 export const CHAT_CONFIG = {
   GPT_MAKER: {
-    name: 'Atendimento UNIGRAN',
+    name: 'Atendimento UNIGRAM',
     subtitle: 'Powered by GPT Maker',
     color: '#ff6b6b',
   },

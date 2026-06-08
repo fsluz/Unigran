@@ -53,20 +53,8 @@ function optionalText(value) {
   return value.trim() || undefined;
 }
 
-const classDays = ['Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado', 'Domingo'];
-
 function isStandardClassSchedule(value) {
-  const expression = new RegExp(`^(${classDays.join('|')}) - (\\d{2}:\\d{2}) as (\\d{2}:\\d{2}) \\(([1-8]) aulas x 45 min\\)$`);
-  const match = String(value || '').match(expression);
-  if (!match) return false;
-  const toMinutes = time => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : -1;
-  };
-  const start = toMinutes(match[2]);
-  const end = toMinutes(match[3]);
-  const lessonCount = Number(match[4]);
-  return start >= 0 && end >= 0 && (end - start + (24 * 60)) % (24 * 60) === lessonCount * 45;
+  return typeof value === 'string' && value.trim().length >= 5;
 }
 
 const UniversityFieldsSchema = z.object({
@@ -126,10 +114,7 @@ const AvaOfferingSchema = z.object({
   code: z.string().trim().min(2).max(40).transform(value => value.toUpperCase()),
   description: z.string().trim().max(3000).optional().or(z.literal('')),
   period: z.string().trim().min(3).max(40),
-  schedule: z.string().trim().max(120).refine(
-    isStandardClassSchedule,
-    'Informe dia, horario e de 1 a 8 aulas por periodo, com 45 minutos cada.',
-  ),
+  schedule: z.string().trim().min(5, 'Informe o horario da aula.').max(120),
   room: z.string().trim().min(2).max(120),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });

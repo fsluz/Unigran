@@ -111,7 +111,7 @@ const people = [
     username: 'coord_academica',
     email: 'coordenacao.demo@unigran.local',
     name: 'Coordenacao Academica',
-    role: 'coordination',
+    role: 'admin',
     phone: '(67) 99992-3001',
     language: 'pt-BR',
     gender: 'other',
@@ -586,7 +586,12 @@ function dt(value) {
 }
 
 async function hasResult(query) {
-  const rows = await readQuery(query);
+  // TypeDB 3 usa fetch; converte `select $var;` automaticamente
+  const normalized = query.trim().replace(
+    /\bselect\s+(\$\w+)\s*;?\s*$/,
+    'fetch { "r": { $1.* } };',
+  );
+  const rows = await readQuery(normalized);
   return rows.length > 0;
 }
 
@@ -650,34 +655,98 @@ async function ensurePerson(person) {
         has can-publish true,
         has user-role "${esc(person.role)}",
         has page-visibility "public",
-        has post-visibility "public";
+        has post-visibility "public",
+        has page-creation-timestamp ${dt()};
   `);
   console.log(`add  person: ${person.email} (${person.role})`);
   return person.username;
 }
 
+// Descoberto em runtime — preenchido por resolveUnigranId()
+let UNIGRAN_ID = '';
+
+async function resolveUnigranId() {
+  // Tenta por academic-institution-code primeiro (mais específico)
+  for (const q of [
+    `match $u isa educational-institute, has academic-institution-code "unigran", has institution-id $id; fetch { "id": $id };`,
+    `match $u isa educational-institute, has name "UNIGRAN", has institution-id $id; fetch { "id": $id };`,
+  ]) {
+    const rows = await readQuery(q).catch(() => []);
+    if (rows.length && rows[0].id) return rows[0].id;
+  }
+  return '';
+}
+
 async function ensureInstitution() {
-  if (await hasResult(`match $institution isa educational-institute, has academic-institution-code "unigran"; select $institution;`)) {
-    console.log('skip institution UNIGRAN');
+  // Busca por academic-institution-code (entidade já tem o código)
+  const byCode = await readQuery(`
+    match $institution isa educational-institute, has academic-institution-code "unigran";
+    fetch { "institution": { $institution.* } };
+  `);
+  if (byCode.length) {
+    const existing = byCode[0]?.institution || {};
+    if (!existing['institution-id']) {
+      // Gera um ID determinístico baseado no slug para evitar duplicatas em re-runs
+      const newId = `university-unigran-seed`;
+      await writeQuery(`
+        match $institution isa educational-institute, has academic-institution-code "unigran";
+        insert $institution has institution-id "${newId}";
+      `);
+      UNIGRAN_ID = newId;
+      console.log('link institution-id UNIGRAN:', newId);
+    } else {
+      UNIGRAN_ID = existing['institution-id'];
+      console.log('skip institution UNIGRAN (id:', UNIGRAN_ID + ')');
+    }
     return;
   }
-  if (await hasResult(`match $institution isa educational-institute, has name "UNIGRAN"; select $institution;`)) {
-    await writeQuery(`
-      match $institution isa educational-institute, has name "UNIGRAN";
-      insert $institution has academic-institution-code "unigran";
-    `);
-    console.log('link institution UNIGRAN');
+
+  // Busca por nome (entidade existe mas sem código)
+  const byName = await readQuery(`
+    match $institution isa educational-institute, has name "UNIGRAN";
+    fetch { "institution": { $institution.* } };
+  `);
+  if (byName.length) {
+    const existing = byName[0]?.institution || {};
+    if (!existing['institution-id']) {
+      const newId = `university-unigran-seed`;
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has academic-institution-code "unigran";
+      `);
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has institution-id "${newId}";
+      `);
+      UNIGRAN_ID = newId;
+    } else {
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has academic-institution-code "unigran";
+      `).catch(() => null);
+      UNIGRAN_ID = existing['institution-id'];
+    }
+    console.log('link institution UNIGRAN codes (id:', UNIGRAN_ID + ')');
     return;
   }
+
+  // Cria do zero com todos os atributos necessários
+  const newId = `university-unigran-seed`;
   await writeQuery(`
     insert
       $institution isa university,
         has name "UNIGRAN",
+        has username "unigran",
+        has institution-id "${newId}",
         has academic-institution-code "unigran",
+        has institution-status "approved",
+        has page-visibility "public",
         has is-active true,
         has is-visible true,
-        has can-publish false;
+        has can-publish false,
+        has page-creation-timestamp ${typeqlDatetime()};
   `);
+  UNIGRAN_ID = newId;
   console.log('add  institution UNIGRAN');
 }
 
@@ -1118,6 +1187,45 @@ function messagePayload(username, content) {
   });
 }
 
+// Mapeia role global para role institucional válido no @values do TypeDB
+const INSTITUTION_ROLE_MAP = {
+  admin: 'admin',
+  super_admin: 'admin',
+  coordination: 'coordination',
+  professor: 'professor',
+  secretary: 'secretary',
+  student: 'student',
+  moderator: 'moderator',
+  user: 'student',
+};
+
+async function ensureMembership(username, globalRole) {
+  const institutionRole = INSTITUTION_ROLE_MAP[globalRole] || 'student';
+  const membershipId = `membership-seed-${esc(username)}`;
+  await insertUnlessExists(
+    `
+      match
+        $member isa person, has username "${esc(username)}";
+        $university isa educational-institute, has institution-id "${UNIGRAN_ID}";
+        $membership isa institution-membership, links (member: $member, university: $university);
+      select $membership;
+    `,
+    `
+      match
+        $member isa person, has username "${esc(username)}";
+        $university isa educational-institute, has institution-id "${UNIGRAN_ID}";
+      insert
+        $membership isa institution-membership, links (member: $member, university: $university),
+          has institution-membership-id "${membershipId}",
+          has institution-role "${esc(institutionRole)}",
+          has institution-status "approved",
+          has institution-created-at ${dt('2026-02-01T00:00:00.000Z')},
+          has institution-updated-at ${dt('2026-02-01T00:00:00.000Z')};
+    `,
+    `membership ${username} → UNIGRAN (${institutionRole})`,
+  );
+}
+
 async function ensureConversation(conversation) {
   const participant0 = userRef(conversation.participants[0]);
   const participant1 = userRef(conversation.participants[1]);
@@ -1170,6 +1278,19 @@ async function main() {
   }
 
   await ensureInstitution();
+
+  // UNIGRAN_ID agora contém o ID real da entidade no TypeDB
+  if (!UNIGRAN_ID) {
+    console.error('ERRO: Não foi possível resolver o institution-id da UNIGRAN. Memberships não serão criadas.');
+  } else {
+    console.log('UNIGRAN_ID resolvido:', UNIGRAN_ID);
+    // Vincular todos os usuários à UNIGRAN com institution-membership
+    // Habilita: seletor de universidade, wizard de coordenação, busca de membros
+    for (const person of people) {
+      const username = userRef(person.username);
+      if (username) await ensureMembership(username, person.role);
+    }
+  }
 
   for (const course of courses) {
     await ensureCourse(course);

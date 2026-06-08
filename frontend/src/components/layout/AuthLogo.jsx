@@ -9,7 +9,7 @@ function AuthLogo() {
         <div className="auth-logo-row">
             <UnigranLogo size={52} className="auth-logo-svg" />
             <div>
-                <div className="auth-logo-title">UNIGRAN</div>
+                <div className="auth-logo-title">UNIGRAM</div>
                 <div className="auth-logo-caption">Rede Social Academica</div>
             </div>
         </div>

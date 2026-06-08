@@ -297,7 +297,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     await sharePost({ token, postId: post.id }).catch(() => null);
     const shareUrl = `${window.location.origin}/?post=${encodeURIComponent(post.id)}`;
     if (navigator.share) {
-      await navigator.share({ title: author?.displayName || 'Unigran', url: shareUrl }).catch(() => null);
+      await navigator.share({ title: author?.displayName || 'Unigram', url: shareUrl }).catch(() => null);
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(shareUrl).catch(() => null);
     }

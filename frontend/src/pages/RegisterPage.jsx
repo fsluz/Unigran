@@ -162,7 +162,7 @@ export default function RegisterPage({ onGoLogin }) {
 
           <div className="form-group">
             <label className="form-label">Email institucional *</label>
-            <input className="form-input" type="email" placeholder="seu.email@unigran.br" value={form.email} onChange={set('email')} />
+            <input className="form-input" type="email" placeholder="seu.email@unigram.br" value={form.email} onChange={set('email')} />
           </div>
 
           <div className="form-group">
@@ -251,10 +251,10 @@ export default function RegisterPage({ onGoLogin }) {
             </div>
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', fontSize: 13, lineHeight: 1.7, color: 'var(--text-muted)' }}>
               <h4 style={{ color: 'var(--text)', marginBottom: 8 }}>1. Coleta de Dados (LGPD — Lei 13.709/2018)</h4>
-              <p>A plataforma Unigran coleta dados pessoais como nome, e-mail, foto de perfil e conteúdo publicado. Esses dados são utilizados exclusivamente para funcionamento da plataforma, personalização da experiência e comunicação institucional.</p>
+              <p>A plataforma Unigram coleta dados pessoais como nome, e-mail, foto de perfil e conteúdo publicado. Esses dados são utilizados exclusivamente para funcionamento da plataforma, personalização da experiência e comunicação institucional.</p>
 
               <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>2. Uso dos Dados</h4>
-              <p>Seus dados <strong>não são vendidos</strong> a terceiros. Podem ser compartilhados com parceiros institucionais da Unigran para fins acadêmicos, mediante consentimento prévio.</p>
+              <p>Seus dados <strong>não são vendidos</strong> a terceiros. Podem ser compartilhados com parceiros institucionais da Unigram para fins acadêmicos, mediante consentimento prévio.</p>
 
               <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>3. Seus Direitos (LGPD Art. 18)</h4>
               <p>Você tem direito a: acessar seus dados, corrigir informações, solicitar exclusão da conta e revogar consentimento a qualquer momento nas Configurações da plataforma.</p>
@@ -266,7 +266,7 @@ export default function RegisterPage({ onGoLogin }) {
               <p>Seus dados são armazenados com criptografia e acessos são registrados em logs de auditoria. Mensagens privadas utilizam criptografia de ponta a ponta (E2EE).</p>
 
               <h4 style={{ color: 'var(--text)', margin: '16px 0 8px' }}>6. Contato</h4>
-              <p>Para questões relacionadas à privacidade, entre em contato: <strong>privacidade@unigran.br</strong></p>
+              <p>Para questões relacionadas à privacidade, entre em contato: <strong>privacidade@unigram.br</strong></p>
             </div>
             <div className="modal-footer">
               <button
