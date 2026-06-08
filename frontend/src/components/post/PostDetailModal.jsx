@@ -17,6 +17,36 @@ function formatContent(text = '') {
   );
 }
 
+function getEmbeds(text = '') {
+  const urls = String(text).match(/https?:\/\/[^\s]+|www\.[^\s]+/gi) || [];
+  return urls.slice(0, 3).map(raw => {
+    const url = raw.startsWith('http') ? raw : `https://${raw}`;
+    let host = '';
+    try {
+      host = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return null;
+    }
+    const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/);
+    if (yt?.[1]) return { type: 'youtube', url, embedUrl: `https://www.youtube.com/embed/${yt[1]}`, host };
+    if (host.includes('instagram.com')) return { type: 'link', url, host, title: 'Instagram', text: 'Abrir post no Instagram' };
+    if (host === 'x.com' || host === 'twitter.com') return { type: 'link', url, host, title: 'X', text: 'Abrir post no X' };
+    return { type: 'link', url, host, title: host, text: url };
+  }).filter(Boolean);
+}
+
+function stripEmbedLinks(text = '') {
+  const embeds = getEmbeds(text);
+  if (!embeds.length) return text;
+  let next = String(text || '');
+  for (const embed of embeds) {
+    next = next.replace(embed.url, '');
+    if (embed.url.startsWith('https://www.')) next = next.replace(embed.url.replace('https://www.', 'www.'), '');
+    if (embed.url.startsWith('https://')) next = next.replace(embed.url.replace('https://', ''), '');
+  }
+  return next.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function normalizeComment(comment) {
   return {
     id: comment.id,
@@ -205,6 +235,16 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
   const [liked, setLiked] = useState(post.liked || false);
   const [likes, setLikes] = useState(post.likes || 0);
   const [saved, setSaved] = useState(post.saved || false);
+  const author = post.author?.username === user?.username
+    ? {
+      ...post.author,
+      displayName: user?.displayName || post.author?.displayName,
+      profilePicture: user?.profilePicture || post.author?.profilePicture,
+      role: user?.role || post.author?.role,
+    }
+    : post.author;
+  const embeds = useMemo(() => getEmbeds(post.content || ''), [post.content]);
+  const bodyText = useMemo(() => stripEmbedLinks(post.content || ''), [post.content]);
 
   const sortedComments = useMemo(() => {
     const list = [...comments];
@@ -257,7 +297,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     await sharePost({ token, postId: post.id }).catch(() => null);
     const shareUrl = `${window.location.origin}/?post=${encodeURIComponent(post.id)}`;
     if (navigator.share) {
-      await navigator.share({ title: post.author?.displayName || 'Unigran', url: shareUrl }).catch(() => null);
+      await navigator.share({ title: author?.displayName || 'Unigran', url: shareUrl }).catch(() => null);
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(shareUrl).catch(() => null);
     }
@@ -279,22 +319,46 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
         {/* ── Lado esquerdo: post ── */}
         <section className="post-detail-left">
           <header className="post-detail-head">
-            <button type="button" className="post-detail-author-btn" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
-              <Avatar size={44} src={post.author?.profilePicture || null} name={post.author?.displayName || ''} initials={post.author?.avatar || post.author?.displayName?.slice(0, 2)} />
+            <button type="button" className="post-detail-author-btn" onClick={() => author?.username && onOpenProfile?.(author.username)}>
+              <Avatar size={44} src={author?.profilePicture || null} name={author?.displayName || ''} initials={author?.avatar || author?.displayName?.slice(0, 2)} />
             </button>
             <div className="post-detail-author-meta">
               <div className="post-detail-author-line">
-                <button type="button" className="post-detail-author-name" onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}>
-                  {post.author?.displayName}
+                <button type="button" className="post-detail-author-name" onClick={() => author?.username && onOpenProfile?.(author.username)}>
+                  {author?.displayName}
                 </button>
-                {isVerifiedAuthor(post.author) && <VerifiedIcon />}
-                <RoleBadge role={post.author?.role} />
+                {isVerifiedAuthor(author) && <VerifiedIcon />}
+                <RoleBadge role={author?.role} />
               </div>
-              <div className="post-detail-author-sub">@{post.author?.username} · {relativeTime(post.time)}</div>
+              <div className="post-detail-author-sub">@{author?.username} · {relativeTime(post.time)}</div>
             </div>
           </header>
 
-          {post.content && <div className="post-detail-body">{formatContent(post.content)}</div>}
+          {bodyText && <div className="post-detail-body">{formatContent(bodyText)}</div>}
+
+          {embeds.length > 0 && (
+            <div className="post-detail-embeds">
+              {embeds.map((embed, index) => (
+                embed.type === 'youtube' ? (
+                  <div className="post-detail-embed post-detail-embed--youtube" key={`${embed.url}-${index}`}>
+                    <iframe
+                      className="post-detail-embed-frame"
+                      src={embed.embedUrl}
+                      title={`YouTube ${index + 1}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <a className="post-detail-link-preview" href={embed.url} target="_blank" rel="noreferrer" key={`${embed.url}-${index}`}>
+                    <strong>{embed.title}</strong>
+                    <span>{embed.text}</span>
+                    <small>{embed.host}</small>
+                  </a>
+                )
+              ))}
+            </div>
+          )}
 
           {post.media?.url && (
             <div className="post-detail-media">
@@ -360,8 +424,9 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
                   key={c.id}
                   comment={c}
                   postId={post.id}
-                  postAuthorUsername={post.author?.username}
+                  postAuthorUsername={author?.username}
                   onMutate={setComments}
+                  onOpenProfile={onOpenProfile}
                 />
               ))
             )}

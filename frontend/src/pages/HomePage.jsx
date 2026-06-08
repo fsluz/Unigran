@@ -191,7 +191,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
               ['following', 'Seguindo'],
               ['trending', 'Tendências'],
             ].map(([id, label]) => (
-              <button key={id} className={feed === id ? 'active' : ''} onClick={() => setFeed(id)}>
+              <button key={id} className={feed === id ? 'active' : ''} onClick={() => { setFeed(id); setTrendTitle(''); }}>
                 {label}
               </button>
             ))}

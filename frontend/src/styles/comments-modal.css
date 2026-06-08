@@ -190,6 +190,54 @@
   background: #000;
 }
 
+.post-detail-embeds {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 6px;
+}
+
+.post-detail-embed,
+.post-detail-link-preview {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 52%, transparent);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.post-detail-embed-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: #000;
+}
+
+.post-detail-link-preview {
+  display: grid;
+  gap: 5px;
+  padding: 14px 16px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.16s, background 0.16s, transform 0.16s;
+}
+
+.post-detail-link-preview:hover {
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.post-detail-link-preview strong {
+  font-size: 14px;
+}
+
+.post-detail-link-preview span,
+.post-detail-link-preview small {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 .post-detail-ai-badge {
   position: absolute;
   left: 14px;
@@ -311,8 +359,9 @@
   gap: 12px;
   padding: 14px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--card) 88%, var(--page-bg));
+  background: color-mix(in srgb, var(--card) 58%, transparent);
   border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
 }
 
 .post-detail-comment-main {
@@ -394,8 +443,37 @@
 .comment-edit-box div { display: flex; gap: 8px; }
 .comment-edit-box button { border: 0; border-radius: 8px; background: #2374e1; color: #fff; padding: 6px 12px; font-size: 12px; cursor: pointer; }
 .comment-edit-box button.muted { background: transparent; color: #8b949e; border: 1px solid rgba(148,163,184,.2); }
-.post-detail-comment-card.depth-1 { margin-left: 12px; margin-top: 8px; background: #12161c; }
+.post-detail-comment-card[class*="depth-"] {
+  background: color-mix(in srgb, var(--card) 42%, transparent);
+}
+.post-detail-comment-card.depth-1 { margin-left: 12px; margin-top: 8px; }
 .post-detail-comment-card.depth-2 { margin-left: 24px; }
+.post-detail-comment-card.depth-3,
+.post-detail-comment-card.depth-4,
+.post-detail-comment-card.depth-5 { margin-left: 32px; }
+
+.post-detail-actions .post-action-btn,
+.post-card-model .post-action-btn,
+.post-card .post-action-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-muted);
+  border-radius: 14px;
+}
+
+.post-detail-actions .post-action-btn:hover,
+.post-card-model .post-action-btn:hover,
+.post-card .post-action-btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+
+.post-detail-actions .post-action-btn.liked,
+.post-card-model .post-action-btn.liked,
+.post-card .post-action-btn.liked {
+  color: var(--red) !important;
+}
 
 /* Composer */
 .post-detail-composer {

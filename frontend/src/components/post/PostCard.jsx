@@ -451,8 +451,18 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const [comments, setComments]       = useState(post._comments || []);
   const [newComment, setNewComment]   = useState('');
   const [lightbox, setLightbox] = useState(null);
+  const author = post.author?.username === user?.username
+    ? {
+      ...post.author,
+      displayName: user?.displayName || post.author?.displayName,
+      profilePicture: user?.profilePicture || post.author?.profilePicture,
+      coverPicture: user?.coverPicture || post.author?.coverPicture,
+      bio: user?.bio || post.author?.bio,
+      role: user?.role || post.author?.role,
+    }
+    : post.author;
 
-  const isOwner   = user?.id === post.author.id || user?.username === post.author.username;
+  const isOwner   = user?.id === author?.id || user?.username === author?.username;
   const canDelete = Boolean(onDelete) && (isOwner || hasPermission(user, 'posts:moderate'));
   const embeds = getEmbeds(post.content || '');
   const portfolio = getPortfolioPost(post);
@@ -497,7 +507,12 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       const c = created || {
         id: Date.now(),
         content: newComment.trim(),
-        author: { displayName: user.displayName, avatar: user.avatar },
+        author: {
+          username: user?.username,
+          displayName: user?.displayName,
+          avatar: user?.avatar,
+          profilePicture: user?.profilePicture,
+        },
       };
       setComments(prev => [...prev, c]);
       setCommentsCount(v => v + 1);
@@ -577,30 +592,30 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
       <div className="post-head">
         <div className="profile-hover-wrap" style={{ flexShrink: 0 }}>
           <button
-            onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
+            onClick={() => author?.username && onOpenProfile?.(author.username)}
             style={{ border: 0, background: 'transparent', padding: 0 }}
           >
             <Avatar
               size={42}
-              src={post.author.profilePicture || null}
-              name={post.author.displayName || post.author.username || ''}
-              initials={post.author.avatar || post.author.displayName?.slice(0, 2)}
+              src={author.profilePicture || null}
+              name={author.displayName || author.username || ''}
+              initials={author.avatar || author.displayName?.slice(0, 2)}
             />
-            {post.author.online && <span className="post-author-online" aria-label="Online" />}
+            {author.online && <span className="post-author-online" aria-label="Online" />}
           </button>
-          <ProfileHover author={post.author} onOpenProfile={onOpenProfile} />
+          <ProfileHover author={author} onOpenProfile={onOpenProfile} />
         </div>
         <div className="post-meta">
           <button
             className="post-author-name"
-            onClick={() => post.author?.username && onOpenProfile?.(post.author.username)}
+            onClick={() => author?.username && onOpenProfile?.(author.username)}
             style={{ border: 0, background: 'transparent', padding: 0, textAlign: 'left' }}
           >
-            {post.author.displayName}
-            {(post.author.verified || post.author.isVerified) && (
+            {author.displayName}
+            {(author.verified || author.isVerified) && (
               <span className="post-author-verified" aria-label="Verificado">✓</span>
             )}
-            <RoleBadge role={post.author.role} />
+            <RoleBadge role={author.role} />
           </button>
           {post.community && (
             <button
@@ -611,7 +626,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             </button>
           )}
           <div className="post-author-sub">
-            @{post.author.username} - {relativeTime(post.time)}
+            @{author.username} - {relativeTime(post.time)}
             {isEdited && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>(editado)</span>}
           </div>
         </div>
@@ -790,7 +805,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
           const shareUrl = `${window.location.origin}/?post=${encodeURIComponent(post.id)}`;
           if (navigator.share) {
             await navigator.share({
-              title: post.author?.displayName || 'Unigran',
+              title: author?.displayName || 'Unigran',
               text: post.text || 'Post Unigran',
               url: shareUrl,
             }).catch(() => null);
@@ -834,8 +849,9 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
                 key={c.id}
                 comment={c}
                 postId={post.id}
-                postAuthorUsername={post.author?.username}
+                postAuthorUsername={author?.username}
                 onMutate={setComments}
+                onOpenProfile={onOpenProfile}
               />
             ))
           )}

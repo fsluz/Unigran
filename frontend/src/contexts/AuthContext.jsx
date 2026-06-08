@@ -4,6 +4,16 @@ import { publishOwnPublicKey } from '../services/e2ee';
 
 const AuthContext = createContext(null);
 
+function normalizeUser(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    displayName: user.displayName || user.name || user.username,
+    profilePicture: user.profilePicture || user.profile_picture || null,
+    coverPicture: user.coverPicture || user.cover_picture || null,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null);
   // Token mantido em memória apenas — nunca em localStorage (segurança XSS)
@@ -16,7 +26,7 @@ export function AuthProvider({ children }) {
     apiFetch('/auth/me', { timeout: 10000 })
       .then(r => r.json())
       .then(data => {
-        if (data.user) setUser(data.user);
+        if (data.user) setUser(normalizeUser(data.user));
       })
       .catch(() => null)
       .finally(() => setLoading(false));
@@ -40,7 +50,7 @@ export function AuthProvider({ children }) {
   }, [token, user?.username]);
 
   function login(userData, jwt) {
-    setUser(userData);
+    setUser(normalizeUser(userData));
     // jwt ainda é aceito para compatibilidade com headers Bearer (mobile/API externa)
     // mas o cookie HttpOnly já foi setado pelo backend e é o mecanismo principal
     setToken(jwt);
@@ -57,7 +67,7 @@ export function AuthProvider({ children }) {
   }
 
   function updateUser(data) {
-    setUser(prev => ({ ...prev, ...data }));
+    setUser(prev => normalizeUser({ ...prev, ...data }));
   }
 
   async function refreshUser() {
@@ -67,7 +77,7 @@ export function AuthProvider({ children }) {
         timeout: 10000,
       });
       const data = await r.json();
-      if (data.user) setUser(data.user);
+      if (data.user) setUser(normalizeUser(data.user));
     } catch {}
   }
 

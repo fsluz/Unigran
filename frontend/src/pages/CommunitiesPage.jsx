@@ -16,6 +16,7 @@ import {
   joinCommunity,
   leaveCommunity,
   removeCommunityMember,
+  updateCommunityMember,
   updateCommunity,
 } from '../services/communities';
 import { hasPermission } from '../modules/shared/permissions';
@@ -98,11 +99,15 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
   const toggleJoin = async (community = activeCommunity) => {
     if (!community?.id) return;
     try {
-      if (community.joined) await leaveCommunity({ token, id: community.id });
-      else await joinCommunity({ token, id: community.id });
-      showToast(community.joined ? 'Saiu da comunidade' : 'Entrou na comunidade', 'OK');
+      if (community.joined || community.requested) await leaveCommunity({ token, id: community.id });
+      else {
+        const result = await joinCommunity({ token, id: community.id });
+        if (result.requested) showToast('Pedido enviado', 'OK');
+        else showToast('Entrou na comunidade', 'OK');
+      }
+      if (community.joined || community.requested) showToast(community.joined ? 'Saiu da comunidade' : 'Pedido cancelado', 'OK');
       loadCommunities();
-      if (activeCommunity?.id === community.id) await loadCommunityData({ ...community, joined: !community.joined });
+      if (activeCommunity?.id === community.id) await loadCommunityData({ ...community, joined: false });
     } catch (err) {
       showToast(err.message || 'Erro comunidade', '!');
     }
@@ -184,6 +189,17 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
     }
   };
 
+  const approveMember = async (username) => {
+    if (!activeCommunity?.id) return;
+    try {
+      await updateCommunityMember({ token, id: activeCommunity.id, username, rank: 'member' });
+      setMembers(await fetchCommunityMembers({ token, id: activeCommunity.id }));
+      showToast('Pedido aprovado', 'OK');
+    } catch (err) {
+      showToast(err.message || 'Erro ao aprovar', '!');
+    }
+  };
+
   if (activeCommunity) {
     return (
       <div className="page-scroll community-page">
@@ -211,7 +227,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
               </button>
               <div className="community-actions">
                 <Button variant={activeCommunity.joined ? 'secondary' : 'primary'} onClick={() => toggleJoin(activeCommunity)}>
-                  {activeCommunity.joined ? 'Sair' : 'Entrar'}
+                  {activeCommunity.joined ? 'Sair' : (activeCommunity.requested ? 'Pedido enviado' : 'Entrar')}
                 </Button>
                 <Button variant="secondary" onClick={() => setManageOpen(true)}>Membros</Button>
               </div>
@@ -258,7 +274,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
               <section className="community-box">
                 <h3>Atalhos</h3>
                 <Button variant="secondary" onClick={() => setManageOpen(true)}>Ver membros</Button>
-                <Button variant="secondary" onClick={() => toggleJoin(activeCommunity)}>{activeCommunity.joined ? 'Sair do grupo' : 'Entrar'}</Button>
+                <Button variant="secondary" onClick={() => toggleJoin(activeCommunity)}>{activeCommunity.joined ? 'Sair do grupo' : (activeCommunity.requested ? 'Cancelar pedido' : 'Entrar')}</Button>
               </section>
             </aside>
           </div>
@@ -293,7 +309,10 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
                         <span><strong>{member.displayName}</strong><small>@{member.username} - {member.rank}</small></span>
                       </button>
                       {canManage && member.username !== user?.username && (
-                        <button className="btn btn-secondary btn-xs" onClick={() => removeMember(member.username)}>Remover</button>
+                        <>
+                          {member.rank === 'pending' && <button className="btn btn-primary btn-xs" onClick={() => approveMember(member.username)}>Aprovar</button>}
+                          <button className="btn btn-secondary btn-xs" onClick={() => removeMember(member.username)}>Remover</button>
+                        </>
                       )}
                     </div>
                   ))}
@@ -354,7 +373,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
               <p>{com.description || 'Sem descrição.'}</p>
               <div className="community-tags">{com.tags.map(tag => <span key={tag} className="tag">{tag}</span>)}</div>
               <div className="community-card-actions">
-                <Button variant={com.joined ? 'secondary' : 'primary'} onClick={() => toggleJoin(com)}>{com.joined ? 'Membro' : 'Entrar'}</Button>
+                <Button variant={com.joined ? 'secondary' : 'primary'} onClick={() => toggleJoin(com)}>{com.joined ? 'Membro' : (com.requested ? 'Pendente' : 'Entrar')}</Button>
                 <Button variant="secondary" onClick={() => loadCommunityData(com)}>Perfil</Button>
               </div>
             </article>

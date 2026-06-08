@@ -44,6 +44,16 @@
   --font-head:     'Space Grotesk', sans-serif;
   --font-body:     'Plus Jakarta Sans', sans-serif;
   --sidebar-w:     74px;
+
+  /* Aliases usadas no AdminDashboardPage */
+  --text-primary:  #1a0050;
+  --text-secondary:#6b5b9a;
+  --bg-primary:    #f4f2ff;
+  --bg-secondary:  #ede9f8;
+  --bg-surface:    #ffffff;
+  --bg-hover:      #f3f0ff;
+  --border-color:  rgba(109,40,217,0.12);
+  --card-bg:       #ffffff;
 }
 
 /*  DARK THEME  */
@@ -87,6 +97,16 @@
   --shadow-sm:     0 4px 12px rgba(0,0,0,0.18);
   --shadow:        0 10px 36px rgba(0,0,0,0.22);
   --shadow-lg:     0 18px 54px rgba(0,0,0,0.26);
+
+  /* Aliases usadas no AdminDashboardPage */
+  --text-primary:  #e2e8f0;
+  --text-secondary:#94a3b8;
+  --bg-primary:    #070b1b;
+  --bg-secondary:  #0f172a;
+  --bg-surface:    #0f172a;
+  --bg-hover:      #15243e;
+  --border-color:  rgba(148,163,184,0.18);
+  --card-bg:       #0f172a;
 }
 
 html, body, #root { height: 100%; }

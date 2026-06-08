@@ -22,8 +22,10 @@ import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
+import CookieConsentBanner from './components/layout/CookieConsentBanner';
 import { AchievementsProvider } from './contexts/AchievementsContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import TermsPage from './pages/TermsPage';
 
 import AcademicPortalPage   from './modules/platform/AcademicPortalPage';
 import CampusPage          from './modules/platform/CampusPage';
@@ -118,6 +120,7 @@ function MobileDrawer({ open, onClose, page, onNavigate, user }) {
 }
 
 function AppShell() {
+  const [profileKey, setProfileKey] = useState(0);
   const { user, logout, token, loading } = useAuth();
   const { universities, activeUniversity, hasUniversity, initialized: uniInitialized } = useUniversity();
   const [page, setPage]         = useState('home');
@@ -133,23 +136,26 @@ function AppShell() {
     const saved = localStorage.getItem('theme');
     return saved ? saved === 'dark' : false;
   });
+  const [termsOpen, setTermsOpen] = useState(() => window.location.pathname === '/terms' || window.location.pathname === '/termos');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
-  const navigate = (id) => {
-    if (id === 'campus' && hasPermission(user, 'platform:read')) {
-      if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
-        setPage('campus');
-        return;
-      }
-      setEnteringPortal(true);
-      return;
-    }
-    setPage(id);
-  };
+      const navigate = (id, detail = null) => {
+        if (id === 'profile') setProfileKey(k => k + 1);
+        if (id === 'communities' && detail?.communityId) setOpenCommunityId(detail.communityId);
+        if (id === 'campus' && hasPermission(user, 'platform:read')) {
+          if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
+            setPage('campus');
+            return;
+          }
+          setEnteringPortal(true);
+          return;
+        }
+        setPage(id);
+      };
 
   const openProfile = (username) => {
     if (username) {
@@ -186,6 +192,10 @@ function AppShell() {
     );
   }
 
+  if (termsOpen) {
+    return <TermsPage onBack={() => { window.history.pushState({}, '', '/'); setTermsOpen(false); }} />;
+  }
+
   if (!user) {
     return authView === 'login'
       ? <LoginPage    onGoRegister={() => setAuthView('register')} />
@@ -204,7 +214,6 @@ function AppShell() {
 
   const pages = {
     home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
-    profile:       <ProfilePage onNavigate={setPage} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
     communities:   <CommunitiesPage onOpenProfile={openProfile} initialOpenCommunityId={openCommunityId} onClearInitial={() => setOpenCommunityId(null)} />,
@@ -250,7 +259,7 @@ function AppShell() {
       </button>
       <Sidebar
         page={page}
-        onNavigate={id => { setNotifPanelOpen(false); navigate(id); }}
+        onNavigate={(id, detail) => { setNotifPanelOpen(false); navigate(id, detail); }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         onOpenNotifications={() => {
@@ -272,8 +281,12 @@ function AppShell() {
         sidebarCollapsed={sidebarCollapsed}
       />
       <ErrorBoundary title="Erro na página" subtitle="Ocorreu um problema nesta seção. Tente novamente.">
-        {pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />}
+        {page === 'profile'
+          ? <ProfilePage key={profileKey} onNavigate={setPage} />
+          : (pages[page] ?? <NotFoundPage onBack={() => setPage('home')} />)
+        }
       </ErrorBoundary>
+      <CookieConsentBanner />
       <FloatingAssistants />
       {enteringPortal && (
         <PortalEntryTransition

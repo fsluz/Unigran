@@ -248,7 +248,7 @@ export default function MessagesPage() {
           return { ...conv, lastMessagePreview: text || '' };
         }));
         setConversations(decorated);
-        setActive(prev => prev || (isMobileMessagesView() ? null : (loaded[0] || null)));
+        setActive(prev => prev || (isMobileMessagesView() ? null : (decorated[0] || null)));
       })
       .catch(err => showToast(err.message || 'Erro ao carregar conversas', ''));
   }, [token, showToast]);
@@ -273,7 +273,7 @@ export default function MessagesPage() {
               ? conv
               : { ...conv, lastMessagePreview: existing?.lastMessagePreview || '' };
           }));
-          setActive(prev => prev ? (loaded.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (loaded[0] || null)));
+          setActive(prev => prev ? (decorated.find(item => item.id === prev.id) || prev) : (isMobileMessagesView() ? null : (decorated[0] || null)));
         })
         .catch(() => null);
     }, 10000);
@@ -648,10 +648,16 @@ export default function MessagesPage() {
         picture = media?.url || '';
       }
       const conversation = await startGroupConversation({ token, title: groupTitle || 'Grupo', participants, picture });
-      setConversations(prev => [conversation, ...prev]);
+      const hydratedConversation = {
+        ...conversation,
+        participants: selectedGroupUsers,
+        groupPicture: picture || conversation.groupPicture || '',
+        type: 'group',
+      };
+      setConversations(prev => [hydratedConversation, ...prev]);
       closeRealtime();
       setRealtimeRevision(value => value + 1);
-      setActive(conversation);
+      setActive(hydratedConversation);
       setMobileChatOpen(true);
       setSelectedGroupUsers([]);
       setGroupSearch('');
@@ -670,6 +676,12 @@ export default function MessagesPage() {
     setLoading(true);
     try {
       await addGroupParticipants({ token, conversationId: active.id, participants });
+      setActive(prev => prev?.id === active.id
+        ? { ...prev, participants: [...(prev.participants || []), ...selectedGroupUsers] }
+        : prev);
+      setConversations(prev => prev.map(conv => conv.id === active.id
+        ? { ...conv, participants: [...(conv.participants || []), ...selectedGroupUsers] }
+        : conv));
       setSelectedGroupUsers([]);
       setGroupSearch('');
       setGroupResults([]);
@@ -798,6 +810,9 @@ export default function MessagesPage() {
         content,
         media: encryptedMedia,
       });
+      if (encryptedMedia && !isEncryptedText(encryptedContent)) {
+        throw new Error('E2EE sem chave para audio. Abra a conversa no outro usuario para gerar chave.');
+      }
       const createdEncrypted = await sendMessage({
         token,
         conversationId: active.id,
@@ -895,6 +910,9 @@ export default function MessagesPage() {
             content: '',
             media: encryptedMedia,
           });
+          if (!isEncryptedText(encryptedContent)) {
+            throw new Error('E2EE sem chave para audio. Abra a conversa no outro usuario para gerar chave.');
+          }
           const createdEncrypted = await sendMessage({
             token,
             conversationId: active.id,

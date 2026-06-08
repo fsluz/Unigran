@@ -73,3 +73,12 @@ export async function removeCommunityMember({ token, id, username }) {
   });
   return parseResponse(res, 'Erro ao remover membro');
 }
+
+export async function updateCommunityMember({ token, id, username, rank }) {
+  const res = await apiFetch(`/communities/${id}/members/${username}`, {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ rank }),
+  });
+  return parseResponse(res, 'Erro ao atualizar membro');
+}
