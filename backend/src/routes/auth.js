@@ -43,14 +43,16 @@ const GoogleSchema = z.object({
   credential: z.string().min(20),
 });
 
-function sign(payload) {
-  return jwt.sign(payload, jwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+function sign(payload, remember = false) {
+  const expiresIn = remember
+    ? (process.env.JWT_REMEMBER_EXPIRES_IN || '30d')
+    : (process.env.JWT_EXPIRES_IN || '1d');
+  return jwt.sign(payload, jwtSecret(), { expiresIn });
 }
 
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
+const COOKIE_REMEMBER_AGE = 30 * 24 * 60 * 60 * 1000; // 30 dias
 
 function setAuthCookie(res, token, remember = true) {
-  if (!remember) return;
   const isProduction = process.env.NODE_ENV === 'production';
   const options = {
     httpOnly: true,
@@ -58,7 +60,9 @@ function setAuthCookie(res, token, remember = true) {
     sameSite: isProduction ? 'none' : 'lax',
     path: '/',
   };
-  options.maxAge = COOKIE_MAX_AGE;
+
+  if (remember) options.maxAge = COOKIE_REMEMBER_AGE;
+
   res.cookie('jwt', token, options);
 }
 
@@ -131,7 +135,7 @@ router.post('/register', async (req, res) => {
           has approved-cookies ${acceptedCookies};
     `);
     const payload = { id: username, username, email, role: 'user', permissions: permissionsForRole('user'), displayName: name, phone: phone || null };
-    const token = sign(payload);
+    const token = sign(payload, true);
     setAuthCookie(res, token, true);
     auditLog({ action: 'REGISTER', category: 'AUTH', actor: username, target: username, ip: getIp(req), meta: { email } });
     res.status(201).json({ token, user: payload });
@@ -310,9 +314,9 @@ router.post('/login', async (req, res) => {
     };
     resetRateLimit(req); // login bem-sucedido — zera o contador do IP
     auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
-    const token = sign(payload);
+    const token = sign(payload, remember);
     setAuthCookie(res, token, remember);
-    res.json({ token, user: payload });
+    res.json({ token, user: payload, remember });
   } catch (err) {
     console.error('[login]', err);
     res.status(500).json({ error: 'Erro interno' });
@@ -374,8 +378,8 @@ router.post('/google', async (req, res) => {
       profilePicture: row.profile_picture || null,
       coverPicture: row.cover_picture || null,
     };
-    const token = sign(payload);
-    setAuthCookie(res, token);
+    const token = sign(payload, true);
+    setAuthCookie(res, token, true);
     res.json({ token, user: payload });
   } catch (err) {
     console.error('[google auth]', err);
