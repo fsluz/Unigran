@@ -3143,40 +3143,50 @@
 }
 .post-menu-btn:hover { background: var(--page-bg); color: var(--text-2); }
 
-.post-card-model { border-radius: 18px; }
-.post-card-model .post-head { padding: 20px 20px 16px; gap: 14px; }
+.post-card-model { border-radius: 20px; box-sizing: border-box; }
+.post-card-model .post-head { padding: 22px 22px 18px; gap: 16px; }
 .post-card-model .post-body {
-  min-height: 100px;
-  padding: 16px 20px 28px;
-  font-size: 18px;
-  line-height: 1.7;
+  min-height: 120px;
+  padding: 18px 22px 32px;
+  font-size: 19px;
+  line-height: 1.75;
 }
 .post-card-model .post-body-open {
   width: 100%; border: 0; background: transparent; text-align: left; font-family: inherit; cursor: pointer;
 }
 .post-card-model .post-body-open:hover { color: color-mix(in srgb, var(--text) 82%, var(--accent)); }
 .post-card-model .post-media-wrap {
-  margin: 0 18px 18px;
+  margin: 0 18px 22px;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 .post-card-model .post-media-wrap img,
-.post-card-model .post-media-wrap video { border-radius: 14px !important; }
+.post-card-model .post-media-wrap video {
+  border-radius: 14px !important;
+  max-height: 520px !important;
+  object-fit: cover !important;
+}
 .post-card-model .repost-card,
 .post-card-model .post-embed-list,
 .post-card-model .portfolio-post-card { margin-bottom: 18px; }
 .post-card-model .post-footer { padding: 8px 9px 10px; }
 .post-card-model .post-action-btn {
-  min-height: 72px;
+  min-height: 84px;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   border-radius: 0;
+  font-size: 14px;
 }
 .post-card-model .post-action-btn + .post-action-btn { border-left: 1px solid var(--border-soft); }
 .post-card-model .post-action-label {
   display: block;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
+}
+
+/* Make the card itself a bit more roomy */
+.post-card {
+  padding: 16px 16px 20px;
 }
 .post-card-model .post-action-main { min-height: 22px; }
 .post-card-model .post-action-btn:first-child { color: var(--text-muted); }
