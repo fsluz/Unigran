@@ -24,56 +24,165 @@ function pct(a, b) {
   return Math.round((a / b) * 100);
 }
 
-function LineChart({ data = [], valueKey = 'total', color = '#6366f1', height = 80 }) {
+function LineChart({ data = [], valueKey = 'total', color = '#6366f1', height = 80, onDotClick }) {
+  const [tooltip, setTooltip] = useState(null);
   if (!data.length) return <div style={{ height }} className="chart-empty">Sem dados</div>;
   const vals = data.map(d => d[valueKey] || 0);
   const max  = Math.max(...vals, 1);
-  const w    = 100;
-  const h    = height;
-  const pts  = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * w;
-    const y = h - (v / max) * (h - 8) - 4;
-    return `${x},${y}`;
-  }).join(' ');
+  const YPAD_LEFT = 38;
+  const YPAD_TOP = 8;
+  const YPAD_BOTTOM = 4;
+  const chartW = 500;
+  const chartH = height;
+  const plotW = chartW - YPAD_LEFT;
+  const plotH = chartH - YPAD_TOP - YPAD_BOTTOM;
+
+  const tickCount = 4;
+  const rawStep = max / tickCount;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep || 1)));
+  const niceStep = Math.ceil(rawStep / magnitude) * magnitude || 1;
+  const yMax = niceStep * tickCount;
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => i * niceStep);
+
+  const toX = i => YPAD_LEFT + (vals.length > 1 ? (i / (vals.length - 1)) * plotW : plotW / 2);
+  const toY = v => YPAD_TOP + plotH - (v / yMax) * plotH;
+
+  const pts = vals.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
+  const gradId = `lcgrad-${color.replace('#', '')}`;
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height }}>
-      <defs>
-        <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,${h} ${pts} ${w},${h}`} fill={`url(#grad-${color.replace('#','')})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {vals.map((v, i) => {
-        const x = (i / (vals.length - 1)) * w;
-        const y = h - (v / max) * (h - 8) - 4;
-        return <circle key={i} cx={x} cy={y} r="2.5" fill={color} />;
-      })}
-    </svg>
+    <div style={{ position: 'relative' }}>
+      <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" style={{ width: '100%', height }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {yTicks.map((t, i) => {
+          const y = toY(t);
+          return (
+            <g key={i}>
+              <line x1={YPAD_LEFT} y1={y} x2={chartW} y2={y} stroke="currentColor" strokeOpacity="0.08" strokeWidth="1" />
+              <text x={YPAD_LEFT - 4} y={y + 3.5} textAnchor="end" fontSize="9" fill="currentColor" opacity="0.45">{t}</text>
+            </g>
+          );
+        })}
+        <polygon
+          points={`${toX(0)},${toY(0)} ${pts} ${toX(vals.length - 1)},${toY(0)}`}
+          fill={`url(#${gradId})`}
+        />
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {vals.map((v, i) => (
+          <g key={i}
+            style={{ cursor: onDotClick && v > 0 ? 'pointer' : 'default' }}
+            onMouseEnter={e => setTooltip({ i, v, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setTooltip(null)}
+            onClick={() => onDotClick && v > 0 && onDotClick(data[i])}
+          >
+            <circle cx={toX(i)} cy={toY(v)} r="10" fill="transparent" />
+            <circle cx={toX(i)} cy={toY(v)} r="2.5" fill={color} />
+          </g>
+        ))}
+      </svg>
+      {tooltip && (
+        <div className="chart-tooltip" style={{ top: tooltip.y, left: tooltip.x }}>
+          <span className="chart-tooltip-label">{data[tooltip.i]?.day || ''}</span>
+          <span className="chart-tooltip-val" style={{ color }}>{tooltip.v} ocorrências</span>
+          {onDotClick && tooltip.v > 0 && <span className="chart-tooltip-hint">Clique para ver detalhes</span>}
+        </div>
+      )}
+    </div>
   );
 }
 
-function BarChart({ data = [], valueKey = 'total', color = '#6366f1', height = 120 }) {
+function BarChart({ data = [], valueKey = 'total', color = '#6366f1', height = 120, onBarClick }) {
+  const [tooltip, setTooltip] = useState(null);
   if (!data.length) return <div style={{ height }} className="chart-empty">Sem dados</div>;
   const vals = data.map(d => d[valueKey] || 0);
   const max  = Math.max(...vals, 1);
-  const barW = 100 / data.length;
+
+  const YPAD_LEFT   = 38;
+  const YPAD_TOP    = 8;
+  const YPAD_BOTTOM = 20; // room for x-axis dates inside svg
+  const chartW      = 560;
+  const chartH      = height + YPAD_BOTTOM;
+  const plotW       = chartW - YPAD_LEFT;
+  const plotH       = height - YPAD_TOP;
+
+  // Nice Y-axis ticks
+  const tickCount = 4;
+  const rawStep = max / tickCount;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep || 1)));
+  const niceStep = Math.ceil(rawStep / magnitude) * magnitude || 1;
+  const yMax = niceStep * tickCount;
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => i * niceStep);
+
+  const barW  = plotW / data.length;
+  const GAP   = barW * 0.18;
+  const toX   = i => YPAD_LEFT + i * barW;
+  const toBarH = v => (v / yMax) * plotH;
+  const toY   = v => YPAD_TOP + plotH - toBarH(v);
+
+  // Show ~7 date labels max
+  const step = Math.ceil(data.length / 7);
 
   return (
-    <svg viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ width: '100%', height }}>
-      {data.map((d, i) => {
-        const barH = ((d[valueKey] || 0) / max) * (height - 20);
-        const x    = i * barW + barW * 0.1;
-        const y    = height - barH - 2;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={barW * 0.8} height={barH} rx="1.5" fill={color} opacity="0.85" />
-          </g>
-        );
-      })}
-    </svg>
+    <div style={{ position: 'relative' }}>
+      <svg viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" style={{ width: '100%', height: chartH }}>
+        {/* Grid lines + Y labels */}
+        {yTicks.map((t, i) => {
+          const y = toY(t);
+          return (
+            <g key={i}>
+              <line x1={YPAD_LEFT} y1={y} x2={chartW} y2={y} stroke="currentColor" strokeOpacity="0.08" strokeWidth="1" />
+              <text x={YPAD_LEFT - 4} y={y + 3.5} textAnchor="end" fontSize="9" fill="currentColor" opacity="0.45">{t}</text>
+            </g>
+          );
+        })}
+        {/* Bars + X labels */}
+        {data.map((d, i) => {
+          const v    = d[valueKey] || 0;
+          const bH   = toBarH(v);
+          const bX   = toX(i) + GAP;
+          const bY   = toY(v);
+          const bW   = barW - GAP * 2;
+          const showLabel = i % step === 0 || i === data.length - 1;
+          const label = d.day || d.date || '';
+          // Format: show only dd/MM
+          const shortLabel = label.length >= 5 ? label.slice(0, 5) : label;
+          return (
+            <g key={i}
+              style={{ cursor: onBarClick ? 'pointer' : 'default' }}
+              onMouseEnter={e => setTooltip({ i, v, label, x: e.clientX, y: e.clientY })}
+              onMouseLeave={() => setTooltip(null)}
+              onClick={() => onBarClick && onBarClick(d)}
+            >
+              <rect
+                x={bX} y={bY} width={bW} height={Math.max(bH, 1)}
+                rx="2" fill={color}
+                opacity={tooltip?.i === i ? 1 : 0.82}
+              />
+              {showLabel && (
+                <text
+                  x={toX(i) + barW / 2} y={chartH - 4}
+                  textAnchor="middle" fontSize="8.5" fill="currentColor" opacity="0.5"
+                >
+                  {shortLabel}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {tooltip && (
+        <div className="chart-tooltip" style={{ top: tooltip.y, left: tooltip.x }}>
+          <span className="chart-tooltip-label">{tooltip.label}</span>
+          <span className="chart-tooltip-val" style={{ color }}>{tooltip.v} ações</span>
+          {onBarClick && <span className="chart-tooltip-hint">Clique para ver detalhes</span>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -166,11 +275,15 @@ function XAxis({ data, labelKey = 'day' }) {
   const step = Math.ceil(data.length / 7);
   return (
     <div className="dash-xaxis">
-      {data.map((d, i) => (
-        <span key={i} style={{ opacity: i % step === 0 ? 1 : 0 }}>
-          {d[labelKey]}
-        </span>
-      ))}
+      {data.map((d, i) => {
+        const show = i % step === 0 || i === data.length - 1;
+        const label = (d[labelKey] || '').slice(0, 5);
+        return (
+          <span key={i} style={{ opacity: show ? 0.5 : 0, fontSize: '0.65rem' }}>
+            {label}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -1427,6 +1540,156 @@ function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
   );
 }
 
+// ── Day Detail Modal ─────────────────────────────────────────────────────────
+const LEVEL_COLORS_MAP = { INFO: '#3b82f6', WARN: '#f59e0b', ALERT: '#ef4444', AUTH: '#8b5cf6', ADMIN: '#06b6d4', DATA: '#10b981', PRIVACY: '#f97316' };
+const LEVEL_ICONS_MAP  = { INFO: 'ℹ️', WARN: '⚠️', ALERT: '🚨', AUTH: '🔐', ADMIN: '🛡️', DATA: '💾', PRIVACY: '🔒' };
+
+function DayDetailModal({ token, dayData, onClose, levelFilter }) {
+  const [logs, setLogs]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [search, setSearch]   = useState('');
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    if (!dayData?.isoDate) return;
+    setLoading(true);
+    setError('');
+    const from = dayData.isoDate + 'T00:00:00.000Z';
+    const to   = dayData.isoDate + 'T23:59:59.999Z';
+    const params = new URLSearchParams({ from, to, limit: 500 });
+    apiFetch('/admin/audit-logs?' + params, { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(d => setLogs(d.logs || []))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [token, dayData]);
+
+  const filtered = logs.filter(l => {
+    if (levelFilter) {
+      const allowed = levelFilter.split(',').map(s => s.trim().toUpperCase());
+      if (!allowed.includes((l.level || '').toUpperCase())) return false;
+    }
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (l.action + ' ' + (l.actor || '') + ' ' + (l.category || '') + ' ' + (l.ip || '')).toLowerCase().includes(q);
+  });
+
+  // Group by action for summary
+  const summary = filtered.reduce((acc, l) => {
+    acc[l.action] = (acc[l.action] || 0) + 1;
+    return acc;
+  }, {});
+  const topActions = Object.entries(summary).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const fmtTs = ts => {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  const dayLabel = dayData?.day || dayData?.isoDate || '';
+
+  return (
+    <div className="umodal-overlay" onClick={onClose}>
+      <div className="umodal-box ddm-box" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="umodal-header ddm-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: '1.2rem' }}>📅</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                {levelFilter ? `Avisos e alertas — ${dayLabel}` : `Atividades do dia ${dayLabel}`}
+              </div>
+              {!loading && <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary,#888)', marginTop: 1 }}>{filtered.length} registro{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}</div>}
+            </div>
+          </div>
+          <button className="umodal-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Top actions summary */}
+        {!loading && topActions.length > 0 && (
+          <div className="ddm-summary">
+            {topActions.map(([action, count]) => (
+              <div key={action} className="ddm-summary-chip">
+                <span className="ddm-summary-action">{action}</span>
+                <span className="ddm-summary-count">{count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Search */}
+        <div className="umodal-search">
+          <input
+            placeholder="Filtrar por ação, usuário, IP..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        {/* List */}
+        <div className="umodal-body">
+          {loading ? (
+            <div className="umodal-loading"><div className="dash-spinner" /> Carregando...</div>
+          ) : error ? (
+            <div className="umodal-empty" style={{ color: '#ef4444' }}>Erro: {error}</div>
+          ) : filtered.length === 0 ? (
+            <div className="umodal-empty">Nenhum registro encontrado</div>
+          ) : filtered.map((l, i) => {
+            const lvlColor = LEVEL_COLORS_MAP[l.level] || '#9ca3af';
+            const lvlIcon  = LEVEL_ICONS_MAP[l.level]  || '•';
+            const isOpen   = expanded === i;
+            let metaObj = null;
+            try { metaObj = l.meta ? (typeof l.meta === 'string' ? JSON.parse(l.meta) : l.meta) : null; } catch {}
+
+            return (
+              <div key={i} className={'ddm-row' + (isOpen ? ' ddm-row-open' : '')} onClick={() => setExpanded(isOpen ? null : i)}>
+                <div className="ddm-row-main">
+                  <div className="ddm-level-bar" style={{ background: lvlColor }} />
+                  <span className="ddm-icon">{lvlIcon}</span>
+                  <div className="ddm-body">
+                    <div className="ddm-top">
+                      <span className="ddm-action">{l.action}</span>
+                      {l.category && <span className="ddm-badge" style={{ background: lvlColor + '22', color: lvlColor }}>{l.category}</span>}
+                    </div>
+                    <div className="ddm-meta">
+                      <span className="ddm-ts">{fmtTs(l.timestamp)}</span>
+                      {l.actor && <><span className="ddm-dot">·</span><span>@{l.actor}</span></>}
+                      {l.ip && <><span className="ddm-dot">·</span><span className="ddm-ip">{l.ip}</span></>}
+                    </div>
+                  </div>
+                  <span className={'ddm-chevron' + (isOpen ? ' open' : '')}>›</span>
+                </div>
+                {isOpen && (
+                  <div className="ddm-detail">
+                    {l.actor  && <div className="ddm-detail-row"><span className="ddm-detail-key">Usuário</span><span className="ddm-detail-val">@{l.actor}</span></div>}
+                    {l.target && <div className="ddm-detail-row"><span className="ddm-detail-key">Alvo</span><span className="ddm-detail-val">@{l.target}</span></div>}
+                    {l.ip     && <div className="ddm-detail-row"><span className="ddm-detail-key">IP</span><span className="ddm-detail-val ddm-mono">{l.ip}</span></div>}
+                    {l.timestamp && <div className="ddm-detail-row"><span className="ddm-detail-key">Hora</span><span className="ddm-detail-val">{new Date(l.timestamp).toLocaleString('pt-BR')}</span></div>}
+                    {metaObj && (
+                      <div className="ddm-detail-row" style={{ alignItems: 'flex-start' }}>
+                        <span className="ddm-detail-key">Meta</span>
+                        <pre className="ddm-pre">{JSON.stringify(metaObj, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="umodal-footer">
+          {filtered.length} de {logs.length} registros
+          {search && <span style={{ marginLeft: 6, opacity: 0.6 }}>· filtrado por "{search}"</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Cache de módulo — sobrevive à navegação entre páginas
 let _overviewCache = null;
 
@@ -1445,6 +1708,8 @@ export default function AdminDashboardPage() {
   const [showBlockedLogins, setShowBlockedLogins] = useState(false);
   const [showAuditLogs, setShowAuditLogs]         = useState(false);
   const [auditInitLevel, setAuditInitLevel]       = useState('');
+  const [dayDetail, setDayDetail]                 = useState(null);
+  const [errorDayDetail, setErrorDayDetail]       = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1533,14 +1798,16 @@ export default function AdminDashboardPage() {
           <div className="dash-card-header">
             <h2>Atividade diaria <span className="dash-badge">14 dias</span></h2>
           </div>
-          <BarChart data={actionsPerDay} valueKey="total" color="#6366f1" height={110} />
-          <XAxis data={actionsPerDay} />
+          <BarChart data={actionsPerDay} valueKey="total" color="#6366f1" height={120} onBarClick={d => d.total > 0 && setDayDetail(d)} />
         </div>
         <div className="dash-card">
           <div className="dash-card-header">
-            <h2>Taxa de erros <span className="dash-badge">14 dias</span></h2>
+            <h2>Avisos e alertas <span className="dash-badge">14 dias</span></h2>
           </div>
-          <LineChart data={errorRate} valueKey="errors" color="#ef4444" height={90} />
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary,#888)', margin: '-6px 0 10px', lineHeight: 1.4 }}>
+            Logs com nível <strong>WARN</strong> ou <strong>ALERT</strong> — clique num ponto para ver os detalhes
+          </p>
+          <LineChart data={errorRate} valueKey="errors" color="#ef4444" height={100} onDotClick={d => setErrorDayDetail(d)} />
           <XAxis data={errorRate} />
         </div>
       </div>
@@ -1593,7 +1860,7 @@ export default function AdminDashboardPage() {
       )}
 
       <style>{`
-        .dash-page { padding: 24px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; font-family: inherit; }
+        .dash-page { padding: 24px; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; font-family: inherit; overflow-x: hidden; }
         .dash-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
         .dash-title { font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--text-primary, #111); }
         .dash-subtitle { font-size: 0.85rem; color: var(--text-secondary, #666); margin: 4px 0 0; }
@@ -1622,6 +1889,53 @@ export default function AdminDashboardPage() {
         .dash-row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
         .dash-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         .chart-empty { display: flex; align-items: center; justify-content: center; color: var(--text-secondary, #999); font-size: 0.8rem; }
+        .chart-tooltip { position: fixed; transform: translate(-50%, -110%); background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: 6px 10px; font-size: 0.75rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 100; white-space: nowrap; top: var(--ty, 0); left: var(--tx, 0); }
+        .chart-tooltip-label { color: var(--text-secondary, #888); font-size: 0.68rem; }
+        .chart-tooltip-val { font-weight: 700; font-size: 0.88rem; }
+        .chart-tooltip-hint { font-size: 0.62rem; color: var(--text-secondary,#aaa); margin-top: 1px; }
+
+        /* ── Day Detail Modal ───────────────────────────────────── */
+        .ddm-box { max-width: 680px; }
+        .ddm-header { padding: 16px 20px; }
+        .ddm-summary { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 18px; border-bottom: 1px solid var(--border-color,#e5e7eb); }
+        .ddm-summary-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; background: var(--bg-secondary,#f3f4f6); font-size: 0.72rem; }
+        .ddm-summary-action { font-family: monospace; font-weight: 600; color: var(--text-primary,#111); }
+        .ddm-summary-count { font-weight: 700; color: #6366f1; background: #6366f115; padding: 1px 6px; border-radius: 10px; }
+        .ddm-row { border-bottom: 1px solid var(--border-color,#f3f4f6); cursor: pointer; transition: background 0.1s; }
+        .ddm-row:hover { background: var(--bg-secondary,#f9fafb); }
+        .ddm-row-open { background: var(--bg-secondary,#f9fafb); }
+        .ddm-row-main { display: flex; align-items: center; gap: 9px; padding: 9px 16px; }
+        .ddm-level-bar { width: 3px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+        .ddm-icon { font-size: 0.9rem; flex-shrink: 0; }
+        .ddm-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .ddm-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .ddm-action { font-size: 0.8rem; font-weight: 600; font-family: monospace; color: var(--text-primary,#111); }
+        .ddm-badge { font-size: 0.64rem; font-weight: 600; padding: 1px 6px; border-radius: 20px; }
+        .ddm-meta { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--text-secondary,#888); flex-wrap: wrap; }
+        .ddm-ts { font-variant-numeric: tabular-nums; }
+        .ddm-dot { opacity: 0.35; }
+        .ddm-ip { font-family: monospace; font-size: 0.68rem; opacity: 0.75; }
+        .ddm-chevron { font-size: 1rem; color: var(--text-secondary,#aaa); transition: transform 0.2s; flex-shrink: 0; }
+        .ddm-chevron.open { transform: rotate(90deg); }
+        .ddm-detail { padding: 0 16px 12px 43px; }
+        .ddm-detail-row { display: flex; gap: 10px; align-items: baseline; margin-bottom: 5px; }
+        .ddm-detail-key { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary,#888); text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; width: 56px; }
+        .ddm-detail-val { font-size: 0.8rem; color: var(--text-primary,#111); word-break: break-all; }
+        .ddm-mono { font-family: monospace; }
+        .ddm-pre { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary,#f3f4f6); font-size: 0.72rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary,#333); border: 1px solid var(--border-color,#e5e7eb); line-height: 1.5; flex: 1; }
+
+        @media (max-width: 600px) {
+          .umodal-box { height: 94vh; max-height: 94vh; border-radius: 12px; }
+          .umodal-header { padding: 12px 16px; }
+          .umodal-search { padding: 10px 16px; }
+          .umodal-row { padding: 8px 16px; }
+          .umodal-role-filters { padding: 8px 12px; }
+          .alog-box { max-width: 100%; width: 100%; border-radius: 12px; }
+          .ddm-box { border-radius: 12px; }
+          .ddm-row-main { padding: 8px 12px; gap: 7px; }
+          .ddm-detail { padding: 0 12px 10px 36px; }
+          .ddm-summary { padding: 8px 12px; }
+        }
         .dash-xaxis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.65rem; color: var(--text-secondary, #aaa); overflow: hidden; }
         .dash-pie-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
         .dash-legend { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
@@ -1642,7 +1956,15 @@ export default function AdminDashboardPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .dash-btn-retry { padding: 8px 20px; border-radius: 8px; border: none; background: #6366f1; color: #fff; cursor: pointer; font-size: 0.85rem; }
         @media (max-width: 900px) { .dash-row-2 { grid-template-columns: 1fr; } .dash-row-3 { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 600px) { .dash-page { padding: 16px; } .dash-row-3 { grid-template-columns: 1fr; } .dash-metrics-grid { grid-template-columns: repeat(2, 1fr); } .dash-action-row { grid-template-columns: 24px 1fr 60px; } .dash-action-bar-wrap { display: none; } }
+        @media (max-width: 600px) {
+          .dash-page { padding: 12px; gap: 14px; }
+          .dash-row-3 { grid-template-columns: 1fr; }
+          .dash-metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          .dash-action-row { grid-template-columns: 24px 1fr 60px; }
+          .dash-action-bar-wrap { display: none; }
+          .dash-title { font-size: 1.2rem; }
+          .dash-card { padding: 14px 14px; }
+        }
         .umodal-role-filters { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
         .umodal-role-filters::-webkit-scrollbar { display: none; }
         .umodal-role-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary, #888); font-size: 0.8rem; font-weight: 500; cursor: pointer; border-radius: 6px 6px 0 0; white-space: nowrap; transition: color 0.15s, background 0.15s, border-color 0.15s; font-family: inherit; }
@@ -1650,7 +1972,7 @@ export default function AdminDashboardPage() {
         .umodal-role-tab.active { color: var(--text-primary, #111); border-bottom-color: var(--accent, #6366f1); font-weight: 600; }
         .umodal-role-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 1px 6px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; background: var(--bg-secondary, #f3f4f6); color: var(--text-secondary, #888); transition: background 0.15s, color 0.15s; }
         .umodal-role-filters { display: flex; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); overflow-x: auto; flex-shrink: 0; scrollbar-width: none; }
-        .umodal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .umodal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 12px; }
         .umodal-box { background: var(--bg-primary, #fff); border-radius: 16px; width: 100%; max-width: 760px; height: 88vh; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,0.28); color: var(--text-primary, #111); }
         .umodal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid var(--border-color, #e5e7eb); color: var(--text-primary, #111); }
         .umodal-close { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text-secondary, #666); padding: 4px 8px; border-radius: 6px; }
@@ -1750,7 +2072,7 @@ export default function AdminDashboardPage() {
         .els-btn-full:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #111); }
 
         .els-level-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
-        .els-level-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: none; border-right: 1px solid var(--border-color, #e5e7eb); background: transparent; cursor: pointer; transition: background 0.15s; text-align: left; font-family: inherit; position: relative; min-height: 88px; overflow: visible; }
+        .els-level-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: none; border-right: 1px solid var(--border-color, #e5e7eb); background: transparent; cursor: pointer; transition: background 0.15s; text-align: left; font-family: inherit; position: relative; min-height: 96px; overflow: visible; }
         .els-level-card:last-child { border-right: none; }
         .els-level-card:hover { background: var(--lb); }
         .els-level-card-active { background: var(--lb) !important; border-bottom: 2px solid var(--lc); }
@@ -1758,12 +2080,12 @@ export default function AdminDashboardPage() {
         .els-lc-icon { font-size: 0.9rem; line-height: 1; }
         .els-lc-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; }
         .els-lc-value { font-size: 1.35rem; font-weight: 700; color: var(--lc, #111); line-height: 1; }
-        .els-lc-hint { font-size: 0.6rem; color: var(--lc); opacity: 0.9; font-weight: 600; line-height: 1.3; white-space: normal; word-break: break-word; margin-top: 2px; }
+        .els-lc-hint { font-size: 0.6rem; color: var(--lc); opacity: 0.9; font-weight: 600; line-height: 1.3; white-space: normal; word-break: break-word; margin-top: 2px; display: block; }
         .els-lc-dot { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; animation: els-pulse 1.5s ease-in-out infinite; }
         .els-lc-dot-red { background: #ef4444; }
 
         .els-filters { padding: 10px 16px; border-bottom: 1px solid var(--border-color, #e5e7eb); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .els-filter-search { position: relative; flex: 1; min-width: 200px; }
+        .els-filter-search { position: relative; flex: 1; min-width: 160px; }
         .els-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
         .els-search-input { width: 100%; padding: 7px 28px 7px 30px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; font-size: 0.82rem; background: var(--bg-secondary, #f9fafb); color: var(--text-primary, #111); outline: none; box-sizing: border-box; font-family: inherit; transition: border-color 0.15s; }
         .els-search-input:focus { border-color: #6366f1; background: var(--bg-primary, #fff); }
@@ -1775,7 +2097,7 @@ export default function AdminDashboardPage() {
         .els-clear-all { color: #ef4444; border-color: #fecaca; }
         .els-clear-all:hover { background: #fef2f2; }
 
-        .els-list { }
+        .els-list { overflow-y: auto; max-height: 420px; }
         .els-row { border-bottom: 1px solid var(--border-color, #f3f4f6); transition: background 0.1s; }
         .els-row:last-child { border-bottom: none; }
         .els-row:hover { background: var(--bg-secondary, #f9fafb); }
@@ -1801,15 +2123,34 @@ export default function AdminDashboardPage() {
         .els-detail-val { font-size: 0.78rem; font-family: monospace; color: var(--text-primary, #111); word-break: break-all; }
         .els-pre { margin: 4px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.72rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.5; }
         .els-show-more { padding: 10px 16px; text-align: center; }
-        .els-footer { padding: 8px 18px; font-size: 0.75rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); }
+        .els-footer { padding: 8px 18px; font-size: 0.75rem; color: var(--text-secondary, #888); border-top: 1px solid var(--border-color, #e5e7eb); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
         .els-footer-muted { opacity: 0.65; }
         .els-footer-link { background: none; border: none; cursor: pointer; color: #6366f1; font-size: 0.75rem; font-weight: 500; padding: 0; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
         .els-footer-link:hover { color: #4f46e5; }
         .els-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px; color: var(--text-secondary, #888); font-size: 0.83rem; }
         .els-idle-hint { padding: 20px 18px; font-size: 0.78rem; color: var(--text-secondary, #aaa); text-align: center; border-top: 1px solid var(--border-color, #f3f4f6); font-style: italic; }
-        @media (max-width: 700px) { .els-level-cards { grid-template-columns: repeat(2, 1fr); } }
+
+        @media (max-width: 700px) {
+          .els-level-cards { grid-template-columns: repeat(2, 1fr); }
+          .els-level-card { min-height: 80px; padding: 10px 12px; }
+          .els-level-card:nth-child(2) { border-right: none; }
+          .els-level-card:nth-child(3) { border-top: 1px solid var(--border-color, #e5e7eb); }
+          .els-level-card:nth-child(4) { border-top: 1px solid var(--border-color, #e5e7eb); border-right: none; }
+          .els-list { max-height: 320px; }
+          .els-row-main { padding: 8px 12px; gap: 8px; }
+          .els-detail { padding: 0 12px 10px 40px; }
+        }
+        @media (max-width: 480px) {
+          .els-level-cards { grid-template-columns: repeat(2, 1fr); }
+          .els-lc-value { font-size: 1.1rem; }
+          .els-badges { display: none; }
+          .els-filters { flex-direction: column; align-items: stretch; }
+          .els-filter-search { min-width: unset; }
+        }
       `}</style>
 
+      {dayDetail && <DayDetailModal token={token} dayData={dayDetail} onClose={() => setDayDetail(null)} />}
+      {errorDayDetail && <DayDetailModal token={token} dayData={errorDayDetail} levelFilter="WARN,ALERT" onClose={() => setErrorDayDetail(null)} />}
       {showUsers && <UsersModal token={token} onClose={() => setShowUsers(false)} />}
       {showPosts && <PostsModal token={token} onClose={() => setShowPosts(false)} />}
       {showCommunities && <CommunitiesModal token={token} onClose={() => setShowCommunities(false)} />}

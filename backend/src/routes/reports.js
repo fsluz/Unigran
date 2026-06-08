@@ -136,8 +136,9 @@ router.get('/overview', async (req, res) => {
                     const d   = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
                     const key = d.toISOString().slice(0, 10);
                     actionsPerDay.push({
-                        day:   d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                        total: map[key] || 0,
+                        day:     d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                        isoDate: key,
+                        total:   map[key] || 0,
                     });
                 }
             }
@@ -165,9 +166,10 @@ router.get('/overview', async (req, res) => {
                     const key = d.toISOString().slice(0, 10);
                     const val = map[key] || { errors: 0, total: 0 };
                     errorRate.push({
-                        day:    d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                        errors: val.errors,
-                        total:  val.total,
+                        day:     d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                        isoDate: key,
+                        errors:  val.errors,
+                        total:   val.total,
                     });
                 }
             }
