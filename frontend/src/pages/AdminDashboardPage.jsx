@@ -1427,10 +1427,13 @@ function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
   );
 }
 
+// Cache de módulo — sobrevive à navegação entre páginas
+let _overviewCache = null;
+
 export default function AdminDashboardPage() {
   const { token } = useAuth();
-  const [data, setData]                   = useState(null);
-  const [loading, setLoading]             = useState(true);
+  const [data, setData]                   = useState(_overviewCache);
+  const [loading, setLoading]             = useState(!_overviewCache);
   const [error, setError]                 = useState('');
   const [lastUpdate, setLastUpdate]       = useState(null);
   const [showUsers, setShowUsers]         = useState(false);
@@ -1452,6 +1455,7 @@ export default function AdminDashboardPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erro ao carregar dados');
+      _overviewCache = json;
       setData(json);
       setLastUpdate(new Date());
     } catch (err) {
