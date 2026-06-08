@@ -286,6 +286,106 @@
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
 
+/* Ajuste final: login 2FA, composer menor, Zuni limpo */
+.auth-2fa-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, .62);
+  backdrop-filter: blur(12px);
+}
+.auth-2fa-modal {
+  width: min(390px, 100%);
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: 0 28px 80px rgba(0,0,0,.38);
+}
+.auth-2fa-modal h2 { margin: 0 0 8px; color: var(--text); }
+.auth-2fa-modal p { margin: 0 0 18px; color: var(--text-muted); }
+.auth-2fa-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+.home-page .post-composer {
+  border-radius: 18px !important;
+  overflow: hidden;
+}
+.home-page .post-composer .composer-row {
+  min-height: auto !important;
+  padding: 14px 16px 8px !important;
+}
+.home-page .post-composer .composer-textarea {
+  min-height: 54px !important;
+  font-size: 15px !important;
+  line-height: 1.45 !important;
+}
+.home-page .post-composer .composer-footer {
+  gap: 10px !important;
+  min-height: auto !important;
+  padding: 10px 16px 14px !important;
+}
+.home-page .post-composer .composer-mode-select {
+  width: 132px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+}
+.home-page .post-composer .composer-btn {
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)) !important;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--card) 82%, transparent) !important;
+}
+.home-page .post-composer .composer-submit-btn {
+  min-width: 102px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  font-size: 14px !important;
+}
+.home-page .post-composer .composer-portfolio-panel {
+  flex: 1 0 100% !important;
+  width: 100% !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  margin: 4px 0 8px !important;
+}
+@media (min-width: 780px) {
+  .home-page .post-composer .composer-portfolio-grid {
+    grid-template-columns: minmax(0, 1fr) 190px !important;
+  }
+}
+@media (max-width: 680px) {
+  .home-page .post-composer .composer-submit-wrap {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+  .home-page .post-composer .composer-submit-btn {
+    width: 100%;
+  }
+}
+
+.zuni-video-stage {
+  box-shadow:
+    0 0 56px rgba(54,102,255,.2),
+    0 0 110px rgba(106,0,244,.16) !important;
+}
+.zuni-video-stage::before {
+  inset: -28px !important;
+  z-index: -1 !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(54,102,255,.24), transparent 58%),
+    linear-gradient(90deg, rgba(106,0,244,.16), transparent 24%, transparent 76%, rgba(0,168,255,.14)) !important;
+  mix-blend-mode: normal !important;
+  opacity: .65 !important;
+}
+.zuni-video-stage video {
+  position: relative;
+  z-index: 2;
+}
+
 /* Final compact composer + transparent actions. */
 .home-page .post-composer,
 .post-composer {
@@ -8334,12 +8434,20 @@ img, video { max-width: 100%; }
 .admin-activity, .admin-alert {
   display: flex; align-items: center; gap: 13px; min-height: 62px;
   padding: 10px 0; border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 .admin-activity:last-child, .admin-alert:last-child { border-bottom: 0; }
-.admin-activity .admin-hub-icon, .admin-alert .admin-hub-icon { width: 40px; height: 40px; border-radius: 12px; }
-.admin-activity div, .admin-alert div { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.admin-activity strong, .admin-alert strong { font-size: 14px; color: var(--text); text-transform: capitalize; }
-.admin-activity small, .admin-alert small { color: var(--text-muted); font-size: 12px; }
+.admin-activity .admin-hub-icon, .admin-alert .admin-hub-icon { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; }
+.admin-activity div, .admin-alert div { flex: 1; min-width: 0; display: grid; gap: 3px; overflow: hidden; }
+.admin-activity strong, .admin-alert strong {
+  font-size: 14px; color: var(--text); text-transform: capitalize;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.admin-activity small, .admin-alert small {
+  color: var(--text-muted); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.admin-alert > svg { flex-shrink: 0; }
 .admin-empty { color: var(--text-muted); padding: 22px 0; margin: 0; font-size: 13px; }
 
 .settings-page .settings-shell {

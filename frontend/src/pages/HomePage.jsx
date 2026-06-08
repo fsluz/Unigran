@@ -23,7 +23,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
   const [openPost, setOpenPost] = useState(null);
   const [suggestedPeople, setSuggestedPeople] = useState([]);
   const [suggestedCommunities, setSuggestedCommunities] = useState([]);
-  const [feed, setFeed] = useState('for-you');
+  const [feed, setFeed] = useState('following');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -38,7 +38,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
     setPage(1);
     setHasMore(true);
     setLoadingPosts(true);
-    fetchPosts(token, { page: 1, limit: 10, feed: feed === 'for-you' ? '' : feed })
+    fetchPosts(token, { page: 1, limit: 10, feed: feed === 'for-you' ? 'following' : feed })
       .then((loaded) => {
         if (!alive) return;
         setPosts(loaded);
@@ -101,6 +101,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
     const { postType } = payload;
     if (postType === 'zuni-post') {
       showToast('Short publicado no Zuni', 'OK');
+      window.dispatchEvent(new CustomEvent('unigran:zuni-refresh'));
       return;
     }
     setPosts(prev => [created, ...prev]);
@@ -131,7 +132,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
     const nextPage = page + 1;
     setLoadingPosts(true);
     try {
-      const loaded = await fetchPosts(token, { page: nextPage, limit: 10, feed: feed === 'for-you' ? '' : feed });
+      const loaded = await fetchPosts(token, { page: nextPage, limit: 10, feed: feed === 'for-you' ? 'following' : feed });
       setPosts(prev => [...prev, ...loaded]);
       setPage(nextPage);
       setHasMore(loaded.length === 10);

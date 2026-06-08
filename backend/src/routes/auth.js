@@ -8,7 +8,7 @@ import { auth, normalizeRole } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
 import { otpauthUrl, randomBase32, verifyTotp, generateBackupCodes, hashBackupCode, verifyBackupCode, removeUsedBackupCode } from '../services/totp.service.js';
-import { sendPasswordResetCode } from '../services/email.service.js';
+import { sendPasswordResetCode, sendTwoFactorCode } from '../services/email.service.js';
 import { generateCode, saveCode, verifyCode, deleteCode, canRequestCode } from '../services/resetCode.service.js';
 import { auditLog } from '../services/audit.service.js';
 
@@ -49,13 +49,14 @@ function sign(payload) {
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
 
 function setAuthCookie(res, token, remember = true) {
+  if (!remember) return;
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     path: '/',
   };
-  if (remember) options.maxAge = COOKIE_MAX_AGE;
+  options.maxAge = COOKIE_MAX_AGE;
   res.cookie('jwt', token, options);
 }
 
@@ -231,19 +232,28 @@ router.post('/login', async (req, res) => {
     const username = row.username || email.split('@')[0] || 'user';
     const twoFactor = await readTwoFactorByUsername(username);
     if (attrBoolTrue(twoFactor.enabled)) {
-      if (!parsed.data.twoFactorCode) {
-        return res.json({ requires2FA: true, email });
+      const code = String(parsed.data.twoFactorCode || '').replace(/\s+/g, '');
+      if (!code) {
+        if (!canRequestCode(email)) {
+          return res.status(429).json({ error: 'Aguarde antes de pedir outro codigo.' });
+        }
+        const nextCode = generateCode();
+        saveCode(email, nextCode);
+        await sendTwoFactorCode(email, nextCode);
+        auditLog({ action: '2FA_EMAIL_SENT', category: 'AUTH', actor: username, ip, meta: { email } });
+        return res.json({ requires2FA: true, email, delivery: 'email' });
       }
       if (totpLimiter.check(`totp:${username}`)) {
         auditLog({ action: '2FA_BRUTE_FORCE_BLOCKED', category: 'AUTH', actor: username, ip, level: 'ALERT' });
-        return res.status(429).json({ error: 'Muitas tentativas de codigo TOTP. Aguarde 5 minutos.' });
+        return res.status(429).json({ error: 'Muitas tentativas de codigo. Aguarde 5 minutos.' });
       }
-      const totpOk = verifyTotp(twoFactor.secret, parsed.data.twoFactorCode);
+      const emailOk = verifyCode(email, code);
+      const totpOk = !emailOk && twoFactor.secret ? verifyTotp(twoFactor.secret, code) : false;
       let backupUsed = false;
       if (!totpOk && twoFactor.backupCodes) {
         const codes = JSON.parse(twoFactor.backupCodes || '[]');
-        if (verifyBackupCode(parsed.data.twoFactorCode, codes)) {
-          const remaining = removeUsedBackupCode(parsed.data.twoFactorCode, codes);
+        if (verifyBackupCode(code, codes)) {
+          const remaining = removeUsedBackupCode(code, codes);
           await writeQuery(`
             match $u isa person, has username "${typeqlLiteral(username)}";
             update $u has two-factor-backup-codes "${typeqlLiteral(JSON.stringify(remaining))}";
@@ -251,10 +261,11 @@ router.post('/login', async (req, res) => {
           backupUsed = true;
         }
       }
-      if (!totpOk && !backupUsed) {
+      if (!emailOk && !totpOk && !backupUsed) {
         auditLog({ action: '2FA_CODE_INVALID', category: 'AUTH', actor: username, ip, level: 'WARN' });
-        return res.status(401).json({ error: 'Codigo TOTP ou codigo de recuperacao invalido' });
+        return res.status(401).json({ error: 'Codigo invalido' });
       }
+      if (emailOk) deleteCode(email);
       totpLimiter.reset(`totp:${username}`);
       if (backupUsed) auditLog({ action: '2FA_BACKUP_USED', category: 'AUTH', actor: username, ip, level: 'WARN' });
     }
@@ -416,6 +427,7 @@ router.get('/me', async (req, res) => {
     const twoFactor = await readTwoFactorByUsername(decoded.username);
     auditLog({ action: 'SESSION_VALIDATED', category: 'AUTH', actor: decoded.username, ip: getIp(req), meta: { role: normalizeRole(row.role || decoded.role) } });
     res.json({
+      token: rawToken,
       user: {
         ...decoded,
         displayName: row.name || decoded.displayName,

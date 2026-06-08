@@ -1,77 +1,29 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const { Pool } = require('pg');
+import { pgQuery, getClient } from '../db/supabase.js';
 
 // ---------------------------------------------------------------------------
-// Pool PostgreSQL (Supabase)
+// Garante que a tabela existe (roda uma vez por cold start)
 // ---------------------------------------------------------------------------
-let pool = null;
-let tableReady = null;
+let tableReady = false;
 
-function cleanEnv(value = '') {
-  return String(value || '').trim().replace(/^['"]|['"]$/g, '');
-}
-
-function auditConnectionString() {
-  return cleanEnv(
-    process.env.AUDIT_DATABASE_URL
-    || process.env.SUPABASE_DATABASE_URL
-    || process.env.DATABASE_URL
-    || process.env.POSTGRES_URL,
-  );
-}
-
-function getPool() {
-  if (!pool) {
-    const connectionString = auditConnectionString();
-    const host = cleanEnv(process.env.DB_HOST);
-    if (!connectionString && !host) return null;
-
-    pool = connectionString
-      ? new Pool({
-          connectionString,
-          ssl: { rejectUnauthorized: false },
-          max: 5,
-          idleTimeoutMillis: 30_000,
-        })
-      : new Pool({
-          host,
-          port:     parseInt(process.env.DB_PORT || '5432'),
-          database: cleanEnv(process.env.DB_NAME) || 'postgres',
-          user:     cleanEnv(process.env.DB_USER),
-          password: cleanEnv(process.env.DB_PASSWORD),
-          ssl:      { rejectUnauthorized: false },
-          max:      5,
-          idleTimeoutMillis: 30_000,
-        });
-    pool.on('error', err => {
-      console.error('[audit] Erro no pool PostgreSQL:', err.message);
-    });
-  }
-  return pool;
-}
-
-function ensureAuditTable(db) {
-  if (!tableReady) {
-    tableReady = db.query(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id TEXT PRIMARY KEY,
-        timestamp TIMESTAMPTZ NOT NULL,
-        level TEXT NOT NULL,
-        category TEXT NOT NULL,
-        action TEXT NOT NULL,
-        actor TEXT,
-        target TEXT,
-        ip TEXT,
-        meta JSONB DEFAULT '{}'::jsonb
-      );
-    `);
-  }
-  return tableReady;
+async function ensureAuditTable() {
+  if (tableReady) return;
+  await pgQuery(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      timestamp TIMESTAMPTZ NOT NULL,
+      level TEXT NOT NULL,
+      category TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actor TEXT,
+      target TEXT,
+      ip TEXT,
+      meta JSONB DEFAULT '{}'::jsonb
+    );
+  `);
+  tableReady = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,30 +70,18 @@ export function auditLog({
     meta: meta || {},
   };
 
-  const db = getPool();
-
-  if (db) {
-    ensureAuditTable(db).then(() => db.query(
+  // Grava no Supabase de forma assíncrona (fire-and-forget)
+  ensureAuditTable()
+    .then(() => pgQuery(
       `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        entry.id,
-        entry.timestamp,
-        entry.level,
-        entry.category,
-        entry.action,
-        entry.actor,
-        entry.target,
-        entry.ip,
-        JSON.stringify(entry.meta),
-      ]
-    )).catch(err => {
+      [entry.id, entry.timestamp, entry.level, entry.category, entry.action,
+       entry.actor, entry.target, entry.ip, JSON.stringify(entry.meta)]
+    ))
+    .catch(err => {
       console.error('[audit] Falha ao gravar no Supabase:', err.message);
       writeAuditFallback(entry);
     });
-  } else {
-    writeAuditFallback(entry);
-  }
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(
@@ -154,55 +94,70 @@ export function auditLog({
 // Ler logs (com filtros opcionais)
 // ---------------------------------------------------------------------------
 export async function readAuditLogs(filters = {}) {
-  const db = getPool();
+  try {
+    await ensureAuditTable();
+    const conditions = [];
+    const values     = [];
+    let   idx        = 1;
 
-  if (db) {
+    if (filters.category) { conditions.push(`category = $${idx++}`);   values.push(filters.category.toUpperCase()); }
+    if (filters.level)    { conditions.push(`level = $${idx++}`);      values.push(filters.level.toUpperCase()); }
+    if (filters.actor)    { conditions.push(`actor ILIKE $${idx++}`);  values.push(`%${filters.actor}%`); }
+    if (filters.action)   { conditions.push(`action ILIKE $${idx++}`); values.push(`%${filters.action}%`); }
+    if (filters.from)     { conditions.push(`timestamp >= $${idx++}`); values.push(filters.from); }
+    if (filters.to)       { conditions.push(`timestamp <= $${idx++}`); values.push(filters.to); }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const limit = Math.min(parseInt(filters.limit) || 500, 1000);
+
+    // Usa client único pra duas queries em paralelo
+    const client = await getClient();
+    if (!client) throw new Error('sem conexão');
     try {
-      await ensureAuditTable(db);
-      const conditions = [];
-      const values     = [];
-      let   idx        = 1;
+      const [{ rows }, { rows: countRows }] = await Promise.all([
+        client.query(
+          `SELECT id, timestamp, level, category, action, actor, target, ip, meta
+           FROM audit_logs ${where} ORDER BY timestamp DESC LIMIT $${idx}`,
+          [...values, limit]
+        ),
+        client.query(`SELECT COUNT(*)::int as total FROM audit_logs ${where}`, values),
+      ]);
 
-      if (filters.category) { conditions.push(`category = $${idx++}`);      values.push(filters.category.toUpperCase()); }
-      if (filters.level)    { conditions.push(`level = $${idx++}`);         values.push(filters.level.toUpperCase()); }
-      if (filters.actor)    { conditions.push(`actor ILIKE $${idx++}`);     values.push(`%${filters.actor}%`); }
-      if (filters.action)   { conditions.push(`action ILIKE $${idx++}`);    values.push(`%${filters.action}%`); }
-      if (filters.from)     { conditions.push(`timestamp >= $${idx++}`);    values.push(filters.from); }
-      if (filters.to)       { conditions.push(`timestamp <= $${idx++}`);    values.push(filters.to); }
-
-      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-      const limit = Math.min(parseInt(filters.limit) || 500, 1000);
-
-      const { rows } = await db.query(
-        `SELECT id, timestamp, level, category, action, actor, target, ip, meta
-         FROM audit_logs
-         ${where}
-         ORDER BY timestamp DESC
-         LIMIT $${idx}`,
-        [...values, limit]
-      );
-
-      return rows.map(row => ({
+      const logs = rows.map(row => ({
         ...row,
-        timestamp: row.timestamp instanceof Date
-          ? row.timestamp.toISOString()
-          : row.timestamp,
+        timestamp: row.timestamp instanceof Date ? row.timestamp.toISOString() : row.timestamp,
         meta: typeof row.meta === 'string'
           ? (() => { try { return JSON.parse(row.meta); } catch { return {}; } })()
           : (row.meta || {}),
       }));
-    } catch (err) {
-      console.error('[audit] Falha ao ler Supabase, usando arquivo local:', err.message);
+
+      return { logs, total: countRows[0]?.total || logs.length };
+    } finally {
+      await client.end().catch(() => {});
     }
+  } catch (err) {
+    console.error('[audit] Falha ao ler Supabase, usando arquivo local:', err.message);
   }
 
   // Fallback: arquivo local
-  if (!fs.existsSync(LOG_FILE)) return [];
-  return fs.readFileSync(LOG_FILE, 'utf8')
+  if (!fs.existsSync(LOG_FILE)) return { logs: [], total: 0 };
+  const limit = Math.min(parseInt(filters.limit) || 500, 1000);
+  let allLogs = fs.readFileSync(LOG_FILE, 'utf8')
     .split('\n')
     .filter(Boolean)
     .map(line => { try { return JSON.parse(line); } catch { return null; } })
     .filter(Boolean)
-    .reverse()
-    .slice(0, 500);
+    .reverse();
+
+  // Aplica filtros no fallback também
+  if (filters.level)    allLogs = allLogs.filter(l => l.level?.toUpperCase()    === filters.level.toUpperCase());
+  if (filters.category) allLogs = allLogs.filter(l => l.category?.toUpperCase() === filters.category.toUpperCase());
+  if (filters.actor)    allLogs = allLogs.filter(l => l.actor?.toLowerCase().includes(filters.actor.toLowerCase()));
+  if (filters.action)   allLogs = allLogs.filter(l => l.action?.toLowerCase().includes(filters.action.toLowerCase()));
+  if (filters.from)     allLogs = allLogs.filter(l => l.timestamp >= filters.from);
+  if (filters.to)       allLogs = allLogs.filter(l => l.timestamp <= filters.to);
+
+  const total = allLogs.length;
+  const logs  = allLogs.slice(0, limit);
+  return { logs, total };
 }

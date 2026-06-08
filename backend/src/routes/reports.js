@@ -1,31 +1,11 @@
 import { Router } from "express";
 import { auth } from '../middleware/auth.js';
 import { requirePermission } from '../modules/auth/rbac.js';
-import { readQuery } from '../db/typedb.js'
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const { Pool } = require('pg');
-
+import { readQuery } from '../db/typedb.js';
+import { getClient, pgQuery } from '../db/supabase.js';
 const router = Router();
 router.use(auth);
 router.use(requirePermission('system:manage'));
-
-let pool = null;
-function getPool() {
-    if (!pool && process.env.DB_HOST) {
-        pool = new Pool({
-            host: process.env.DB_HOST,
-            port: parseInt(process.env.DB_PORT || '5432'),
-            database: process.env.DB_NAME || 'postgres',
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            ssl: { rejectUnauthorized: false },
-            max: 3,
-        });
-    }
-    return pool;
-}
 
 // GET /api/admin/reports/overview
 router.get('/overview', async (req, res) => {
@@ -66,7 +46,6 @@ router.get('/overview', async (req, res) => {
         const roleChart = Object.entries(roleCounts).map(([name, value]) => ({ name, value }));
 
         // Dados do Supabase (audit_logs)
-        const db = getPool();
         let security = { loginSuccess: 0, loginFailed: 0, loginBlocked: 0, passwordResets: 0 };
         let actionsPerDay      = [];
         let categoryBreakdown  = [];
@@ -74,7 +53,9 @@ router.get('/overview', async (req, res) => {
         let topActions         = [];
         let errorRate          = [];
 
+        const db = await getClient();
         if (db) {
+          try {
             const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
             const [secRes, dailyRes, catRes, levelRes, topActRes, errorRes] = await Promise.allSettled([
@@ -155,8 +136,9 @@ router.get('/overview', async (req, res) => {
                     const d   = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
                     const key = d.toISOString().slice(0, 10);
                     actionsPerDay.push({
-                        day:   d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                        total: map[key] || 0,
+                        day:     d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                        isoDate: key,
+                        total:   map[key] || 0,
                     });
                 }
             }
@@ -184,12 +166,16 @@ router.get('/overview', async (req, res) => {
                     const key = d.toISOString().slice(0, 10);
                     const val = map[key] || { errors: 0, total: 0 };
                     errorRate.push({
-                        day:    d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-                        errors: val.errors,
-                        total:  val.total,
+                        day:     d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                        isoDate: key,
+                        errors:  val.errors,
+                        total:   val.total,
                     });
                 }
             }
+          } finally {
+            await db.end().catch(() => {});
+          }
         }
 
         // FIX: twoDaUsers -> twoFaUsers
@@ -217,8 +203,9 @@ router.get('/overview', async (req, res) => {
 
 // GET /api/admin/reports/success-logins
 router.get('/success-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -247,13 +234,16 @@ router.get('/success-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/success-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins bem-sucedidos' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/password-resets
 router.get('/password-resets', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ resets: [] });
 
         const { limit = 100, offset = 0 } = req.query;
@@ -292,13 +282,16 @@ router.get('/password-resets', async (req, res) => {
     } catch (err) {
         console.error('[reports/password-resets]', err);
         res.status(500).json({ error: 'Erro ao buscar resets de senha' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/failed-logins
 router.get('/failed-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -327,13 +320,16 @@ router.get('/failed-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/failed-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins falhos' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/blocked-logins
 router.get('/blocked-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -379,6 +375,8 @@ router.get('/blocked-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/blocked-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins bloqueados' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
