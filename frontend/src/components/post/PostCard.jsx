@@ -596,7 +596,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
             style={{ border: 0, background: 'transparent', padding: 0 }}
           >
             <Avatar
-              size={42}
+              size={52}
               src={author.profilePicture || null}
               name={author.displayName || author.username || ''}
               initials={author.avatar || author.displayName?.slice(0, 2)}

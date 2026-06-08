@@ -3144,11 +3144,12 @@
 .post-menu-btn:hover { background: var(--page-bg); color: var(--text-2); }
 
 .post-card-model { border-radius: 18px; }
-.post-card-model .post-head { padding: 17px 18px 12px; }
+.post-card-model .post-head { padding: 20px 20px 16px; gap: 14px; }
 .post-card-model .post-body {
-  min-height: 80px;
-  padding: 12px 18px 24px;
-  font-size: 16px;
+  min-height: 100px;
+  padding: 16px 20px 28px;
+  font-size: 18px;
+  line-height: 1.7;
 }
 .post-card-model .post-body-open {
   width: 100%; border: 0; background: transparent; text-align: left; font-family: inherit; cursor: pointer;
@@ -3166,16 +3167,16 @@
 .post-card-model .portfolio-post-card { margin-bottom: 18px; }
 .post-card-model .post-footer { padding: 8px 9px 10px; }
 .post-card-model .post-action-btn {
-  min-height: 60px;
+  min-height: 72px;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   border-radius: 0;
 }
 .post-card-model .post-action-btn + .post-action-btn { border-left: 1px solid var(--border-soft); }
 .post-card-model .post-action-label {
   display: block;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .post-card-model .post-action-main { min-height: 22px; }
 .post-card-model .post-action-btn:first-child { color: var(--text-muted); }
