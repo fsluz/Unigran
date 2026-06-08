@@ -12,17 +12,54 @@ router.use(auth);
 router.use(requirePermission('system:manage'));
 
 let pool = null;
+
+function cleanEnv(value = '') {
+    return String(value || '').trim().replace(/^['\"]|['\"]$/g, '');
+}
+
+function auditConnectionString() {
+    return cleanEnv(
+        process.env.AUDIT_DATABASE_URL
+        || process.env.SUPABASE_DATABASE_URL
+        || process.env.DATABASE_URL
+        || process.env.POSTGRES_URL,
+    );
+}
+
 function getPool() {
-    if (!pool && process.env.DB_HOST) {
-        pool = new Pool({
-            host: process.env.DB_HOST,
-            port: parseInt(process.env.DB_PORT || '5432'),
-            database: process.env.DB_NAME || 'postgres',
-            user: process.env.DB_USER,
-            password: process.env.DB_PASSWORD,
-            ssl: { rejectUnauthorized: false },
-            max: 3,
-        });
+    if (!pool) {
+        const connectionString = auditConnectionString();
+        const host = cleanEnv(process.env.DB_HOST);
+        if (!connectionString && !host) {
+            console.warn('[reports] Nenhuma conexão PostgreSQL configurada.');
+            return null;
+        }
+        try {
+            pool = connectionString
+                ? new Pool({
+                    connectionString,
+                    ssl: { rejectUnauthorized: false },
+                    max: 3,
+                    idleTimeoutMillis: 30_000,
+                })
+                : new Pool({
+                    host,
+                    port:     parseInt(process.env.DB_PORT || '5432'),
+                    database: cleanEnv(process.env.DB_NAME) || 'postgres',
+                    user:     cleanEnv(process.env.DB_USER),
+                    password: cleanEnv(process.env.DB_PASSWORD),
+                    ssl:      { rejectUnauthorized: false },
+                    max:      3,
+                    idleTimeoutMillis: 30_000,
+                });
+            pool.on('error', err => {
+                console.error('[reports] Erro no pool:', err.message);
+                pool = null;
+            });
+        } catch (err) {
+            console.error('[reports] Falha ao criar pool:', err.message);
+            return null;
+        }
     }
     return pool;
 }

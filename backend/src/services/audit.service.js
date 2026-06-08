@@ -215,12 +215,23 @@ export async function readAuditLogs(filters = {}) {
 
   // Fallback: arquivo local
   if (!fs.existsSync(LOG_FILE)) return { logs: [], total: 0 };
-  const logs = fs.readFileSync(LOG_FILE, 'utf8')
+  const limit = Math.min(parseInt(filters.limit) || 500, 1000);
+  let allLogs = fs.readFileSync(LOG_FILE, 'utf8')
     .split('\n')
     .filter(Boolean)
     .map(line => { try { return JSON.parse(line); } catch { return null; } })
     .filter(Boolean)
-    .reverse()
-    .slice(0, 500);
-  return { logs, total: logs.length };
+    .reverse();
+
+  // Aplica filtros no fallback também
+  if (filters.level)    allLogs = allLogs.filter(l => l.level?.toUpperCase()    === filters.level.toUpperCase());
+  if (filters.category) allLogs = allLogs.filter(l => l.category?.toUpperCase() === filters.category.toUpperCase());
+  if (filters.actor)    allLogs = allLogs.filter(l => l.actor?.toLowerCase().includes(filters.actor.toLowerCase()));
+  if (filters.action)   allLogs = allLogs.filter(l => l.action?.toLowerCase().includes(filters.action.toLowerCase()));
+  if (filters.from)     allLogs = allLogs.filter(l => l.timestamp >= filters.from);
+  if (filters.to)       allLogs = allLogs.filter(l => l.timestamp <= filters.to);
+
+  const total = allLogs.length;
+  const logs  = allLogs.slice(0, limit);
+  return { logs, total };
 }

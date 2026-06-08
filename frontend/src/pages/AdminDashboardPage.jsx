@@ -942,15 +942,17 @@ function BlockedLoginsModal({ token, onClose }) {
 }
 
 
-function AuditLogsModal({ token, initialLevel, onClose }) {
+function AuditLogsModal({ token, initialLevel, onClose, levelBreakdown = [] }) {
   const LEVELS   = ['INFO', 'WARN', 'ALERT', 'ERROR'];
   const CATS     = ['AUTH', 'ADMIN', 'PRIVACY', 'DATA'];
   const LEVEL_COLOR = { INFO: '#6366f1', WARN: '#f59e0b', ALERT: '#f97316', ERROR: '#ef4444' };
   const LEVEL_ICON  = { INFO: 'ℹ️',    WARN: '⚠️',       ALERT: '🔔',      ERROR: '🔴' };
   const CAT_COLOR   = { AUTH: '#3b82f6', ADMIN: '#8b5cf6', PRIVACY: '#06b6d4', DATA: '#10b981' };
 
-  const [logs, setLogs]         = useState([]);
-  const [allLogs, setAllLogs]   = useState([]);   // cache completo pra filtrar no cliente
+  // Counts reais do banco (do overview), fallback para 0
+  const dbLevelCounts = levelBreakdown.reduce((a, d) => { a[d.name] = d.value || 0; return a; }, {});
+
+  const [allLogs, setAllLogs]   = useState([]);
   const [loading, setLoading]   = useState(false);
   const [total, setTotal]       = useState(0);
   const [expanded, setExpanded] = useState(null);
@@ -961,11 +963,13 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
   const [from,     setFrom]     = useState('');
   const [to,       setTo]       = useState('');
 
-  // Busca todos os logs (sem filtros de nível/cat — fazemos no cliente)
+  // Busca do servidor com filtro de level/category para dados corretos
   const fetchLogs = useCallback(() => {
     setLoading(true);
     setExpanded(null);
     const params = new URLSearchParams({ limit: 500 });
+    if (level)    params.set('level', level);
+    if (category) params.set('category', category);
     if (from) params.set('from', from + 'T00:00:00Z');
     if (to)   params.set('to',   to   + 'T23:59:59Z');
     apiFetch('/admin/audit-logs?' + params.toString(), { headers: { Authorization: 'Bearer ' + token } })
@@ -973,11 +977,11 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
       .then(d => {
         const all = d.logs || [];
         setAllLogs(all);
-        setTotal(d.total ?? all.length);  // total real do banco, não só os carregados
+        setTotal(d.total ?? all.length);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token, from, to]);
+  }, [token, level, category, from, to]);
 
   useEffect(() => { fetchLogs(); }, []);
 
@@ -1030,17 +1034,16 @@ function AuditLogsModal({ token, initialLevel, onClose }) {
                 onClick={() => setLevel('')}
               >
                 Todos
-                <span className="umodal-role-count" style={{ marginLeft: 5 }}>{allLogs.length}</span>
+                <span className="umodal-role-count" style={{ marginLeft: 5 }}>{total.toLocaleString('pt-BR')}</span>
               </button>
               {LEVELS.map(l => (
                 <button key={l}
                   className={'alog-level-btn alog-level-' + l.toLowerCase() + (level === l ? ' alog-active' : '') + (!levelCounts[l] ? ' alog-level-empty' : '')}
-                  onClick={() => levelCounts[l] && setLevel(level === l ? '' : l)}
-                  title={!levelCounts[l] ? 'Nenhum evento desse nível nos logs carregados' : ''}
+                  onClick={() => setLevel(level === l ? '' : l)}
                 >
                   {LEVEL_ICON[l]} {l}
                   <span className="umodal-role-count" style={{ marginLeft: 5, ...(level === l ? { background: LEVEL_COLOR[l] + '22', color: LEVEL_COLOR[l] } : {}) }}>
-                    {levelCounts[l] || 0}
+                    {(dbLevelCounts[l] ?? levelCounts[l] ?? 0).toLocaleString('pt-BR')}
                   </span>
                 </button>
               ))}
@@ -1810,7 +1813,7 @@ export default function AdminDashboardPage() {
       {showSuccessLogins && <SuccessLoginsModal token={token} onClose={() => setShowSuccessLogins(false)} />}
       {showPasswordResets && <PasswordResetsModal token={token} onClose={() => setShowPasswordResets(false)} />}
       {showBlockedLogins && <BlockedLoginsModal token={token} onClose={() => setShowBlockedLogins(false)} />}
-      {showAuditLogs && <AuditLogsModal token={token} initialLevel={auditInitLevel} onClose={() => setShowAuditLogs(false)} />}
+      {showAuditLogs && <AuditLogsModal token={token} initialLevel={auditInitLevel} onClose={() => setShowAuditLogs(false)} levelBreakdown={levelBreakdown} />}
     </div>
   );
 }
