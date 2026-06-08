@@ -294,19 +294,72 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(2, 6, 23, .62);
-  backdrop-filter: blur(12px);
+  background: rgba(2, 6, 23, .72);
+  backdrop-filter: blur(14px);
 }
 .auth-2fa-modal {
-  width: min(390px, 100%);
-  padding: 24px;
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  width: min(400px, 100%);
+  padding: 28px 26px 24px;
+  border: 1px solid rgba(168, 85, 247, 0.36);
   border-radius: 22px;
-  background: color-mix(in srgb, var(--card) 94%, transparent);
-  box-shadow: 0 28px 80px rgba(0,0,0,.38);
+  background: linear-gradient(160deg, #0f1535 0%, #0a0e27 100%);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .52), 0 0 0 1px rgba(255,255,255,.04) inset;
+  color: #ffffff;
 }
-.auth-2fa-modal h2 { margin: 0 0 8px; color: var(--text); }
-.auth-2fa-modal p { margin: 0 0 18px; color: var(--text-muted); }
+.auth-2fa-modal h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.auth-2fa-modal p {
+  margin: 0 0 20px;
+  color: rgba(216, 200, 255, 0.82);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.auth-2fa-modal .form-input {
+  color: #ffffff;
+  background: rgba(168, 85, 247, 0.10);
+  border-color: rgba(168, 85, 247, 0.34);
+}
+.auth-2fa-modal .form-input::placeholder { color: rgba(216,200,255,.45); }
+.auth-2fa-modal .form-input:focus {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.16);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+}
+.auth-2fa-modal .btn {
+  color: #d8c8ff;
+  background: rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+}
+.auth-2fa-modal .btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.26);
+  border-color: rgba(168, 85, 247, 0.52);
+  color: #ffffff;
+}
+.auth-2fa-modal .btn-primary {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.34);
+}
+.auth-2fa-modal .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%) !important;
+  box-shadow: 0 14px 32px rgba(124, 58, 237, 0.46);
+}
+.auth-2fa-modal .auth-alert {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(248, 113, 113, 0.28);
+  color: #fecaca;
+  margin-bottom: 12px;
+}
+.auth-2fa-modal .auth-success {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(110, 231, 183, 0.34);
+  color: #bbf7d0;
+}
 .auth-2fa-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
 .home-page .post-composer {
