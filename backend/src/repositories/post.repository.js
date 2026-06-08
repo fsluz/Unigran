@@ -335,8 +335,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       ...(String(postText).toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
       ...String(postText).toLowerCase().split(/[^a-z0-9\u00c0-\u017f]+/).filter(Boolean),
     ]);
-    const viewerLikedSimilar = [...likedKeywords].some(word => textWords.has(word));
-    return authorUsername === viewerUsername || followingSet.has(authorUsername) || viewerLikedSimilar;
+    return authorUsername === viewerUsername || followingSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
     const postText = entry?.post_text || attrs['post-text'] || '';

@@ -120,8 +120,10 @@ export default function LoginPage({ onGoRegister }) {
       if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
       else if (data.requires2FA) {
         setNeeds2FA(true);
-        setError('Informe codigo 2FA.');
-      } else login(data.user, data.token);
+        setTwoFactorCode('');
+        setError('');
+        setSuccess('Codigo enviado para seu email.');
+      } else login(data.user, data.token, remember);
     } catch {
       setError('Erro ao conectar com o servidor.');
     } finally {
@@ -340,6 +342,7 @@ export default function LoginPage({ onGoRegister }) {
           </div>
 
           {error && <div className="auth-alert">{error}</div>}
+          {success && <div className="auth-alert auth-success">{success}</div>}
 
           <button type="button" className="auth-google-custom" onClick={handleGoogle}>
             <span className="auth-google-mark">G</span>
@@ -359,21 +362,6 @@ export default function LoginPage({ onGoRegister }) {
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
           </div>
-
-          {needs2FA && (
-            <div className="form-group">
-              <label className="form-label">Codigo 2FA</label>
-              <input
-                className="form-input"
-                inputMode="text"
-                maxLength={16}
-                placeholder="000000 ou codigo backup"
-                value={twoFactorCode}
-                onChange={e => setTwoFactorCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16))}
-                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              />
-            </div>
-          )}
 
           <div className="form-group">
             <div className="auth-row">
@@ -422,6 +410,32 @@ export default function LoginPage({ onGoRegister }) {
           </div>
         </div>
       </div>
+      {needs2FA && (
+        <div className="auth-2fa-backdrop" role="dialog" aria-modal="true">
+          <div className="auth-2fa-modal">
+            <h2>Codigo de seguranca</h2>
+            <p>Digite codigo enviado para {email}.</p>
+            <input
+              className="form-input"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="000000"
+              value={twoFactorCode}
+              onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              autoFocus
+            />
+            <div className="auth-2fa-actions">
+              <button type="button" className="btn" onClick={() => { setNeeds2FA(false); setTwoFactorCode(''); }}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading || twoFactorCode.length < 6}>
+                {loading ? 'Verificando...' : 'Entrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthLayout>
   );
 }

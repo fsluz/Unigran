@@ -80,6 +80,12 @@ export default function ZuniPage({ onOpenProfile }) {
   }, [token]);
 
   useEffect(() => {
+    const refresh = () => loadPage(1, false);
+    window.addEventListener('unigran:zuni-refresh', refresh);
+    return () => window.removeEventListener('unigran:zuni-refresh', refresh);
+  }, [token]);
+
+  useEffect(() => {
     const close = (event) => {
       if (volumeRef.current && !volumeRef.current.contains(event.target)) setVolumeOpen(false);
     };
@@ -136,6 +142,7 @@ export default function ZuniPage({ onOpenProfile }) {
       setPlaying(false);
     };
     const resumeActive = () => {
+      loadPage(1, false);
       const video = videoRefs.current.get(activePostId);
       if (!video) return;
       video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));

@@ -287,7 +287,11 @@ export default function MessagesPage() {
       .then(loaded => {
         const markerId = firstUnreadId(loaded);
         setUnreadMarkerByConv(prev => ({ ...prev, [active.id]: markerId }));
-        setMessages(prev => ({ ...prev, [active.id]: loaded }));
+        setMessages(prev => {
+          const byId = new Map([...(prev[active.id] || []), ...loaded].map(msg => [msg.id, msg]));
+          const merged = [...byId.values()].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
+          return { ...prev, [active.id]: merged };
+        });
         setConversations(prev => prev.map(conv => conv.id === active.id ? { ...conv, receivedUnreadCount: 0 } : conv));
         return markConversationRead({ token, conversationId: active.id }).catch(() => null);
       })
@@ -306,7 +310,9 @@ export default function MessagesPage() {
           setMessages(prev => {
             const current = prev[active.id] || [];
             if (sameIds(current, loaded)) return prev;
-            return { ...prev, [active.id]: loaded };
+            const byId = new Map([...current, ...loaded].map(msg => [msg.id, msg]));
+            const merged = [...byId.values()].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
+            return { ...prev, [active.id]: merged };
           });
           markConversationRead({ token, conversationId: active.id }).catch(() => null);
         })
