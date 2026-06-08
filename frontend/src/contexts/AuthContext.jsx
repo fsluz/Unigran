@@ -27,6 +27,8 @@ export function AuthProvider({ children }) {
       .then(r => r.json())
       .then(data => {
         if (data.user) setUser(normalizeUser(data.user));
+        // Restaura token em memória se o backend devolver (compatibilidade Bearer)
+        if (data.token) setToken(data.token);
       })
       .catch(() => null)
       .finally(() => setLoading(false));

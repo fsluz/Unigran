@@ -427,6 +427,7 @@ router.get('/me', async (req, res) => {
     const twoFactor = await readTwoFactorByUsername(decoded.username);
     auditLog({ action: 'SESSION_VALIDATED', category: 'AUTH', actor: decoded.username, ip: getIp(req), meta: { role: normalizeRole(row.role || decoded.role) } });
     res.json({
+      token: rawToken,
       user: {
         ...decoded,
         displayName: row.name || decoded.displayName,
