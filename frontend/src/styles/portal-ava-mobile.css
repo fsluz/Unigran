@@ -344,21 +344,19 @@
   font-size: 0.78rem;
 }
 
-/* ── AVA: tabs scroll horizontal ─────────────────────────────── */
+/* ── AVA: tabs responsivos ────────────────────────────────────── */
 .ava-tabs {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 4px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: visible;
+  padding: 6px;
 }
-.ava-tabs::-webkit-scrollbar { display: none; }
 .ava-tabs button {
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
-  flex-shrink: 0;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--card);
@@ -368,6 +366,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
@@ -376,6 +375,46 @@
   color: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* ≤ 700 px: 4 tabs por linha, texto menor */
+@media (max-width: 700px) {
+  .ava-tabs {
+    gap: 5px;
+    padding: 5px;
+  }
+  .ava-tabs button {
+    flex: 1 1 calc(25% - 5px);
+    min-width: calc(25% - 5px);
+    padding: 7px 6px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ≤ 480 px: 4 tabs por linha, só ícone nos inativos */
+@media (max-width: 480px) {
+  .ava-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+  .ava-tabs button {
+    flex: 1 1 calc(25% - 4px);
+    min-width: calc(25% - 4px);
+    padding: 9px 4px;
+    font-size: 0;       /* oculta texto */
+    gap: 0;
+  }
+  .ava-tabs button.active {
+    font-size: 0.73rem; /* texto visível só no ativo */
+    gap: 4px;
+    padding: 8px 8px;
+    flex: 2 1 auto;     /* ativo ocupa mais espaço */
+  }
+  .ava-tabs button svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
 }
 
 /* ── AVA: card grid ───────────────────────────────────────────── */

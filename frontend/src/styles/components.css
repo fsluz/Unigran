@@ -6516,9 +6516,10 @@
 }
 .ava-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 14px;
-  overflow-x: auto;
+  overflow: visible;
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 12px;
