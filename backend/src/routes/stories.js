@@ -40,8 +40,21 @@ function packStoryMessage({ content, author, storyId }) {
     media: null,
     readBy: [author.username],
     storyId,
-    author: { id: author.username, displayName: author.displayName || author.username },
+    author: { id: author.username, displayName: author.displayName || author.username, profilePicture: author.profilePicture || null },
   });
+}
+
+function packDirectConversationName(title) {
+  return JSON.stringify({ v: 1, type: 'direct', title, picture: null, description: '' });
+}
+
+function isDirectConversationTitle(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    return !parsed?.type || parsed.type === 'direct';
+  } catch (_) {
+    return true;
+  }
 }
 
 async function notifyStoryOwner({ actor, storyId, type, text }) {
@@ -74,7 +87,8 @@ async function sendStoryCommentMessage({ actor, storyId, content }) {
       $story isa story, has story-id "${typeqlLiteral(storyId)}";
       posting(page: $owner, post: $story);
       $owner isa person, has username $owner_username, has name $owner_name;
-    fetch { "owner_username": $owner_username, "owner_name": $owner_name };
+      try { $owner has profile-picture $owner_picture; };
+    fetch { "owner_username": $owner_username, "owner_name": $owner_name, "owner_picture": $owner_picture };
   `);
   const owner = ownerRows[0];
   if (!owner?.owner_username || owner.owner_username === actor.username) return;
@@ -86,10 +100,11 @@ async function sendStoryCommentMessage({ actor, storyId, content }) {
       $c isa conversation, has conversation-id $cid;
       conversation-participant(participant: $me, conversation: $c);
       conversation-participant(participant: $to, conversation: $c);
-    fetch { "conversation_id": $cid };
+      $c has name $title;
+    fetch { "conversation_id": $cid, "title": $title };
   `);
 
-  let conversationId = existing[0]?.conversation_id;
+  let conversationId = existing.find(row => isDirectConversationTitle(row.title))?.conversation_id;
   const now = typeqlDatetime();
   if (!conversationId) {
     conversationId = uuid();
@@ -100,7 +115,7 @@ async function sendStoryCommentMessage({ actor, storyId, content }) {
       insert
         $c isa conversation,
           has conversation-id "${conversationId}",
-          has name "${typeqlLiteral(owner.owner_name || owner.owner_username)}",
+          has name "${typeqlLiteral(packDirectConversationName(owner.owner_name || owner.owner_username))}",
           has creation-timestamp ${now};
         conversation-participant(participant: $me, conversation: $c);
         conversation-participant(participant: $to, conversation: $c);

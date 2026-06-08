@@ -740,3 +740,50 @@
     grid-template-columns: 1fr !important;
   }
 }
+/* Pedido final: modal e comentarios leves, com rolagem e sem quebra profunda */
+.modal-backdrop--post-detail {
+  background: rgba(3, 7, 18, .66) !important;
+  backdrop-filter: blur(20px) saturate(130%) !important;
+}
+
+.modal-box--post-detail {
+  background: rgba(15, 23, 42, .62) !important;
+  border: 1px solid rgba(139, 92, 246, .55) !important;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .5) !important;
+}
+
+.post-detail-modal {
+  background: rgba(15, 23, 42, .45) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.post-detail-left,
+.post-detail-right {
+  background: transparent !important;
+}
+
+.post-detail-comments-list {
+  max-height: calc(100dvh - 220px) !important;
+  overflow-y: auto !important;
+}
+
+.post-detail-comment-card {
+  min-height: auto !important;
+  background: rgba(15, 23, 42, .38) !important;
+}
+
+.post-detail-comment-card .comment-replies {
+  margin-left: clamp(10px, 2vw, 28px) !important;
+  border-left: 1px solid rgba(139, 92, 246, .55) !important;
+  padding-left: 12px !important;
+}
+
+.post-detail-comment-card .comment-replies .comment-replies .comment-replies {
+  margin-left: 0 !important;
+}
+
+.post-detail-comment-form {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+}

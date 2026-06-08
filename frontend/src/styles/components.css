@@ -9356,3 +9356,120 @@ img, video { max-width: 100%; }
     grid-template-columns: 1fr !important;
   }
 }
+/* Pedido final: composer compacto, cards leves e settings estavel */
+.post-composer {
+  max-width: min(100%, 760px) !important;
+  margin-inline: auto !important;
+  padding: 14px 16px !important;
+  border-radius: 24px !important;
+}
+
+.feed-main .post-composer,
+.home-page .post-composer {
+  max-width: 100% !important;
+}
+
+.post-composer .composer-row {
+  gap: 12px !important;
+  align-items: flex-start !important;
+}
+
+.post-composer .composer-textarea {
+  min-height: 82px !important;
+  font-size: clamp(15px, 1.4vw, 19px) !important;
+  padding: 18px 22px !important;
+}
+
+.post-composer .composer-footer {
+  display: grid !important;
+  grid-template-columns: auto auto auto auto auto minmax(104px, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 0 0 !important;
+}
+
+.post-composer .composer-mode-select {
+  width: 140px !important;
+  height: 46px !important;
+}
+
+.post-composer .composer-btn {
+  width: 46px !important;
+  height: 46px !important;
+  flex: 0 0 46px !important;
+}
+
+.post-composer .composer-submit-wrap {
+  justify-self: end !important;
+  width: auto !important;
+}
+
+.post-composer .composer-submit-btn {
+  width: auto !important;
+  min-width: 104px !important;
+  max-width: 136px !important;
+  height: 46px !important;
+  padding: 0 22px !important;
+  border-radius: 16px !important;
+}
+
+.post-composer.is-portfolio .composer-footer {
+  grid-template-columns: auto auto auto auto auto minmax(104px, 1fr) !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-panel {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: 1.2fr .8fr !important;
+  gap: 14px !important;
+  padding: 16px !important;
+}
+
+.post-card .post-actions button,
+.post-action-btn,
+.post-footer button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+
+.post-card .post-actions button:hover,
+.post-action-btn:hover,
+.post-footer button:hover {
+  background: rgba(139, 92, 246, .12) !important;
+  border-color: rgba(139, 92, 246, .28) !important;
+}
+
+.settings-page .settings-shell,
+.settings-page .settings-main,
+.settings-page .settings-content,
+.settings-page .settings-card,
+.settings-page .settings-panel {
+  min-height: 720px !important;
+  align-items: stretch !important;
+}
+
+@media (max-width: 760px) {
+  .post-composer {
+    padding: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  .post-composer .composer-footer {
+    grid-template-columns: 1fr repeat(4, 42px) !important;
+  }
+
+  .post-composer .composer-submit-wrap {
+    grid-column: 1 / -1 !important;
+    justify-self: stretch !important;
+  }
+
+  .post-composer .composer-submit-btn {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .post-composer.is-portfolio .composer-portfolio-panel {
+    grid-template-columns: 1fr !important;
+  }
+}

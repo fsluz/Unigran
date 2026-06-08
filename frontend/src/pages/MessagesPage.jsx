@@ -179,6 +179,10 @@ export default function MessagesPage() {
       return matchesText && matchesFilter;
     });
   }, [conversations, conversationSearch, conversationFilter]);
+  const unreadPeopleCount = useMemo(
+    () => conversations.filter(item => Number(item.receivedUnreadCount || 0) > 0).length,
+    [conversations],
+  );
 
   const previewFromMessage = (message) => {
     if (!message) return '';
@@ -190,12 +194,33 @@ export default function MessagesPage() {
     return '';
   };
 
+  const safeMessagePreview = (message) => {
+    if (!message) return '';
+    if (message.locked) return 'Mensagem privada';
+    if (message.content?.trim()) return message.content.trim();
+    if (message.media?.type === 'image') return 'Foto';
+    if (message.media?.type === 'video') return 'Video';
+    if (message.media?.type === 'audio') return 'Audio';
+    if (message.media?.url) return 'Arquivo';
+    return '';
+  };
+
+  const decorateConversationPreview = async (conv) => {
+    const raw = conv.lastMessage || '';
+    const fallback = conv.lastMessagePreview || safeMessagePreview({ media: conv.lastMessageMedia });
+    if (!raw) return { ...conv, lastMessagePreview: fallback || '' };
+    if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw || fallback || '' };
+    const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
+    if (!decrypted || decrypted.locked) return { ...conv, lastMessagePreview: fallback || 'Mensagem privada' };
+    return { ...conv, lastMessagePreview: safeMessagePreview(decrypted) || fallback || '' };
+  };
+
   const bumpConversation = (conversationId, message) => {
     setConversations(prev => prev
       .map(conv => conv.id === conversationId ? {
         ...conv,
         lastMessageAt: message?.time || new Date().toISOString(),
-        lastMessagePreview: previewFromMessage(message) || conv.lastMessagePreview || '',
+        lastMessagePreview: safeMessagePreview(message) || conv.lastMessagePreview || '',
       } : conv)
       .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)));
   };
@@ -233,20 +258,13 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!token) return;
     publishOwnPublicKey(token).catch(() => showToast('E2EE sem chave publica salva', '!'));
-  }, [token, showToast]);
+  }, [token, showToast, user?.username]);
 
   useEffect(() => {
     fetchConversations(token)
       .then(async (loaded) => {
         const normalized = [...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
-        const decorated = await Promise.all(normalized.map(async (conv) => {
-          const raw = conv.lastMessage || '';
-          if (!raw) return { ...conv, lastMessagePreview: conv.lastMessagePreview || '' };
-          if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw };
-          const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
-          const text = decrypted?.locked ? '' : (decrypted?.content || '');
-          return { ...conv, lastMessagePreview: text || '' };
-        }));
+        const decorated = await Promise.all(normalized.map(decorateConversationPreview));
         setConversations(decorated);
         setActive(prev => prev || (isMobileMessagesView() ? null : (decorated[0] || null)));
       })
@@ -259,14 +277,7 @@ export default function MessagesPage() {
       fetchConversations(token)
         .then(async (loaded) => {
           const normalized = [...loaded].sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
-          const decorated = await Promise.all(normalized.map(async (conv) => {
-            const raw = conv.lastMessage || '';
-            if (!raw) return { ...conv, lastMessagePreview: '' };
-            if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw };
-            const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
-            const text = decrypted?.locked ? '' : (decrypted?.content || '');
-            return { ...conv, lastMessagePreview: text || '' };
-          }));
+          const decorated = await Promise.all(normalized.map(decorateConversationPreview));
           setConversations(prev => decorated.map(conv => {
             const existing = prev.find(item => item.id === conv.id);
             return conv.lastMessagePreview
@@ -278,7 +289,7 @@ export default function MessagesPage() {
         .catch(() => null);
     }, 10000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token, user?.username]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -847,6 +858,22 @@ export default function MessagesPage() {
     }
   };
 
+  const handleMessagePaste = (event) => {
+    const item = Array.from(event.clipboardData?.items || [])
+      .find(entry => entry.kind === 'file' && entry.type?.startsWith('image/'));
+    if (!item) return;
+    const pasted = item.getAsFile();
+    if (!pasted) return;
+    event.preventDefault();
+    if (pasted.size > 25 * 1024 * 1024) {
+      showToast('Arquivo muito grande', '!');
+      return;
+    }
+    const ext = pasted.type?.split('/')[1] || 'png';
+    setFile(new File([pasted], `imagem-${Date.now()}.${ext}`, { type: pasted.type || 'image/png' }));
+    showToast('Imagem colada. Envie para mandar.', 'OK');
+  };
+
   const onTextChange = (value) => {
     setText(value);
     if (!active?.id) return;
@@ -1254,8 +1281,8 @@ export default function MessagesPage() {
           <div className="conv-list-head">
             <div className="messages-title-row">
               <h3>Mensagens</h3>
-              {conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
-                <span className="messages-title-badge">{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
+              {unreadPeopleCount > 0 && (
+                <span className="messages-title-badge">{unreadPeopleCount}</span>
               )}
               <div className="messages-mobile-actions">
                 <button onClick={() => setGroupOpen(true)} aria-label="Novo grupo"><ChatIcon name="video" size={18} /></button>
@@ -1312,8 +1339,8 @@ export default function MessagesPage() {
                   onClick={() => setConversationFilter(id)}
                 >
                   {label}
-                  {id === 'unread' && conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0) > 0 && (
-                    <span>{conversations.reduce((sum, item) => sum + Number(item.receivedUnreadCount || 0), 0)}</span>
+                  {id === 'unread' && unreadPeopleCount > 0 && (
+                    <span>{unreadPeopleCount}</span>
                   )}
                 </button>
               ))}
@@ -1497,6 +1524,7 @@ export default function MessagesPage() {
                 value={text}
                 onChange={e => onTextChange(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
+                onPaste={handleMessagePaste}
               />
               {file && <button className="chat-input-icon" onClick={() => setFile(null)} title="Remover arquivo">x</button>}
               <button className="chat-send-btn" onClick={send} disabled={(!text.trim() && !file) || sendingMedia}>

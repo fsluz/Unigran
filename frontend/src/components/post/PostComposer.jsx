@@ -92,17 +92,34 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     }
   };
 
-  const onPick = (event) => {
-    const next = event.target.files?.[0];
+  const attachSelectedFile = (next) => {
     if (!next) return;
     if (isPortfolioMode && next.size > 1024 * 1024) {
       showToast('Documento do portfolio deve ter ate 1024 KB.', '!');
-      event.target.value = '';
       return;
     }
     if (preview) URL.revokeObjectURL(preview);
     setFile(next);
     setPreview(URL.createObjectURL(next));
+  };
+
+  const onPick = (event) => {
+    const next = event.target.files?.[0];
+    if (isPortfolioMode && next?.size > 1024 * 1024) event.target.value = '';
+    attachSelectedFile(next);
+  };
+
+  const handlePaste = (event) => {
+    const item = Array.from(event.clipboardData?.items || [])
+      .find(entry => entry.kind === 'file' && entry.type?.startsWith('image/'));
+    if (!item) return;
+    const pasted = item.getAsFile();
+    if (!pasted) return;
+    event.preventDefault();
+    const ext = pasted.type?.split('/')[1] || 'png';
+    const next = new File([pasted], `imagem-${Date.now()}.${ext}`, { type: pasted.type || 'image/png' });
+    attachSelectedFile(next);
+    showToast('Imagem colada. Pronta para publicar.', 'OK');
   };
 
   const openPicker = (accept = fileAccept) => {
@@ -166,6 +183,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
             placeholder={isPortfolioMode ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...' : placeholder}
             value={text}
             onChange={e => setT(e.target.value)}
+            onPaste={handlePaste}
             rows={isPortfolioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
           />
         </div>

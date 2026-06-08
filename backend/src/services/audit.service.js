@@ -7,6 +7,23 @@ import { pgQuery, getClient } from '../db/supabase.js';
 // Garante que a tabela existe (roda uma vez por cold start)
 // ---------------------------------------------------------------------------
 let tableReady = false;
+const AUDIT_DB_TIMEOUT_MS = parseInt(process.env.AUDIT_DB_TIMEOUT_MS || '3500', 10);
+let auditDbMutedUntil = 0;
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function logAuditDbError(err) {
+  const now = Date.now();
+  if (now < auditDbMutedUntil) return;
+  auditDbMutedUntil = now + 30000;
+  console.error('[audit] Falha ao gravar no Supabase:', err.message);
+}
 
 async function ensureAuditTable() {
   if (tableReady) return;
@@ -71,15 +88,19 @@ export function auditLog({
   };
 
   // Grava no Supabase de forma assíncrona (fire-and-forget)
-  ensureAuditTable()
-    .then(() => pgQuery(
-      `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [entry.id, entry.timestamp, entry.level, entry.category, entry.action,
-       entry.actor, entry.target, entry.ip, JSON.stringify(entry.meta)]
-    ))
+  withTimeout(
+    ensureAuditTable()
+      .then(() => pgQuery(
+        `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [entry.id, entry.timestamp, entry.level, entry.category, entry.action,
+         entry.actor, entry.target, entry.ip, JSON.stringify(entry.meta)]
+      )),
+    AUDIT_DB_TIMEOUT_MS,
+    'audit supabase',
+  )
     .catch(err => {
-      console.error('[audit] Falha ao gravar no Supabase:', err.message);
+      logAuditDbError(err);
       writeAuditFallback(entry);
     });
 

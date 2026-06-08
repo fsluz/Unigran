@@ -80,6 +80,20 @@ function looksEncrypted(raw = '') {
   }
 }
 
+function mediaPreview(media) {
+  if (!media) return '';
+  if (media.type === 'image') return 'Foto';
+  if (media.type === 'video') return 'Video';
+  if (media.type === 'audio') return 'Audio';
+  return 'Arquivo';
+}
+
+function previewMessagePayload(payload) {
+  if (!payload) return '';
+  if (payload.content && !looksEncrypted(payload.content)) return payload.content;
+  return mediaPreview(payload.media) || (payload.content ? 'Mensagem privada' : '');
+}
+
 async function canMessage({ fromUser, toUsername }) {
   if (fromUser.username === toUsername) return { ok: false, reason: 'Nao pode enviar mensagem para si mesmo' };
   if (hasPermission(fromUser, 'messages:initiate')) return { ok: true };
@@ -153,9 +167,9 @@ router.get('/', auth, async (req, res) => {
         fetch { "text": $text, "created_at": $ts };
       `).catch(() => []);
       const lastMessage = messageRows[0] ? unpackMessageText(messageRows[0].text) : null;
-      const lastPreview = looksEncrypted(lastMessage?.content)
-        ? 'Mensagem criptografada'
-        : (lastMessage?.content || (lastMessage?.media ? 'Midia enviada' : ''));
+      // FIXED: keep encrypted payload in lastMessage so the frontend can decrypt the preview.
+      const lastRaw = lastMessage?.content || '';
+      const lastPreview = previewMessagePayload(lastMessage);
       const sentUnreadCount = messageRows.reduce((count, msgRow) => {
         const payload = unpackMessageText(msgRow.text);
         const mine = payload.author?.id === req.user.username;
@@ -179,7 +193,9 @@ router.get('/', auth, async (req, res) => {
       sentUnreadCount,
       receivedUnreadCount,
       lastMessageAt: messageRows[0]?.created_at || null,
-      lastMessage: lastPreview,
+      lastMessage: lastRaw,
+      lastMessagePreview: lastPreview,
+      lastMessageMedia: lastMessage?.media || null,
       participant: firstParticipant,
     };
     }));

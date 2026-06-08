@@ -12,6 +12,26 @@ function cleanEnv(value = '') {
   return String(value || '').trim().replace(/^['\"]|['\"]$/g, '');
 }
 
+function timeoutConfig() {
+  const connectionTimeout = parseInt(
+    process.env.SUPABASE_CONNECT_TIMEOUT_MS
+    || process.env.AUDIT_DB_TIMEOUT_MS
+    || '3500',
+    10,
+  );
+  const queryTimeout = parseInt(
+    process.env.SUPABASE_QUERY_TIMEOUT_MS
+    || '6000',
+    10,
+  );
+  return {
+    connectionTimeoutMillis: connectionTimeout,
+    query_timeout: queryTimeout,
+    statement_timeout: queryTimeout,
+    idle_in_transaction_session_timeout: queryTimeout,
+  };
+}
+
 function connectionConfig() {
   const url = cleanEnv(
     process.env.DATABASE_URL
@@ -20,7 +40,7 @@ function connectionConfig() {
     || process.env.POSTGRES_URL,
   );
 
-  if (url) return { connectionString: url, ssl: { rejectUnauthorized: false } };
+  if (url) return { connectionString: url, ssl: { rejectUnauthorized: false }, ...timeoutConfig() };
 
   const host = cleanEnv(process.env.DB_HOST);
   if (!host) return null;
@@ -32,6 +52,7 @@ function connectionConfig() {
     user:     cleanEnv(process.env.DB_USER),
     password: cleanEnv(process.env.DB_PASSWORD),
     ssl:      { rejectUnauthorized: false },
+    ...timeoutConfig(),
   };
 }
 
