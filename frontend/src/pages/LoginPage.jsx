@@ -11,6 +11,7 @@ export default function LoginPage({ onGoRegister }) {
   const [password, setPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [needs2FA, setNeeds2FA] = useState(false);
+  const [twoFaDelivery, setTwoFaDelivery] = useState(null); // 'choice' | 'email' | 'app'
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -100,34 +101,67 @@ export default function LoginPage({ onGoRegister }) {
     window.google.accounts.id.prompt();
   };
 
+  const submit2FA = async (delivery) => {
+    setLoading(true);
+    setError('');
+    try {
+      const body = { email, password, remember };
+      if (delivery) body.twoFaDelivery = delivery;
+      if (twoFactorCode) body.twoFactorCode = twoFactorCode;
+      const res = await apiFetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(formatApiError(data.error, 'Codigo invalido.')); return; }
+      if (data.requires2FA) {
+        setNeeds2FA(true);
+        setTwoFaDelivery(data.delivery);
+        setTwoFactorCode('');
+        setError('');
+        if (data.delivery === 'email' && data.codeSent) setSuccess('Codigo enviado para seu email.');
+        else setSuccess('');
+      } else {
+        login(data.user, data.token, remember);
+      }
+    } catch {
+      setError('Erro ao conectar com o servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Preencha todos os campos.');
       return;
     }
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await apiFetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, remember, twoFactorCode: needs2FA ? twoFactorCode : undefined }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
-      else if (data.requires2FA) {
-        setNeeds2FA(true);
-        setTwoFactorCode('');
-        setError('');
-        setSuccess('Codigo enviado para seu email.');
-      } else login(data.user, data.token, remember);
-    } catch {
-      setError('Erro ao conectar com o servidor.');
-    } finally {
-      setLoading(false);
+    if (needs2FA) {
+      await submit2FA(null);
+    } else {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiFetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, remember }),
+        });
+        const data = await res.json();
+        if (!res.ok) setError(formatApiError(data.error, 'Email ou senha incorretos.'));
+        else if (data.requires2FA) {
+          setNeeds2FA(true);
+          setTwoFaDelivery(data.delivery); // 'choice'
+          setTwoFactorCode('');
+          setError('');
+          setSuccess('');
+        } else login(data.user, data.token, remember);
+      } catch {
+        setError('Erro ao conectar com o servidor.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -413,26 +447,76 @@ export default function LoginPage({ onGoRegister }) {
       {needs2FA && (
         <div className="auth-2fa-backdrop" role="dialog" aria-modal="true">
           <div className="auth-2fa-modal">
-            <h2>Codigo de seguranca</h2>
-            <p>Digite codigo enviado para {email}.</p>
-            <input
-              className="form-input"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="000000"
-              value={twoFactorCode}
-              onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              autoFocus
-            />
-            <div className="auth-2fa-actions">
-              <button type="button" className="btn" onClick={() => { setNeeds2FA(false); setTwoFactorCode(''); }}>
-                Cancelar
-              </button>
-              <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading || twoFactorCode.length < 6}>
-                {loading ? 'Verificando...' : 'Entrar'}
-              </button>
-            </div>
+            {twoFaDelivery === 'choice' && (
+              <>
+                <h2>Verificacao em dois fatores</h2>
+                <p style={{ marginBottom: 20 }}>Escolha como deseja receber seu codigo de seguranca:</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ justifyContent: 'center', padding: '12px 0', fontSize: 15 }}
+                    onClick={() => submit2FA('email')}
+                    disabled={loading}
+                  >
+                    {loading ? 'Enviando...' : 'Receber codigo por email'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ justifyContent: 'center', padding: '12px 0', fontSize: 15 }}
+                    onClick={() => submit2FA('app')}
+                    disabled={loading}
+                  >
+                    Usar app autenticador
+                  </button>
+                </div>
+                <div style={{ marginTop: 16, textAlign: 'center' }}>
+                  <button type="button" className="btn" style={{ fontSize: 13 }} onClick={() => { setNeeds2FA(false); setTwoFaDelivery(null); setTwoFactorCode(''); setError(''); setSuccess(''); }}>
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
+
+            {(twoFaDelivery === 'email' || twoFaDelivery === 'app') && (
+              <>
+                <h2>Codigo de seguranca</h2>
+                <p>
+                  {twoFaDelivery === 'email'
+                    ? <>Digite o codigo enviado para <strong>{email}</strong>.</>
+                    : 'Digite o codigo de 6 digitos do seu app autenticador.'}
+                </p>
+                {error   && <div className="auth-alert" style={{ marginBottom: 10 }}>{error}</div>}
+                {success && <div className="auth-alert auth-success" style={{ marginBottom: 10 }}>{success}</div>}
+                <input
+                  className="form-input"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={twoFactorCode}
+                  onChange={e => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={e => e.key === 'Enter' && twoFactorCode.length === 6 && submit2FA(null)}
+                  autoFocus
+                  style={{ letterSpacing: 8, fontSize: 22, textAlign: 'center', marginBottom: 4 }}
+                />
+                {twoFaDelivery === 'email' && (
+                  <div style={{ textAlign: 'right', marginBottom: 8 }}>
+                    <button type="button" className="btn" style={{ fontSize: 12, padding: '4px 8px' }} onClick={() => submit2FA('email')} disabled={loading}>
+                      Reenviar codigo
+                    </button>
+                  </div>
+                )}
+                <div className="auth-2fa-actions">
+                  <button type="button" className="btn" onClick={() => { setTwoFaDelivery('choice'); setTwoFactorCode(''); setError(''); setSuccess(''); }}>
+                    Voltar
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={() => submit2FA(null)} disabled={loading || twoFactorCode.length < 6}>
+                    {loading ? 'Verificando...' : 'Entrar'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

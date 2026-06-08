@@ -35,6 +35,7 @@ const LoginSchema = z.object({
   ),
   password: z.string().min(1),
   twoFactorCode: z.string().optional(),
+  twoFaDelivery: z.enum(['email', 'app']).optional(),
   remember: z.boolean().optional(),
 });
 
@@ -239,15 +240,25 @@ router.post('/login', async (req, res) => {
     const twoFactor = await readTwoFactorByUsername(username);
     if (attrBoolTrue(twoFactor.enabled)) {
       const code = String(parsed.data.twoFactorCode || '').replace(/\s+/g, '');
+      const twoFaDelivery = parsed.data.twoFaDelivery;
       if (!code) {
-        if (!canRequestCode(email)) {
-          return res.status(429).json({ error: 'Aguarde antes de pedir outro codigo.' });
+        // First contact with 2FA: let user choose the method
+        if (!twoFaDelivery) {
+          return res.json({ requires2FA: true, email, delivery: 'choice' });
         }
-        const nextCode = generateCode();
-        saveCode(email, nextCode);
-        await sendTwoFactorCode(email, nextCode);
-        auditLog({ action: '2FA_EMAIL_SENT', category: 'AUTH', actor: username, ip, meta: { email } });
-        return res.json({ requires2FA: true, email, delivery: 'email' });
+        // User chose email delivery — send the code now
+        if (twoFaDelivery === 'email') {
+          if (!canRequestCode(email)) {
+            return res.status(429).json({ error: 'Aguarde antes de pedir outro codigo.' });
+          }
+          const nextCode = generateCode();
+          saveCode(email, nextCode);
+          await sendTwoFactorCode(email, nextCode);
+          auditLog({ action: '2FA_EMAIL_SENT', category: 'AUTH', actor: username, ip, meta: { email } });
+          return res.json({ requires2FA: true, email, delivery: 'email', codeSent: true });
+        }
+        // User chose app delivery — no email needed, just prompt for TOTP
+        return res.json({ requires2FA: true, email, delivery: 'app' });
       }
       if (totpLimiter.check(`totp:${username}`)) {
         auditLog({ action: '2FA_BRUTE_FORCE_BLOCKED', category: 'AUTH', actor: username, ip, level: 'ALERT' });
