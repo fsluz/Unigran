@@ -1193,18 +1193,23 @@ const CAT_CONFIG = {
 };
 
 function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
-  const [logs, setLogs]         = useState([]);
-  const [allLogs, setAllLogs]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [level, setLevel]       = useState('');
-  const [category, setCategory] = useState('');
-  const [search, setSearch]     = useState('');
-  const [expanded, setExpanded] = useState(null);
+  const [allLogs, setAllLogs]     = useState([]);
+  const [loading, setLoading]     = useState(false);
+  const [listVisible, setListVisible] = useState(false);
+  const [level, setLevel]         = useState('');
+  const [category, setCategory]   = useState('');
+  const [search, setSearch]       = useState('');
+  const [expanded, setExpanded]   = useState(null);
 
-  useEffect(() => {
-    apiFetch('/admin/audit-logs?limit=100', { headers: { Authorization: 'Bearer ' + token } })
+  // Carrega os logs apenas quando o usuário clica num card pela primeira vez
+  const loadLogs = useCallback((lvl) => {
+    setLoading(true);
+    setListVisible(true);
+    const params = new URLSearchParams({ limit: 200 });
+    if (lvl) params.set('level', lvl);
+    apiFetch('/admin/audit-logs?' + params.toString(), { headers: { Authorization: 'Bearer ' + token } })
       .then(r => r.json())
-      .then(d => { const l = d.logs || []; setAllLogs(l); setLogs(l); })
+      .then(d => setAllLogs(d.logs || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
@@ -1267,6 +1272,8 @@ function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
                 } else {
                   setLevel(key);
                   setExpanded(null);
+                  // carrega logs filtrados por esse nível (lazy)
+                  loadLogs(key);
                 }
               }}
             >
@@ -1285,124 +1292,134 @@ function EventsLogSection({ token, levelBreakdown, onOpenLogsWithLevel }) {
         })}
       </div>
 
-      {/* Filters */}
-      <div className="els-filters">
-        <div className="els-filter-search">
-          <span className="els-search-icon">🔍</span>
-          <input
-            className="els-search-input"
-            placeholder="Buscar ação, usuário ou IP..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setExpanded(null); }}
-          />
-          {search && (
-            <button className="els-search-clear" onClick={() => setSearch('')}>✕</button>
-          )}
+      {/* Filters + List — aparecem só após primeiro clique num card */}
+      {!listVisible ? (
+        <div className="els-idle-hint">
+          Clique em um nível acima para explorar os eventos registrados
         </div>
-        <div className="els-cat-pills">
-          {Object.entries(CAT_CONFIG).filter(([k]) => catCounts[k] > 0).map(([k, cfg]) => (
-            <button
-              key={k}
-              className={'els-cat-pill' + (category === k ? ' active' : '')}
-              style={category === k ? { background: cfg.color + '18', color: cfg.color, borderColor: cfg.color + '55' } : {}}
-              onClick={() => { setCategory(category === k ? '' : k); setExpanded(null); }}
-            >
-              {cfg.label}
-              <span className="els-pill-count">{catCounts[k] || 0}</span>
-            </button>
-          ))}
-          {(level || category || search) && (
-            <button className="els-cat-pill els-clear-all" onClick={() => { setLevel(''); setCategory(''); setSearch(''); setExpanded(null); }}>
-              ✕ Limpar
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Log list */}
-      <div className="els-list">
-        {loading ? (
-          <div className="els-empty"><div className="dash-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> Carregando...</div>
-        ) : filtered.length === 0 ? (
-          <div className="els-empty">Nenhum evento encontrado com esses filtros</div>
-        ) : filtered.slice(0, 25).map((log, i) => {
-          const cfg    = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.INFO;
-          const catCfg = CAT_CONFIG[log.category];
-          const isOpen = expanded === i;
-          const hasMeta = Object.keys(log.meta || {}).length > 0;
-          const canExpand = hasMeta || log.target;
-          const ts = new Date(log.timestamp).toLocaleString('pt-BR', {
-            day: '2-digit', month: '2-digit', year: '2-digit',
-            hour: '2-digit', minute: '2-digit', second: '2-digit',
-          });
-          return (
-            <div
-              key={i}
-              className={'els-row' + (isOpen ? ' els-row-open' : '') + (canExpand ? ' els-row-clickable' : '')}
-              onClick={() => canExpand && setExpanded(isOpen ? null : i)}
-            >
-              <div className="els-row-main">
-                <div className="els-level-bar" style={{ background: cfg.color }} />
-                <div className="els-level-icon-wrap" style={{ background: cfg.bg }}>
-                  <span style={{ fontSize: '0.85rem', lineHeight: 1 }}>{cfg.icon}</span>
-                </div>
-                <div className="els-row-body">
-                  <div className="els-row-top">
-                    <code className="els-action" style={{ color: cfg.color }}>{log.action}</code>
-                    <div className="els-badges">
-                      <span className="els-badge" style={{ background: cfg.color + '18', color: cfg.color }}>{cfg.label}</span>
-                      {catCfg && (
-                        <span className="els-badge" style={{ background: catCfg.color + '18', color: catCfg.color }}>{catCfg.label}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="els-row-meta">
-                    <span className="els-ts">{ts}</span>
-                    {log.actor && <><span className="els-dot">·</span><span>👤 {log.actor}</span></>}
-                    {log.ip    && <><span className="els-dot">·</span><span className="els-ip">🌐 {log.ip}</span></>}
-                  </div>
-                </div>
-                {canExpand && <span className={'els-chevron' + (isOpen ? ' open' : '')}>›</span>}
-              </div>
-              {isOpen && canExpand && (
-                <div className="els-detail">
-                  {log.target && (
-                    <div className="els-detail-row">
-                      <span className="els-detail-key">Target</span>
-                      <code className="els-detail-val">{log.target}</code>
-                    </div>
-                  )}
-                  {hasMeta && (
-                    <pre className="els-pre">{JSON.stringify(log.meta, null, 2)}</pre>
-                  )}
-                </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="els-filters">
+            <div className="els-filter-search">
+              <span className="els-search-icon">🔍</span>
+              <input
+                className="els-search-input"
+                placeholder="Buscar ação, usuário ou IP..."
+                value={search}
+                onChange={e => { setSearch(e.target.value); setExpanded(null); }}
+              />
+              {search && (
+                <button className="els-search-clear" onClick={() => setSearch('')}>✕</button>
               )}
             </div>
-          );
-        })}
-        {filtered.length > 25 && (
-          <div className="els-show-more">
-            <button className="els-btn-full" onClick={() => onOpenLogsWithLevel(level)}>
-              + {filtered.length - 25} eventos a mais — abrir log{level ? ` de ${LEVEL_CONFIG[level]?.label || level}` : 's'} completo ›
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="els-footer">
-        {(level || category || search)
-          ? <>
-              {filtered.length} de {allLogs.length} exibidos <span className="els-footer-muted">· filtrado</span>
-              {level && (
-                <button className="els-footer-link" onClick={() => onOpenLogsWithLevel(level)}>
-                  · ver todos os {LEVEL_CONFIG[level]?.label || level} no log completo ›
+            <div className="els-cat-pills">
+              {Object.entries(CAT_CONFIG).filter(([k]) => catCounts[k] > 0).map(([k, cfg]) => (
+                <button
+                  key={k}
+                  className={'els-cat-pill' + (category === k ? ' active' : '')}
+                  style={category === k ? { background: cfg.color + '18', color: cfg.color, borderColor: cfg.color + '55' } : {}}
+                  onClick={() => { setCategory(category === k ? '' : k); setExpanded(null); }}
+                >
+                  {cfg.label}
+                  <span className="els-pill-count">{catCounts[k] || 0}</span>
+                </button>
+              ))}
+              {(level || category || search) && (
+                <button className="els-cat-pill els-clear-all" onClick={() => { setLevel(''); setCategory(''); setSearch(''); setExpanded(null); setListVisible(false); setAllLogs([]); }}>
+                  ✕ Limpar
                 </button>
               )}
-            </>
-          : <>{Math.min(filtered.length, 25)} de {allLogs.length} mais recentes · <button className="els-footer-link" onClick={() => onOpenLogsWithLevel('')}>ver log completo ›</button></>
-        }
-      </div>
+            </div>
+          </div>
+
+          {/* Log list */}
+          <div className="els-list">
+            {loading ? (
+              <div className="els-empty"><div className="dash-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> Carregando...</div>
+            ) : filtered.length === 0 ? (
+              <div className="els-empty">Nenhum evento encontrado com esses filtros</div>
+            ) : filtered.slice(0, 25).map((log, i) => {
+              const cfg    = LEVEL_CONFIG[log.level] || LEVEL_CONFIG.INFO;
+              const catCfg = CAT_CONFIG[log.category];
+              const isOpen = expanded === i;
+              const hasMeta = Object.keys(log.meta || {}).length > 0;
+              const canExpand = hasMeta || log.target;
+              const ts = new Date(log.timestamp).toLocaleString('pt-BR', {
+                day: '2-digit', month: '2-digit', year: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+              });
+              return (
+                <div
+                  key={i}
+                  className={'els-row' + (isOpen ? ' els-row-open' : '') + (canExpand ? ' els-row-clickable' : '')}
+                  onClick={() => canExpand && setExpanded(isOpen ? null : i)}
+                >
+                  <div className="els-row-main">
+                    <div className="els-level-bar" style={{ background: cfg.color }} />
+                    <div className="els-level-icon-wrap" style={{ background: cfg.bg }}>
+                      <span style={{ fontSize: '0.85rem', lineHeight: 1 }}>{cfg.icon}</span>
+                    </div>
+                    <div className="els-row-body">
+                      <div className="els-row-top">
+                        <code className="els-action" style={{ color: cfg.color }}>{log.action}</code>
+                        <div className="els-badges">
+                          <span className="els-badge" style={{ background: cfg.color + '18', color: cfg.color }}>{cfg.label}</span>
+                          {catCfg && (
+                            <span className="els-badge" style={{ background: catCfg.color + '18', color: catCfg.color }}>{catCfg.label}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="els-row-meta">
+                        <span className="els-ts">{ts}</span>
+                        {log.actor && <><span className="els-dot">·</span><span>👤 {log.actor}</span></>}
+                        {log.ip    && <><span className="els-dot">·</span><span className="els-ip">🌐 {log.ip}</span></>}
+                      </div>
+                    </div>
+                    {canExpand && <span className={'els-chevron' + (isOpen ? ' open' : '')}>›</span>}
+                  </div>
+                  {isOpen && canExpand && (
+                    <div className="els-detail">
+                      {log.target && (
+                        <div className="els-detail-row">
+                          <span className="els-detail-key">Target</span>
+                          <code className="els-detail-val">{log.target}</code>
+                        </div>
+                      )}
+                      {hasMeta && (
+                        <pre className="els-pre">{JSON.stringify(log.meta, null, 2)}</pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filtered.length > 25 && (
+              <div className="els-show-more">
+                <button className="els-btn-full" onClick={() => onOpenLogsWithLevel(level)}>
+                  + {filtered.length - 25} eventos a mais — abrir log{level ? ` de ${LEVEL_CONFIG[level]?.label || level}` : 's'} completo ›
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="els-footer">
+            {filtered.length} evento{filtered.length !== 1 ? 's' : ''} carregados
+            {(category || search) && <span className="els-footer-muted"> · filtrado</span>}
+            {level && (
+              <button className="els-footer-link" onClick={() => onOpenLogsWithLevel(level)}>
+                · ver todos os {LEVEL_CONFIG[level]?.label || level} no log completo ›
+              </button>
+            )}
+            {!level && (
+              <button className="els-footer-link" onClick={() => onOpenLogsWithLevel('')}>
+                · ver log completo ›
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1782,6 +1799,7 @@ export default function AdminDashboardPage() {
         .els-footer-link { background: none; border: none; cursor: pointer; color: #6366f1; font-size: 0.75rem; font-weight: 500; padding: 0; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; }
         .els-footer-link:hover { color: #4f46e5; }
         .els-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px; color: var(--text-secondary, #888); font-size: 0.83rem; }
+        .els-idle-hint { padding: 20px 18px; font-size: 0.78rem; color: var(--text-secondary, #aaa); text-align: center; border-top: 1px solid var(--border-color, #f3f4f6); font-style: italic; }
         @media (max-width: 700px) { .els-level-cards { grid-template-columns: repeat(2, 1fr); } }
       `}</style>
 

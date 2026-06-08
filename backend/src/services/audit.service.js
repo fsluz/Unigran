@@ -29,28 +29,36 @@ function getPool() {
   if (!pool) {
     const connectionString = auditConnectionString();
     const host = cleanEnv(process.env.DB_HOST);
-    if (!connectionString && !host) return null;
-
-    pool = connectionString
-      ? new Pool({
-          connectionString,
-          ssl: { rejectUnauthorized: false },
-          max: 5,
-          idleTimeoutMillis: 30_000,
-        })
-      : new Pool({
-          host,
-          port:     parseInt(process.env.DB_PORT || '5432'),
-          database: cleanEnv(process.env.DB_NAME) || 'postgres',
-          user:     cleanEnv(process.env.DB_USER),
-          password: cleanEnv(process.env.DB_PASSWORD),
-          ssl:      { rejectUnauthorized: false },
-          max:      5,
-          idleTimeoutMillis: 30_000,
-        });
-    pool.on('error', err => {
-      console.error('[audit] Erro no pool PostgreSQL:', err.message);
-    });
+    if (!connectionString && !host) {
+      console.warn('[audit] Nenhuma conexão PostgreSQL configurada. Usando fallback local.');
+      return null;
+    }
+    try {
+      pool = connectionString
+        ? new Pool({
+            connectionString,
+            ssl: { rejectUnauthorized: false },
+            max: 5,
+            idleTimeoutMillis: 30_000,
+          })
+        : new Pool({
+            host,
+            port:     parseInt(process.env.DB_PORT || '5432'),
+            database: cleanEnv(process.env.DB_NAME) || 'postgres',
+            user:     cleanEnv(process.env.DB_USER),
+            password: cleanEnv(process.env.DB_PASSWORD),
+            ssl:      { rejectUnauthorized: false },
+            max:      5,
+            idleTimeoutMillis: 30_000,
+          });
+      pool.on('error', err => {
+        console.error('[audit] Erro no pool PostgreSQL:', err.message);
+        pool = null;
+      });
+    } catch (err) {
+      console.error('[audit] Falha ao criar pool:', err.message);
+      return null;
+    }
   }
   return pool;
 }
