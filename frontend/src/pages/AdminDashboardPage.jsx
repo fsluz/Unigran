@@ -2061,7 +2061,7 @@ export default function AdminDashboardPage() {
         .alog-pre { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary, #f3f4f6); font-size: 0.75rem; font-family: 'Courier New', monospace; white-space: pre-wrap; word-break: break-all; color: var(--text-primary, #333); border: 1px solid var(--border-color, #e5e7eb); line-height: 1.55; }
 
         /* ── Events Log Section ──────────────────────────────────── */
-        .els-section { background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+        .els-section { background: var(--bg-surface, #fff); border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: visible; }
         .els-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border-color, #e5e7eb); flex-wrap: wrap; }
         .els-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .els-title { font-size: 0.95rem; font-weight: 600; color: var(--text-primary, #111); }
@@ -2072,7 +2072,7 @@ export default function AdminDashboardPage() {
         .els-btn-full:hover { background: var(--bg-secondary, #f3f4f6); color: var(--text-primary, #111); }
 
         .els-level-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid var(--border-color, #e5e7eb); }
-        .els-level-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: none; border-right: 1px solid var(--border-color, #e5e7eb); background: transparent; cursor: pointer; transition: background 0.15s; text-align: left; font-family: inherit; position: relative; min-height: 96px; overflow: visible; }
+        .els-level-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: none; border-right: 1px solid var(--border-color, #e5e7eb); background: transparent; cursor: pointer; transition: background 0.15s; text-align: left; font-family: inherit; position: relative; min-height: 96px; overflow: hidden; border-radius: 0; }
         .els-level-card:last-child { border-right: none; }
         .els-level-card:hover { background: var(--lb); }
         .els-level-card-active { background: var(--lb) !important; border-bottom: 2px solid var(--lc); }
@@ -2080,7 +2080,7 @@ export default function AdminDashboardPage() {
         .els-lc-icon { font-size: 0.9rem; line-height: 1; }
         .els-lc-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: 0.04em; }
         .els-lc-value { font-size: 1.35rem; font-weight: 700; color: var(--lc, #111); line-height: 1; }
-        .els-lc-hint { font-size: 0.6rem; color: var(--lc); opacity: 0.9; font-weight: 600; line-height: 1.3; white-space: normal; word-break: break-word; margin-top: 2px; display: block; }
+        .els-lc-hint { font-size: 0.6rem; color: var(--lc); opacity: 0.9; font-weight: 600; line-height: 1.3; white-space: nowrap; display: block; margin-top: 4px; padding: 2px 0; }
         .els-lc-dot { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; animation: els-pulse 1.5s ease-in-out infinite; }
         .els-lc-dot-red { background: #ef4444; }
 
@@ -2097,7 +2097,7 @@ export default function AdminDashboardPage() {
         .els-clear-all { color: #ef4444; border-color: #fecaca; }
         .els-clear-all:hover { background: #fef2f2; }
 
-        .els-list { overflow-y: auto; max-height: 420px; }
+        .els-list { overflow-y: auto; max-height: min(420px, 60vh); }
         .els-row { border-bottom: 1px solid var(--border-color, #f3f4f6); transition: background 0.1s; }
         .els-row:last-child { border-bottom: none; }
         .els-row:hover { background: var(--bg-secondary, #f9fafb); }
@@ -2136,16 +2136,18 @@ export default function AdminDashboardPage() {
           .els-level-card:nth-child(2) { border-right: none; }
           .els-level-card:nth-child(3) { border-top: 1px solid var(--border-color, #e5e7eb); }
           .els-level-card:nth-child(4) { border-top: 1px solid var(--border-color, #e5e7eb); border-right: none; }
-          .els-list { max-height: 320px; }
+          .els-list { max-height: min(320px, 55vh); }
           .els-row-main { padding: 8px 12px; gap: 8px; }
           .els-detail { padding: 0 12px 10px 40px; }
         }
         @media (max-width: 480px) {
           .els-level-cards { grid-template-columns: repeat(2, 1fr); }
           .els-lc-value { font-size: 1.1rem; }
-          .els-badges { display: none; }
+          .els-badges { flex-wrap: wrap; }
+          .els-badge { font-size: 0.6rem; padding: 1px 5px; }
           .els-filters { flex-direction: column; align-items: stretch; }
           .els-filter-search { min-width: unset; }
+          .els-lc-hint { font-size: 0.55rem; }
         }
       `}</style>
 

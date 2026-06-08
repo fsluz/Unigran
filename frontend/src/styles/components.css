@@ -8396,12 +8396,20 @@ img, video { max-width: 100%; }
 .admin-activity, .admin-alert {
   display: flex; align-items: center; gap: 13px; min-height: 62px;
   padding: 10px 0; border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 .admin-activity:last-child, .admin-alert:last-child { border-bottom: 0; }
-.admin-activity .admin-hub-icon, .admin-alert .admin-hub-icon { width: 40px; height: 40px; border-radius: 12px; }
-.admin-activity div, .admin-alert div { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.admin-activity strong, .admin-alert strong { font-size: 14px; color: var(--text); text-transform: capitalize; }
-.admin-activity small, .admin-alert small { color: var(--text-muted); font-size: 12px; }
+.admin-activity .admin-hub-icon, .admin-alert .admin-hub-icon { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; }
+.admin-activity div, .admin-alert div { flex: 1; min-width: 0; display: grid; gap: 3px; overflow: hidden; }
+.admin-activity strong, .admin-alert strong {
+  font-size: 14px; color: var(--text); text-transform: capitalize;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.admin-activity small, .admin-alert small {
+  color: var(--text-muted); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.admin-alert > svg { flex-shrink: 0; }
 .admin-empty { color: var(--text-muted); padding: 22px 0; margin: 0; font-size: 13px; }
 
 .settings-page .settings-shell {
