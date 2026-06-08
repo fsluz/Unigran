@@ -270,10 +270,10 @@ async function readStudents(offeringId) {
 }
 
 async function readAttendance(offeringId, user) {
-  // $viewer is always declared by authorizationMatch above; just constrain for students
+  // Professores/admins veem todas as entradas; alunos veem só as suas
   const viewerFilter = roleOf(user) === 'professor' || isAcademicManager(user)
     ? ''
-    : `$viewer is $student;`;
+    : `$student has username "${safe(usernameOf(user))}";`;
   const rows = await readQuery(`
     match
       $offering isa academic-course-offering, has academic-offering-id "${safe(offeringId)}";

@@ -662,7 +662,20 @@ async function ensurePerson(person) {
   return person.username;
 }
 
-const UNIGRAN_ID = 'university-unigran';
+// Descoberto em runtime — preenchido por resolveUnigranId()
+let UNIGRAN_ID = '';
+
+async function resolveUnigranId() {
+  // Tenta por academic-institution-code primeiro (mais específico)
+  for (const q of [
+    `match $u isa educational-institute, has academic-institution-code "unigran", has institution-id $id; fetch { "id": $id };`,
+    `match $u isa educational-institute, has name "UNIGRAN", has institution-id $id; fetch { "id": $id };`,
+  ]) {
+    const rows = await readQuery(q).catch(() => []);
+    if (rows.length && rows[0].id) return rows[0].id;
+  }
+  return '';
+}
 
 async function ensureInstitution() {
   // Busca por academic-institution-code (entidade já tem o código)
@@ -673,13 +686,17 @@ async function ensureInstitution() {
   if (byCode.length) {
     const existing = byCode[0]?.institution || {};
     if (!existing['institution-id']) {
+      // Gera um ID determinístico baseado no slug para evitar duplicatas em re-runs
+      const newId = `university-unigran-seed`;
       await writeQuery(`
         match $institution isa educational-institute, has academic-institution-code "unigran";
-        insert $institution has institution-id "${UNIGRAN_ID}";
+        insert $institution has institution-id "${newId}";
       `);
-      console.log('link institution-id UNIGRAN');
+      UNIGRAN_ID = newId;
+      console.log('link institution-id UNIGRAN:', newId);
     } else {
-      console.log('skip institution UNIGRAN');
+      UNIGRAN_ID = existing['institution-id'];
+      console.log('skip institution UNIGRAN (id:', UNIGRAN_ID + ')');
     }
     return;
   }
@@ -690,25 +707,37 @@ async function ensureInstitution() {
     fetch { "institution": { $institution.* } };
   `);
   if (byName.length) {
-    await writeQuery(`
-      match $institution isa educational-institute, has name "UNIGRAN";
-      insert $institution has academic-institution-code "unigran";
-    `);
-    await writeQuery(`
-      match $institution isa educational-institute, has name "UNIGRAN";
-      insert $institution has institution-id "${UNIGRAN_ID}";
-    `);
-    console.log('link institution UNIGRAN codes');
+    const existing = byName[0]?.institution || {};
+    if (!existing['institution-id']) {
+      const newId = `university-unigran-seed`;
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has academic-institution-code "unigran";
+      `);
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has institution-id "${newId}";
+      `);
+      UNIGRAN_ID = newId;
+    } else {
+      await writeQuery(`
+        match $institution isa educational-institute, has name "UNIGRAN";
+        insert $institution has academic-institution-code "unigran";
+      `).catch(() => null);
+      UNIGRAN_ID = existing['institution-id'];
+    }
+    console.log('link institution UNIGRAN codes (id:', UNIGRAN_ID + ')');
     return;
   }
 
   // Cria do zero com todos os atributos necessários
+  const newId = `university-unigran-seed`;
   await writeQuery(`
     insert
       $institution isa university,
         has name "UNIGRAN",
         has username "unigran",
-        has institution-id "${UNIGRAN_ID}",
+        has institution-id "${newId}",
         has academic-institution-code "unigran",
         has institution-status "approved",
         has page-visibility "public",
@@ -717,6 +746,7 @@ async function ensureInstitution() {
         has can-publish false,
         has page-creation-timestamp ${typeqlDatetime()};
   `);
+  UNIGRAN_ID = newId;
   console.log('add  institution UNIGRAN');
 }
 
@@ -1249,11 +1279,17 @@ async function main() {
 
   await ensureInstitution();
 
-  // Vincular todos os usuários à UNIGRAN com institution-membership
-  // Habilita: seletor de universidade, wizard de coordenação, busca de membros
-  for (const person of people) {
-    const username = userRef(person.username);
-    if (username) await ensureMembership(username, person.role);
+  // UNIGRAN_ID agora contém o ID real da entidade no TypeDB
+  if (!UNIGRAN_ID) {
+    console.error('ERRO: Não foi possível resolver o institution-id da UNIGRAN. Memberships não serão criadas.');
+  } else {
+    console.log('UNIGRAN_ID resolvido:', UNIGRAN_ID);
+    // Vincular todos os usuários à UNIGRAN com institution-membership
+    // Habilita: seletor de universidade, wizard de coordenação, busca de membros
+    for (const person of people) {
+      const username = userRef(person.username);
+      if (username) await ensureMembership(username, person.role);
+    }
   }
 
   for (const course of courses) {
