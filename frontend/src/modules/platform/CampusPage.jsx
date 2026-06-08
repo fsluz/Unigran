@@ -89,35 +89,78 @@ function publicPortfolioLink(path = '') {
   return `${(import.meta.env.VITE_PUBLIC_PORTFOLIO_URL || window.location.origin).replace(/\/$/, '')}${normalized}`;
 }
 
-function ModuleOverview({ user, summary, teacherDashboard }) {
-  const visible = [
-    {
+function ModuleOverview({ user, summary, studentDashboard, teacherDashboard, portfolio }) {
+  const perms = Array.isArray(user?.permissions) ? user.permissions : [];
+  const isCoord   = perms.includes('academic:manage') || perms.includes('faculties:manage');
+  const isTeacher = (perms.includes('academic:publish') || perms.includes('academic:grade')) && !isCoord;
+  const isStudent = perms.includes('academic:read') || perms.includes('submissions:create');
+
+  const doneDeliveries    = (studentDashboard?.calendar || []).filter(a => ['submitted','graded','resubmitted'].includes(a.status)).length;
+  const pendingDeliveries = (studentDashboard?.calendar || []).filter(a => ['pending','late'].includes(a.status)).length;
+  const portfolioCount    = portfolio?.length || 0;
+
+  const cards = [
+    isCoord && {
+      id: 'coordinator',
+      title: 'Coordenação',
+      icon: ShieldCheck,
+      metric: String(teacherDashboard?.totalClasses ?? 0),
+      metricHint: 'cursos ativos',
+      items: [
+        { label: 'Matriculados',       value: String(teacherDashboard?.totalStudents ?? 0) },
+        { label: 'Correções pend.',    value: String(teacherDashboard?.pendingCorrections ?? 0) },
+        { label: 'Progresso médio',    value: `${summary?.averageProgress ?? 0}%` },
+        { label: 'Notificações',       value: String(summary?.notifications ?? 0) },
+      ],
+    },
+    isTeacher && {
       id: 'teacher',
       title: 'Professor',
-      permission: 'academic:publish',
       icon: BookOpen,
-      metric: String(teacherDashboard?.pendingCorrections || 0),
-      items: ['Atividades', 'Notas', 'Presenca', 'Correcao'],
+      metric: String(teacherDashboard?.pendingCorrections ?? 0),
+      metricHint: 'a corrigir',
+      items: [
+        { label: 'Turmas',       value: String(teacherDashboard?.totalClasses ?? 0) },
+        { label: 'Alunos',       value: String(teacherDashboard?.totalStudents ?? 0) },
+        { label: 'Correções',    value: String(teacherDashboard?.pendingCorrections ?? 0) },
+        { label: 'Notificações', value: String(summary?.notifications ?? 0) },
+      ],
     },
-    {
+    isStudent && {
       id: 'student',
       title: 'Aluno',
-      permission: 'academic:read',
       icon: Trophy,
-      metric: `${summary?.averageProgress || 0}%`,
-      items: ['Notas', 'Faltas', 'Entregas', 'Portfolio'],
+      metric: `${summary?.averageProgress ?? 0}%`,
+      metricHint: 'progresso geral',
+      items: [
+        { label: 'Média',       value: studentDashboard?.average ?? '—' },
+        { label: 'Frequência',  value: `${studentDashboard?.attendanceAverage ?? 0}%` },
+        { label: 'Entregas',    value: `${doneDeliveries}/${doneDeliveries + pendingDeliveries}` },
+        { label: 'Portfólio',   value: String(portfolioCount) },
+      ],
     },
-  ].filter(item => hasPermission(user, item.permission));
+  ].filter(Boolean);
+
+  if (!cards.length) return null;
+
   return (
     <section className="ava-module-overview">
-      {visible.map(module => (
-        <motion.article key={module.id} className="ava-module-card" whileHover={{ y: -4, scale: 1.01 }}>
+      {cards.map(card => (
+        <motion.article key={card.id} className="ava-module-card" whileHover={{ y: -4, scale: 1.01 }}>
           <div className="ava-module-card-head">
-            <span><module.icon size={18} /> {module.title}</span>
-            <strong>{module.metric}</strong>
+            <span><card.icon size={18} aria-hidden="true" /> {card.title}</span>
+            <div className="ava-module-metric">
+              <strong>{card.metric}</strong>
+              <small>{card.metricHint}</small>
+            </div>
           </div>
-          <div>
-            {module.items.map(item => <small key={item}>{item}</small>)}
+          <div className="ava-module-items">
+            {card.items.map(item => (
+              <div key={item.label} className="ava-module-item">
+                <small>{item.label}</small>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
           </div>
         </motion.article>
       ))}
@@ -585,7 +628,13 @@ export default function CampusPage({ onBackToPortal }) {
           <MetricCard label="Proxima entrega" value={summary.nextActivity ? formatDate(summary.nextActivity.due) : 'Livre'} hint={summary.nextActivity?.title || 'sem pendencias'} />
         </section>
 
-        <ModuleOverview user={user} summary={summary} teacherDashboard={teacherDashboard} />
+        <ModuleOverview
+          user={user}
+          summary={summary}
+          studentDashboard={studentDashboard}
+          teacherDashboard={teacherDashboard}
+          portfolio={ava?.portfolio}
+        />
 
         <div className="ava-mobile-rail-toggle">
           <button

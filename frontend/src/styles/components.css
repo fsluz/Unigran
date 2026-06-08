@@ -6226,7 +6226,7 @@
 .ava-institution-gate span { color: var(--text-muted); }
 .ava-module-overview {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
 }
 .ava-module-card {
@@ -6256,26 +6256,56 @@
   color: var(--text);
   font-weight: 800;
 }
-.ava-module-card-head strong {
-  border-radius: 999px;
-  background: rgba(0,168,255,.12);
-  color: var(--accent);
-  padding: 5px 9px;
-  font-size: 12px;
-}
-.ava-module-card div {
+.ava-module-metric {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.ava-module-metric strong {
+  display: inline-block;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+.ava-module-metric small {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: right;
+}
+.ava-module-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
-.ava-module-card small {
-  padding: 6px 9px;
-  border-radius: 999px;
+.ava-module-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  background: color-mix(in srgb, var(--hover) 78%, transparent);
-  color: var(--text-muted);
-  font-size: 11px;
+  background: color-mix(in srgb, var(--page-bg) 55%, var(--card));
+}
+.ava-module-item small {
+  font-size: 10px;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+}
+.ava-module-item strong {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -.02em;
+  line-height: 1.1;
 }
 .ava-layout {
   display: grid;

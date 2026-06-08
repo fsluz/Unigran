@@ -12,7 +12,8 @@
     "db:seed:catalog": "node scripts/seed-academic-data.js",
     "db:seed:academic": "node scripts/seed-complete-platform-data.js",
     "db:seed:social": "node scripts/seed-social-network.js",
-    "db:seed:bulk": "node scripts/seed-social-bulk.js"
+    "db:seed:bulk": "node scripts/seed-social-bulk.js",
+    "db:seed:portfolios": "node scripts/seed-portfolios.js"
   },
   "dependencies": {
     "@typedb/driver-http": "^3.8.1",
