@@ -143,7 +143,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
 
   return (
-    <div className="card post-composer">
+    <div className={`card post-composer ${isPortfolioMode ? 'is-portfolio' : ''}`}>
       <div className="composer-row">
         <Avatar
           size={42}

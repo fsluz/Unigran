@@ -231,3 +231,130 @@
     height: 42px !important;
   }
 }
+/* Final Zuni desktop: one reel, compact side comments */
+.zuni-shell {
+  overflow: hidden !important;
+}
+
+.zuni-page {
+  height: calc(100dvh - 64px) !important;
+  overflow: hidden !important;
+}
+
+.zuni-feed {
+  height: 100% !important;
+  overflow-y: auto !important;
+  scroll-snap-type: y mandatory !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: none !important;
+}
+
+.zuni-feed::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.zuni-reel {
+  min-height: 100% !important;
+  height: 100% !important;
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always !important;
+  align-items: stretch !important;
+}
+
+.zuni-reel::before {
+  inset: 24px auto 24px 8% !important;
+  width: min(58vw, 900px) !important;
+  height: auto !important;
+  border-radius: 30px !important;
+  pointer-events: none !important;
+}
+
+.zuni-video-stage::before,
+.zuni-video-stage::after {
+  display: none !important;
+}
+
+.zuni-video-stage {
+  height: calc(100dvh - 96px) !important;
+  max-height: calc(100dvh - 96px) !important;
+  aspect-ratio: 9 / 16 !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.24),
+    0 0 72px rgba(59, 130, 246, 0.28),
+    0 0 110px rgba(124, 58, 237, 0.18) !important;
+}
+
+.zuni-reel video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #000 !important;
+}
+
+.zuni-reel.comments-open .zuni-comments {
+  flex: 0 0 460px !important;
+  width: 460px !important;
+  min-width: 460px !important;
+  max-width: 460px !important;
+  height: calc(100dvh - 96px) !important;
+  max-height: calc(100dvh - 96px) !important;
+  overflow: hidden !important;
+  border-radius: 22px !important;
+}
+
+.zuni-comments-about,
+.zuni-comments-head {
+  padding: 16px 18px !important;
+}
+
+.zuni-comments-about div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.zuni-comments-list {
+  padding: 12px 18px !important;
+  gap: 8px !important;
+  overflow-y: auto !important;
+}
+
+.zuni-comments .post-detail-comment-card,
+.zuni-comments .post-detail-comment-card[class*="depth-"] {
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 14px !important;
+}
+
+.zuni-comment-form {
+  display: flex !important;
+  gap: 8px !important;
+  padding: 12px 14px !important;
+}
+
+.zuni-comment-form input {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+@media (max-width: 980px) {
+  .zuni-page {
+    height: calc(100dvh - 74px) !important;
+  }
+
+  .zuni-video-stage {
+    height: calc(100dvh - 110px) !important;
+    max-height: calc(100dvh - 110px) !important;
+  }
+
+  .zuni-reel.comments-open .zuni-comments {
+    min-width: 0 !important;
+    width: min(94vw, 420px) !important;
+    max-width: min(94vw, 420px) !important;
+    height: min(62vh, 560px) !important;
+  }
+}

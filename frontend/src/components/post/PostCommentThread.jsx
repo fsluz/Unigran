@@ -76,6 +76,7 @@ export function CommentRow({
   const isPostOwner = user?.username === postAuthorUsername;
   const canDelete = isAuthor || isPostOwner || hasPermission(user, 'posts:moderate');
   const canEdit = isAuthor || hasPermission(user, 'posts:moderate');
+  const visualDepth = Math.min(depth, 2);
   const openAuthorProfile = () => {
     if (comment.author?.username) onOpenProfile?.(comment.author.username);
   };
@@ -152,7 +153,7 @@ export function CommentRow({
   ];
 
   return (
-    <article className={`post-detail-comment-card depth-${depth}`}>
+    <article className={`post-detail-comment-card depth-${visualDepth} ${depth > 0 ? 'is-nested' : ''}`}>
       <button
         type="button"
         className="comment-author-avatar-btn"

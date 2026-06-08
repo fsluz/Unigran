@@ -16,6 +16,7 @@ function normalizeUser(user) {
 
 export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null);
+  const rememberTokenKey = 'unigran_token';
   // Token mantido em memória apenas — nunca em localStorage (segurança XSS)
   // O cookie HttpOnly é enviado automaticamente pelo browser via credentials:'include'
   const [token, setToken]   = useState(null);
@@ -23,14 +24,23 @@ export function AuthProvider({ children }) {
 
   // Hidratação inicial via cookie HttpOnly — sem depender de localStorage
   useEffect(() => {
-    apiFetch('/auth/me', { timeout: 10000 })
+    const storedToken = localStorage.getItem(rememberTokenKey);
+    apiFetch('/auth/me', {
+      headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+      timeout: 10000,
+    })
       .then(r => r.json())
       .then(data => {
         if (data.user) setUser(normalizeUser(data.user));
         // Restaura token em memória se o backend devolver (compatibilidade Bearer)
-        if (data.token) setToken(data.token);
+        if (data.token) {
+          setToken(data.token);
+          if (storedToken) localStorage.setItem(rememberTokenKey, data.token);
+        }
       })
-      .catch(() => null)
+      .catch(() => {
+        localStorage.removeItem(rememberTokenKey);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -51,11 +61,13 @@ export function AuthProvider({ children }) {
     publishOwnPublicKey(token).catch(() => null);
   }, [token, user?.username]);
 
-  function login(userData, jwt) {
+  function login(userData, jwt, remember = false) {
     setUser(normalizeUser(userData));
     // jwt ainda é aceito para compatibilidade com headers Bearer (mobile/API externa)
     // mas o cookie HttpOnly já foi setado pelo backend e é o mecanismo principal
     setToken(jwt);
+    if (remember && jwt) localStorage.setItem(rememberTokenKey, jwt);
+    else localStorage.removeItem(rememberTokenKey);
   }
 
   async function logout() {
@@ -66,6 +78,7 @@ export function AuthProvider({ children }) {
     setToken(null);
     // Limpa resquícios de localStorage de versões anteriores
     localStorage.removeItem('token');
+    localStorage.removeItem(rememberTokenKey);
   }
 
   function updateUser(data) {

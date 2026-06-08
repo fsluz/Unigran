@@ -9236,3 +9236,123 @@ img, video { max-width: 100%; }
 .zuni-rail,
 .zuni-like-burst { z-index: 6; }
 
+/* Final compact composer pass */
+.home-page .post-composer,
+.post-composer {
+  padding: 14px 16px !important;
+  border-radius: 20px !important;
+  max-width: 100% !important;
+}
+
+.home-page .post-composer .composer-row,
+.post-composer .composer-row {
+  min-height: 62px !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: flex-start !important;
+}
+
+.home-page .post-composer .composer-textarea,
+.post-composer .composer-textarea {
+  min-height: 62px !important;
+  max-height: 150px !important;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+}
+
+.home-page .composer-footer,
+.composer-footer {
+  margin-top: 10px !important;
+  padding: 8px 0 0 !important;
+  min-height: 0 !important;
+  gap: 8px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+.home-page .post-composer .composer-mode-select,
+.post-composer .composer-mode-select {
+  width: 124px !important;
+  min-width: 124px !important;
+  height: 40px !important;
+  padding: 0 34px 0 14px !important;
+  font-size: 14px !important;
+  border-radius: 14px !important;
+}
+
+.home-page .post-composer .composer-btn,
+.post-composer .composer-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  border-radius: 14px !important;
+}
+
+.home-page .post-composer .composer-submit-wrap,
+.post-composer .composer-submit-wrap {
+  margin-left: auto !important;
+}
+
+.home-page .post-composer .composer-submit-btn,
+.post-composer .composer-submit-btn {
+  min-width: 96px !important;
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 14px !important;
+  font-size: 14px !important;
+}
+
+.post-composer.is-portfolio .composer-footer {
+  display: flex !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-panel {
+  order: -1 !important;
+  flex: 1 0 100% !important;
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) !important;
+  gap: 10px !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-field input,
+.post-composer.is-portfolio .composer-repo-select select {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .home-page .post-composer,
+  .post-composer {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .home-page .post-composer .composer-row,
+  .post-composer .composer-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-page .post-composer .avatar,
+  .post-composer .avatar {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .home-page .post-composer .composer-textarea,
+  .post-composer .composer-textarea {
+    min-height: 74px !important;
+  }
+
+  .post-composer.is-portfolio .composer-portfolio-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

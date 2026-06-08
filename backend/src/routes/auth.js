@@ -51,10 +51,11 @@ const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 dias em ms
 
 function setAuthCookie(res, token, remember = true) {
   if (!remember) return;
+  const isProduction = process.env.NODE_ENV === 'production';
   const options = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
   };
   options.maxAge = COOKIE_MAX_AGE;
@@ -208,6 +209,8 @@ router.post('/login', async (req, res) => {
         try { $u has phone $phone; };
         try { $u has user-role $role; };
         try { $u has password-changed-at $changed; };
+        try { $u has profile-picture $profile_picture; };
+        try { $u has cover-picture $cover_picture; };
       fetch {
         "username": $username,
         "name": $name,
@@ -215,7 +218,9 @@ router.post('/login', async (req, res) => {
         "banned": $banned,
         "phone": $phone,
         "role": $role,
-        "password_changed_at": $changed
+        "password_changed_at": $changed,
+        "profile_picture": $profile_picture,
+        "cover_picture": $cover_picture
       };
     `);
     if (!rows.length || !rows[0].password_hash) {
@@ -300,6 +305,8 @@ router.post('/login', async (req, res) => {
       permissions: permissionsForRole(normalizeRole(row.role)),
       phone: row.phone || null,
       passwordChangedAt: row.password_changed_at || null,
+      profilePicture: row.profile_picture || null,
+      coverPicture: row.cover_picture || null,
     };
     resetRateLimit(req); // login bem-sucedido — zera o contador do IP
     auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
@@ -330,10 +337,14 @@ router.post('/google', async (req, res) => {
         try { $u has username $username; };
         try { $u has name $name; };
         try { $u has user-role $role; };
+        try { $u has profile-picture $profile_picture; };
+        try { $u has cover-picture $cover_picture; };
       fetch {
         "username": $username,
         "name": $name,
-        "role": $role
+        "role": $role,
+        "profile_picture": $profile_picture,
+        "cover_picture": $cover_picture
       };
     `);
     if (!existing.length) {
@@ -360,6 +371,8 @@ router.post('/google', async (req, res) => {
       email,
       role: normalizeRole(row.role),
       permissions: permissionsForRole(normalizeRole(row.role)),
+      profilePicture: row.profile_picture || null,
+      coverPicture: row.cover_picture || null,
     };
     const token = sign(payload);
     setAuthCookie(res, token);
@@ -371,7 +384,11 @@ router.post('/google', async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  res.clearCookie('jwt', { path: '/' });
+  res.clearCookie('jwt', {
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
   res.json({ ok: true });
 });
 

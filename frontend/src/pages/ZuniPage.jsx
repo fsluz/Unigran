@@ -80,6 +80,10 @@ export default function ZuniPage({ onOpenProfile }) {
   }, [token]);
 
   useEffect(() => {
+    if (!activePostId && posts[0]?.id) setActivePostId(posts[0].id);
+  }, [activePostId, posts]);
+
+  useEffect(() => {
     const refresh = () => loadPage(1, false);
     window.addEventListener('unigran:zuni-refresh', refresh);
     return () => window.removeEventListener('unigran:zuni-refresh', refresh);
@@ -123,10 +127,22 @@ export default function ZuniPage({ onOpenProfile }) {
       if (!video) continue;
       video.muted = muted;
       video.volume = volume;
+      video.preload = 'auto';
       if (postId === activePostId) {
         const lastTime = videoTimesRef.current.get(postId);
         if (lastTime && Math.abs(video.currentTime - lastTime) > 1) video.currentTime = lastTime;
-        video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        if (video.readyState < 2) video.load();
+        video.play()
+          .then(() => setPlaying(true))
+          .catch(() => {
+            if (!video.muted) {
+              video.muted = true;
+              setMuted(true);
+              video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+              return;
+            }
+            setPlaying(false);
+          });
       } else {
         if (Number.isFinite(video.currentTime)) videoTimesRef.current.set(postId, video.currentTime);
         video.pause();
@@ -142,7 +158,6 @@ export default function ZuniPage({ onOpenProfile }) {
       setPlaying(false);
     };
     const resumeActive = () => {
-      loadPage(1, false);
       const video = videoRefs.current.get(activePostId);
       if (!video) return;
       video.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
@@ -341,7 +356,7 @@ export default function ZuniPage({ onOpenProfile }) {
                     loop
                     muted={muted}
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     onClick={toggleActivePlayback}
                     onPlay={() => post.id === activePostId && setPlaying(true)}
                     onPause={() => post.id === activePostId && setPlaying(false)}

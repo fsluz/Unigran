@@ -416,7 +416,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
   const posts = normalized
     .sort((a, b) => {
-      if (feed === 'trending' || feed === 'explore') {
+      if (feed === 'trending' || feed === 'explore' || feed === 'zuni') {
         const score = post => {
           const words = new Set([
             ...(String(post.content || '').toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
@@ -424,7 +424,9 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
           ]);
           const interest = [...likedKeywords].some(word => words.has(word)) ? 8 : 0;
           const follow = followingSet.has(post.author?.username) ? 6 : 0;
-          return Number(post.likes || 0) * 2 + Number(post.comments || 0) + interest + follow;
+          const ageMs = Date.now() - Date.parse(post.time || 0);
+          const fresh = Number.isFinite(ageMs) && ageMs < 24 * 60 * 60 * 1000 ? 3 : 0;
+          return Number(post.likes || 0) * 2 + Number(post.comments || 0) + interest + follow + fresh;
         };
         return score(b) - score(a) || String(b.time || '').localeCompare(String(a.time || ''));
       }
