@@ -225,6 +225,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   });
   const [twoFactorSetup, setTwoFactorSetup] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [backupCodes, setBackupCodes] = useState(null);
   const [cryptoDevices, setCryptoDevices] = useState([]);
   const [cryptoDevicesLoading, setCryptoDevicesLoading] = useState(false);
   const profileInputRef = useRef(null);
@@ -486,7 +487,8 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
     setCfg(p => ({ ...p, twoFactor: true }));
     setTwoFactorSetup(null);
     setTwoFactorCode('');
-    showToast('2FA ativo', 'OK');
+    if (data.backupCodes?.length) setBackupCodes(data.backupCodes);
+    showToast('2FA ativado! Guarde os codigos de backup.', 'OK');
   }
 
   async function uploadProfilePhoto(file) {
@@ -643,6 +645,7 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
     setCfg(p => ({ ...p, twoFactor: false }));
     setTwoFactorSetup(null);
     setTwoFactorCode('');
+    setBackupCodes(null);
     showToast('2FA desligado', 'OK');
   }
 
@@ -832,6 +835,18 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
                       <Button style={{ marginTop: 10 }} onClick={enable2FA}>Confirmar 2FA</Button>
                     </div>
                   </div>
+                </div>
+              )}
+              {backupCodes && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14, marginTop: 10 }}>
+                  <div style={{ fontWeight: 800, color: 'var(--text)', marginBottom: 6 }}>Codigos de backup — guarde em lugar seguro</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Cada codigo pode ser usado uma unica vez se voce perder acesso ao app autenticador.</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 12 }}>
+                    {backupCodes.map((c, i) => (
+                      <div key={i} style={{ fontFamily: 'monospace', fontSize: 13, padding: '6px 10px', borderRadius: 6, background: 'var(--bg-muted, rgba(148,163,184,0.12))', border: '1px solid var(--border)', textAlign: 'center', letterSpacing: 2 }}>{c}</div>
+                    ))}
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => setBackupCodes(null)}>Ja guardei</Button>
                 </div>
               )}
             </Section>

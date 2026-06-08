@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { jwtSecret } from '../config/jwt.js';
-import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash } from '../db/typedb.js';
+import { readQuery, writeQuery, typeqlLiteral, encodeHash, decodeHash, val } from '../db/typedb.js';
 import { auth, normalizeRole } from '../middleware/auth.js';
 import { normalizeUniversityRole, permissionsForRole } from '../modules/auth/rbac.js';
 import { destroyCloudinaryUrl } from '../services/cloudinary.service.js';
@@ -80,7 +80,13 @@ async function readTwoFactorByUsername(username) {
         "backupCodes": $backup
       };
     `);
-    return rows[0] || { enabled: false, secret: '', backupCodes: null };
+    if (!rows.length) return { enabled: false, secret: '', backupCodes: null };
+    const r = rows[0];
+    return {
+      enabled: val(r, 'enabled') ?? false,
+      secret:  val(r, 'secret')  ?? '',
+      backupCodes: val(r, 'backupCodes') ?? null,
+    };
   } catch (err) {
     if (String(err?.message || '').includes('two-factor')) return { enabled: false, secret: '', backupCodes: null };
     throw err;
@@ -255,8 +261,12 @@ router.post('/login', async (req, res) => {
         if (verifyBackupCode(code, codes)) {
           const remaining = removeUsedBackupCode(code, codes);
           await writeQuery(`
+            match $u isa person, has username "${typeqlLiteral(username)}", has two-factor-backup-codes $old;
+            delete has $old of $u;
+          `);
+          await writeQuery(`
             match $u isa person, has username "${typeqlLiteral(username)}";
-            update $u has two-factor-backup-codes "${typeqlLiteral(JSON.stringify(remaining))}";
+            insert $u has two-factor-backup-codes "${typeqlLiteral(JSON.stringify(remaining))}";
           `);
           backupUsed = true;
         }
@@ -527,12 +537,16 @@ router.post('/2fa/setup', async (req, res) => {
   catch { return res.status(401).json({ error: 'Token invalido' }); }
 
   const secret = randomBase32();
+  const esc = typeqlLiteral(decoded.username);
   try {
+    // Delete existing secret (no-op if not present), then insert fresh one
     await writeQuery(`
-      match
-        $u isa person, has username "${typeqlLiteral(decoded.username)}";
-      update
-        $u has two-factor-secret "${secret}";
+      match $u isa person, has username "${esc}", has two-factor-secret $old;
+      delete has $old of $u;
+    `);
+    await writeQuery(`
+      match $u isa person, has username "${esc}";
+      insert $u has two-factor-secret "${secret}";
     `);
     const url = otpauthUrl({ secret, email: decoded.email || decoded.username });
     res.json({
@@ -553,23 +567,39 @@ router.post('/2fa/enable', async (req, res) => {
   try { decoded = jwt.verify(header.slice(7), jwtSecret()); }
   catch { return res.status(401).json({ error: 'Token invalido' }); }
 
+  const esc = typeqlLiteral(decoded.username);
   try {
     const rows = await readQuery(`
       match
-        $u isa person, has username "${typeqlLiteral(decoded.username)}", has two-factor-secret $secret;
+        $u isa person, has username "${esc}", has two-factor-secret $secret;
       fetch { "secret": $secret };
     `);
-    if (!rows.length || !verifyTotp(rows[0].secret, req.body?.code)) {
-      return res.status(400).json({ error: 'Codigo invalido' });
+    if (!rows.length) {
+      return res.status(400).json({ error: 'Chave 2FA nao encontrada. Tente configurar novamente.' });
+    }
+    // defensive extraction: handle both plain string and TypeDB concept object
+    const secretVal = val(rows[0], 'secret') ?? String(rows[0].secret ?? '');
+    if (!verifyTotp(secretVal, req.body?.code)) {
+      return res.status(400).json({ error: 'Codigo invalido ou expirado' });
     }
     const backupCodes = generateBackupCodes(8);
     const hashedBackups = JSON.stringify(backupCodes.map(hashBackupCode));
+    // Delete existing attributes, then insert fresh values
     await writeQuery(`
-      match
-        $u isa person, has username "${typeqlLiteral(decoded.username)}";
-      update
-        $u has two-factor-enabled true,
-        $u has two-factor-backup-codes "${typeqlLiteral(hashedBackups)}";
+      match $u isa person, has username "${esc}", has two-factor-enabled $old;
+      delete has $old of $u;
+    `);
+    await writeQuery(`
+      match $u isa person, has username "${esc}", has two-factor-backup-codes $old;
+      delete has $old of $u;
+    `);
+    await writeQuery(`
+      match $u isa person, has username "${esc}";
+      insert $u has two-factor-enabled true;
+    `);
+    await writeQuery(`
+      match $u isa person, has username "${esc}";
+      insert $u has two-factor-backup-codes "${typeqlLiteral(hashedBackups)}";
     `);
     auditLog({ action: '2FA_ENABLED', category: 'AUTH', actor: decoded.username, ip: getIp(req) });
     res.json({ enabled: true, backupCodes });
@@ -605,11 +635,13 @@ router.post('/2fa/disable', async (req, res) => {
     let verified = false;
 
     if (password) {
-      const storedHash = row.password_hash ? decodeHash(row.password_hash) : '';
+      const rawHash = val(row, 'password_hash') ?? row.password_hash;
+      const storedHash = rawHash ? decodeHash(rawHash) : '';
       verified = storedHash ? await bcrypt.compare(password, storedHash) : false;
     }
-    if (!verified && totpCode && row.secret) {
-      verified = verifyTotp(row.secret, totpCode);
+    if (!verified && totpCode) {
+      const secretVal = val(row, 'secret') ?? String(row.secret ?? '');
+      if (secretVal) verified = verifyTotp(secretVal, totpCode);
     }
     if (!verified) {
       auditLog({ action: '2FA_DISABLE_REJECTED', category: 'AUTH', actor: decoded.username, ip: getIp(req), level: 'WARN' });
@@ -617,10 +649,12 @@ router.post('/2fa/disable', async (req, res) => {
     }
 
     await writeQuery(`
-      match
-        $u isa person, has username "${typeqlLiteral(decoded.username)}";
-      update
-        $u has two-factor-enabled false;
+      match $u isa person, has username "${typeqlLiteral(decoded.username)}", has two-factor-enabled $old;
+      delete has $old of $u;
+    `);
+    await writeQuery(`
+      match $u isa person, has username "${typeqlLiteral(decoded.username)}";
+      insert $u has two-factor-enabled false;
     `);
     auditLog({ action: '2FA_DISABLED', category: 'AUTH', actor: decoded.username, ip: getIp(req) });
     res.json({ enabled: false });
