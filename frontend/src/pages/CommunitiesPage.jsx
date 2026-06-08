@@ -6,6 +6,7 @@ import { Avatar, Button, FormField, Modal } from '../components/ui';
 import PostComposer from '../components/post/PostComposer';
 import PostCard from '../components/post/PostCard';
 import { createPost, uploadMedia } from '../services/posts';
+import { apiFetch, authHeaders } from '../utils/api';
 import {
   addCommunityMember,
   createCommunity,
@@ -131,7 +132,14 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
   const submitCommunityPost = async ({ content, file }) => {
     if (!activeCommunity?.id) return;
     const created = await createPost({ token, content, file, communityId: activeCommunity.id });
-    setCommunityPosts(prev => [{ ...created, community: activeCommunity.name }, ...prev]);
+    try {
+      const res = await apiFetch(`/posts/${encodeURIComponent(created.id)}`, { headers: authHeaders(token) });
+      const data = await res.json();
+      if (res.ok && data?.post) setCommunityPosts(prev => [{ ...data.post, community: activeCommunity.name }, ...prev]);
+      else setCommunityPosts(prev => [{ ...created, community: activeCommunity.name }, ...prev]);
+    } catch (err) {
+      setCommunityPosts(prev => [{ ...created, community: activeCommunity.name }, ...prev]);
+    }
     showToast('Post publicado', 'OK');
   };
 

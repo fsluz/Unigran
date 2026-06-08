@@ -104,7 +104,15 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
       window.dispatchEvent(new CustomEvent('unigran:zuni-refresh'));
       return;
     }
-    setPosts(prev => [created, ...prev]);
+    // Re-fetch the created post to ensure complete fields (portfolioItem, media, etc.)
+    try {
+      const res = await apiFetch(`/posts/${encodeURIComponent(created.id)}`, { headers: authHeaders(token) });
+      const data = await res.json();
+      if (res.ok && data?.post) setPosts(prev => [data.post, ...prev]);
+      else setPosts(prev => [created, ...prev]);
+    } catch (err) {
+      setPosts(prev => [created, ...prev]);
+    }
     showToast(postType === 'portfolio-post' ? 'Portfolio publicado no feed e na vitrine' : 'Post publicado', 'OK');
   };
 
