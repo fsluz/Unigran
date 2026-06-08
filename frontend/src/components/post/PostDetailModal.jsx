@@ -320,7 +320,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
         <section className="post-detail-left">
           <header className="post-detail-head">
             <button type="button" className="post-detail-author-btn" onClick={() => author?.username && onOpenProfile?.(author.username)}>
-              <Avatar size={44} src={author?.profilePicture || null} name={author?.displayName || ''} initials={author?.avatar || author?.displayName?.slice(0, 2)} />
+              <Avatar size={64} src={author?.profilePicture || null} name={author?.displayName || ''} initials={author?.avatar || author?.displayName?.slice(0, 2)} />
             </button>
             <div className="post-detail-author-meta">
               <div className="post-detail-author-line">
@@ -351,9 +351,12 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
                   </div>
                 ) : (
                   <a className="post-detail-link-preview" href={embed.url} target="_blank" rel="noreferrer" key={`${embed.url}-${index}`}>
-                    <strong>{embed.title}</strong>
-                    <span>{embed.text}</span>
-                    <small>{embed.host}</small>
+                    <div className="post-link-logo">{(embed.host || '').slice(0,1).toUpperCase()}</div>
+                    <div className="post-link-body">
+                      <strong>{embed.title}</strong>
+                      <span>{embed.text}</span>
+                      <small>{embed.host}</small>
+                    </div>
                   </a>
                 )
               ))}

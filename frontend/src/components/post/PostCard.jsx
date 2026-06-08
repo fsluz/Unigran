@@ -226,7 +226,7 @@ function ProfileHover({ author, onOpenProfile }) {
     <div className="profile-hover-card">
       <div className="profile-hover-banner" style={author.coverPicture ? { backgroundImage: `url(${author.coverPicture})` } : {}} />
       <div className="profile-hover-body">
-        <Avatar size={52} src={author.profilePicture || null} name={author.displayName || author.username || ''} initials={(author.displayName || author.username || '?').slice(0, 2)} />
+        <Avatar size={64} src={author.profilePicture || null} name={author.displayName || author.username || ''} initials={(author.displayName || author.username || '?').slice(0, 2)} />
         <strong>{author.displayName || author.username}</strong>
         <span>@{author.username}</span>
         <p>{author.bio || 'Sem bio.'}</p>
