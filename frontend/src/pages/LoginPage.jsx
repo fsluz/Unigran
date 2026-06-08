@@ -12,7 +12,7 @@ export default function LoginPage({ onGoRegister }) {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [needs2FA, setNeeds2FA] = useState(false);
   const [twoFaDelivery, setTwoFaDelivery] = useState(null); // 'choice' | 'email' | 'app'
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -423,9 +423,28 @@ export default function LoginPage({ onGoRegister }) {
             </div>
           </div>
 
-          <label className="auth-remember" style={{ margin: '12px 0 0 0', display: 'flex', alignItems: 'center', fontSize: 14 }}>
-            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ marginRight: 8 }} />
-            <span className="auth-remember-label">Lembrar desta conta</span>
+          <label
+            className="auth-remember"
+            style={{ margin: '14px 0 0 0', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}
+          >
+            <span style={{
+              width: 18, height: 18, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 5,
+              border: remember ? '2px solid #a855f7' : '2px solid rgba(168,85,247,0.4)',
+              background: remember ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(168,85,247,0.08)',
+              transition: 'all 0.15s',
+            }}>
+              {remember && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </span>
+            <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ display: 'none' }} />
+            <span style={{ color: remember ? '#d8c8ff' : 'rgba(216,200,255,0.6)', fontSize: 14, fontWeight: remember ? 600 : 400, transition: 'color 0.15s' }}>
+              Lembrar desta conta por 30 dias
+            </span>
           </label>
 
           <button
