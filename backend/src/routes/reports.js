@@ -1,68 +1,11 @@
 import { Router } from "express";
 import { auth } from '../middleware/auth.js';
 import { requirePermission } from '../modules/auth/rbac.js';
-import { readQuery } from '../db/typedb.js'
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const { Pool } = require('pg');
-
+import { readQuery } from '../db/typedb.js';
+import { getClient, pgQuery } from '../db/supabase.js';
 const router = Router();
 router.use(auth);
 router.use(requirePermission('system:manage'));
-
-let pool = null;
-
-function cleanEnv(value = '') {
-    return String(value || '').trim().replace(/^['\"]|['\"]$/g, '');
-}
-
-function auditConnectionString() {
-    return cleanEnv(
-        process.env.AUDIT_DATABASE_URL
-        || process.env.SUPABASE_DATABASE_URL
-        || process.env.DATABASE_URL
-        || process.env.POSTGRES_URL,
-    );
-}
-
-function getPool() {
-    if (!pool) {
-        const connectionString = auditConnectionString();
-        const host = cleanEnv(process.env.DB_HOST);
-        if (!connectionString && !host) {
-            console.warn('[reports] Nenhuma conexão PostgreSQL configurada.');
-            return null;
-        }
-        try {
-            pool = connectionString
-                ? new Pool({
-                    connectionString,
-                    ssl: { rejectUnauthorized: false },
-                    max: 3,
-                    idleTimeoutMillis: 30_000,
-                })
-                : new Pool({
-                    host,
-                    port:     parseInt(process.env.DB_PORT || '5432'),
-                    database: cleanEnv(process.env.DB_NAME) || 'postgres',
-                    user:     cleanEnv(process.env.DB_USER),
-                    password: cleanEnv(process.env.DB_PASSWORD),
-                    ssl:      { rejectUnauthorized: false },
-                    max:      3,
-                    idleTimeoutMillis: 30_000,
-                });
-            pool.on('error', err => {
-                console.error('[reports] Erro no pool:', err.message);
-                pool = null;
-            });
-        } catch (err) {
-            console.error('[reports] Falha ao criar pool:', err.message);
-            return null;
-        }
-    }
-    return pool;
-}
 
 // GET /api/admin/reports/overview
 router.get('/overview', async (req, res) => {
@@ -103,7 +46,6 @@ router.get('/overview', async (req, res) => {
         const roleChart = Object.entries(roleCounts).map(([name, value]) => ({ name, value }));
 
         // Dados do Supabase (audit_logs)
-        const db = getPool();
         let security = { loginSuccess: 0, loginFailed: 0, loginBlocked: 0, passwordResets: 0 };
         let actionsPerDay      = [];
         let categoryBreakdown  = [];
@@ -111,7 +53,9 @@ router.get('/overview', async (req, res) => {
         let topActions         = [];
         let errorRate          = [];
 
+        const db = await getClient();
         if (db) {
+          try {
             const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
             const [secRes, dailyRes, catRes, levelRes, topActRes, errorRes] = await Promise.allSettled([
@@ -227,6 +171,9 @@ router.get('/overview', async (req, res) => {
                     });
                 }
             }
+          } finally {
+            await db.end().catch(() => {});
+          }
         }
 
         // FIX: twoDaUsers -> twoFaUsers
@@ -254,8 +201,9 @@ router.get('/overview', async (req, res) => {
 
 // GET /api/admin/reports/success-logins
 router.get('/success-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -284,13 +232,16 @@ router.get('/success-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/success-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins bem-sucedidos' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/password-resets
 router.get('/password-resets', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ resets: [] });
 
         const { limit = 100, offset = 0 } = req.query;
@@ -329,13 +280,16 @@ router.get('/password-resets', async (req, res) => {
     } catch (err) {
         console.error('[reports/password-resets]', err);
         res.status(500).json({ error: 'Erro ao buscar resets de senha' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/failed-logins
 router.get('/failed-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -364,13 +318,16 @@ router.get('/failed-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/failed-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins falhos' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
 // GET /api/admin/reports/blocked-logins
 router.get('/blocked-logins', async (req, res) => {
+    let db;
     try {
-        const db = getPool();
+        db = await getClient();
         if (!db) return res.json({ logins: [] });
 
         const { limit = 50, offset = 0 } = req.query;
@@ -416,6 +373,8 @@ router.get('/blocked-logins', async (req, res) => {
     } catch (err) {
         console.error('[reports/blocked-logins]', err);
         res.status(500).json({ error: 'Erro ao buscar logins bloqueados' });
+    } finally {
+        if (db) await db.end().catch(() => {});
     }
 });
 
