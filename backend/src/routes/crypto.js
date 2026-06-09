@@ -1,9 +1,17 @@
+import crypto from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { auth } from '../middleware/auth.js';
 import { readQuery, typeqlDatetime, typeqlLiteral, writeQuery } from '../db/typedb.js';
 
 const router = Router();
+
+function fingerprintKey(publicKey) {
+  return crypto
+    .createHash('sha256')
+    .update(String(publicKey || ''))
+    .digest('hex');
+}
 
 const PublicKeySchema = z.object({
   publicKey: z.string().min(40).max(12000),
@@ -49,11 +57,15 @@ router.post('/public-keys', auth, async (req, res) => {
     `).catch(() => [])));
 
     const keys = {};
+    const fingerprints = {};
     for (const rowList of rows) {
       const row = rowList[0];
-      if (row?.username && row?.key) keys[row.username] = row.key;
+      if (row?.username && row?.key) {
+        keys[row.username] = row.key;
+        fingerprints[row.username] = fingerprintKey(row.key);
+      }
     }
-    res.json({ keys });
+    res.json({ keys, fingerprints });
   } catch (err) {
     console.error('[crypto public-keys POST]', err);
     res.status(500).json({ error: 'Erro ao buscar chaves' });
@@ -155,7 +167,12 @@ router.post('/device-keys', auth, async (req, res) => {
     usernames.forEach((username, index) => {
       devices[username] = rows[index]
         .filter(device => device.revoked !== true && String(device.revoked).toLowerCase() !== 'true')
-        .map(device => ({ id: device.device_id, publicKey: device.key, name: device.name || 'Aparelho' }));
+        .map(device => ({
+          id: device.device_id,
+          publicKey: device.key,
+          fingerprint: fingerprintKey(device.key),
+          name: device.name || 'Aparelho',
+        }));
     });
     res.json({ devices });
   } catch (err) {
@@ -166,21 +183,29 @@ router.post('/device-keys', auth, async (req, res) => {
 
 router.get('/devices', auth, async (req, res) => {
   try {
-    const devices = await readQuery(`
+    const rows = await readQuery(`
       match
         $owner isa person, has username "${typeqlLiteral(req.user.username)}";
-        $device isa crypto-device, has crypto-device-id $device_id;
+        $device isa crypto-device,
+          has crypto-device-id $device_id,
+          has crypto-device-public-key $key;
         crypto-device-owner(owner: $owner, device: $device);
         try { $device has crypto-device-name $name; };
         try { $device has crypto-device-last-seen $last_seen; };
         try { $device has crypto-device-revoked $revoked; };
       fetch {
         "device_id": $device_id,
+        "key": $key,
         "name": $name,
         "last_seen": $last_seen,
         "revoked": $revoked
       };
     `);
+    const devices = rows.map(device => ({
+      ...device,
+      fingerprint: fingerprintKey(device.key),
+      key: undefined,
+    }));
     res.json({ devices });
   } catch (err) {
     console.error('[crypto devices GET]', err);

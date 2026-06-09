@@ -921,11 +921,12 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
               {cryptoDevices.map(device => {
                 const revoked = device.revoked === true || String(device.revoked).toLowerCase() === 'true';
                 const isCurrent = device.device_id === localStorage.getItem('unigran_device_id');
+                const fingerprint = device.fingerprint ? ` · chave ${String(device.fingerprint).slice(0, 12)}` : '';
                 return (
                   <Row
                     key={device.device_id}
                     title={device.name || 'Sessao'}
-                    sub={revoked ? 'Inativa' : `Ativa${isCurrent ? ' (este dispositivo)' : ''} · visto ${formatSessionSeen(device.last_seen)}`}
+                    sub={revoked ? `Inativa${fingerprint}` : `Ativa${isCurrent ? ' (este dispositivo)' : ''} · visto ${formatSessionSeen(device.last_seen)}${fingerprint}`}
                   >
                     {revoked
                       ? <span className="session-status-pill inactive">Inativa</span>

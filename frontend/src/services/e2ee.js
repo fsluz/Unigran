@@ -4,6 +4,7 @@ const IDENTITY_KEY = 'unigran_e2ee_identity_v1';
 const DEVICE_ID_KEY = 'unigran_device_id';
 const DEVICE_IDENTITY_PREFIX = 'unigran_e2ee_device_identity_v1_';
 const CONV_PREFIX = 'unigran_e2ee_conv_';
+const TRUST_PREFIX = 'unigran_e2ee_trust_v1_';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -13,6 +14,54 @@ function bytesToBase64(bytes) {
 
 function base64ToBytes(value) {
   return Uint8Array.from(atob(value), char => char.charCodeAt(0));
+}
+
+function canonicalStringify(value) {
+  if (!value || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalStringify).join(',')}]`;
+  return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalStringify(value[key])}`).join(',')}}`;
+}
+
+function bytesToHex(bytes) {
+  return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function fingerprintPublicKey(publicKey) {
+  const jwk = typeof publicKey === 'string' ? JSON.parse(publicKey) : publicKey;
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(canonicalStringify(jwk)));
+  return bytesToHex(digest);
+}
+
+function trustStorageKey(username, deviceId) {
+  return `${TRUST_PREFIX}${String(username || '').toLowerCase()}:${deviceId || 'legacy'}`;
+}
+
+async function normalizeDevice(username, device) {
+  const fingerprint = device.fingerprint || await fingerprintPublicKey(device.publicKey);
+  return {
+    ...device,
+    id: device.id || 'legacy',
+    fingerprint,
+  };
+}
+
+async function verifyAndTrustDevices(username, devices) {
+  const normalized = await Promise.all((devices || []).map(device => normalizeDevice(username, device)));
+  normalized.forEach(device => {
+    const key = trustStorageKey(username, device.id);
+    const trusted = localStorage.getItem(key);
+    if (trusted && trusted !== device.fingerprint) {
+      const error = new Error(`Chave E2EE mudou para ${username}. Confirme o aparelho antes de enviar.`);
+      error.code = 'E2EE_KEY_CHANGED';
+      error.username = username;
+      error.deviceId = device.id;
+      error.expected = trusted;
+      error.actual = device.fingerprint;
+      throw error;
+    }
+    if (!trusted) localStorage.setItem(key, device.fingerprint);
+  });
+  return normalized;
 }
 
 async function importPublicKey(jwk) {
@@ -162,11 +211,12 @@ async function fetchRecipientDevices(token, usernames) {
 
   const legacy = await fetchPublicKeys(token, usernames).catch(() => ({}));
   const devices = {};
-  usernames.forEach(username => {
-    devices[username] = deviceRows[username]?.length
+  await Promise.all(usernames.map(async username => {
+    const rows = deviceRows[username]?.length
       ? deviceRows[username]
       : (legacy[username] ? [{ id: 'legacy', publicKey: legacy[username] }] : []);
-  });
+    devices[username] = await verifyAndTrustDevices(username, rows);
+  }));
   return devices;
 }
 
@@ -184,10 +234,13 @@ export async function encryptMessage({ token, conversationId, usernames, content
   const aesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   const rawAes = await crypto.subtle.exportKey('raw', aesKey);
   const wrapped = {};
+  const fingerprints = {};
   await Promise.all(uniqueUsers.flatMap(username => devices[username].map(async device => {
     const publicKey = await importPublicKey(device.publicKey);
     if (!wrapped[username]) wrapped[username] = {};
+    if (!fingerprints[username]) fingerprints[username] = {};
     wrapped[username][device.id] = bytesToBase64(await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, rawAes));
+    fingerprints[username][device.id] = device.fingerprint || await fingerprintPublicKey(device.publicKey);
   })));
 
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -196,9 +249,13 @@ export async function encryptMessage({ token, conversationId, usernames, content
   return JSON.stringify({
     e2ee: 2,
     alg: 'AES-GCM-256/RSA-OAEP-device',
+    strict: true,
+    msgId: crypto.randomUUID(),
+    sentAt: new Date().toISOString(),
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
     keys: wrapped,
+    fingerprints,
     missing,
   });
 }
