@@ -184,13 +184,19 @@ export default function MessagesPage() {
     [conversations],
   );
 
+  useEffect(() => {
+    const base = 'Unigram - Rede Social Academica';
+    document.title = unreadPeopleCount > 0 ? `(${unreadPeopleCount}) ${base}` : base;
+    return () => { document.title = base; };
+  }, [unreadPeopleCount]);
+
   const previewFromMessage = (message) => {
     if (!message) return '';
     if (message.content?.trim()) return message.content.trim();
-    if (message.media?.type === 'image') return '📷 Foto';
-    if (message.media?.type === 'video') return '🎥 Video';
-    if (message.media?.type === 'audio') return '🎤 Audio';
-    if (message.media?.url) return '📎 Arquivo';
+    if (message.media?.type === 'image') return 'Foto';
+    if (message.media?.type === 'video') return 'Video';
+    if (message.media?.type === 'audio') return 'Audio';
+    if (message.media?.url) return 'Arquivo';
     return '';
   };
 
@@ -207,7 +213,10 @@ export default function MessagesPage() {
 
   const decorateConversationPreview = async (conv) => {
     const raw = conv.lastMessage || '';
-    const fallback = conv.lastMessagePreview || safeMessagePreview({ media: conv.lastMessageMedia });
+    const backendPreview = String(conv.lastMessagePreview || '');
+    const fallback = backendPreview.toLowerCase().includes('criptografada')
+      ? safeMessagePreview({ media: conv.lastMessageMedia }) || 'Mensagem privada'
+      : backendPreview || safeMessagePreview({ media: conv.lastMessageMedia });
     if (!raw) return { ...conv, lastMessagePreview: fallback || '' };
     if (!isEncryptedText(raw)) return { ...conv, lastMessagePreview: raw || fallback || '' };
     const decrypted = await decryptMessage(conv.id, { content: raw }, user?.username).catch(() => null);
@@ -1402,7 +1411,7 @@ export default function MessagesPage() {
                   {chatMenuOpen && (
                     <div className="chat-menu">
                       <button onClick={openAbout}>{active.type === 'group' ? 'Ver grupo' : 'Ver Perfil'}</button>
-                      <button onClick={() => { setChatMenuOpen(false); showToast('Notificações silenciadas', 'OK'); }}>Silenciar Notificações</button>
+                      <button onClick={() => { setChatMenuOpen(false); showToast('Notificacoes silenciadas', 'OK'); }}>Silenciar Notificacoes</button>
                       <button onClick={() => { setMessages(prev => ({ ...prev, [active.id]: [] })); setChatMenuOpen(false); }}>Limpar Chat</button>
                       <button className="danger" onClick={() => { setChatMenuOpen(false); showToast('Usuario bloqueado', 'OK'); }}>Bloquear</button>
                     </div>
@@ -1852,4 +1861,5 @@ export default function MessagesPage() {
     </div>
   );
 }
+
 

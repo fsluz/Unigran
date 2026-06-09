@@ -175,7 +175,10 @@ export async function encryptMessage({ token, conversationId, usernames, content
   const devices = await fetchRecipientDevices(token, uniqueUsers);
   const missing = uniqueUsers.filter(username => !(devices[username] || []).length);
   if (missing.length) {
-    return content;
+    const error = new Error(`E2EE sem chave para: ${missing.join(', ')}`);
+    error.code = 'E2EE_MISSING_KEYS';
+    error.missing = missing;
+    throw error;
   }
 
   const aesKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);

@@ -13,7 +13,8 @@ import { generateCode, saveCode, verifyCode, deleteCode, canRequestCode } from '
 import { auditLog } from '../services/audit.service.js';
 
 function getIp(req) {
-  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+  const trustProxy = process.env.TRUST_PROXY === 'true' || process.env.VERCEL === '1';
+  return (trustProxy ? req.headers['x-forwarded-for']?.split(',')[0]?.trim() : null) || req.socket?.remoteAddress || null;
 }
 
 const router = Router();
@@ -188,6 +189,19 @@ function resetRateLimit(req) {
   loginLimiter.reset(getRateKey(req));
 }
 
+function getLoginKeys(req, email = '') {
+  const account = String(email || '').trim().toLowerCase();
+  return account ? [getRateKey(req), `account:${account}`] : [getRateKey(req)];
+}
+
+function checkLoginRateLimit(req, email) {
+  return getLoginKeys(req, email).some(key => loginLimiter.check(key));
+}
+
+function resetLoginRateLimit(req, email) {
+  getLoginKeys(req, email).forEach(key => loginLimiter.reset(key));
+}
+
 router.post('/login', async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -196,7 +210,7 @@ router.post('/login', async (req, res) => {
   const ip = getIp(req);
 
   // Bloquear IPs com muitas tentativas
-  if (checkRateLimit(req)) {
+  if (checkLoginRateLimit(req, email)) {
     auditLog({ action: 'LOGIN_BLOCKED', category: 'AUTH', actor: 'anonymous', ip, meta: { email, reason: 'rate_limit' }, level: 'ALERT' });
     return res.status(429).json({ error: 'Muitas tentativas. Tente novamente em 15 minutos.' });
   }
@@ -312,7 +326,7 @@ router.post('/login', async (req, res) => {
       profilePicture: row.profile_picture || null,
       coverPicture: row.cover_picture || null,
     };
-    resetRateLimit(req); // login bem-sucedido — zera o contador do IP
+    resetLoginRateLimit(req, email);
     auditLog({ action: 'LOGIN_SUCCESS', category: 'AUTH', actor: payload.username, ip, meta: { email, role: payload.role } });
     const token = sign(payload, remember);
     setAuthCookie(res, token, remember);

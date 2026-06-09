@@ -353,7 +353,6 @@ const INTEREST_TAGS = [
 function PrefsModal({ prefs, onSave, onClose }) {
   const [form, setForm] = useState({
     targetRole: '', area: '', location: '', workModel: '', seniority: '',
-    interests: [],
     ...prefs,
     interests: Array.isArray(prefs?.interests) ? prefs.interests : (prefs?.area ? [prefs.area] : []),
   });

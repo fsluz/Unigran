@@ -292,17 +292,30 @@ router.post('/direct/:username', auth, async (req, res) => {
         conversation-participant(participant: $me, conversation: $c);
         conversation-participant(participant: $to, conversation: $c);
         $c has name $title;
-      fetch { "conversation_id": $cid, "to_name": $to_name, "title": $title };
+      try { $to has profile-picture $to_picture; };
+      fetch { "conversation_id": $cid, "to_name": $to_name, "to_picture": $to_picture, "title": $title };
     `);
     const directExisting = existing.find(row => unpackConversationName(row.title).type !== 'group');
     if (directExisting) {
-      return res.json({ conversation: { id: directExisting.conversation_id, title: directExisting.to_name, type: 'direct' } });
+      return res.json({
+        conversation: {
+          id: directExisting.conversation_id,
+          title: directExisting.to_name,
+          type: 'direct',
+          participant: {
+            username: req.params.username,
+            displayName: directExisting.to_name || req.params.username,
+            profilePicture: directExisting.to_picture || null,
+          },
+        },
+      });
     }
 
     const targetRows = await readQuery(`
       match
         $to isa person, has username "${target}", has name $to_name;
-      fetch { "to_name": $to_name };
+        try { $to has profile-picture $to_picture; };
+      fetch { "to_name": $to_name, "to_picture": $to_picture };
     `);
     const title = targetRows[0]?.to_name || req.params.username;
     const cid = uuid();
@@ -321,7 +334,18 @@ router.post('/direct/:username', auth, async (req, res) => {
         conversation-participant(participant: $me, conversation: $c);
         conversation-participant(participant: $to, conversation: $c);
     `);
-    res.status(201).json({ conversation: { id: cid, title, type: 'direct' } });
+    res.status(201).json({
+      conversation: {
+        id: cid,
+        title,
+        type: 'direct',
+        participant: {
+          username: req.params.username,
+          displayName: title,
+          profilePicture: targetRows[0]?.to_picture || null,
+        },
+      },
+    });
   } catch (err) {
     console.error('[direct conversation]', err);
     res.status(500).json({ error: 'Erro ao criar conversa' });
@@ -396,11 +420,17 @@ router.post('/:id/messages', auth, async (req, res) => {
   if (!cleanContent && !media) return res.status(400).json({ error: 'Conteudo ou midia obrigatorio' });
   const mid = uuid();
   const now = typeqlDatetime();
+  const author = {
+    id: req.user.username,
+    username: req.user.username,
+    displayName: req.user.displayName || req.user.username,
+    profilePicture: req.user.profilePicture || null,
+  };
   const payload = packMessageText({
     content: cleanContent,
     media,
     readBy: [req.user.username],
-    author: { id: req.user.username, displayName: req.user.displayName },
+    author,
   });
 
   try {
@@ -424,7 +454,7 @@ router.post('/:id/messages', auth, async (req, res) => {
       readBy: [req.user.username],
       reactions: {},
       time: now,
-      author: { id: req.user.username, displayName: req.user.displayName },
+      author,
     });
   } catch (err) {
     console.error('[messages POST]', err);

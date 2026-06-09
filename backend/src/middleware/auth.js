@@ -22,8 +22,8 @@ function getCachedRole(username) {
   return null;
 }
 
-function setCachedRole(username, role, banned) {
-  _roleCache.set(username, { role, banned, ts: Date.now() });
+function setCachedRole(username, role, banned, profile = {}) {
+  _roleCache.set(username, { role, banned, ...profile, ts: Date.now() });
 }
 
 export function invalidateRoleCache(username) {
@@ -71,15 +71,32 @@ export async function auth(req, res, next) {
               $u isa person, has username "${typeqlLiteral(username)}";
               try { $u has is-banned $banned; };
               try { $u has user-role $role; };
+              try { $u has name $name; };
+              try { $u has phone $phone; };
+              try { $u has profile-picture $profile_picture; };
+              try { $u has cover-picture $cover_picture; };
+              try { $u has password-changed-at $password_changed_at; };
             fetch {
               "banned": $banned,
-              "role": $role
+              "role": $role,
+              "name": $name,
+              "phone": $phone,
+              "profile_picture": $profile_picture,
+              "cover_picture": $cover_picture,
+              "password_changed_at": $password_changed_at
             };
           `);
           const dbRole = rows[0]?.role ? normalizeRole(rows[0].role) : null;
           const banned = attrBoolTrue(rows[0]?.banned);
-          setCachedRole(username, dbRole, banned);
-          cached = { role: dbRole, banned };
+          const profile = {
+            displayName: rows[0]?.name || decoded.displayName || username,
+            phone: rows[0]?.phone || decoded.phone || null,
+            profilePicture: rows[0]?.profile_picture || decoded.profilePicture || null,
+            coverPicture: rows[0]?.cover_picture || decoded.coverPicture || null,
+            passwordChangedAt: rows[0]?.password_changed_at || null,
+          };
+          setCachedRole(username, dbRole, banned, profile);
+          cached = { role: dbRole, banned, ...profile };
         }
         if (cached.banned) {
           auditLog({
@@ -92,6 +109,16 @@ export async function auth(req, res, next) {
           return res.status(403).json({ error: 'Conta banida' });
         }
         if (cached.role) req.user.role = cached.role;
+        req.user.displayName = cached.displayName || req.user.displayName || username;
+        req.user.phone = cached.phone || req.user.phone || null;
+        req.user.profilePicture = cached.profilePicture || req.user.profilePicture || null;
+        req.user.coverPicture = cached.coverPicture || req.user.coverPicture || null;
+        if (cached.passwordChangedAt && decoded.iat) {
+          const changedAt = Date.parse(cached.passwordChangedAt);
+          if (Number.isFinite(changedAt) && decoded.iat * 1000 < changedAt) {
+            return res.status(401).json({ error: 'Senha alterada. Entre novamente.' });
+          }
+        }
       } catch (err) {
         throw err;
       }

@@ -18,6 +18,13 @@ function setCached(key, value) {
   cache.set(key, { at: Date.now(), value });
 }
 
+function postIdFilter(postIds = []) {
+  const ids = [...new Set((postIds || []).filter(Boolean))].slice(0, 250);
+  if (!ids.length) return '';
+  if (ids.length === 1) return `$post has post-id "${typeqlLiteral(ids[0])}";`;
+  return `${ids.map(id => `{ $post has post-id "${typeqlLiteral(id)}"; }`).join(' or ')};`;
+}
+
 async function loadAllProfilesMap() {
   const rows = await readQuery(`
     match
@@ -96,12 +103,14 @@ async function loadLikedKeywords(username) {
   return liked;
 }
 
-async function loadPostMetrics(viewerUsername) {
+async function loadPostMetrics(viewerUsername, postIds = null) {
+  const filter = postIdFilter(postIds);
   const [reactionRows, commentRows] = await Promise.all([
     // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     readQuery(`
       match
         $post isa post, has post-id $post_id;
+        ${filter}
         reaction(parent: $post, author: $author);
         $author isa person, has username $author_username;
       fetch {
@@ -113,6 +122,7 @@ async function loadPostMetrics(viewerUsername) {
     readQuery(`
       match
         $post isa post, has post-id $post_id;
+        ${filter}
         commenting(parent: $post, comment: $comment);
       fetch { "post_id": $post_id };
     `),
@@ -139,10 +149,12 @@ async function loadPostMetrics(viewerUsername) {
   return metrics;
 }
 
-async function loadPostCommunityMap() {
+async function loadPostCommunityMap(postIds = null) {
+  const filter = postIdFilter(postIds);
   const rows = await readQuery(`
     match
       $post isa post, has post-id $post_id;
+      ${filter}
       $group isa group, has group-id $group_id, has name $group_name;
       posting(page: $group, post: $post);
     fetch {
@@ -171,11 +183,13 @@ async function loadUserCommunitySet(viewerUsername) {
   return new Set(rows.filter(r => r?.group_id).map(r => r.group_id));
 }
 
-async function loadCommentsMap() {
+async function loadCommentsMap(postIds = null) {
+  const filter = postIdFilter(postIds);
   // FIXED: removed nested `fetch` subquery that TypeDB rejected; comments now load in a separate TypeQL 3.x pipeline.
   const rows = await readQuery(`
     match
       $post isa post, has post-id $post_id;
+      ${filter}
       commenting(parent: $post, comment: $comment, author: $comment_author);
       $comment isa comment,
         has comment-id $comment_id,
@@ -210,11 +224,13 @@ async function loadCommentsMap() {
   return map;
 }
 
-async function loadRepostOriginalMap() {
+async function loadRepostOriginalMap(postIds = null) {
+  const filter = postIdFilter(postIds).replaceAll('$post', '$share');
   // FIXED: loads repost source separately so cards can render quote/repost data without nested fetch.
   const rows = await readQuery(`
     match
       $share isa share-post, has post-id $share_id;
+      ${filter}
       $original isa post, has post-id $original_id;
       $sharing isa sharing, links (original-post: $original, share-post: $share);
       $posting isa posting, links (page: $author, post: $original);
@@ -264,9 +280,13 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const key = `feed:${viewerUsername || 'anon'}:${feed}:${limit}:${offset}`;
   const cached = getCached(key);
   if (cached) return cached;
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  const dbLimit = Math.max(safeLimit * 6, safeOffset + safeLimit * 4, 80);
 
   // FIXED: removed nested `fetch` subquery; comments are fetched separately with a TypeDB 3.x pipeline.
   // FIXED: fetched post text/media explicitly so Zuni posts can be detected from the #Zuni marker.
+  // FIXED: added TypeDB sort/limit to avoid scanning the whole post set on every feed request.
   const rows = await readQuery(`
     match
       $post isa post,
@@ -282,7 +302,8 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       try { $post has post-text $post_text; };
       try { $post has post-image $post_image; };
       try { $post has post-video $post_video; };
-
+    sort $post_ts desc;
+    limit ${dbLimit};
     fetch {
       "post_id": $post_id,
       "created_at": $post_ts,
@@ -301,14 +322,14 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       "post_all_attributes": { $post.* }
     };
   `);
-  const [profilesMap, followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap, userCommunitySet] = await Promise.all([
-    loadAllProfilesMap(),
+  const rowPostIds = rows.map(row => row?.post_id).filter(Boolean);
+  const [followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap, userCommunitySet] = await Promise.all([
     loadFollowingSet(viewerUsername),
     loadLikedKeywords(viewerUsername),
-    loadPostMetrics(viewerUsername),
-    loadCommentsMap(),
-    loadRepostOriginalMap(),
-    loadPostCommunityMap(),
+    loadPostMetrics(viewerUsername, rowPostIds),
+    loadCommentsMap(rowPostIds),
+    loadRepostOriginalMap(rowPostIds),
+    loadPostCommunityMap(rowPostIds),
     loadUserCommunitySet(viewerUsername),
   ]);
   
@@ -342,7 +363,6 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const imageUrl = entry?.post_image || attrs['post-image'] || null;
     const videoUrl = entry?.post_video || attrs['post-video'] || null;
     const mediaUrl = imageUrl || videoUrl;
-    const authorProfile = profilesMap.get(entry?.author?.username || '');
     const postId = entry?.post_id || attrs['post-id'] || uuid();
     const portfolioId = attrs['portfolio-id'] || null;
     const comments = commentsMap.get(postId) || [];
@@ -359,11 +379,11 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         resource_type: videoUrl ? 'video' : 'image',
       } : null,
       author: {
-        id: authorProfile?.username || entry?.author?.username || 'unknown',
-        username: authorProfile?.username || entry?.author?.username || 'unknown',
-        displayName: authorProfile?.name || entry?.author?.name || 'Usuario',
-        profilePicture: authorProfile?.profile_picture || entry?.author?.profile_picture || null,
-        coverPicture: authorProfile?.cover_picture || entry?.author?.cover_picture || null,
+        id: entry?.author?.username || 'unknown',
+        username: entry?.author?.username || 'unknown',
+        displayName: entry?.author?.name || 'Usuario',
+        profilePicture: entry?.author?.profile_picture || null,
+        coverPicture: entry?.author?.cover_picture || null,
         role: 'user',
       },
       likes: metric.likes,
@@ -388,16 +408,15 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
         projectType: attrs['portfolio-project-type'] || '',
       } : null,
       _comments: comments.map((comment) => {
-        const commentAuthorProfile = profilesMap.get(comment?.author?.username || '');
         return {
           id: comment?.comment_id,
           content: comment?.text || '',
           time: comment?.created_at || null,
           author: {
-            username: commentAuthorProfile?.username || comment?.author?.username || null,
-            displayName: commentAuthorProfile?.name || comment?.author?.name || 'Usuario',
-            profilePicture: commentAuthorProfile?.profile_picture || comment?.author?.profile_picture || null,
-            coverPicture: commentAuthorProfile?.cover_picture || comment?.author?.cover_picture || null,
+            username: comment?.author?.username || null,
+            displayName: comment?.author?.name || 'Usuario',
+            profilePicture: comment?.author?.profile_picture || null,
+            coverPicture: comment?.author?.cover_picture || null,
           },
         };
       }),
@@ -432,7 +451,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       }
       return String(b.time || '').localeCompare(String(a.time || ''));
     })
-    .slice(offset, offset + limit);
+    .slice(safeOffset, safeOffset + safeLimit);
 
   if (feed === 'zuni') {
     console.log('[zuni feed]', { viewer: viewerUsername || 'anon', total: normalized.length, returned: posts.length, offset, limit });
