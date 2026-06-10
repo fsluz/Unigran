@@ -312,23 +312,64 @@
 }
 
 .home-page .post-composer {
-  width: min(720px, 100%) !important;
+  width: min(760px, 100%) !important;
   margin-inline: auto !important;
-  padding: 16px 18px !important;
-  border-radius: 18px !important;
+  padding: 18px !important;
+  border-radius: 22px !important;
+  position: relative !important;
+  overflow: hidden !important;
   background:
-    linear-gradient(180deg, rgba(8, 18, 36, .92), rgba(6, 14, 29, .94)) !important;
-  border-color: rgba(124, 58, 237, .58) !important;
+    radial-gradient(circle at 8% 0%, rgba(56, 189, 248, .12), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(124, 58, 237, .12), transparent 32%),
+    linear-gradient(180deg, rgba(8, 18, 36, .94), rgba(5, 13, 28, .97)) !important;
+  border-color: rgba(72, 104, 157, .34) !important;
   box-shadow:
     0 0 0 1px rgba(56, 189, 248, .08),
-    0 22px 64px rgba(0, 0, 0, .3) !important;
+    0 26px 76px rgba(0, 0, 0, .34) !important;
+}
+
+.home-page .post-composer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(56,189,248,.2), transparent 18%, transparent 82%, rgba(124,58,237,.16)),
+    linear-gradient(180deg, rgba(255,255,255,.055), transparent 26%);
+  opacity: .75;
+}
+
+.home-page .post-composer > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-page .post-composer .composer-row {
+  grid-template-columns: 58px minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+.home-page .post-composer .avatar {
+  width: 52px !important;
+  height: 52px !important;
+  border: 2px solid rgba(56, 189, 248, .36);
+  box-shadow: 0 0 0 5px rgba(56,189,248,.08), 0 14px 30px rgba(0,0,0,.22) !important;
+}
+
+.home-page .post-composer .composer-editor {
+  min-width: 0;
 }
 
 .home-page .post-composer .composer-textarea {
-  min-height: 86px !important;
-  background: rgba(3, 10, 22, .82) !important;
-  border-color: rgba(72, 104, 157, .28) !important;
+  min-height: 96px !important;
+  padding: 20px 22px !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)),
+    rgba(3, 10, 22, .78) !important;
+  border-color: rgba(72, 104, 157, .3) !important;
   color: #f8fbff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
 }
 
 .home-page .post-composer .composer-textarea:focus {
@@ -336,16 +377,176 @@
   box-shadow: 0 0 0 3px rgba(56, 189, 248, .1) !important;
 }
 
+.home-page .post-composer .composer-footer {
+  margin-left: 74px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid rgba(72, 104, 157, .14) !important;
+  gap: 10px !important;
+}
+
 .home-page .post-composer .composer-btn,
 .home-page .post-composer .composer-mode-select {
-  background: rgba(5, 12, 26, .72) !important;
-  border: 1px solid rgba(72, 104, 157, .24) !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  background: rgba(5, 12, 26, .62) !important;
+  border: 1px solid rgba(72, 104, 157, .28) !important;
+  color: #d8e5f6 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.home-page .post-composer .composer-btn {
+  min-width: 42px !important;
+  padding: 0 12px !important;
+}
+
+.home-page .post-composer .composer-btn:hover,
+.home-page .post-composer .composer-mode-select:hover {
+  color: #fff !important;
+  background: rgba(56, 189, 248, .12) !important;
+  border-color: rgba(56, 189, 248, .38) !important;
 }
 
 .home-page .post-composer .composer-submit-btn,
 .home-community-row button {
   background: linear-gradient(135deg, #6d28d9, #2563eb 62%, #0ea5e9) !important;
   box-shadow: 0 12px 30px rgba(14, 165, 233, .2) !important;
+}
+
+.home-page .post-composer .composer-submit-btn {
+  height: 44px !important;
+  min-width: 112px !important;
+  border-radius: 14px !important;
+  font-weight: 900 !important;
+}
+
+.home-page .post-composer.is-portfolio {
+  width: min(860px, 100%) !important;
+  border-color: rgba(56, 189, 248, .36) !important;
+}
+
+.home-page .post-composer.is-portfolio::after {
+  content: 'Portfólio';
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: 2;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #bfefff;
+  background: rgba(56, 189, 248, .1);
+  border: 1px solid rgba(56, 189, 248, .22);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.home-page .post-composer.is-portfolio .composer-textarea {
+  min-height: 170px !important;
+}
+
+.home-page .post-composer .composer-format-toolbar {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.home-page .post-composer .composer-format-toolbar button {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(72, 104, 157, .25);
+  background: rgba(5, 12, 26, .62);
+  color: #cfe0f5;
+  font-weight: 800;
+}
+
+.home-page .post-composer .composer-format-toolbar button:hover {
+  color: #fff;
+  border-color: rgba(56, 189, 248, .38);
+  background: rgba(56, 189, 248, .12);
+}
+
+.home-page .post-composer.is-portfolio .composer-footer {
+  display: grid !important;
+  grid-template-columns: 132px repeat(4, 42px) minmax(112px, 1fr) !important;
+  margin-left: 0 !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-panel {
+  grid-column: 1 / -1 !important;
+  margin-top: 2px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(72, 104, 157, .22) !important;
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, .055), rgba(124, 58, 237, .04)),
+    rgba(3, 10, 22, .42) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.home-page .post-composer .composer-portfolio-grid {
+  gap: 12px !important;
+}
+
+.home-page .post-composer .composer-portfolio-field,
+.home-page .post-composer .composer-repo-select {
+  display: grid;
+  gap: 7px;
+}
+
+.home-page .post-composer .composer-portfolio-field span,
+.home-page .post-composer .composer-repo-select span,
+.home-page .post-composer .composer-tech-title {
+  color: #9fb3d1 !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.home-page .post-composer .composer-portfolio-field input,
+.home-page .post-composer .composer-repo-select select,
+.home-page .post-composer .composer-techs input {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(72, 104, 157, .24);
+  background: rgba(5, 12, 26, .62);
+  color: #f6f9ff;
+  padding: 0 13px;
+}
+
+.home-page .post-composer .composer-techs {
+  padding: 10px !important;
+  border-radius: 14px !important;
+  border: 1px dashed rgba(72, 104, 157, .28) !important;
+  background: rgba(5, 12, 26, .34) !important;
+}
+
+.home-page .post-composer .composer-techs button,
+.home-page .post-composer .composer-add-tag {
+  border-radius: 999px !important;
+  border: 1px solid rgba(56, 189, 248, .26) !important;
+  background: rgba(56, 189, 248, .1) !important;
+  color: #bfefff !important;
+  font-weight: 800 !important;
+}
+
+.home-page .post-composer .composer-portfolio-help {
+  border-radius: 14px !important;
+  border: 1px solid rgba(56, 189, 248, .16) !important;
+  background: rgba(56, 189, 248, .07) !important;
+  color: #aebfd5 !important;
+}
+
+.home-page .post-composer .composer-preview-wrap {
+  margin: 14px 0 0 74px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(72, 104, 157, .22) !important;
+  background: rgba(3, 10, 22, .52) !important;
+}
+
+.home-page .post-composer .composer-extra-line {
+  margin-left: 74px !important;
 }
 
 .home-feed-tabs {
@@ -504,6 +705,96 @@
   color: #0c1830 !important;
   background: rgba(255,255,255,.86) !important;
   border-color: rgba(37, 99, 235, .14) !important;
+}
+
+[data-theme="light"] .home-page .post-composer {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(14, 165, 233, .12), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(124, 58, 237, .08), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,251,255,.92)) !important;
+}
+
+[data-theme="light"] .home-page .post-composer::before {
+  background:
+    linear-gradient(90deg, rgba(14,165,233,.16), transparent 18%, transparent 82%, rgba(124,58,237,.1)),
+    linear-gradient(180deg, rgba(255,255,255,.78), transparent 40%);
+}
+
+[data-theme="light"] .home-page .post-composer .avatar {
+  border-color: rgba(14, 165, 233, .28);
+  box-shadow: 0 0 0 5px rgba(14,165,233,.08), 0 14px 30px rgba(37,99,235,.12) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-textarea {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,251,255,.82)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-btn,
+[data-theme="light"] .home-page .post-composer .composer-mode-select,
+[data-theme="light"] .home-page .post-composer .composer-format-toolbar button {
+  color: #24385f !important;
+  background: rgba(255,255,255,.76) !important;
+  border-color: rgba(37, 99, 235, .14) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-btn:hover,
+[data-theme="light"] .home-page .post-composer .composer-mode-select:hover,
+[data-theme="light"] .home-page .post-composer .composer-format-toolbar button:hover {
+  color: #0f5ea8 !important;
+  background: rgba(14, 165, 233, .08) !important;
+  border-color: rgba(14, 165, 233, .28) !important;
+}
+
+[data-theme="light"] .home-page .post-composer.is-portfolio::after {
+  color: #2563eb;
+  background: rgba(14, 165, 233, .08);
+  border-color: rgba(14, 165, 233, .18);
+}
+
+[data-theme="light"] .home-page .post-composer.is-portfolio .composer-portfolio-panel {
+  background:
+    linear-gradient(180deg, rgba(14, 165, 233, .055), rgba(124, 58, 237, .035)),
+    rgba(255,255,255,.62) !important;
+  border-color: rgba(37, 99, 235, .12) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-portfolio-field span,
+[data-theme="light"] .home-page .post-composer .composer-repo-select span,
+[data-theme="light"] .home-page .post-composer .composer-tech-title {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-portfolio-field input,
+[data-theme="light"] .home-page .post-composer .composer-repo-select select,
+[data-theme="light"] .home-page .post-composer .composer-techs input {
+  color: #0c1830;
+  background: rgba(255,255,255,.8);
+  border-color: rgba(37, 99, 235, .14);
+}
+
+[data-theme="light"] .home-page .post-composer .composer-techs {
+  background: rgba(239, 246, 255, .52) !important;
+  border-color: rgba(37, 99, 235, .15) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-techs button,
+[data-theme="light"] .home-page .post-composer .composer-add-tag {
+  color: #2563eb !important;
+  background: rgba(14, 165, 233, .08) !important;
+  border-color: rgba(14, 165, 233, .18) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-portfolio-help {
+  color: #64748b !important;
+  background: rgba(14, 165, 233, .06) !important;
+  border-color: rgba(14, 165, 233, .14) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-preview-wrap {
+  background: rgba(255,255,255,.68) !important;
+  border-color: rgba(37, 99, 235, .12) !important;
 }
 
 [data-theme="light"] .home-page .post-card-model .post-body {
