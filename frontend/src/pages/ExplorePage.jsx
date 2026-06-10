@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Topbar from '../components/layout/Topbar';
 import PostDetailModal from '../components/post/PostDetailModal';
 import { fetchComments, fetchPosts } from '../services/posts';
+import { UnigranLoader } from '../components/ui';
 
 export default function ExplorePage({ onOpenProfile }) {
   const EXPLORE_BATCH_SIZE = 20;
@@ -68,7 +69,7 @@ export default function ExplorePage({ onOpenProfile }) {
       <Topbar title="Explorar" />
       <div className="explore-page">
         <p className="explore-intro">Posts e vídeos recomendados para você, em lotes de 20 mídias.</p>
-        {loading && <div className="explore-grid skeleton"><div /><div /><div /><div /></div>}
+        {loading && <UnigranLoader title="Explorando a rede" subtitle="Selecionando mídias recentes da comunidade." />}
         {!loading && posts.length === 0 && (
           <div className="explore-empty">Nada para explorar ainda. Siga mais pessoas ou volte depois.</div>
         )}
@@ -95,7 +96,7 @@ export default function ExplorePage({ onOpenProfile }) {
           ))}
         </div>
         <div ref={moreRef} className="explore-load-more">
-          {loadingMore ? 'Carregando mais...' : hasMore ? '' : 'Fim.'}
+          {loadingMore ? <UnigranLoader compact title="Carregando mais" /> : hasMore ? '' : 'Fim.'}
         </div>
       </div>
       {openPost && (

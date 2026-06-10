@@ -34,6 +34,7 @@ import MasterAdminBiPage   from './modules/platform/MasterAdminBiPage';
 import MeuCaminhoPage      from './pages/MeuCaminhoPage';
 import { hasPermission }   from './modules/shared/permissions';
 import PortalEntryTransition from './components/layout/PortalEntryTransition';
+import { UnigranLoader } from './components/ui';
 
 function NotFoundPage({ onBack }) {
   return (
@@ -191,12 +192,7 @@ function AppShell() {
   }, []);
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #0f1117)' }}>
-        <div style={{ width: 36, height: 36, border: '3px solid var(--accent, #6d28d9)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
+    return <UnigranLoader fullScreen title="UNIGRAM" subtitle="Carregando sua rede acadêmica." />;
   }
 
   if (termsOpen) {

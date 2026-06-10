@@ -1,17 +1,33 @@
 ﻿import { useRef } from 'react';
 
 // Spinner — substitui textos "Carregando..."
-export function Spinner({ size = 20, color = 'var(--accent)' }) {
+export function Spinner({ size = 20, color = 'currentColor', label = 'Carregando' }) {
   return (
-    <svg
-      width={size} height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      style={{ animation: 'spin 0.8s linear infinite', display: 'inline-block', verticalAlign: 'middle' }}
-      aria-label="Carregando"
-    >
-      <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
-    </svg>
+    <span className="unigran-spinner" style={{ width: size, height: size, '--spinner-color': color }} role="status" aria-label={label}>
+      <span />
+    </span>
+  );
+}
+
+export function UnigranLoader({
+  title = 'Carregando Unigran',
+  subtitle = 'Preparando sua experiência acadêmica.',
+  fullScreen = false,
+  compact = false,
+}) {
+  return (
+    <div className={`unigran-loader ${fullScreen ? 'is-fullscreen' : ''} ${compact ? 'is-compact' : ''}`} role="status" aria-live="polite">
+      <div className="unigran-loader-mark" aria-hidden="true">
+        <span className="unigran-loader-u">U</span>
+        <span className="unigran-loader-orbit orbit-a" />
+        <span className="unigran-loader-orbit orbit-b" />
+      </div>
+      <div className="unigran-loader-copy">
+        <strong>{title}</strong>
+        {!compact && <span>{subtitle}</span>}
+      </div>
+      <div className="unigran-loader-bar" aria-hidden="true"><span /></div>
+    </div>
   );
 }
 
@@ -29,7 +45,7 @@ export function SkeletonLine({ width = '100%', height = 14, style = {} }) {
 // SkeletonCard — bloco de carregamento para posts/cards
 export function SkeletonCard({ lines = 3 }) {
   return (
-    <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }} aria-hidden="true">
+    <div className="card unigran-skeleton-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }} aria-hidden="true">
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <div className="skeleton-line" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Topbar from '../components/layout/Topbar';
-import { Avatar, Button, FormField, Modal } from '../components/ui';
+import { Avatar, Button, FormField, Modal, UnigranLoader } from '../components/ui';
 import PostComposer from '../components/post/PostComposer';
 import PostCard from '../components/post/PostCard';
 import { createPost, uploadMedia } from '../services/posts';
@@ -294,7 +294,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
             <main className="community-feed">
               {activeCommunity.joined && <PostComposer onSubmit={submitCommunityPost} placeholder={`Publicar em ${activeCommunity.name}`} allowMode={false} />}
               {postsLoading ? (
-                <div className="card post-card-skeleton"><div className="skeleton-line" /><div className="skeleton-line" /></div>
+                <UnigranLoader title="Carregando comunidade" subtitle="Buscando posts, membros e conversas." />
               ) : communityPosts.length === 0 ? (
                 <div className="search-empty">Nenhum post nesta comunidade.</div>
               ) : communityPosts.map(post => (
@@ -412,7 +412,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
           ))}
         </div>
         <div ref={communityLoadMoreRef} className="community-load-more">
-          {hasMoreCommunities ? 'Carregando mais comunidades...' : filtered.length > COMMUNITY_BATCH_SIZE ? 'Fim das comunidades.' : ''}
+          {hasMoreCommunities ? <UnigranLoader compact title="Mais comunidades" /> : filtered.length > COMMUNITY_BATCH_SIZE ? 'Fim das comunidades.' : ''}
         </div>
       </div>
 
