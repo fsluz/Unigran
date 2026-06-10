@@ -357,6 +357,9 @@ router.get('/:id/messages', auth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '50', 10), 100);
   const offset = parseInt(req.query.offset || '0', 10);
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     // FIXED: removed the space between relation labels and role-player lists (TypeDB 3.x direct relation call syntax).
     const rows = await readQuery(`
       match
@@ -448,6 +451,19 @@ router.post('/:id/messages', auth, async (req, res) => {
           has creation-timestamp ${now};
         $delivery isa message-delivery, links (conversation: $conv, message: $m);
     `);
+
+    const stored = await readQuery(`
+      match
+        $conv isa conversation, has conversation-id "${typeqlLiteral(req.params.id)}";
+        message-delivery(conversation: $conv, message: $m);
+        $m isa message, has message-id "${typeqlLiteral(mid)}";
+      select $m;
+    `);
+    if (!stored.length) {
+      console.error('[messages POST] Mensagem nao persistida', mid, req.params.id);
+      return res.status(500).json({ error: 'Falha ao persistir mensagem' });
+    }
+
     res.status(201).json({
       id: mid,
       content: cleanContent,
