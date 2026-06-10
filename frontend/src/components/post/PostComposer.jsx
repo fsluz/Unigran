@@ -10,16 +10,16 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [postMode, setPostMode] = useState('post');
-  const [PortfólioTitle, setPortfólioTitle] = useState('');
-  const [PortfólioLink, setPortfólioLink] = useState('');
-  const [PortfólioLinkKind, setPortfólioLinkKind] = useState('repository');
-  const [PortfólioTagInput, setPortfólioTagInput] = useState('');
-  const [PortfólioTags, setPortfólioTags] = useState([]);
+  const [portfolioTitle, setPortfolioTitle] = useState('');
+  const [portfolioLink, setPortfolioLink] = useState('');
+  const [portfolioLinkKind, setPortfolioLinkKind] = useState('repository');
+  const [portfolioTagInput, setPortfolioTagInput] = useState('');
+  const [portfolioTags, setPortfolioTags] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [pickerAccept, setPickerAccept] = useState('image/*,video/*,audio/*,.gif,.pdf,.doc,.docx,.zip');
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
-  const isPortfólioMode = !forcedPostType && postMode === 'Portfólio';
+  const isPortfolioMode = !forcedPostType && postMode === 'portfolio';
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
@@ -58,32 +58,33 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
 
   const submit = async () => {
-    if (!text.trim() && !file && !(isPortfólioMode && PortfólioLink.trim())) return;
-    const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : (postMode === 'Portfólio' ? 'Portfólio-post' : undefined));
+    if (!text.trim() && !file && !(isPortfolioMode && (portfolioTitle.trim() || portfolioLink.trim()))) return;
+    const postType = forcedPostType || (postMode === 'zuni' ? 'zuni-post' : (postMode === 'portfolio' ? 'portfolio-post' : undefined));
     setSubmitting(true);
     try {
       if (postType === 'zuni-post') await checkZuniVideo(file);
-      if (postType === 'Portfólio-post') {
+      if (postType === 'portfolio-post') {
         if (file && file.size > 1024 * 1024) throw new Error('Documento do Portfólio deve ter ate 1024 KB por enquanto.');
-        if (!text.trim() && !PortfólioLink.trim() && !file) throw new Error('Adicione descricao, link ou documento para publicar no Portfólio.');
+        if (!portfolioTitle.trim()) throw new Error('Adicione um titulo para publicar no Portfólio.');
+        if (!text.trim() && !portfolioLink.trim() && !file) throw new Error('Adicione descricao, link ou documento para publicar no Portfólio.');
       }
       await onSubmit({
         content: text.replace(/^\s+|\s+$/g, ''),
         file,
         postType,
-        PortfólioTitle: PortfólioTitle.trim(),
-        PortfólioLink: PortfólioLink.trim(),
-        PortfólioLinkKind,
-        PortfólioTags,
-        PortfólioTechnologies: PortfólioTags,
-        PortfólioProjectType: 'social',
+        portfolioTitle: portfolioTitle.trim(),
+        portfolioLink: portfolioLink.trim(),
+        portfolioLinkKind,
+        portfolioTags,
+        portfolioTechnologies: portfolioTags,
+        portfolioProjectType: 'social',
       });
       setT('');
-      setPortfólioTitle('');
-      setPortfólioLink('');
-      setPortfólioLinkKind('repository');
-      setPortfólioTagInput('');
-      setPortfólioTags([]);
+      setPortfolioTitle('');
+      setPortfolioLink('');
+      setPortfolioLinkKind('repository');
+      setPortfolioTagInput('');
+      setPortfolioTags([]);
       clearFile();
     } catch (err) {
       showToast(err.message || 'Erro ao publicar.', '!');
@@ -94,7 +95,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
 
   const attachSelectedFile = (next) => {
     if (!next) return;
-    if (isPortfólioMode && next.size > 1024 * 1024) {
+    if (isPortfolioMode && next.size > 1024 * 1024) {
       showToast('Documento do Portfólio deve ter ate 1024 KB.', '!');
       return;
     }
@@ -105,7 +106,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
 
   const onPick = (event) => {
     const next = event.target.files?.[0];
-    if (isPortfólioMode && next?.size > 1024 * 1024) event.target.value = '';
+    if (isPortfolioMode && next?.size > 1024 * 1024) event.target.value = '';
     attachSelectedFile(next);
   };
 
@@ -124,18 +125,18 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
 
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
   const isVideo = file?.type?.startsWith('video/');
-  const fileAccept = isPortfólioMode
+  const fileAccept = isPortfolioMode
     ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
   const openPicker = (accept = fileAccept) => {
     setPickerAccept(accept);
     setTimeout(() => fileInputRef.current?.click(), 0);
   };
-  const addPortfólioTag = (tag) => {
+  const addPortfolioTag = (tag) => {
     const clean = String(tag || '').trim().replace(/^#/, '');
-    if (!clean || PortfólioTags.includes(clean)) return;
-    setPortfólioTags(prev => [...prev, clean].slice(0, 8));
-    setPortfólioTagInput('');
+    if (!clean || portfolioTags.includes(clean)) return;
+    setPortfolioTags(prev => [...prev, clean].slice(0, 8));
+    setPortfolioTagInput('');
   };
   const formatSelection = (before, after = before, example = 'texto') => {
     const input = textInputRef.current;
@@ -160,7 +161,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
 
   return (
-    <div className={`card post-composer ${isPortfólioMode ? 'is-Portfólio' : ''}`}>
+    <div className={`card post-composer ${isPortfolioMode ? 'is-portfolio' : ''}`}>
       <div className="composer-row">
         <Avatar
           size={42}
@@ -169,7 +170,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           initials={user?.avatar || user?.displayName?.slice(0, 2)}
         />
         <div className="composer-editor">
-          {isPortfólioMode && (
+          {isPortfolioMode && (
             <div className="composer-format-toolbar" aria-label="Formatacao do Portfólio">
               <button type="button" onClick={() => formatSelection('**', '**', 'texto em negrito')}><strong>B</strong></button>
               <button type="button" onClick={() => prefixLines('## ', 'Sobre o projeto')}>Titulo</button>
@@ -180,11 +181,11 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           <textarea
             ref={textInputRef}
             className="composer-textarea"
-            placeholder={isPortfólioMode ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...' : placeholder}
+            placeholder={isPortfolioMode ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...' : placeholder}
             value={text}
             onChange={e => setT(e.target.value)}
             onPaste={handlePaste}
-            rows={isPortfólioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
+            rows={isPortfolioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
           />
         </div>
       </div>
@@ -226,31 +227,31 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           >
             <option value="post">Post</option>
             <option value="zuni">Zuni</option>
-            <option value="Portfólio">Portfólio</option>
+            <option value="portfolio">Portfólio</option>
           </select>
         )}
-        {isPortfólioMode && (
-          <div className="composer-Portfólio-panel">
-            <label className="composer-Portfólio-field composer-Portfólio-title">
+        {isPortfolioMode && (
+          <div className="composer-portfolio-panel">
+            <label className="composer-portfolio-field composer-portfolio-title">
               <span>Titulo do projeto</span>
               <input
-                value={PortfólioTitle}
-                onChange={e => setPortfólioTitle(e.target.value)}
+                value={portfolioTitle}
+                onChange={e => setPortfolioTitle(e.target.value)}
                 placeholder="Ex: Dashboard E-commerce 2024"
               />
             </label>
-            <div className="composer-Portfólio-grid">
-              <label className="composer-Portfólio-field">
+            <div className="composer-portfolio-grid">
+              <label className="composer-portfolio-field">
                 <span>Links (Github, deploy, Figma)</span>
                 <input
-                  value={PortfólioLink}
-                  onChange={e => setPortfólioLink(e.target.value)}
+                  value={portfolioLink}
+                  onChange={e => setPortfolioLink(e.target.value)}
                   placeholder="https://..."
                 />
               </label>
               <label className="composer-repo-select">
-                <span>{PortfólioLinkKind === 'repository' ? 'Repositorio' : 'Tipo'}</span>
-                <select value={PortfólioLinkKind} onChange={e => setPortfólioLinkKind(e.target.value)}>
+                <span>{portfolioLinkKind === 'repository' ? 'Repositorio' : 'Tipo'}</span>
+                <select value={portfolioLinkKind} onChange={e => setPortfolioLinkKind(e.target.value)}>
                   <option value="repository">Selecionar Repo</option>
                   <option value="web_app">Aplicacao web</option>
                   <option value="prototype">Figma/prototipo</option>
@@ -262,25 +263,25 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
             </div>
             <strong className="composer-tech-title">Tecnologias & tags</strong>
             <div className="composer-techs">
-              {PortfólioTags.map(tag => (
-                <button type="button" key={tag} onClick={() => setPortfólioTags(prev => prev.filter(item => item !== tag))}>
+              {portfolioTags.map(tag => (
+                <button type="button" key={tag} onClick={() => setPortfolioTags(prev => prev.filter(item => item !== tag))}>
                   {tag} x
                 </button>
               ))}
               <input
-                value={PortfólioTagInput}
-                onChange={e => setPortfólioTagInput(e.target.value)}
+                value={portfolioTagInput}
+                onChange={e => setPortfolioTagInput(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    addPortfólioTag(PortfólioTagInput);
+                    addPortfolioTag(portfolioTagInput);
                   }
                 }}
                 placeholder="+ tecnologia"
               />
-              <button type="button" className="composer-add-tag" onClick={() => addPortfólioTag(PortfólioTagInput)}>+ Adicionar</button>
+              <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-Portfólio-help">A vitrine mostra apenas fatos que você documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (até 1MB).</span>
+            <span className="composer-portfolio-help">A vitrine mostra apenas fatos que você documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (até 1MB).</span>
           </div>
         )}
         <input
@@ -315,9 +316,9 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           <button
             className="btn btn-primary btn-sm composer-submit-btn"
             onClick={submit}
-            disabled={submitting || (!text.trim() && !file && !(isPortfólioMode && PortfólioLink.trim()))}
+            disabled={submitting || (!text.trim() && !file && !(isPortfolioMode && (portfolioTitle.trim() || portfolioLink.trim())))}
           >
-            {submitting ? 'Publicando...' : (isPortfólioMode ? 'Postar Case' : 'Postar')}
+            {submitting ? 'Publicando...' : (isPortfolioMode ? 'Postar Case' : 'Postar')}
           </button>
         </div>
       </div>

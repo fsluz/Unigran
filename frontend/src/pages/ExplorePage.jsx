@@ -5,6 +5,7 @@ import PostDetailModal from '../components/post/PostDetailModal';
 import { fetchComments, fetchPosts } from '../services/posts';
 
 export default function ExplorePage({ onOpenProfile }) {
+  const EXPLORE_BATCH_SIZE = 20;
   const { token } = useAuth();
   const [posts, setPosts] = useState([]);
   const [openPost, setOpenPost] = useState(null);
@@ -20,7 +21,7 @@ export default function ExplorePage({ onOpenProfile }) {
   };
 
   const loadExplore = useCallback(async (nextPage = 1, append = false) => {
-    const limit = 30;
+    const limit = EXPLORE_BATCH_SIZE;
     if (append) setLoadingMore(true);
     else setLoading(true);
 
@@ -28,14 +29,14 @@ export default function ExplorePage({ onOpenProfile }) {
       let currentPage = nextPage;
       let lastBatch = [];
       const mediaPosts = [];
-      for (let rounds = 0; rounds < 3 && mediaPosts.length < 24; rounds += 1) {
+      for (let rounds = 0; rounds < 4 && mediaPosts.length < EXPLORE_BATCH_SIZE; rounds += 1) {
         lastBatch = await fetchPosts(token, { page: currentPage, limit, feed: 'explore' });
         mediaPosts.push(...(lastBatch || []).filter(post => post.media?.url));
         currentPage += 1;
         if (!lastBatch?.length || lastBatch.length < limit) break;
       }
 
-      setPosts(prev => append ? mergePosts(prev, mediaPosts) : mediaPosts);
+      setPosts(prev => append ? mergePosts(prev, mediaPosts.slice(0, EXPLORE_BATCH_SIZE)) : mediaPosts.slice(0, EXPLORE_BATCH_SIZE));
       setPage(currentPage - 1);
       setHasMore(Boolean(lastBatch?.length >= limit));
     } catch {
@@ -66,7 +67,7 @@ export default function ExplorePage({ onOpenProfile }) {
     <div className="page-scroll">
       <Topbar title="Explorar" />
       <div className="explore-page">
-        <p className="explore-intro">Posts e vídeos recomendados para você — estilo descoberta.</p>
+        <p className="explore-intro">Posts e vídeos recomendados para você, em lotes de 20 mídias.</p>
         {loading && <div className="explore-grid skeleton"><div /><div /><div /><div /></div>}
         {!loading && posts.length === 0 && (
           <div className="explore-empty">Nada para explorar ainda. Siga mais pessoas ou volte depois.</div>

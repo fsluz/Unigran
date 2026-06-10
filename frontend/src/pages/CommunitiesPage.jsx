@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import Topbar from '../components/layout/Topbar';
@@ -34,6 +34,7 @@ function normalizeCommunity(item, index = 0) {
 }
 
 export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId, onClearInitial }) {
+  const COMMUNITY_BATCH_SIZE = 20;
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const [communities, setCommunities] = useState([]);
@@ -48,6 +49,8 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', type: 'public' });
   const [manageForm, setManageForm] = useState({ description: '', picture: '' });
+  const [visibleCommunityCount, setVisibleCommunityCount] = useState(COMMUNITY_BATCH_SIZE);
+  const communityLoadMoreRef = useRef(null);
 
   const canManage = ['admin', 'moderator'].includes(activeCommunity?.role) || hasPermission(user, 'posts:moderate');
 
@@ -73,6 +76,27 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
     if (filter === 'private') return communities.filter(c => c.type === 'private');
     return communities;
   }, [communities, filter]);
+  const visibleCommunities = useMemo(
+    () => filtered.slice(0, visibleCommunityCount),
+    [filtered, visibleCommunityCount],
+  );
+  const hasMoreCommunities = visibleCommunityCount < filtered.length;
+
+  useEffect(() => {
+    setVisibleCommunityCount(COMMUNITY_BATCH_SIZE);
+  }, [filter, communities.length]);
+
+  useEffect(() => {
+    const node = communityLoadMoreRef.current;
+    if (!node || !hasMoreCommunities || activeCommunity) return undefined;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisibleCommunityCount(count => Math.min(count + COMMUNITY_BATCH_SIZE, filtered.length));
+      }
+    }, { rootMargin: '360px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeCommunity, filtered.length, hasMoreCommunities]);
 
   const loadCommunityData = async (community) => {
     setActiveCommunity(community);
@@ -368,7 +392,7 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
         </div>
 
         <div className="community-card-grid">
-          {filtered.map(com => (
+          {visibleCommunities.map(com => (
             <article key={com.id} className="panel-card community-list-card">
               <button className="community-list-head" onClick={() => loadCommunityData(com)}>
                 <Avatar size={50} src={com.picture || null} name={com.name} initials={com.icon} />
@@ -386,6 +410,9 @@ export default function CommunitiesPage({ onOpenProfile, initialOpenCommunityId,
               </div>
             </article>
           ))}
+        </div>
+        <div ref={communityLoadMoreRef} className="community-load-more">
+          {hasMoreCommunities ? 'Carregando mais comunidades...' : filtered.length > COMMUNITY_BATCH_SIZE ? 'Fim das comunidades.' : ''}
         </div>
       </div>
 

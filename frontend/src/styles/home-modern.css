@@ -1358,3 +1358,472 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* User-request polish: calmer palette, spacious comments, stable composer and batched lists */
+.post-composer,
+.home-page .post-composer,
+.community-feed .post-composer {
+  border-radius: 22px !important;
+  border: 1px solid rgba(72, 104, 157, .26) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, .14), transparent 32%),
+    linear-gradient(180deg, rgba(8, 18, 36, .92), rgba(5, 12, 26, .94)) !important;
+  box-shadow: 0 22px 68px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255,255,255,.045) !important;
+  overflow: hidden !important;
+}
+
+.post-composer::before,
+.home-page .post-composer::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, .82), rgba(34, 211, 238, .72), rgba(59, 130, 246, .68)) !important;
+}
+
+.post-composer .composer-row,
+.home-page .post-composer .composer-row {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+.post-composer .composer-editor,
+.post-composer .composer-textarea,
+.home-page .post-composer .composer-editor,
+.home-page .post-composer .composer-textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.post-composer .composer-textarea,
+.home-page .post-composer .composer-textarea {
+  min-height: 92px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(72, 104, 157, .24) !important;
+  background: rgba(3, 10, 22, .58) !important;
+  color: #edf6ff !important;
+  line-height: 1.55 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.post-composer .composer-textarea:focus,
+.home-page .post-composer .composer-textarea:focus {
+  border-color: rgba(34, 211, 238, .45) !important;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, .12), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+
+.post-composer .composer-footer,
+.home-page .post-composer .composer-footer {
+  display: grid !important;
+  grid-template-columns: minmax(118px, auto) repeat(4, 44px) minmax(120px, 1fr) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  margin-left: 66px !important;
+}
+
+.post-composer .composer-mode-select,
+.post-composer .composer-btn,
+.home-page .post-composer .composer-mode-select,
+.home-page .post-composer .composer-btn {
+  height: 42px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(72, 104, 157, .26) !important;
+  background: rgba(8, 18, 36, .68) !important;
+  color: #c8d8ee !important;
+  box-shadow: none !important;
+}
+
+.post-composer .composer-mode-select:hover,
+.post-composer .composer-btn:hover,
+.home-page .post-composer .composer-mode-select:hover,
+.home-page .post-composer .composer-btn:hover {
+  color: #eff8ff !important;
+  border-color: rgba(34, 211, 238, .42) !important;
+  background: rgba(14, 165, 233, .12) !important;
+  transform: translateY(-1px);
+}
+
+.post-composer .composer-submit-wrap,
+.home-page .post-composer .composer-submit-wrap {
+  justify-self: end !important;
+}
+
+.post-composer .composer-submit-btn,
+.home-page .post-composer .composer-submit-btn {
+  min-width: 116px !important;
+  height: 42px !important;
+  border-radius: 14px !important;
+  color: #03101d !important;
+  background: linear-gradient(135deg, #67e8f9 0%, #38bdf8 48%, #60a5fa 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 14px 30px rgba(14, 165, 233, .22) !important;
+}
+
+.post-composer .composer-submit-btn:disabled,
+.home-page .post-composer .composer-submit-btn:disabled {
+  color: rgba(203, 213, 225, .55) !important;
+  background: rgba(30, 41, 59, .72) !important;
+  box-shadow: none !important;
+}
+
+.post-composer.is-portfolio,
+.home-page .post-composer.is-portfolio {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, .16), transparent 34%),
+    radial-gradient(circle at 100% 10%, rgba(16, 185, 129, .08), transparent 30%),
+    linear-gradient(180deg, rgba(8, 18, 36, .94), rgba(5, 12, 26, .96)) !important;
+}
+
+.post-composer.is-portfolio .composer-footer,
+.home-page .post-composer.is-portfolio .composer-footer {
+  grid-template-columns: minmax(118px, auto) repeat(4, 44px) minmax(120px, 1fr) !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-panel,
+.home-page .post-composer.is-portfolio .composer-portfolio-panel {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr) !important;
+  gap: 14px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(72, 104, 157, .22) !important;
+  background: rgba(3, 10, 22, .38) !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-title,
+.home-page .post-composer.is-portfolio .composer-portfolio-title {
+  grid-column: 1 / 2 !important;
+}
+
+.post-composer.is-portfolio .composer-portfolio-grid,
+.home-page .post-composer.is-portfolio .composer-portfolio-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .55fr) !important;
+  gap: 12px !important;
+}
+
+.post-composer .composer-portfolio-field,
+.post-composer .composer-repo-select {
+  display: grid !important;
+  gap: 7px !important;
+}
+
+.post-composer .composer-portfolio-field span,
+.post-composer .composer-repo-select span,
+.post-composer .composer-tech-title {
+  color: #9db4d3 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase !important;
+}
+
+.post-composer .composer-portfolio-field input,
+.post-composer .composer-repo-select select,
+.post-composer .composer-techs input {
+  min-height: 42px !important;
+  border-radius: 13px !important;
+  border: 1px solid rgba(72, 104, 157, .28) !important;
+  background: rgba(8, 18, 36, .72) !important;
+  color: #edf6ff !important;
+  padding: 10px 12px !important;
+}
+
+.post-composer .composer-techs {
+  grid-column: 2 / 3 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
+  gap: 8px !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  border: 1px dashed rgba(34, 211, 238, .26) !important;
+  background: rgba(14, 165, 233, .045) !important;
+}
+
+.post-composer .composer-tech-title {
+  grid-column: 2 / 3 !important;
+  margin-bottom: -8px !important;
+}
+
+.post-composer .composer-techs button,
+.post-composer .composer-add-tag {
+  border-radius: 999px !important;
+  border: 1px solid rgba(34, 211, 238, .24) !important;
+  background: rgba(14, 165, 233, .1) !important;
+  color: #bfefff !important;
+}
+
+.post-composer .composer-portfolio-help {
+  grid-column: 1 / -1 !important;
+  color: #8ea4c2 !important;
+  line-height: 1.55 !important;
+}
+
+.portfolio-post-card,
+.post-card-model .portfolio-post-card {
+  grid-template-columns: minmax(0, 1fr) !important;
+  margin: 12px 22px 22px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(72, 104, 157, .26) !important;
+  background: linear-gradient(180deg, rgba(8,18,36,.72), rgba(5,12,26,.9)) !important;
+}
+
+.portfolio-post-preview {
+  min-height: 210px !important;
+  border-bottom: 1px solid rgba(72, 104, 157, .22) !important;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(34, 211, 238, .18), transparent 34%),
+    linear-gradient(135deg, rgba(8,18,36,.96), rgba(11,31,51,.92)) !important;
+}
+
+.portfolio-post-preview::after {
+  display: none !important;
+}
+
+.portfolio-post-body {
+  padding: 20px 22px 22px !important;
+}
+
+.portfolio-post-label,
+.post-detail-portfolio-kicker {
+  color: #8deaff !important;
+  background: rgba(14, 165, 233, .09) !important;
+  border-color: rgba(34, 211, 238, .22) !important;
+}
+
+.portfolio-post-body h3,
+.post-detail-portfolio-body h3 {
+  color: #f4f9ff !important;
+  font-size: clamp(20px, 2vw, 28px) !important;
+}
+
+.portfolio-post-description,
+.post-detail-portfolio-body p {
+  color: #c4d2e6 !important;
+}
+
+.portfolio-post-link,
+.portfolio-case-link,
+.post-detail-portfolio-actions a {
+  background: rgba(8,18,36,.72) !important;
+  border: 1px solid rgba(72,104,157,.28) !important;
+  color: #e9f7ff !important;
+}
+
+.post-card-model {
+  border-color: rgba(72, 104, 157, .24) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, .07), transparent 30%),
+    linear-gradient(180deg, rgba(8, 18, 36, .86), rgba(5, 12, 26, .94)) !important;
+}
+
+.post-card-model .post-media-wrap {
+  display: grid !important;
+  place-items: center !important;
+  background: rgba(3, 10, 22, .7) !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+}
+
+.post-card-model .post-media-wrap video,
+.post-card-model .post-media-wrap img {
+  width: 100% !important;
+  max-height: 460px !important;
+  object-fit: contain !important;
+  background: rgba(0,0,0,.78) !important;
+}
+
+.modal-box--post-detail {
+  max-width: min(1240px, calc(100vw - 28px)) !important;
+  border-color: rgba(72, 104, 157, .34) !important;
+}
+
+.post-detail-modal {
+  grid-template-columns: minmax(0, 1.28fr) minmax(430px, .9fr) !important;
+}
+
+.post-detail-comments-list {
+  gap: 14px !important;
+  padding: 2px 18px 18px !important;
+}
+
+.post-detail-comment-card,
+.post-detail-comment-card[class*="depth-"] {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  background: rgba(8, 18, 36, .58) !important;
+  border-color: rgba(72, 104, 157, .24) !important;
+}
+
+.post-detail-comment-card.is-nested,
+.post-detail-comment-card.is-nested.depth-1,
+.post-detail-comment-card.is-nested.depth-2 {
+  margin-top: 12px !important;
+  margin-left: -54px !important;
+  width: calc(100% + 54px) !important;
+  background: rgba(3, 10, 22, .34) !important;
+}
+
+.post-detail-comment-card.is-nested::before {
+  left: 18px !important;
+  top: -12px !important;
+  bottom: auto !important;
+  height: 12px !important;
+  background: rgba(34, 211, 238, .3) !important;
+}
+
+.post-detail-comment-top {
+  align-items: flex-start !important;
+  margin-bottom: 8px !important;
+}
+
+.post-detail-comment-author {
+  font-size: 14px !important;
+  color: #f2f8ff !important;
+}
+
+.post-detail-comment-text {
+  color: #d7e4f5 !important;
+  font-size: 14px !important;
+  line-height: 1.68 !important;
+}
+
+.post-detail-comment-actions {
+  gap: 16px !important;
+  margin-top: 12px !important;
+}
+
+.comment-inline-reply {
+  margin-top: 12px !important;
+  padding: 10px !important;
+}
+
+.zuni-page {
+  display: grid !important;
+  place-items: start center !important;
+}
+
+.zuni-feed {
+  width: min(100%, 980px) !important;
+  margin-inline: auto !important;
+}
+
+.zuni-reel {
+  justify-content: center !important;
+}
+
+.zuni-video-stage {
+  display: grid !important;
+  place-items: center !important;
+  background: #020617 !important;
+}
+
+.zuni-video-stage video {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  margin: auto !important;
+}
+
+.community-load-more,
+.explore-load-more {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+[data-theme="light"] .post-composer,
+[data-theme="light"] .home-page .post-composer,
+[data-theme="light"] .community-feed .post-composer,
+[data-theme="light"] .post-card-model {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 165, 233, .1), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,251,255,.94)) !important;
+  border-color: rgba(37, 99, 235, .14) !important;
+  box-shadow: 0 18px 52px rgba(15, 23, 42, .08) !important;
+}
+
+[data-theme="light"] .post-composer .composer-textarea,
+[data-theme="light"] .post-composer .composer-mode-select,
+[data-theme="light"] .post-composer .composer-btn,
+[data-theme="light"] .post-composer .composer-portfolio-field input,
+[data-theme="light"] .post-composer .composer-repo-select select,
+[data-theme="light"] .post-composer .composer-techs input {
+  color: #0f1b2d !important;
+  background: rgba(255,255,255,.82) !important;
+  border-color: rgba(37, 99, 235, .14) !important;
+}
+
+[data-theme="light"] .portfolio-post-card,
+[data-theme="light"] .post-detail-portfolio {
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,251,255,.94)) !important;
+  border-color: rgba(37, 99, 235, .14) !important;
+}
+
+[data-theme="light"] .portfolio-post-body h3,
+[data-theme="light"] .post-detail-portfolio-body h3,
+[data-theme="light"] .post-detail-comment-author {
+  color: #0f1b2d !important;
+}
+
+[data-theme="light"] .portfolio-post-description,
+[data-theme="light"] .post-detail-portfolio-body p,
+[data-theme="light"] .post-detail-comment-text {
+  color: #40536f !important;
+}
+
+[data-theme="light"] .post-detail-comment-card,
+[data-theme="light"] .post-detail-comment-card[class*="depth-"] {
+  background: rgba(255,255,255,.78) !important;
+  border-color: rgba(37, 99, 235, .12) !important;
+}
+
+@media (max-width: 760px) {
+  .post-composer .composer-row,
+  .home-page .post-composer .composer-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .post-composer .composer-footer,
+  .home-page .post-composer .composer-footer,
+  .post-composer.is-portfolio .composer-footer,
+  .home-page .post-composer.is-portfolio .composer-footer {
+    margin-left: 0 !important;
+    grid-template-columns: minmax(118px, 1fr) repeat(4, 42px) !important;
+  }
+
+  .post-composer.is-portfolio .composer-portfolio-panel,
+  .home-page .post-composer.is-portfolio .composer-portfolio-panel,
+  .post-composer.is-portfolio .composer-portfolio-grid,
+  .home-page .post-composer.is-portfolio .composer-portfolio-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .post-composer .composer-tech-title,
+  .post-composer .composer-techs,
+  .post-composer .composer-portfolio-help {
+    grid-column: 1 / -1 !important;
+  }
+
+  .post-composer .composer-submit-wrap,
+  .home-page .post-composer .composer-submit-wrap {
+    grid-column: 1 / -1 !important;
+    justify-self: stretch !important;
+  }
+
+  .post-detail-comment-card,
+  .post-detail-comment-card[class*="depth-"] {
+    grid-template-columns: 36px minmax(0, 1fr) !important;
+    padding: 12px !important;
+  }
+}
