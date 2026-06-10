@@ -70,8 +70,76 @@
   --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #4f46e5 58%, #00e5ff 100%);
   --gradient-soft: linear-gradient(180deg, rgba(12,11,20,0.94), rgba(5,0,18,0.86));
 }
+ 
+ /* Neon utilities and stronger component treatments */
+ .neon-glow {
+   position: relative;
+ }
+ .neon-glow::after {
+   content: '';
+   position: absolute;
+   inset: 0;
+   border-radius: inherit;
+   box-shadow: 0 6px 30px var(--accent-glow), 0 0 40px color-mix(in srgb, var(--accent) 40%, transparent);
+   pointer-events: none;
+   opacity: 0.95;
+ }
 
-body {
+ .topbar {
+   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 28%, transparent), transparent 30%), var(--gradient-brand);
+   border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+   box-shadow: 0 6px 30px rgba(0,0,0,0.6), 0 0 40px var(--accent-glow);
+ }
+
+ .card,
+ .panel-card,
+ .post-card {
+   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--card);
+   box-shadow: 0 8px 40px rgba(2,1,8,0.6), 0 0 28px color-mix(in srgb, var(--accent) 12%, transparent);
+   transition: transform var(--motion), box-shadow var(--motion);
+ }
+
+ .card:hover,
+ .post-card:hover {
+   transform: translateY(-6px);
+   box-shadow: 0 24px 80px rgba(2,1,8,0.72), 0 0 48px color-mix(in srgb, var(--accent) 20%, transparent);
+ }
+
+ .btn-primary,
+ .composer-submit-btn,
+ .chat-send-btn,
+ .profile-share-field button,
+ .zuni-comment-form button {
+   background: var(--gradient-brand) !important;
+   color: #fff !important;
+   box-shadow: 0 18px 48px color-mix(in srgb, var(--accent) 34%, transparent), 0 6px 40px var(--accent-glow);
+   text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+ }
+
+ .btn-primary:hover:not(:disabled),
+ .composer-submit-btn:hover:not(:disabled),
+ .chat-send-btn:hover:not(:disabled),
+ .profile-share-field button:hover:not(:disabled),
+ .zuni-comment-form button:hover:not(:disabled) {
+   transform: translateY(-2px);
+   box-shadow: 0 26px 64px color-mix(in srgb, var(--accent) 44%, transparent), 0 10px 80px var(--accent-glow);
+ }
+
+ .topbar-user-chip,
+ .topbar-profile-menu,
+ .notif-popout {
+   border: 1px solid color-mix(in srgb, var(--accent) 10%, var(--border));
+   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), color-mix(in srgb, var(--card) 88%, transparent);
+ }
+
+ .brand-logo {
+   filter: drop-shadow(0 6px 20px var(--accent-glow));
+ }
+
+ .glow-outline {
+   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 24%, transparent);
+ }
   background:
     radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 30%),
     radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent-3) 11%, transparent), transparent 28%),

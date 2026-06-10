@@ -134,7 +134,7 @@ function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dark, setDark]         = useState(() => {
     const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : false;
+    return saved ? saved === 'dark' : true;
   });
   const [termsOpen, setTermsOpen] = useState(() => window.location.pathname === '/terms' || window.location.pathname === '/termos');
 
