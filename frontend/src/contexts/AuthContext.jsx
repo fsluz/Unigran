@@ -36,6 +36,8 @@ export function AuthProvider({ children }) {
         if (data.token) {
           setToken(data.token);
           if (storedToken) localStorage.setItem(rememberTokenKey, data.token);
+        } else if (data.user && storedToken) {
+          setToken(storedToken);
         }
       })
       .catch(() => {

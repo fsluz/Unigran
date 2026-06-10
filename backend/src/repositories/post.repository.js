@@ -77,9 +77,7 @@ async function loadFollowingSet(username) {
       following(follower: $me, page: $page);
     fetch { "followed_username": $followed_username };
   `);
-  const result = new Set(rows.map(row => row.followed_username).filter(Boolean));
-  console.log('[DEBUG followingSet] username:', username, '-> seguindo:', [...result]);
-  return result;
+  return new Set(rows.map(row => row.followed_username).filter(Boolean));
 }
 
 async function loadLikedKeywords(username) {
@@ -282,7 +280,22 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   if (cached) return cached;
   const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
   const safeOffset = Math.max(0, Number(offset) || 0);
-  const dbLimit = Math.max(safeLimit * 6, safeOffset + safeLimit * 4, 80);
+  const dbLimitByFeed = {
+    zuni: 800,
+    explore: 600,
+    trending: 500,
+    following: 500,
+  };
+  const dbLimit = Math.min(
+    Math.max(dbLimitByFeed[feed] || 300, safeLimit * 8, safeOffset + safeLimit * 8),
+    feed === 'zuni' ? 1200 : 800,
+  );
+  const followingMatch = feed === 'following' && viewerUsername
+    ? `
+      $viewer isa person, has username "${typeqlLiteral(viewerUsername)}";
+      following(follower: $viewer, page: $user);
+    `
+    : '';
 
   // FIXED: removed nested `fetch` subquery; comments are fetched separately with a TypeDB 3.x pipeline.
   // FIXED: fetched post text/media explicitly so Zuni posts can be detected from the #Zuni marker.
@@ -295,6 +308,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
       posting(post: $post, page: $user);
       $user isa person, has username $username, has name $user_name;
+      ${followingMatch}
 
       try { $user has profile-picture $user_profile_pic; };
       try { $user has cover-picture $user_cover_pic; };
@@ -323,14 +337,13 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     };
   `);
   const rowPostIds = rows.map(row => row?.post_id).filter(Boolean);
-  const [followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap, userCommunitySet] = await Promise.all([
+  const [followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap] = await Promise.all([
     loadFollowingSet(viewerUsername),
     loadLikedKeywords(viewerUsername),
     loadPostMetrics(viewerUsername, rowPostIds),
     loadCommentsMap(rowPostIds),
     loadRepostOriginalMap(rowPostIds),
     loadPostCommunityMap(rowPostIds),
-    loadUserCommunitySet(viewerUsername),
   ]);
   
 
@@ -352,10 +365,6 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       const hasMedia = Boolean(imageUrl || videoUrl);
       return hasMedia && authorUsername !== viewerUsername;
     }
-    const textWords = new Set([
-      ...(String(postText).toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),
-      ...String(postText).toLowerCase().split(/[^a-z0-9\u00c0-\u017f]+/).filter(Boolean),
-    ]);
     return authorUsername === viewerUsername || followingSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
@@ -452,10 +461,6 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       return String(b.time || '').localeCompare(String(a.time || ''));
     })
     .slice(safeOffset, safeOffset + safeLimit);
-
-  if (feed === 'zuni') {
-    console.log('[zuni feed]', { viewer: viewerUsername || 'anon', total: normalized.length, returned: posts.length, offset, limit });
-  }
 
   setCached(key, posts);
   return posts;

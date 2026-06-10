@@ -308,7 +308,7 @@ export async function decryptMessage(conversationId, message, username) {
   } catch {
     return {
       ...message,
-      content: 'Mensagem criptografada. Chave indisponivel neste dispositivo.',
+      content: 'Mensagem privada',
       media: null,
       encrypted: true,
       locked: true,

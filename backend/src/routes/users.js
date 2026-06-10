@@ -46,14 +46,6 @@ readQuery(`
     `) : Promise.resolve([]),
   ]);
 
-  console.log('[DEBUG STATS]', { followingRows, followingCount: followingRows.length });
-  return {
-    posts: postRows.length,
-    followers: followerRows.length,
-    following: followingRows.length,
-    viewerFollowing: viewerRows.length > 0,
-  };
-
   return {
     posts: postRows.length,
     followers: followerRows.length,
@@ -160,9 +152,6 @@ router.get('/:id/portfolio', auth, async (req, res) => {
     if (visibility === 'private' && !isOwner && !isAdmin && !stats.viewerFollowing) {
       return res.json({ portfolio: [], private: true });
     }
-    console.log('[DEBUG PROFILE RESPONSE] stats:', stats);
-
-
     const [portfolio, resume, analysis] = await Promise.all([
       listPublicPortfolioItems(req.params.id),
       getPortfolioResume(req.params.id),

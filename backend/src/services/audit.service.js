@@ -8,7 +8,11 @@ import { pgQuery, getClient } from '../db/supabase.js';
 // ---------------------------------------------------------------------------
 let tableReady = false;
 const AUDIT_DB_TIMEOUT_MS = parseInt(process.env.AUDIT_DB_TIMEOUT_MS || '3500', 10);
+const AUDIT_QUEUE_MAX = parseInt(process.env.AUDIT_QUEUE_MAX || '1000', 10);
+const AUDIT_RETRY_DELAY_MS = parseInt(process.env.AUDIT_RETRY_DELAY_MS || '750', 10);
 let auditDbMutedUntil = 0;
+let auditWorkerRunning = false;
+const auditQueue = [];
 
 function withTimeout(promise, ms, label) {
   let timer;
@@ -63,6 +67,84 @@ function writeAuditFallback(entry) {
   });
 }
 
+function auditValues(entry) {
+  return [
+    entry.id,
+    entry.timestamp,
+    entry.level,
+    entry.category,
+    entry.action,
+    entry.actor,
+    entry.target,
+    entry.ip,
+    JSON.stringify(entry.meta),
+  ];
+}
+
+async function insertAudit(entry) {
+  await withTimeout(
+    ensureAuditTable()
+      .then(() => pgQuery(
+        `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        auditValues(entry),
+      )),
+    AUDIT_DB_TIMEOUT_MS,
+    'audit supabase',
+  );
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function drainAuditQueue() {
+  while (auditQueue.length) {
+    const entry = auditQueue.shift();
+    if (Date.now() < auditDbMutedUntil) {
+      writeAuditFallback(entry);
+      continue;
+    }
+
+    let saved = false;
+    for (let attempt = 0; attempt < 2 && !saved; attempt += 1) {
+      try {
+        await insertAudit(entry);
+        saved = true;
+      } catch (err) {
+        if (attempt === 0) await wait(AUDIT_RETRY_DELAY_MS);
+        else {
+          logAuditDbError(err);
+          writeAuditFallback(entry);
+        }
+      }
+    }
+  }
+
+  auditWorkerRunning = false;
+  if (auditQueue.length) scheduleAuditDrain();
+}
+
+function scheduleAuditDrain() {
+  if (auditWorkerRunning) return;
+  auditWorkerRunning = true;
+  setTimeout(() => {
+    drainAuditQueue().catch(err => {
+      auditWorkerRunning = false;
+      logAuditDbError(err);
+    });
+  }, 0);
+}
+
+function enqueueAudit(entry) {
+  if (auditQueue.length >= AUDIT_QUEUE_MAX) {
+    const dropped = auditQueue.shift();
+    writeAuditFallback({ ...dropped, meta: { ...(dropped.meta || {}), dropped_from_queue: true } });
+  }
+  auditQueue.push(entry);
+  scheduleAuditDrain();
+}
+
 // ---------------------------------------------------------------------------
 // Gravar log
 // ---------------------------------------------------------------------------
@@ -87,22 +169,8 @@ export function auditLog({
     meta: meta || {},
   };
 
-  // Grava no Supabase de forma assíncrona (fire-and-forget)
-  withTimeout(
-    ensureAuditTable()
-      .then(() => pgQuery(
-        `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [entry.id, entry.timestamp, entry.level, entry.category, entry.action,
-         entry.actor, entry.target, entry.ip, JSON.stringify(entry.meta)]
-      )),
-    AUDIT_DB_TIMEOUT_MS,
-    'audit supabase',
-  )
-    .catch(err => {
-      logAuditDbError(err);
-      writeAuditFallback(entry);
-    });
+  // Grava por fila. Supabase lento nao trava resposta.
+  enqueueAudit(entry);
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(

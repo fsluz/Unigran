@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Topbar from '../components/layout/Topbar';
 import PostDetailModal from '../components/post/PostDetailModal';
@@ -9,14 +9,58 @@ export default function ExplorePage({ onOpenProfile }) {
   const [posts, setPosts] = useState([]);
   const [openPost, setOpenPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const moreRef = useRef(null);
+
+  const mergePosts = (current, next) => {
+    const seen = new Set(current.map(post => post.id));
+    return [...current, ...next.filter(post => post?.id && !seen.has(post.id))];
+  };
+
+  const loadExplore = useCallback(async (nextPage = 1, append = false) => {
+    const limit = 30;
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+
+    try {
+      let currentPage = nextPage;
+      let lastBatch = [];
+      const mediaPosts = [];
+      for (let rounds = 0; rounds < 3 && mediaPosts.length < 24; rounds += 1) {
+        lastBatch = await fetchPosts(token, { page: currentPage, limit, feed: 'explore' });
+        mediaPosts.push(...(lastBatch || []).filter(post => post.media?.url));
+        currentPage += 1;
+        if (!lastBatch?.length || lastBatch.length < limit) break;
+      }
+
+      setPosts(prev => append ? mergePosts(prev, mediaPosts) : mediaPosts);
+      setPage(currentPage - 1);
+      setHasMore(Boolean(lastBatch?.length >= limit));
+    } catch {
+      if (!append) setPosts([]);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    setLoading(true);
-    fetchPosts(token, { page: 1, limit: 30, feed: 'explore' })
-      .then(items => setPosts((items || []).filter(p => p.media?.url)))
-      .catch(() => setPosts([]))
-      .finally(() => setLoading(false));
-  }, [token]);
+    loadExplore(1, false);
+  }, [loadExplore]);
+
+  useEffect(() => {
+    if (!moreRef.current) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && hasMore && !loading && !loadingMore) {
+        loadExplore(page + 1, true);
+      }
+    }, { rootMargin: '360px' });
+    observer.observe(moreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loadExplore, loading, loadingMore, page]);
 
   return (
     <div className="page-scroll">
@@ -48,6 +92,9 @@ export default function ExplorePage({ onOpenProfile }) {
               </div>
             </article>
           ))}
+        </div>
+        <div ref={moreRef} className="explore-load-more">
+          {loadingMore ? 'Carregando mais...' : hasMore ? '' : 'Fim.'}
         </div>
       </div>
       {openPost && (

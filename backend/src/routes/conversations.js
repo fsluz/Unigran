@@ -164,6 +164,7 @@ router.get('/', auth, async (req, res) => {
           message-delivery(conversation: $conv, message: $m);
           $m isa message, has message-text $text, has creation-timestamp $ts;
         sort $ts desc;
+        limit 120;
         fetch { "text": $text, "created_at": $ts };
       `).catch(() => []);
       const lastMessage = messageRows[0] ? unpackMessageText(messageRows[0].text) : null;
