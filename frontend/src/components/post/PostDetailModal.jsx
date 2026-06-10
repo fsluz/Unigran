@@ -79,27 +79,6 @@ function VerifiedIcon() {
   );
 }
 
-function cleanPortfolioSummary(text = '', link = '') {
-  return String(text || '')
-    .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
-    .replace(link, '')
-    .replace(/\/portfolio\/[^\s]+/gi, '')
-    .replace(/#PortfolioAcademico/gi, '')
-    .replace(/^Tecnologias:\s*.+$/gim, '')
-    .replace(/(?:\s*#[\p{L}\p{N}_-]+)+\s*$/u, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function extractPortfolioTags(content = '') {
-  const line = String(content).match(/Tecnologias:\s*(.+)/i)?.[1] || '';
-  const explicit = line.split(',').map(tag => tag.trim()).filter(Boolean);
-  const hashtags = [...String(content).matchAll(/#([\p{L}\p{N}_-]+)/gu)]
-    .map(match => match[1])
-    .filter(tag => tag.toLowerCase() !== 'portfolioacademico');
-  return [...new Set([...explicit, ...hashtags])].slice(0, 8);
-}
-
 function getPortfolioPost(post) {
   if (post.portfolioItem) {
     const item = post.portfolioItem;
