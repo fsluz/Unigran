@@ -3,6 +3,27 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar } from '../ui';
 
+function ComposerModeIcon({ type }) {
+  const common = {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  };
+  if (type === 'portfolio') {
+    return <svg {...common}><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" /><path d="M3 12h18" /><path d="M10 12v2h4v-2" /></svg>;
+  }
+  if (type === 'zuni') {
+    return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="3" /><path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" /></svg>;
+  }
+  return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
+}
+
 export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?', allowMode = true, forcedPostType = null }) {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -138,6 +159,11 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     setPortfolioTags(prev => [...prev, clean].slice(0, 8));
     setPortfolioTagInput('');
   };
+  const composerModes = [
+    { id: 'portfolio', label: 'Portfólio' },
+    { id: 'zuni', label: 'Zuni' },
+    { id: 'post', label: 'Post' },
+  ];
   const formatSelection = (before, after = before, example = 'texto') => {
     const input = textInputRef.current;
     const start = input?.selectionStart ?? text.length;
@@ -220,15 +246,19 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
 
       <div className="composer-footer">
         {allowMode && (
-          <select
-            className="form-input composer-mode-select"
-            value={postMode}
-            onChange={e => setPostMode(e.target.value)}
-          >
-            <option value="post">Post</option>
-            <option value="zuni">Zuni</option>
-            <option value="portfolio">Portfólio</option>
-          </select>
+          <div className="composer-type-tabs" role="tablist" aria-label="Tipo de publicação">
+            {composerModes.map(mode => (
+              <button
+                key={mode.id}
+                type="button"
+                className={`composer-type-pill is-${mode.id} ${postMode === mode.id ? 'active' : ''}`}
+                onClick={() => setPostMode(mode.id)}
+              >
+                <ComposerModeIcon type={mode.id} />
+                <span>{mode.label}</span>
+              </button>
+            ))}
+          </div>
         )}
         {isPortfolioMode && (
           <div className="composer-portfolio-panel">

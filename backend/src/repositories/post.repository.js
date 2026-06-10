@@ -444,7 +444,10 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
 
   const posts = normalized
     .sort((a, b) => {
-      if (feed === 'trending' || feed === 'explore' || feed === 'zuni') {
+      if (feed === 'zuni') {
+        return String(b.time || '').localeCompare(String(a.time || ''));
+      }
+      if (feed === 'trending' || feed === 'explore') {
         const score = post => {
           const words = new Set([
             ...(String(post.content || '').toLowerCase().match(/#[a-z0-9_\u00c0-\u017f-]+/gi) || []).map(tag => tag.slice(1).toLowerCase()),

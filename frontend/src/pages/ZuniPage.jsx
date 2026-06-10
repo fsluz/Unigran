@@ -34,6 +34,7 @@ function ZuniIcon({ name, size = 20 }) {
 }
 
 export default function ZuniPage({ onOpenProfile }) {
+  const ZUNI_PAGE_SIZE = 12;
   const { token, user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [liked, setLiked] = useState({});
@@ -66,10 +67,10 @@ export default function ZuniPage({ onOpenProfile }) {
     if (loading) return;
     setLoading(true);
     try {
-      const loaded = await fetchPosts(token, { page: nextPage, limit: 8, feed: 'zuni' });
+      const loaded = await fetchPosts(token, { page: nextPage, limit: ZUNI_PAGE_SIZE, feed: 'zuni' });
       setPosts(prev => append ? [...prev, ...loaded] : loaded);
       setPage(nextPage);
-      setHasMore(loaded.length === 8);
+      setHasMore(loaded.length === ZUNI_PAGE_SIZE);
     } finally {
       setLoading(false);
     }
@@ -82,6 +83,14 @@ export default function ZuniPage({ onOpenProfile }) {
   useEffect(() => {
     if (!activePostId && posts[0]?.id) setActivePostId(posts[0].id);
   }, [activePostId, posts]);
+
+  useEffect(() => {
+    const index = posts.findIndex(post => post.id === activePostId);
+    if (index < 0) return;
+    if (hasMore && !loading && posts.length - index <= 4) {
+      loadPage(page + 1, true);
+    }
+  }, [activePostId, hasMore, loading, page, posts]);
 
   useEffect(() => {
     const refresh = () => loadPage(1, false);
@@ -125,13 +134,16 @@ export default function ZuniPage({ onOpenProfile }) {
   useEffect(() => {
     for (const [postId, video] of videoRefs.current.entries()) {
       if (!video) continue;
+      const index = posts.findIndex(post => post.id === postId);
+      const activeIndex = posts.findIndex(post => post.id === activePostId);
+      const isNearActive = index >= 0 && activeIndex >= 0 && Math.abs(index - activeIndex) <= 1;
       video.muted = muted;
       video.volume = volume;
-      video.preload = 'auto';
+      video.preload = isNearActive ? 'auto' : 'metadata';
       if (postId === activePostId) {
         const lastTime = videoTimesRef.current.get(postId);
         if (lastTime && Math.abs(video.currentTime - lastTime) > 1) video.currentTime = lastTime;
-        if (video.readyState < 2) video.load();
+        if (video.readyState < 2 && video.preload !== 'auto') video.load();
         video.play()
           .then(() => setPlaying(true))
           .catch(() => {
@@ -356,7 +368,7 @@ export default function ZuniPage({ onOpenProfile }) {
                     loop
                     muted={muted}
                     playsInline
-                    preload="auto"
+                    preload={post.id === activePostId ? 'auto' : 'metadata'}
                     onClick={toggleActivePlayback}
                     onPlay={() => post.id === activePostId && setPlaying(true)}
                     onPause={() => post.id === activePostId && setPlaying(false)}
