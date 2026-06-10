@@ -9,6 +9,7 @@ import './styles/portfolio-clean.css';
 import './styles/portal-refactor.css';
 import './styles/meu-caminho.css';
 import './styles/master-bi.css';
+import './styles/home-modern.css';
 import App from './App.jsx';
 
 createRoot(document.getElementById('root')).render(
