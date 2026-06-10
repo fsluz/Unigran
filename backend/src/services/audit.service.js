@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import { pgQuery, getClient } from '../db/supabase.js';
 
@@ -88,7 +89,10 @@ async function insertAudit(entry) {
         `INSERT INTO audit_logs (id, timestamp, level, category, action, actor, target, ip, meta)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         auditValues(entry),
-      )),
+      )).catch(err => {
+        if (err?.code === '23505') return;
+        throw err;
+      }),
     AUDIT_DB_TIMEOUT_MS,
     'audit supabase',
   );
@@ -158,7 +162,7 @@ export function auditLog({
   level  = 'INFO',
 }) {
   const entry = {
-    id:        `audit-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    id:        `audit-${randomUUID()}`,
     timestamp: new Date().toISOString(),
     level,
     category,
