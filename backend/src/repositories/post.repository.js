@@ -303,6 +303,9 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const zuniVideoMatch = feed === 'zuni'
     ? '$post has post-video $post_video;'
     : 'try { $post has post-video $post_video; };';
+  const zuniImageMatch = feed === 'zuni'
+    ? ''
+    : 'try { $post has post-image $post_image; };';
   const followingMatch = feed === 'following' && viewerUsername
     ? `
       $viewer isa person, has username "${typeqlLiteral(viewerUsername)}";
@@ -327,7 +330,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       try { $user has cover-picture $user_cover_pic; };
       try { $user has page-visibility $user_visibility; };
       try { $post has post-text $post_text; };
-      try { $post has post-image $post_image; };
+      ${zuniImageMatch}
       ${zuniVideoMatch}
     sort $post_ts desc;
     limit ${dbLimit};
