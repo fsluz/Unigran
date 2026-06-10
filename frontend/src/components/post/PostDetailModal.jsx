@@ -77,6 +77,54 @@ function VerifiedIcon() {
   );
 }
 
+function cleanPortfolioSummary(text = '', link = '') {
+  return String(text || '')
+    .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
+    .replace(link, '')
+    .replace(/\/portfolio\/[^\s]+/gi, '')
+    .replace(/#PortfolioAcademico/gi, '')
+    .replace(/^Tecnologias:\s*.+$/gim, '')
+    .replace(/(?:\s*#[\p{L}\p{N}_-]+)+\s*$/u, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function extractPortfolioTags(content = '') {
+  const line = String(content).match(/Tecnologias:\s*(.+)/i)?.[1] || '';
+  const explicit = line.split(',').map(tag => tag.trim()).filter(Boolean);
+  const hashtags = [...String(content).matchAll(/#([\p{L}\p{N}_-]+)/gu)]
+    .map(match => match[1])
+    .filter(tag => tag.toLowerCase() !== 'portfolioacademico');
+  return [...new Set([...explicit, ...hashtags])].slice(0, 8);
+}
+
+function getPortfolioPost(post) {
+  if (post.portfolioItem) {
+    const item = post.portfolioItem;
+    return {
+      title: item.title || 'Projeto de portfólio',
+      summary: cleanPortfolioSummary(item.summary || post.content || '', item.shareUrl || ''),
+      externalLink: item.externalUrl || '',
+      caseLink: item.shareUrl || '',
+      mediaUrl: item.mediaUrl || post.media?.url || '',
+      mediaType: item.mediaType || post.media?.resource_type || '',
+      tags: extractPortfolioTags(`${item.summary || ''}\n${post.content || ''}`),
+    };
+  }
+  const content = String(post.content || '');
+  if (!content.includes('#PortfolioAcademico')) return null;
+  const externalLink = (content.match(/https?:\/\/[^\s]+/i) || [])[0] || '';
+  return {
+    title: content.match(/portfolio academico:\s*(.+)/i)?.[1]?.split('\n')[0]?.trim() || 'Projeto de portfólio',
+    summary: cleanPortfolioSummary(content, externalLink),
+    externalLink,
+    caseLink: (content.match(/\/portfolio\/[^\s]+/i) || [])[0] || '',
+    mediaUrl: post.media?.url || '',
+    mediaType: post.media?.resource_type || '',
+    tags: extractPortfolioTags(content),
+  };
+}
+
 /* ── LikersModal centralizado ── */
 function LikersModal({ likers, loading, onClose, onOpenProfile }) {
   useEffect(() => {
@@ -244,6 +292,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     }
     : post.author;
   const embeds = useMemo(() => getEmbeds(post.content || ''), [post.content]);
+  const portfolio = useMemo(() => getPortfolioPost(post), [post]);
   const bodyText = useMemo(() => stripEmbedLinks(post.content || ''), [post.content]);
 
   const sortedComments = useMemo(() => {
@@ -334,7 +383,38 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
             </div>
           </header>
 
-          {bodyText && <div className="post-detail-body">{formatContent(bodyText)}</div>}
+          {portfolio && (
+            <div className="post-detail-portfolio">
+              <div className="post-detail-portfolio-preview">
+                {portfolio.mediaUrl && portfolio.mediaType !== 'video' ? (
+                  <img src={portfolio.mediaUrl} alt="" />
+                ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
+                  <video src={portfolio.mediaUrl} muted playsInline controls />
+                ) : (
+                  <div className="post-detail-portfolio-mock">
+                    <span /><span /><span />
+                    <i /><i /><i />
+                  </div>
+                )}
+              </div>
+              <div className="post-detail-portfolio-body">
+                <div className="post-detail-portfolio-kicker">Portfólio acadêmico</div>
+                <h3>{portfolio.title}</h3>
+                {portfolio.summary && <p>{portfolio.summary}</p>}
+                {portfolio.tags.length > 0 && (
+                  <div className="post-detail-portfolio-tags">
+                    {portfolio.tags.map(tag => <span key={tag}>{tag}</span>)}
+                  </div>
+                )}
+                <div className="post-detail-portfolio-actions">
+                  {portfolio.externalLink && <a href={portfolio.externalLink} target="_blank" rel="noreferrer">Abrir projeto</a>}
+                  {portfolio.caseLink && <a href={portfolio.caseLink}>Ver case</a>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {bodyText && !portfolio && <div className="post-detail-body">{formatContent(bodyText)}</div>}
 
           {embeds.length > 0 && (
             <div className="post-detail-embeds">

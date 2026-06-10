@@ -185,7 +185,7 @@ export function CommentRow({
             <time className="post-detail-comment-time">{relativeTime(comment.time)}</time>
             {menuItems.length > 0 && (
               <div className="comment-menu-wrap">
-                <button type="button" className="comment-dot-trigger" onClick={() => setMenuOpen(v => !v)} aria-label="Opcoes">···</button>
+                <button type="button" className="comment-dot-trigger" onClick={() => setMenuOpen(v => !v)} aria-label="Opções">...</button>
                 {menuOpen && <CommentMenu items={menuItems} onClose={() => setMenuOpen(false)} />}
               </div>
             )}
