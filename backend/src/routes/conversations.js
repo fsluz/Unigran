@@ -446,7 +446,7 @@ router.post('/:id/messages', auth, async (req, res) => {
           has message-id "${mid}",
           has message-text "${typeqlLiteral(payload)}",
           has creation-timestamp ${now};
-        message-delivery(conversation: $conv, message: $m);
+        $delivery isa message-delivery, links (conversation: $conv, message: $m);
     `);
     res.status(201).json({
       id: mid,

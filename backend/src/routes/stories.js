@@ -135,7 +135,7 @@ async function sendStoryCommentMessage({ actor, storyId, content }) {
         has message-id "${uuid()}",
         has message-text "${typeqlLiteral(messageText)}",
         has creation-timestamp ${typeqlDatetime()};
-      message-delivery(conversation: $conv, message: $m);
+      $delivery isa message-delivery, links (conversation: $conv, message: $m);
   `);
 }
 
