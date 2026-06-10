@@ -303,6 +303,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const zuniVideoMatch = feed === 'zuni'
     ? '$post has post-video $post_video;'
     : 'try { $post has post-video $post_video; };';
+  const zuniPostType = feed === 'zuni' ? 'video-post' : 'post';
   const followingMatch = feed === 'following' && viewerUsername
     ? `
       $viewer isa person, has username "${typeqlLiteral(viewerUsername)}";
