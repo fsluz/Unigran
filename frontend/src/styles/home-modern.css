@@ -2475,3 +2475,395 @@
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
+
+/* Screenshot-matched composer */
+.home-page .post-composer {
+  --composer-stroke: rgba(114, 137, 190, .24);
+  --composer-soft-stroke: rgba(114, 137, 190, .16);
+  --composer-panel: rgba(12, 24, 55, .5);
+  --composer-panel-strong: rgba(5, 13, 30, .52);
+  width: 100% !important;
+  padding: clamp(26px, 4vw, 60px) clamp(24px, 4vw, 60px) clamp(26px, 3.2vw, 48px) !important;
+  border-radius: clamp(24px, 3vw, 42px) !important;
+  border: 1px solid var(--composer-stroke) !important;
+  background:
+    radial-gradient(circle at 9% 15%, rgba(124, 58, 237, .2), transparent 28%),
+    radial-gradient(circle at 88% 20%, rgba(37, 99, 235, .12), transparent 34%),
+    linear-gradient(145deg, rgba(15, 25, 58, .96) 0%, rgba(9, 19, 44, .97) 54%, rgba(5, 13, 30, .98) 100%) !important;
+  box-shadow: 0 44px 120px rgba(0, 0, 0, .34), inset 0 1px 0 rgba(255,255,255,.045) !important;
+  overflow: hidden !important;
+}
+
+.home-page .post-composer::before {
+  display: none !important;
+}
+
+.home-page .post-composer .composer-row {
+  position: relative !important;
+  grid-template-columns: clamp(86px, 9vw, 132px) minmax(0, 1fr) !important;
+  gap: clamp(22px, 3.5vw, 48px) !important;
+  align-items: start !important;
+}
+
+.home-page .post-composer .composer-row::after {
+  content: '' !important;
+  position: absolute !important;
+  left: clamp(62px, 6.8vw, 100px) !important;
+  top: clamp(58px, 6.2vw, 90px) !important;
+  width: clamp(16px, 1.6vw, 26px) !important;
+  height: clamp(16px, 1.6vw, 26px) !important;
+  border-radius: 999px !important;
+  background: #25d28d !important;
+  border: 4px solid rgba(22, 28, 68, .98) !important;
+  box-shadow: 0 0 0 1px rgba(37, 210, 141, .35), 0 0 24px rgba(37, 210, 141, .3) !important;
+  z-index: 3 !important;
+}
+
+.home-page .post-composer .avatar {
+  width: clamp(78px, 8vw, 112px) !important;
+  height: clamp(78px, 8vw, 112px) !important;
+  border-radius: 30% !important;
+  border: 4px solid rgba(86, 73, 255, .82) !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, .24), 0 18px 50px rgba(76, 29, 149, .38) !important;
+}
+
+.home-page .post-composer .composer-editor {
+  min-height: clamp(210px, 18vw, 306px) !important;
+}
+
+.home-page .post-composer .composer-textarea {
+  min-height: clamp(210px, 18vw, 306px) !important;
+  padding: clamp(28px, 3vw, 50px) clamp(28px, 3vw, 50px) 54px !important;
+  border-radius: clamp(20px, 2.1vw, 32px) !important;
+  border: 1px solid var(--composer-stroke) !important;
+  background: linear-gradient(180deg, rgba(3, 10, 24, .56), rgba(5, 13, 30, .34)) !important;
+  color: #eef5ff !important;
+  font-size: clamp(19px, 2vw, 34px) !important;
+  line-height: 1.38 !important;
+  font-weight: 600 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 20px 70px rgba(0,0,0,.14) !important;
+}
+
+.home-page .post-composer .composer-textarea::placeholder {
+  color: rgba(198, 207, 228, .72) !important;
+  white-space: pre-line !important;
+}
+
+.home-page .post-composer .composer-textarea:focus {
+  border-color: rgba(119, 107, 255, .48) !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, .1), inset 0 1px 0 rgba(255,255,255,.045) !important;
+}
+
+.home-page .post-composer .composer-char-count {
+  right: clamp(22px, 2.4vw, 44px) !important;
+  bottom: 22px !important;
+  color: rgba(203, 213, 225, .64) !important;
+  font-size: clamp(15px, 1.4vw, 25px) !important;
+  font-weight: 500 !important;
+}
+
+.home-page .post-composer .composer-footer,
+.home-page .post-composer.is-portfolio .composer-footer {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: clamp(24px, 3vw, 48px) !important;
+  margin: clamp(28px, 4vw, 54px) 0 0 !important;
+  padding: 0 !important;
+  border-top: 0 !important;
+}
+
+.home-page .post-composer .composer-type-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: clamp(12px, 1.5vw, 24px) !important;
+  margin: 0 !important;
+}
+
+.home-page .post-composer .composer-type-pill {
+  min-height: clamp(62px, 6vw, 88px) !important;
+  border-radius: clamp(18px, 2vw, 30px) !important;
+  border: 1px solid var(--composer-stroke) !important;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,255,255,.055), transparent 40%),
+    rgba(30, 44, 80, .42) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 18px 44px rgba(0,0,0,.1) !important;
+  font-size: clamp(14px, 1.45vw, 26px) !important;
+  font-weight: 800 !important;
+  gap: clamp(8px, 1vw, 16px) !important;
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease !important;
+}
+
+.home-page .post-composer .composer-type-pill svg {
+  width: clamp(22px, 2vw, 34px) !important;
+  height: clamp(22px, 2vw, 34px) !important;
+}
+
+.home-page .post-composer .composer-type-pill:hover {
+  transform: none !important;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,255,255,.07), transparent 40%),
+    rgba(38, 52, 92, .5) !important;
+  border-color: rgba(144, 163, 213, .32) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 16px 38px rgba(0,0,0,.14) !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-portfolio {
+  color: #a78bfa !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-project {
+  color: #38bdf8 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-post {
+  color: #34d399 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-achievement {
+  color: #fbbf24 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-community {
+  color: #f472b6 !important;
+}
+
+.home-page .post-composer .composer-type-pill.active {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,255,255,.08), transparent 42%),
+    rgba(28, 45, 82, .58) !important;
+  border-color: color-mix(in srgb, currentColor 42%, transparent) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 18px 44px rgba(0,0,0,.16) !important;
+}
+
+.home-page .post-composer .composer-publish-row {
+  display: grid !important;
+  grid-template-columns: clamp(104px, 9vw, 148px) minmax(420px, 1fr) minmax(210px, 260px) !important;
+  gap: clamp(18px, 2.2vw, 34px) !important;
+  align-items: center !important;
+  padding-top: clamp(24px, 3vw, 34px) !important;
+  border-top: 1px solid var(--composer-soft-stroke) !important;
+}
+
+.home-page .post-composer .composer-add-label {
+  color: rgba(203, 213, 225, .78) !important;
+  font-size: clamp(16px, 1.7vw, 26px) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+}
+
+.home-page .post-composer .composer-attachment-actions {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: clamp(8px, 1vw, 18px) !important;
+  min-width: 0 !important;
+  min-height: clamp(86px, 7.4vw, 126px) !important;
+  padding: clamp(10px, 1.2vw, 18px) clamp(12px, 1.6vw, 24px) !important;
+  border-radius: clamp(18px, 2vw, 30px) !important;
+  border: 1px solid var(--composer-stroke) !important;
+  background: linear-gradient(180deg, rgba(17, 31, 64, .52), rgba(9, 19, 43, .42)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+
+.home-page .post-composer .composer-btn {
+  width: 100% !important;
+  height: auto !important;
+  min-height: clamp(64px, 6vw, 92px) !important;
+  min-width: 0 !important;
+  padding: 4px !important;
+  border: 1px solid transparent !important;
+  border-radius: 18px !important;
+  background: transparent !important;
+  color: rgba(203, 213, 225, .86) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  flex-direction: column !important;
+  gap: clamp(6px, .7vw, 10px) !important;
+  transition: background .16s ease, color .16s ease, border-color .16s ease !important;
+}
+
+.home-page .post-composer .composer-btn svg {
+  width: clamp(24px, 2vw, 34px) !important;
+  height: clamp(24px, 2vw, 34px) !important;
+}
+
+.home-page .post-composer .composer-btn span {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: clamp(12px, 1.25vw, 22px) !important;
+  font-weight: 500 !important;
+  line-height: 1.1 !important;
+}
+
+.home-page .post-composer .composer-btn:hover {
+  transform: none !important;
+  color: #eff6ff !important;
+  background: rgba(148, 163, 184, .075) !important;
+  border-color: rgba(148, 163, 184, .16) !important;
+  box-shadow: none !important;
+}
+
+.home-page .post-composer .composer-attachment-actions .composer-btn:first-child {
+  position: relative !important;
+}
+
+.home-page .post-composer .composer-attachment-actions .composer-btn:first-child::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 7px !important;
+  right: 15px !important;
+  width: 13px !important;
+  height: 13px !important;
+  border-radius: 999px !important;
+  background: #7c3aed !important;
+  box-shadow: 0 0 16px rgba(124, 58, 237, .55) !important;
+}
+
+.home-page .post-composer .composer-submit-wrap,
+.home-page .post-composer.is-portfolio .composer-submit-wrap {
+  width: 100% !important;
+  height: clamp(80px, 7vw, 116px) !important;
+  justify-self: stretch !important;
+}
+
+.home-page .post-composer .composer-submit-btn {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) clamp(54px, 4.8vw, 74px) !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: clamp(18px, 2vw, 28px) !important;
+  overflow: hidden !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #7027ff 0%, #4138ff 52%, #1398ff 100%) !important;
+  box-shadow: 0 24px 54px rgba(37, 99, 235, .32), 0 0 48px rgba(124, 58, 237, .22) !important;
+}
+
+.home-page .post-composer .composer-submit-btn::before {
+  content: none !important;
+}
+
+.home-page .post-composer .composer-submit-main,
+.home-page .post-composer .composer-submit-menu {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 0 !important;
+}
+
+.home-page .post-composer .composer-submit-main {
+  gap: clamp(10px, 1vw, 16px) !important;
+  padding-inline: clamp(16px, 2vw, 26px) !important;
+  font-size: clamp(22px, 2.2vw, 34px) !important;
+  font-weight: 800 !important;
+}
+
+.home-page .post-composer .composer-submit-main svg {
+  width: clamp(24px, 2.1vw, 36px) !important;
+  height: clamp(24px, 2.1vw, 36px) !important;
+  flex: 0 0 auto !important;
+}
+
+.home-page .post-composer .composer-submit-menu {
+  border-left: 1px solid rgba(7, 20, 45, .36) !important;
+}
+
+.home-page .post-composer .composer-submit-btn:disabled {
+  opacity: .72 !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #7027ff 0%, #4138ff 52%, #1398ff 100%) !important;
+  box-shadow: 0 18px 42px rgba(37, 99, 235, .22), 0 0 30px rgba(124, 58, 237, .14) !important;
+  cursor: not-allowed !important;
+}
+
+[data-theme="light"] .home-page .post-composer {
+  --composer-stroke: rgba(76, 99, 154, .18);
+  --composer-soft-stroke: rgba(76, 99, 154, .12);
+  background:
+    radial-gradient(circle at 9% 15%, rgba(124, 58, 237, .12), transparent 28%),
+    radial-gradient(circle at 88% 20%, rgba(14, 165, 233, .12), transparent 34%),
+    linear-gradient(145deg, rgba(255,255,255,.98) 0%, rgba(245,248,255,.96) 56%, rgba(239,246,255,.95) 100%) !important;
+  box-shadow: 0 34px 90px rgba(15, 23, 42, .12), inset 0 1px 0 rgba(255,255,255,.75) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-row::after {
+  border-color: rgba(255,255,255,.96) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-textarea {
+  background: linear-gradient(180deg, rgba(255,255,255,.74), rgba(248,251,255,.62)) !important;
+  color: #172033 !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-textarea::placeholder,
+[data-theme="light"] .home-page .post-composer .composer-char-count,
+[data-theme="light"] .home-page .post-composer .composer-add-label {
+  color: rgba(58, 72, 104, .68) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-type-pill,
+[data-theme="light"] .home-page .post-composer .composer-attachment-actions {
+  background: rgba(255,255,255,.62) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-type-pill:hover,
+[data-theme="light"] .home-page .post-composer .composer-btn:hover {
+  background: rgba(240,246,255,.9) !important;
+  border-color: rgba(76, 99, 154, .18) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-btn {
+  color: rgba(37, 48, 72, .72) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-btn:hover {
+  color: #172033 !important;
+}
+
+@media (max-width: 1180px) {
+  .home-page .post-composer .composer-publish-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-page .post-composer .composer-add-label {
+    align-self: start !important;
+  }
+
+  .home-page .post-composer .composer-submit-wrap,
+  .home-page .post-composer.is-portfolio .composer-submit-wrap {
+    max-width: 320px !important;
+    justify-self: end !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-page .post-composer {
+    padding: 22px !important;
+  }
+
+  .home-page .post-composer .composer-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-page .post-composer .composer-row::after {
+    left: 58px !important;
+    top: 58px !important;
+  }
+
+  .home-page .post-composer .composer-type-tabs {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-page .post-composer .composer-attachment-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .home-page .post-composer .composer-submit-wrap,
+  .home-page .post-composer.is-portfolio .composer-submit-wrap {
+    max-width: none !important;
+  }
+}

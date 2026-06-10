@@ -1,27 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
+import { Briefcase, ChevronDown, Code2, FileText, GitBranch, Image as ImageIcon, Paperclip, PencilLine, Rocket, Smile, Sparkles, Trophy, UsersRound, Video as VideoIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar } from '../ui';
 
 function ComposerModeIcon({ type }) {
-  const common = {
-    width: 20,
-    height: 20,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.9,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    'aria-hidden': true,
+  const icons = {
+    portfolio: Briefcase,
+    project: Rocket,
+    post: PencilLine,
+    achievement: Trophy,
+    community: UsersRound,
+    zuni: VideoIcon,
   };
-  if (type === 'portfolio') {
-    return <svg {...common}><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" /><path d="M3 12h18" /><path d="M10 12v2h4v-2" /></svg>;
-  }
-  if (type === 'zuni') {
-    return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="3" /><path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" /></svg>;
-  }
-  return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
+  const Icon = icons[type] || PencilLine;
+  return <Icon size={28} strokeWidth={1.9} aria-hidden="true" />;
 }
 
 export default function PostComposer({ onSubmit, placeholder = 'No que você está pensando?', allowMode = true, forcedPostType = null }) {
@@ -162,8 +155,10 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
   const composerModes = [
     { id: 'portfolio', label: 'Portfólio' },
+    { id: 'project', label: 'Projeto' },
     { id: 'post', label: 'Post' },
-    { id: 'zuni', label: 'Zuni' },
+    { id: 'achievement', label: 'Conquista' },
+    { id: 'community', label: 'Comunidade' },
   ];
   const placeholderText = isPortfolioMode
     ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...'
@@ -332,58 +327,49 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
         <div className="composer-publish-row">
           <span className="composer-add-label">Adicionar:</span>
           <div className="composer-attachment-actions">
-        <button className="composer-btn" title="Foto/GIF" type="button" onClick={() => openPicker('image/*,.gif')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <span>Imagem</span>
-        </button>
-        <button className="composer-btn" title="Video" type="button" onClick={() => openPicker('video/*')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-            <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
-          </svg>
-          <span>Vídeo</span>
-        </button>
-        <button className="composer-btn" title="Emoji" type="button">
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-            <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
-          </svg>
-          <span>Emoji</span>
-        </button>
-        <button className="composer-btn" title="Anexo" type="button" onClick={() => openPicker('image/*,video/*,audio/*,.pdf,.doc,.docx,.zip')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-          </svg>
-          <span>Anexo</span>
-        </button>
-        <button className="composer-btn composer-btn-extra" title="GitHub" type="button" onClick={() => setPostMode('portfolio')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 19c-4 1.5-4-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6A4.6 4.6 0 0 0 18.7 6a4.2 4.2 0 0 0-.1-3.3s-1-.3-3.4 1.3a11.4 11.4 0 0 0-6.2 0C6.6 2.4 5.6 2.7 5.6 2.7A4.2 4.2 0 0 0 5.5 6 4.6 4.6 0 0 0 4.2 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.7 1.2-.7 2V21" />
-          </svg>
-          <span>GitHub</span>
-        </button>
-        <button className="composer-btn composer-btn-extra" title="Deploy" type="button" onClick={() => setPostMode('portfolio')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-            <path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /><path d="m14 4-4 16" />
-          </svg>
-          <span>Deploy</span>
-        </button>
-        <button className="composer-btn composer-btn-extra" title="PDF" type="button" onClick={() => openPicker('.pdf,application/pdf')}>
-          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" />
-          </svg>
-          <span>PDF</span>
-        </button>
+            <button className="composer-btn" title="Foto/GIF" type="button" onClick={() => openPicker('image/*,.gif')}>
+              <ImageIcon size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>Imagem</span>
+            </button>
+            <button className="composer-btn" title="Vídeo" type="button" onClick={() => openPicker('video/*')}>
+              <VideoIcon size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>Vídeo</span>
+            </button>
+            <button className="composer-btn" title="Emoji" type="button">
+              <Smile size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>Emoji</span>
+            </button>
+            <button className="composer-btn" title="Anexo" type="button" onClick={() => openPicker('image/*,video/*,audio/*,.pdf,.doc,.docx,.zip')}>
+              <Paperclip size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>Anexo</span>
+            </button>
+            <button className="composer-btn composer-btn-extra" title="GitHub" type="button" onClick={() => setPostMode('portfolio')}>
+              <GitBranch size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>GitHub</span>
+            </button>
+            <button className="composer-btn composer-btn-extra" title="Deploy" type="button" onClick={() => setPostMode('portfolio')}>
+              <Code2 size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>Deploy</span>
+            </button>
+            <button className="composer-btn composer-btn-extra" title="PDF" type="button" onClick={() => openPicker('.pdf,application/pdf')}>
+              <FileText size={34} strokeWidth={1.7} aria-hidden="true" />
+              <span>PDF</span>
+            </button>
           </div>
           <div className="composer-submit-wrap">
-          <button
-            className="btn btn-primary btn-sm composer-submit-btn"
-            onClick={submit}
-            disabled={submitting || (!text.trim() && !file && !(isPortfolioMode && (portfolioTitle.trim() || portfolioLink.trim())))}
-          >
-            {submitting ? 'Publicando...' : (isPortfolioMode ? 'Postar Case' : 'Postar')}
-          </button>
+            <button
+              className="btn btn-primary btn-sm composer-submit-btn"
+              onClick={submit}
+              disabled={submitting || (!text.trim() && !file && !(isPortfolioMode && (portfolioTitle.trim() || portfolioLink.trim())))}
+            >
+              <span className="composer-submit-main">
+                <Sparkles size={32} strokeWidth={2} aria-hidden="true" />
+                <span>{submitting ? 'Publicando...' : 'Postar'}</span>
+              </span>
+              <span className="composer-submit-menu" aria-hidden="true">
+                <ChevronDown size={28} strokeWidth={2.2} />
+              </span>
+            </button>
           </div>
         </div>
       </div>
