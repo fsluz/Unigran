@@ -72,7 +72,7 @@ function attrBoolTrue(v) {
   return false;
 }
 
-async function readTwoFactorByUsername(username) {o 
+async function readTwoFactorByUsername(username) {
   try {
     const rows = await readQuery(`
       match
