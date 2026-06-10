@@ -8,7 +8,7 @@ import StoriesBar from '../components/stories/StoriesBar';
 import Topbar from '../components/layout/Topbar';
 import { createComment, createPost, fetchComments, fetchPosts } from '../services/posts';
 import { apiFetch, authHeaders } from '../utils/api';
-import { Avatar, Spinner, SkeletonCard } from '../components/ui';
+import { Avatar, Spinner, UnigranLoader } from '../components/ui';
 import { followUser, unfollowUser } from '../services/users';
 import { joinCommunity } from '../services/communities';
 import { useAchievements } from '../contexts/AchievementsContext';
@@ -221,9 +221,9 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
                 <button className="btn btn-secondary" onClick={() => { setTrendTitle(''); setFeed('for-you'); }}>Voltar</button>
               </div>
             )}
-            {loadingPosts && posts.length === 0 && [1, 2, 3].map(i => (
-              <SkeletonCard key={i} lines={3} />
-            ))}
+            {loadingPosts && posts.length === 0 && (
+              <UnigranLoader title="Carregando feed" subtitle="Buscando publicações da sua rede acadêmica." />
+            )}
 
             {!loadingPosts && posts.length === 0 && !trendTitle && (
               <EmptyState

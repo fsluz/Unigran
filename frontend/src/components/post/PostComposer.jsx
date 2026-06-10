@@ -21,6 +21,15 @@ function ComposerModeIcon({ type }) {
   if (type === 'zuni') {
     return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="3" /><path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" /></svg>;
   }
+  if (type === 'project') {
+    return <svg {...common}><path d="m5 15 4-4" /><path d="m14 6 4-4" /><path d="m7 17 2 2c2.4-1.1 4.5-2.5 6.4-4.4S18.9 10.6 20 8.2L17.8 6C15.4 7.1 13.3 8.5 11.4 10.4S8.1 14.4 7 17Z" /><path d="M14 6l4 4" /><path d="M5 19H3v-2" /></svg>;
+  }
+  if (type === 'achievement') {
+    return <svg {...common}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" /><path d="M5 5H3v3a4 4 0 0 0 4 4" /><path d="M19 5h2v3a4 4 0 0 1-4 4" /></svg>;
+  }
+  if (type === 'community') {
+    return <svg {...common}><path d="M16 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M2 21v-2a4 4 0 0 1 3-3.87" /><path d="M8 3.13a4 4 0 0 0 0 7.75" /></svg>;
+  }
   return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
 }
 
@@ -146,6 +155,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
 
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
   const isVideo = file?.type?.startsWith('video/');
+  const isZuniMode = !forcedPostType && postMode === 'zuni';
   const fileAccept = isPortfolioMode
     ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
@@ -161,9 +171,17 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
   const composerModes = [
     { id: 'portfolio', label: 'Portfólio' },
-    { id: 'zuni', label: 'Zuni' },
+    { id: 'project', label: 'Projeto' },
     { id: 'post', label: 'Post' },
+    { id: 'achievement', label: 'Conquista' },
+    { id: 'community', label: 'Comunidade' },
+    { id: 'zuni', label: 'Zuni' },
   ];
+  const placeholderText = isPortfolioMode
+    ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...'
+    : isZuniMode
+      ? 'Publique um vídeo curto no Zuni. Escreva uma legenda rápida...'
+      : 'O que você está construindo hoje?\nCompartilhe ideias, projetos, portfólios ou conquistas com a comunidade.';
   const formatSelection = (before, after = before, example = 'texto') => {
     const input = textInputRef.current;
     const start = input?.selectionStart ?? text.length;
@@ -207,12 +225,14 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           <textarea
             ref={textInputRef}
             className="composer-textarea"
-            placeholder={isPortfolioMode ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...' : placeholder}
+            placeholder={allowMode ? placeholderText : placeholder}
             value={text}
             onChange={e => setT(e.target.value)}
             onPaste={handlePaste}
+            maxLength={500}
             rows={isPortfolioMode ? Math.max(6, text.length > 240 ? 10 : 6) : (text.length > 80 ? 4 : 2)}
           />
+          <span className="composer-char-count">{text.length}/500</span>
         </div>
       </div>
 
@@ -321,26 +341,49 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           style={{ display: 'none' }}
           onChange={onPick}
         />
+        <span className="composer-add-label">Adicionar:</span>
         <button className="composer-btn" title="Foto/GIF" type="button" onClick={() => openPicker('image/*,.gif')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
             <polyline points="21 15 16 10 5 21"/>
           </svg>
+          <span>Imagem</span>
         </button>
         <button className="composer-btn" title="Video" type="button" onClick={() => openPicker('video/*')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
           </svg>
+          <span>Vídeo</span>
         </button>
         <button className="composer-btn" title="Emoji" type="button">
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
           </svg>
+          <span>Emoji</span>
         </button>
         <button className="composer-btn" title="Anexo" type="button" onClick={() => openPicker('image/*,video/*,audio/*,.pdf,.doc,.docx,.zip')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
           </svg>
+          <span>Anexo</span>
+        </button>
+        <button className="composer-btn composer-btn-extra" title="GitHub" type="button" onClick={() => setPostMode('portfolio')}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 19c-4 1.5-4-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6A4.6 4.6 0 0 0 18.7 6a4.2 4.2 0 0 0-.1-3.3s-1-.3-3.4 1.3a11.4 11.4 0 0 0-6.2 0C6.6 2.4 5.6 2.7 5.6 2.7A4.2 4.2 0 0 0 5.5 6 4.6 4.6 0 0 0 4.2 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.7 1.2-.7 2V21" />
+          </svg>
+          <span>GitHub</span>
+        </button>
+        <button className="composer-btn composer-btn-extra" title="Deploy" type="button" onClick={() => setPostMode('portfolio')}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /><path d="m14 4-4 16" />
+          </svg>
+          <span>Deploy</span>
+        </button>
+        <button className="composer-btn composer-btn-extra" title="PDF" type="button" onClick={() => openPicker('.pdf,application/pdf')}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" />
+          </svg>
+          <span>PDF</span>
         </button>
         <div className="composer-submit-wrap">
           <button

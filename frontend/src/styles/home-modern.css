@@ -1088,6 +1088,253 @@
   }
 }
 
+/* Reference-style publishing composer */
+.home-page .post-composer {
+  width: min(100%, 980px) !important;
+  margin-inline: auto !important;
+  padding: 32px !important;
+  border-radius: 28px !important;
+  border: 1px solid rgba(72, 104, 157, .32) !important;
+  background:
+    radial-gradient(circle at 9% 18%, rgba(124, 58, 237, .18), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(14, 165, 233, .12), transparent 34%),
+    linear-gradient(180deg, rgba(15, 23, 42, .78), rgba(8, 18, 36, .92)) !important;
+  box-shadow: 0 28px 90px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.045) !important;
+}
+
+.home-page .post-composer .composer-row {
+  grid-template-columns: 108px minmax(0, 1fr) !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+.home-page .post-composer .avatar {
+  width: 84px !important;
+  height: 84px !important;
+  border-radius: 24px !important;
+  box-shadow:
+    0 0 0 4px rgba(124, 58, 237, .52),
+    0 0 32px rgba(124, 58, 237, .28) !important;
+}
+
+.home-page .post-composer .composer-editor {
+  position: relative !important;
+}
+
+.home-page .post-composer .composer-textarea {
+  min-height: 176px !important;
+  padding: 30px 36px 46px !important;
+  border-radius: 22px !important;
+  border: 1px solid rgba(72, 104, 157, .34) !important;
+  background: rgba(3, 10, 22, .46) !important;
+  font-size: 21px !important;
+  line-height: 1.45 !important;
+  color: #eef6ff !important;
+}
+
+.home-page .post-composer .composer-textarea::placeholder {
+  color: rgba(203, 213, 225, .58) !important;
+  white-space: pre-line;
+}
+
+.home-page .post-composer .composer-char-count {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  color: rgba(203, 213, 225, .56);
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.home-page .post-composer .composer-footer {
+  margin-left: 0 !important;
+  margin-top: 26px !important;
+  padding-top: 24px !important;
+  border-top: 1px solid rgba(72, 104, 157, .22) !important;
+  display: grid !important;
+  grid-template-columns: 120px repeat(7, minmax(64px, 1fr)) minmax(178px, 220px) !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.home-page .post-composer .composer-type-tabs {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(116px, 1fr)) !important;
+  gap: 14px !important;
+  margin: 0 0 20px !important;
+}
+
+.home-page .post-composer .composer-type-pill {
+  min-height: 58px !important;
+  border-radius: 20px !important;
+  background: rgba(30, 41, 59, .42) !important;
+  color: #aab8ce !important;
+  border: 1px solid rgba(72, 104, 157, .26) !important;
+  font-size: 15px !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-portfolio {
+  color: #a78bfa !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-project,
+.home-page .post-composer .composer-type-pill.is-zuni {
+  color: #38bdf8 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-post {
+  color: #34d399 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-achievement {
+  color: #fbbf24 !important;
+}
+
+.home-page .post-composer .composer-type-pill.is-community {
+  color: #f472b6 !important;
+}
+
+.home-page .post-composer .composer-type-pill.active {
+  background: rgba(15, 23, 42, .62) !important;
+  border-color: currentColor !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+
+.home-page .post-composer .composer-add-label {
+  grid-column: 1;
+  color: rgba(203, 213, 225, .72);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.home-page .post-composer .composer-btn {
+  width: auto !important;
+  height: 74px !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  border-radius: 16px !important;
+  color: rgba(203, 213, 225, .78) !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.home-page .post-composer .composer-btn span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home-page .post-composer .composer-btn:hover {
+  color: #eff8ff !important;
+  background: rgba(14, 165, 233, .08) !important;
+}
+
+.home-page .post-composer .composer-submit-wrap {
+  grid-column: -2 / -1 !important;
+  justify-self: stretch !important;
+  height: 74px !important;
+}
+
+.home-page .post-composer .composer-submit-btn {
+  width: 100% !important;
+  height: 74px !important;
+  min-width: 0 !important;
+  border-radius: 18px !important;
+  font-size: 19px !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 55%, #0ea5e9 100%) !important;
+  box-shadow: 0 20px 42px rgba(37, 99, 235, .3), 0 0 42px rgba(124, 58, 237, .18) !important;
+}
+
+.home-page .post-composer .composer-submit-btn::before {
+  content: '✦';
+  margin-right: 10px;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-panel {
+  grid-column: 1 / -1 !important;
+  margin-bottom: 8px !important;
+}
+
+.home-post-list > .unigran-loader,
+.zuni-feed > .unigran-loader {
+  align-self: center;
+  justify-self: center;
+}
+
+.zuni-feed > .unigran-loader {
+  margin-top: min(18vh, 120px);
+}
+
+[data-theme="light"] .home-page .post-composer {
+  background:
+    radial-gradient(circle at 9% 18%, rgba(124, 58, 237, .1), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(14, 165, 233, .1), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,251,255,.95)) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-textarea {
+  background: rgba(255,255,255,.72) !important;
+  color: #132033 !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-textarea::placeholder,
+[data-theme="light"] .home-page .post-composer .composer-char-count,
+[data-theme="light"] .home-page .post-composer .composer-add-label {
+  color: rgba(69, 83, 110, .62) !important;
+}
+
+[data-theme="light"] .home-page .post-composer .composer-type-pill {
+  background: rgba(255,255,255,.68) !important;
+}
+
+@media (max-width: 1180px) {
+  .home-page .post-composer .composer-type-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .home-page .post-composer .composer-footer {
+    grid-template-columns: 1fr repeat(4, minmax(58px, 1fr)) !important;
+  }
+
+  .home-page .post-composer .composer-add-label,
+  .home-page .post-composer .composer-submit-wrap {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-page .post-composer {
+    padding: 20px !important;
+  }
+
+  .home-page .post-composer .composer-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-page .post-composer .avatar {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .home-page .post-composer .composer-textarea {
+    min-height: 150px !important;
+    padding: 22px 22px 42px !important;
+    font-size: 17px !important;
+  }
+
+  .home-page .post-composer .composer-type-tabs {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .home-page .post-composer .composer-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 /* Final polish: composer stability, portfolio previews, comments, post modal and settings */
 .home-page .post-composer {
   container-type: inline-size;

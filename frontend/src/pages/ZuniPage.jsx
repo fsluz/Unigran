@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import { useAuth } from '../contexts/AuthContext';
-import { Avatar, Spinner } from '../components/ui';
+import { Avatar, UnigranLoader } from '../components/ui';
 import { createComment, fetchComments, fetchPosts, likePost, unlikePost } from '../services/posts';
 import { followUser, unfollowUser } from '../services/users';
 import { relativeTime } from '../utils/time';
@@ -351,6 +351,10 @@ export default function ZuniPage({ onOpenProfile }) {
           onTouchMove={onZuniTouchMove}
           onTouchEnd={onZuniTouchEnd}
         >
+          {posts.length === 0 && loading && (
+            <UnigranLoader title="Carregando Zuni" subtitle="Preparando vídeos curtos para você." />
+          )}
+
           {posts.length === 0 && !loading && (
             <div className="search-empty">Nenhum Zuni ainda.</div>
           )}
@@ -510,7 +514,7 @@ export default function ZuniPage({ onOpenProfile }) {
 
           {hasMore && posts.length > 0 && (
             <button ref={moreRef} className="zuni-more" onClick={() => loadPage(page + 1, true)} disabled={loading}>
-              {loading ? <Spinner size={16} color="currentColor" /> : 'Carregar mais'}
+              {loading ? <UnigranLoader compact title="Mais vídeos" /> : 'Carregar mais'}
             </button>
           )}
         </main>
