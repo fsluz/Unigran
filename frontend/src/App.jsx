@@ -143,6 +143,12 @@ function AppShell() {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
 
+  useEffect(() => {
+    const syncTheme = (event) => setDark(event.detail === 'dark');
+    window.addEventListener('unigran:theme-changed', syncTheme);
+    return () => window.removeEventListener('unigran:theme-changed', syncTheme);
+  }, []);
+
       const navigate = (id, detail = null) => {
         if (id === 'profile') setProfileKey(k => k + 1);
         if (id === 'communities' && detail?.communityId) setOpenCommunityId(detail.communityId);

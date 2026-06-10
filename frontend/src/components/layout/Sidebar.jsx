@@ -112,7 +112,7 @@ export default function Sidebar({
         </button>
 
         <div className="sidebar-wide-nav desktop-only-nav">
-          <div className="sidebar-wide-section-label"><span>Rede social</span></div>
+          <div className="sidebar-wide-section-label"><span>Principal</span></div>
           {SOCIAL_NAV.map(item => (
             <button
               key={item.id}

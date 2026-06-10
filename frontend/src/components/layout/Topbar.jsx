@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch, authHeaders } from '../../utils/api';
+import { fetchNotifications } from '../../services/notifications';
 import { Avatar } from '../ui';
 
 export default function Topbar({ title, left, right, brandOnly = false }) {
@@ -9,6 +10,8 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
   const [searchResults, setSearchResults] = useState({ users: [], communities: [], posts: [] });
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => document.documentElement.getAttribute('data-theme') !== 'light');
+  const [notificationCount, setNotificationCount] = useState(0);
   const profileMenuRef = useRef(null);
 
   useEffect(() => {
@@ -30,6 +33,13 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
     return () => clearTimeout(timer);
   }, [query, token]);
 
+  useEffect(() => {
+    if (!token) return;
+    fetchNotifications(token)
+      .then(items => setNotificationCount((items || []).filter(item => !item.read).length))
+      .catch(() => setNotificationCount(0));
+  }, [token]);
+
   const openProfile = (username) => {
     if (!username) return;
     setSearchOpen(false);
@@ -45,6 +55,13 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
   const signOut = () => {
     logout();
     setProfileMenuOpen(false);
+  };
+  const toggleTheme = () => {
+    const next = !darkMode;
+    setDarkMode(next);
+    document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+    window.dispatchEvent(new CustomEvent('unigran:theme-changed', { detail: next ? 'dark' : 'light' }));
   };
   const roleName = {
     super_admin: 'Administrador',
@@ -74,7 +91,7 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
           <circle cx={11} cy={11} r={8} /><path d="m21 21-4.35-4.35" />
         </svg>
         <input
-          placeholder="Buscar comunidades, pessoas..."
+          placeholder="Buscar comunidades, pessoas, publicações..."
           className="topbar-search"
           value={query}
           onFocus={() => setSearchOpen(true)}
@@ -83,6 +100,7 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
             setSearchOpen(true);
           }}
         />
+        <span className="topbar-keyhint">⌘ K</span>
 
         {searchOpen && query.trim() && (
           <div className="notif-popout" style={{ left: 0, right: 0, top: 46 }}>
@@ -125,6 +143,17 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
       </div>
 
       <div className="topbar-actions">
+        <button type="button" className="topbar-circle-btn" onClick={toggleTheme} title="Trocar tema">
+          {darkMode ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+          )}
+        </button>
+        <button type="button" className="topbar-circle-btn has-dot" onClick={() => window.dispatchEvent(new CustomEvent('unigran:navigate', { detail: 'notifications' }))} title="Notificações">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+          {notificationCount > 0 && <span>{notificationCount}</span>}
+        </button>
         {right}
         <div className="topbar-profile-wrap" ref={profileMenuRef}>
           <button type="button" className="topbar-user-chip" onClick={() => setProfileMenuOpen(v => !v)} title="Menu do perfil">
