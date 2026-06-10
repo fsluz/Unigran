@@ -241,6 +241,21 @@ router.get('/reports', requirePermission('reports:read'), async (_req, res) => {
   }
 });
 
+router.get('/debug/post/:id', requirePermission('posts:moderate'), async (req, res) => {
+  try {
+    const rows = await readQuery(`
+      match
+        $post isa post, has post-id "${typeqlLiteral(req.params.id)}";
+      fetch { "attrs": $post.* };
+    `);
+    const attrs = (rows && rows[0] && rows[0].attrs) ? rows[0].attrs : {};
+    res.json({ attrs });
+  } catch (err) {
+    console.error('[admin debug post attrs]', err);
+    res.status(500).json({ error: 'Falha ao buscar atributos do post' });
+  }
+});
+
 router.patch('/reports/:id', requirePermission('reports:update'), async (req, res) => {
   const parsed = ReportStatusSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
