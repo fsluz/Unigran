@@ -195,15 +195,23 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
           <PostComposer onSubmit={handleNewPost} placeholder="No que você está pensando?" />
 
           <div className="home-feed-tabs">
-            {[
-              ['for-you', 'Para você'],
-              ['following', 'Seguindo'],
-              ['trending', 'Tendências'],
-            ].map(([id, label]) => (
-              <button key={id} className={feed === id ? 'active' : ''} onClick={() => { setFeed(id); setTrendTitle(''); }}>
-                {label}
+            <div className="home-feed-tab-list">
+              {[
+                ['for-you', 'Para você'],
+                ['following', 'Seguindo'],
+                ['trending', 'Tendências'],
+              ].map(([id, label]) => (
+                <button key={id} className={feed === id ? 'active' : ''} onClick={() => { setFeed(id); setTrendTitle(''); }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="home-feed-controls">
+              <button type="button">Mais recentes <span>⌄</span></button>
+              <button type="button" aria-label="Filtros">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
               </button>
-            ))}
+            </div>
           </div>
 
           <div className="section-grid home-post-list">
@@ -249,21 +257,21 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
 
         <aside className="right-panel home-right-panel">
           <div className="panel-card home-side-card home-trends-card">
-            <div className="home-side-heading">Tendências</div>
+            <div className="home-side-heading"><span>Tendências</span><button type="button">Ver todas ›</button></div>
             {trending.length ? trending.map((item, i) => (
               <div key={item.tag} className="home-trend-row">
+                <span>{i + 1}</span>
+                <b>#</b>
                 <div>
                   <button onClick={() => openTrend(item.tag)}>#{item.tag}</button>
-                  <div>{item.count} posts - Ultima hora</div>
+                  <div>{item.count} publicações</div>
                 </div>
-                <span>#{i + 1}</span>
               </div>
             )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma tendência recente encontrada.</div>}
-            {trending.length > 0 && <button className="home-more-btn" type="button">Ver mais</button>}
           </div>
 
           <div className="panel-card home-side-card">
-            <div className="home-side-heading">Sugestoes para voce</div>
+            <div className="home-side-heading"><span>Sugestões para você</span><button type="button">Ver mais ›</button></div>
             {suggestedCommunities.length ? suggestedCommunities.map(com => (
               <div key={com.id || com.name} className="home-community-row">
                 <div className="home-community-mark" style={{ color: com.color || undefined }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
@@ -274,11 +282,10 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
                 <button onClick={() => handleJoinCommunity(com)}>Entrar</button>
               </div>
             )) : <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Nenhuma comunidade sugerida pelo servidor.</div>}
-            {suggestedCommunities.length > 0 && <button className="home-more-btn" type="button">Ver mais</button>}
           </div>
 
           <div className="panel-card home-side-card home-people-card">
-            <div className="home-side-heading">Pessoas sugeridas</div>
+            <div className="home-side-heading"><span>Pessoas sugeridas</span><button type="button">Ver mais ›</button></div>
             {suggestedPeople.length ? suggestedPeople.map((person, i, arr) => (
               <div key={person.username || person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
                 <button onClick={() => person.username && onOpenProfile?.(person.username)} style={{ border: 0, background: 'transparent', padding: 0 }}>

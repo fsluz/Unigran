@@ -10151,3 +10151,270 @@ img, video { max-width: 100%; }
     bottom: 82px !important;
   }
 }
+
+/* Social home final polish: tela inicial no padrao neon da referencia */
+[data-theme="dark"] {
+  --page-bg: #050b18;
+  --card: #0a1326;
+  --input-bg: rgba(5, 11, 24, .72);
+  --border: rgba(139, 92, 246, .26);
+  --text: #f4f7ff;
+  --text-2: #d8deee;
+  --text-muted: #9aa6bf;
+}
+
+[data-theme="dark"] .app-shell {
+  background:
+    radial-gradient(circle at 92% 92%, rgba(124, 58, 237, .24), transparent 26%),
+    radial-gradient(circle at 62% 0%, rgba(0, 168, 255, .11), transparent 33%),
+    linear-gradient(180deg, #040815 0%, #061025 54%, #050b18 100%) !important;
+}
+
+.sidebar-wide-section-label button {
+  border: 0;
+  background: transparent;
+  color: #a855f7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sidebar-wide-discover {
+  width: 100%;
+  height: 38px;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(5, 11, 24, .42);
+  color: rgba(226, 232, 240, .82);
+  font-weight: 700;
+}
+
+.sidebar-wide-discover:hover {
+  color: #fff;
+  border-color: rgba(139, 92, 246, .48);
+  background: rgba(139, 92, 246, .14);
+}
+
+.home-page .page-layout {
+  grid-template-columns: minmax(0, 880px) 430px !important;
+  gap: 34px !important;
+  max-width: 1360px !important;
+}
+
+.home-page .stories-strip {
+  justify-content: flex-start;
+  gap: 34px !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 72% 10%, rgba(139, 92, 246, .15), transparent 32%),
+    rgba(8, 16, 35, .82) !important;
+}
+
+.home-page .story-pill {
+  color: rgba(244, 247, 255, .9) !important;
+  font-weight: 700;
+}
+
+.home-page .story-avatar-wrap {
+  background: linear-gradient(135deg, #7c3aed, #36f 60%, #00a8ff) !important;
+}
+
+.home-page .post-composer {
+  border-color: rgba(139, 92, 246, .76) !important;
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, .2),
+    0 0 54px rgba(124, 58, 237, .2),
+    0 24px 70px rgba(0,0,0,.28) !important;
+}
+
+.home-feed-tabs {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, .13);
+  margin-top: 8px !important;
+}
+
+.home-feed-tab-list {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.home-feed-tabs .home-feed-tab-list button {
+  min-width: 120px;
+  height: 48px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(226, 232, 240, .72) !important;
+  position: relative;
+}
+
+.home-feed-tabs .home-feed-tab-list button.active {
+  color: #c084fc !important;
+  background: transparent !important;
+}
+
+.home-feed-tabs .home-feed-tab-list button.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, #7c3aed, #c084fc);
+  box-shadow: 0 0 18px rgba(168, 85, 247, .5);
+}
+
+.home-feed-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.home-feed-controls button {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, .2);
+  background: rgba(8, 16, 35, .76);
+  color: rgba(244, 247, 255, .86);
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.home-feed-controls button:last-child {
+  width: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.home-page .post-card {
+  padding: 0 !important;
+  border-radius: 18px !important;
+  border-color: rgba(139, 92, 246, .38) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(0,168,255,.08), transparent 30%),
+    linear-gradient(180deg, rgba(10, 19, 38, .9), rgba(7, 14, 30, .94)) !important;
+}
+
+.home-page .post-card-model .post-head {
+  padding: 24px 28px 10px !important;
+}
+
+.home-page .post-card-model .post-body {
+  min-height: 0 !important;
+  padding: 8px 28px 28px !important;
+  color: #f5f7ff !important;
+}
+
+.home-page .post-card-model .post-footer {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 0 !important;
+  border-top: 1px solid rgba(148, 163, 184, .12) !important;
+  background: rgba(255,255,255,.015) !important;
+}
+
+.home-page .post-card-model .post-action-btn {
+  min-height: 58px !important;
+  flex-direction: row !important;
+  gap: 9px !important;
+  border-left: 1px solid rgba(148, 163, 184, .08) !important;
+}
+
+.home-page .post-card-model .post-action-btn:first-child {
+  border-left: 0 !important;
+}
+
+.home-side-heading {
+  align-items: center;
+}
+
+.home-side-heading::after {
+  content: none !important;
+}
+
+.home-side-heading button {
+  border: 0;
+  background: transparent;
+  color: #a855f7;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.home-trend-row {
+  display: grid !important;
+  grid-template-columns: 26px 18px 1fr !important;
+  align-items: start !important;
+  gap: 12px !important;
+  position: relative;
+  z-index: 1;
+}
+
+.home-trend-row span {
+  min-width: 24px !important;
+  width: 24px;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  font-size: 12px;
+}
+
+.home-trend-row b {
+  color: #a855f7;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.home-trend-row button {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.home-community-row button,
+.home-people-card button:not([style*="transparent"]) {
+  min-width: 82px;
+  height: 38px;
+  box-shadow: 0 12px 26px rgba(0, 168, 255, .16);
+}
+
+@media (max-width: 1180px) {
+  .home-page .page-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+    max-width: 900px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-feed-tabs {
+    align-items: stretch !important;
+    flex-direction: column;
+    border-bottom: 0;
+  }
+
+  .home-feed-tab-list,
+  .home-feed-controls {
+    width: 100%;
+  }
+
+  .home-feed-tabs .home-feed-tab-list button {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .home-feed-controls button:first-child {
+    flex: 1;
+  }
+
+  .home-page .post-card-model .post-footer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

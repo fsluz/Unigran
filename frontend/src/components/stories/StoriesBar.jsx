@@ -101,17 +101,6 @@ export default function StoriesBar({ onOpenProfile }) {
   }, [activeIndex, stories.length]);
 
 
-  // Navegação por teclado
-  useEffect(() => {
-    if (activeIndex == null) return undefined;
-    const onKey = (e) => {
-      if (e.key === 'ArrowRight') setActiveIndex(i => Math.min(stories.length - 1, i + 1));
-      if (e.key === 'ArrowLeft')  setActiveIndex(i => Math.max(0, i - 1));
-      if (e.key === 'Escape')     setActiveIndex(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [activeIndex, stories.length]);
 
   const pick = (e) => {
     const next = e.target.files?.[0];
@@ -144,7 +133,7 @@ export default function StoriesBar({ onOpenProfile }) {
   const likeActive = async () => {
     if (!activeStory) return;
     await likeStory({ token, storyId: activeStory.id }).catch(() => null);
-    showToast('Curtido ❤️', 'OK');
+    showToast('Curtido', 'OK');
   };
 
   const sendComment = async () => {
@@ -215,7 +204,7 @@ export default function StoriesBar({ onOpenProfile }) {
           />
           <input ref={fileRef} type="file" accept="image/*,video/*,.gif" style={{ display: 'none' }} onChange={pick} />
           <Button variant="secondary" style={{ marginTop: 10 }} onClick={() => fileRef.current?.click()} disabled={publishing}>
-            {file ? '📎 Trocar mídia' : '📷 Adicionar mídia'}
+            {file ? 'Trocar mídia' : 'Adicionar mídia'}
           </Button>
           {preview && (
             <div className="story-preview" style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden', maxHeight: 280 }}>
@@ -259,7 +248,7 @@ export default function StoriesBar({ onOpenProfile }) {
           aria-label={`Story de ${activeStory.author?.displayName || activeStory.author?.username}`}
           onClick={e => { if (e.target === e.currentTarget) setActiveIndex(null); }}
         >
-          <button className="story-close" onClick={() => setActiveIndex(null)} aria-label="Fechar">✕</button>
+          <button className="story-close" onClick={() => setActiveIndex(null)} aria-label="Fechar">x</button>
 
           <button
             className="story-nav prev"
@@ -320,7 +309,7 @@ export default function StoriesBar({ onOpenProfile }) {
             {/* Ações */}
             <div className="story-actions">
               <button onClick={likeActive} aria-label="Curtir story" style={{ padding: '8px 12px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18 }}>
-                ❤️
+                Curtir
               </button>
               <input
                 value={comment}

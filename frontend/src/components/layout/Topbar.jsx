@@ -69,7 +69,7 @@ export default function Topbar({ title, left, right, brandOnly = false }) {
     social_admin: 'Administrador',
     moderator: 'Moderador',
     professor: 'Professor',
-  }[String(user?.role || '').toLowerCase()] || 'Usuario';
+  }[String(user?.role || '').toLowerCase()] || 'Usuário';
 
   useEffect(() => {
     const close = (event) => {

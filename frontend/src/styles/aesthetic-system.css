@@ -137,13 +137,8 @@
    filter: drop-shadow(0 6px 20px var(--accent-glow));
  }
 
- .glow-outline {
-   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 24%, transparent);
- }
-  background:
-    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 30%),
-    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent-3) 11%, transparent), transparent 28%),
-    linear-gradient(180deg, color-mix(in srgb, var(--page-bg) 92%, #fff), var(--page-bg));
+.glow-outline {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 button,

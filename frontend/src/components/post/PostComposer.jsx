@@ -122,15 +122,15 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     showToast('Imagem colada. Pronta para publicar.', 'OK');
   };
 
-  const openPicker = (accept = fileAccept) => {
-    setPickerAccept(accept);
-    setTimeout(() => fileInputRef.current?.click(), 0);
-  };
   const isImage = file?.type?.startsWith('image/') || file?.type === 'image/gif';
   const isVideo = file?.type?.startsWith('video/');
   const fileAccept = isPortfolioMode
     ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
+  const openPicker = (accept = fileAccept) => {
+    setPickerAccept(accept);
+    setTimeout(() => fileInputRef.current?.click(), 0);
+  };
   const addPortfolioTag = (tag) => {
     const clean = String(tag || '').trim().replace(/^#/, '');
     if (!clean || portfolioTags.includes(clean)) return;
@@ -280,7 +280,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
               />
               <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-portfolio-help">A vitrine mostra apenas fatos que voce documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (ate 1MB).</span>
+            <span className="composer-portfolio-help">A vitrine mostra apenas fatos que você documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (até 1MB).</span>
           </div>
         )}
         <input

@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { UniversityProvider, useUniversity } from './contexts/UniversityContext';
 import FriendsPage from './pages/FriendsPage';
+import FavoritesPage from './pages/FavoritesPage';
 
 import Sidebar       from './components/layout/Sidebar';
 
@@ -222,6 +223,7 @@ function AppShell() {
     home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
+    favorites:     <FavoritesPage onOpenProfile={openProfile} />,
     communities:   <CommunitiesPage onOpenProfile={openProfile} initialOpenCommunityId={openCommunityId} onClearInitial={() => setOpenCommunityId(null)} />,
     explore:       <ExplorePage onOpenProfile={openProfile} />,
     zuni:          <ZuniPage onOpenProfile={openProfile} />,

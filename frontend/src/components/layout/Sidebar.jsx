@@ -14,6 +14,7 @@ const SOCIAL_NAV = [
   { id: 'zuni', label: 'Zuni', icon: 'zuni' },
   { id: 'messages', label: 'Mensagens', icon: 'messages', badge: 'messages' },
   { id: 'notifications', label: 'Notificações', icon: 'bell', badge: 'notifications', action: 'notifications' },
+  { id: 'favorites', label: 'Salvos', icon: 'saved' },
 ];
 
 const PORTAL_NAV = [
@@ -29,6 +30,7 @@ function SidebarIcon({ name }) {
   if (name === 'communities') return <svg {...p}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
   if (name === 'zuni') return <svg {...p}><rect x="3" y="4" width="18" height="16" rx="3"/><polygon points="10 8 16 12 10 16 10 8"/></svg>;
   if (name === 'messages') return <svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+  if (name === 'saved') return <svg {...p}><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>;
   if (name === 'portal') return <svg {...p}><path d="M3 10l9-6 9 6-9 6-9-6z"/><path d="M5 12v5c2 2 12 2 14 0v-5"/></svg>;
   if (name === 'analytics') return <svg {...p}><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20H2"/></svg>;
   if (name === 'audit') return <svg {...p}><path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5"/><path d="M9 12h7"/><path d="M9 16h7"/></svg>;
@@ -131,7 +133,7 @@ export default function Sidebar({
 
           {!collapsed && (
             <>
-              <div className="sidebar-wide-section-label"><span>Comunidades seguidas</span></div>
+              <div className="sidebar-wide-section-label"><span>Comunidades seguidas</span><button type="button" onClick={() => onNavigate('communities')}>Ver todas</button></div>
               {followedCommunities.length ? followedCommunities.slice(0, 5).map(c => (
                 <button key={c.id} type="button" className="sidebar-wide-comm" onClick={() => onNavigate('communities', { communityId: c.id })}>
                   <div className="sidebar-comm-icon" style={{ background: `${c.color}22`, color: c.color }}>{c.icon || (c.name || '?').slice(0, 2)}</div>
@@ -143,6 +145,7 @@ export default function Sidebar({
               )) : (
                 <div className="sidebar-wide-comm muted-comm">Nenhuma comunidade seguida</div>
               )}
+              <button type="button" className="sidebar-wide-discover" onClick={() => onNavigate('communities')}>+ Descobrir comunidades</button>
             </>
           )}
 
