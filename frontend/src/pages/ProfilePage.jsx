@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PostCard from '../components/post/PostCard';
 import PostDetailModal from '../components/post/PostDetailModal';
-import { Modal, Button, FormField } from '../components/ui';
+import { Modal, Button, FormField, UnigranLoader } from '../components/ui';
 import { apiFetch, authHeaders } from '../utils/api';
 import { fetchSavedPosts, uploadMedia } from '../services/posts';
 import { useEffect } from 'react';
@@ -63,6 +63,7 @@ export default function ProfilePage({ onNavigate, profileKey }) {
   const [stats, setStats] = useState({ posts: 0, followers: 0, following: 0 });
   const [peopleModal, setPeopleModal] = useState(null);
   const [people, setPeople] = useState([]);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     displayName: user.displayName,
@@ -80,16 +81,21 @@ export default function ProfilePage({ onNavigate, profileKey }) {
 
   useEffect(() => {
     if (!user?.username) return;
-    fetchUserPosts({ token, username: user.username })
-      .then((loaded) => setPosts(loaded))
-      .catch(() => setPosts([]));
-    fetchUserPortfolioDetails({ token, username: user.username })
-      .then((details) => {
+    let alive = true;
+    setProfileLoading(true);
+    Promise.all([
+      fetchUserPosts({ token, username: user.username }).catch(() => []),
+      fetchUserPortfolioDetails({ token, username: user.username }).catch(() => ({ portfolio: [], resume: null, analysis: null })),
+    ])
+      .then(([loaded, details]) => {
+        if (!alive) return;
+        setPosts(loaded);
         setPortfolioItems(details.portfolio);
         setPortfolioResume(details.resume);
         setPortfolioAnalysis(details.analysis);
       })
-      .catch(() => setPortfolioItems([]));
+      .finally(() => alive && setProfileLoading(false));
+    return () => { alive = false; };
 }, [token, user?.username, profileKey]);
 
   useEffect(() => {
@@ -265,6 +271,15 @@ export default function ProfilePage({ onNavigate, profileKey }) {
     .map(p => ({ ...p, url: (p.content || '').match(URL_RE)?.[0] }));
 
   const virtualResume = portfolioResume?.virtualResume;
+
+  if (profileLoading) {
+    return (
+      <div className="page-scroll profile-page-modern">
+        <Topbar title="Meu perfil" />
+        <UnigranLoader title="Carregando perfil" subtitle="Organizando publicações, portfólio e conexões." />
+      </div>
+    );
+  }
 
   return (
     <div className="page-scroll profile-page-modern">

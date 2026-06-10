@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import Topbar from '../components/layout/Topbar';
 import PostCard from '../components/post/PostCard';
-import { Avatar, Button } from '../components/ui';
+import { Avatar, Button, UnigranLoader } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { fetchFollowers, fetchFollowing, fetchUserPortfolioDetails, fetchUserPosts, fetchUserProfile, followUser, removeFollower, unfollowUser } from '../services/users';
@@ -188,10 +188,7 @@ export default function PublicProfilePage({ username, onBack, onOpenProfile }) {
     return (
       <div className="page-scroll">
         <Topbar title="Perfil" left={<Button variant="secondary" size="sm" onClick={onBack}>Voltar</Button>} />
-        <div style={{ maxWidth: 720, margin: '24px auto' }} className="card post-card-skeleton">
-          <div className="skeleton-line" style={{ width: '35%' }} />
-          <div className="skeleton-line" style={{ width: '80%' }} />
-        </div>
+        <UnigranLoader title="Carregando perfil" subtitle="Montando publicações, portfólio e conexões." />
       </div>
     );
   }

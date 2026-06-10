@@ -291,19 +291,18 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
   const safeOffset = Math.max(0, Number(offset) || 0);
   const dbLimitByFeed = {
-    zuni: 2400,
+    zuni: 180,
     explore: 600,
     trending: 500,
     following: 500,
   };
   const dbLimit = Math.min(
     Math.max(dbLimitByFeed[feed] || 300, safeLimit * 12, safeOffset + safeLimit * 12),
-    feed === 'zuni' ? 4000 : 800,
+    feed === 'zuni' ? 600 : 800,
   );
   const zuniVideoMatch = feed === 'zuni'
     ? '$post has post-video $post_video;'
     : 'try { $post has post-video $post_video; };';
-  const zuniPostType = feed === 'zuni' ? 'video-post' : 'post';
   const followingMatch = feed === 'following' && viewerUsername
     ? `
       $viewer isa person, has username "${typeqlLiteral(viewerUsername)}";
@@ -314,42 +313,73 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   // FIXED: removed nested `fetch` subquery; comments are fetched separately with a TypeDB 3.x pipeline.
   // FIXED: fetched post text/media explicitly so Zuni posts can be detected from the #Zuni marker.
   // FIXED: added TypeDB sort/limit to avoid scanning the whole post set on every feed request.
-  const rows = await readQuery(`
-    match
-      $post isa post,
-        has post-id $post_id,
-        has creation-timestamp $post_ts;
+  const rows = feed === 'zuni'
+    ? await readQuery(`
+      match
+        $post isa video-post,
+          has post-id $post_id,
+          has post-video $post_video,
+          has creation-timestamp $post_ts;
 
-      posting(post: $post, page: $user);
-      $user isa person, has username $username, has name $user_name;
-      ${followingMatch}
+        posting(post: $post, page: $user);
+        $user isa person, has username $username, has name $user_name;
 
-      try { $user has profile-picture $user_profile_pic; };
-      try { $user has cover-picture $user_cover_pic; };
-      try { $user has page-visibility $user_visibility; };
-      try { $post has post-text $post_text; };
-      try { $post has post-image $post_image; };
-      ${zuniVideoMatch}
-    sort $post_ts desc;
-    limit ${dbLimit};
-    fetch {
-      "post_id": $post_id,
-      "created_at": $post_ts,
-      "post_text": $post_text,
-      "post_image": $post_image,
-      "post_video": $post_video,
+        try { $user has profile-picture $user_profile_pic; };
+        try { $user has cover-picture $user_cover_pic; };
+        try { $user has page-visibility $user_visibility; };
+        try { $post has post-text $post_text; };
+      sort $post_ts desc;
+      limit ${dbLimit};
+      fetch {
+        "post_id": $post_id,
+        "created_at": $post_ts,
+        "post_text": $post_text,
+        "post_video": $post_video,
+        "author": {
+          "username": $username,
+          "name": $user_name,
+          "profile_picture": $user_profile_pic,
+          "cover_picture": $user_cover_pic,
+          "visibility": $user_visibility
+        }
+      };
+    `)
+    : await readQuery(`
+      match
+        $post isa post,
+          has post-id $post_id,
+          has creation-timestamp $post_ts;
 
-      "author": {
-        "username": $username,
-        "name": $user_name,
-        "profile_picture": $user_profile_pic,
-        "cover_picture": $user_cover_pic,
-        "visibility": $user_visibility
-      },
+        posting(post: $post, page: $user);
+        $user isa person, has username $username, has name $user_name;
+        ${followingMatch}
 
-      "post_all_attributes": { $post.* }
-    };
-  `);
+        try { $user has profile-picture $user_profile_pic; };
+        try { $user has cover-picture $user_cover_pic; };
+        try { $user has page-visibility $user_visibility; };
+        try { $post has post-text $post_text; };
+        try { $post has post-image $post_image; };
+        ${zuniVideoMatch}
+      sort $post_ts desc;
+      limit ${dbLimit};
+      fetch {
+        "post_id": $post_id,
+        "created_at": $post_ts,
+        "post_text": $post_text,
+        "post_image": $post_image,
+        "post_video": $post_video,
+
+        "author": {
+          "username": $username,
+          "name": $user_name,
+          "profile_picture": $user_profile_pic,
+          "cover_picture": $user_cover_pic,
+          "visibility": $user_visibility
+        },
+
+        "post_all_attributes": { $post.* }
+      };
+    `);
   const rowPostIds = rows.map(row => row?.post_id).filter(Boolean);
   const [followingSet, likedKeywords, metrics, commentsMap, repostOriginalMap, communityMap] = await Promise.all([
     loadFollowingSet(viewerUsername),
