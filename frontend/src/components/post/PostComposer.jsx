@@ -21,15 +21,6 @@ function ComposerModeIcon({ type }) {
   if (type === 'zuni') {
     return <svg {...common}><rect x="4" y="3" width="16" height="18" rx="3" /><path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" /></svg>;
   }
-  if (type === 'project') {
-    return <svg {...common}><path d="m5 15 4-4" /><path d="m14 6 4-4" /><path d="m7 17 2 2c2.4-1.1 4.5-2.5 6.4-4.4S18.9 10.6 20 8.2L17.8 6C15.4 7.1 13.3 8.5 11.4 10.4S8.1 14.4 7 17Z" /><path d="M14 6l4 4" /><path d="M5 19H3v-2" /></svg>;
-  }
-  if (type === 'achievement') {
-    return <svg {...common}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v6a5 5 0 0 1-10 0V4Z" /><path d="M5 5H3v3a4 4 0 0 0 4 4" /><path d="M19 5h2v3a4 4 0 0 1-4 4" /></svg>;
-  }
-  if (type === 'community') {
-    return <svg {...common}><path d="M16 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M2 21v-2a4 4 0 0 1 3-3.87" /><path d="M8 3.13a4 4 0 0 0 0 7.75" /></svg>;
-  }
   return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
 }
 
@@ -171,10 +162,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
   const composerModes = [
     { id: 'portfolio', label: 'Portfólio' },
-    { id: 'project', label: 'Projeto' },
     { id: 'post', label: 'Post' },
-    { id: 'achievement', label: 'Conquista' },
-    { id: 'community', label: 'Comunidade' },
     { id: 'zuni', label: 'Zuni' },
   ];
   const placeholderText = isPortfolioMode
@@ -341,7 +329,9 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           style={{ display: 'none' }}
           onChange={onPick}
         />
-        <span className="composer-add-label">Adicionar:</span>
+        <div className="composer-publish-row">
+          <span className="composer-add-label">Adicionar:</span>
+          <div className="composer-attachment-actions">
         <button className="composer-btn" title="Foto/GIF" type="button" onClick={() => openPicker('image/*,.gif')}>
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -385,7 +375,8 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           </svg>
           <span>PDF</span>
         </button>
-        <div className="composer-submit-wrap">
+          </div>
+          <div className="composer-submit-wrap">
           <button
             className="btn btn-primary btn-sm composer-submit-btn"
             onClick={submit}
@@ -393,6 +384,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
           >
             {submitting ? 'Publicando...' : (isPortfolioMode ? 'Postar Case' : 'Postar')}
           </button>
+          </div>
         </div>
       </div>
     </div>
