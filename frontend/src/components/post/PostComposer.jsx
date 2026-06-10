@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Briefcase, ChevronDown, Code2, FileText, GitBranch, Image as ImageIcon, Paperclip, PencilLine, Rocket, Smile, Sparkles, Trophy, UsersRound, Video as VideoIcon } from 'lucide-react';
+import { Briefcase, ChevronDown, Image as ImageIcon, Paperclip, PencilLine, Smile, Sparkles, Video as VideoIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar } from '../ui';
+import EmojiPicker from '../ui/EmojiPicker';
 
 function ComposerModeIcon({ type }) {
   const icons = {
     portfolio: Briefcase,
-    project: Rocket,
-    post: PencilLine,
-    achievement: Trophy,
-    community: UsersRound,
     zuni: VideoIcon,
+    post: PencilLine,
   };
   const Icon = icons[type] || PencilLine;
   return <Icon size={28} strokeWidth={1.9} aria-hidden="true" />;
@@ -142,7 +140,9 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   const isZuniMode = !forcedPostType && postMode === 'zuni';
   const fileAccept = isPortfolioMode
     ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
+    : isZuniMode
+      ? 'video/*'
+      : 'image/*,video/*,.gif,.pdf,.doc,.docx,.zip';
   const openPicker = (accept = fileAccept) => {
     setPickerAccept(accept);
     setTimeout(() => fileInputRef.current?.click(), 0);
@@ -155,10 +155,8 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
   };
   const composerModes = [
     { id: 'portfolio', label: 'Portfólio' },
-    { id: 'project', label: 'Projeto' },
+    { id: 'zuni', label: 'Zuni' },
     { id: 'post', label: 'Post' },
-    { id: 'achievement', label: 'Conquista' },
-    { id: 'community', label: 'Comunidade' },
   ];
   const placeholderText = isPortfolioMode
     ? 'Descreva o projeto. Para destacar fatos na vitrine, inclua: Problema: ... e Resultado: ...'
@@ -185,6 +183,18 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
     const formatted = selected.split('\n').map(line => `${prefix}${line}`).join('\n');
     setT(`${text.slice(0, start)}${formatted}${text.slice(end)}`);
     requestAnimationFrame(() => input?.focus());
+  };
+  const insertEmoji = (emoji) => {
+    const input = textInputRef.current;
+    const start = input?.selectionStart ?? text.length;
+    const end = input?.selectionEnd ?? text.length;
+    const next = `${text.slice(0, start)}${emoji}${text.slice(end)}`.slice(0, 500);
+    setT(next);
+    requestAnimationFrame(() => {
+      const caret = Math.min(start + emoji.length, next.length);
+      input?.focus();
+      input?.setSelectionRange(caret, caret);
+    });
   };
 
   return (
@@ -314,7 +324,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
               />
               <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-portfolio-help">Use linhas como Perfil:, Problema:, Solucao:, Resultado: e Complexidade: para a vitrine estruturada no feed. Formatos: PDF, DOCX (até 1MB).</span>
+            <span className="composer-portfolio-help">Use linhas como Perfil:, Problema:, Solucao:, Resultado: e Complexidade: para a vitrine estruturada no feed. Anexe documentos pelo botao Anexo quando precisar.</span>
           </div>
         )}
         <input
@@ -335,25 +345,19 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
               <VideoIcon size={34} strokeWidth={1.7} aria-hidden="true" />
               <span>Vídeo</span>
             </button>
-            <button className="composer-btn" title="Emoji" type="button">
-              <Smile size={34} strokeWidth={1.7} aria-hidden="true" />
-              <span>Emoji</span>
-            </button>
+            <EmojiPicker
+              onSelect={insertEmoji}
+              panelClassName="composer-emoji-panel"
+              trigger={(
+                <button className="composer-btn" title="Emoji" type="button">
+                  <Smile size={34} strokeWidth={1.7} aria-hidden="true" />
+                  <span>Emoji</span>
+                </button>
+              )}
+            />
             <button className="composer-btn" title="Anexo" type="button" onClick={() => openPicker('image/*,video/*,audio/*,.pdf,.doc,.docx,.zip')}>
               <Paperclip size={34} strokeWidth={1.7} aria-hidden="true" />
               <span>Anexo</span>
-            </button>
-            <button className="composer-btn composer-btn-extra" title="GitHub" type="button" onClick={() => setPostMode('portfolio')}>
-              <GitBranch size={34} strokeWidth={1.7} aria-hidden="true" />
-              <span>GitHub</span>
-            </button>
-            <button className="composer-btn composer-btn-extra" title="Deploy" type="button" onClick={() => setPostMode('portfolio')}>
-              <Code2 size={34} strokeWidth={1.7} aria-hidden="true" />
-              <span>Deploy</span>
-            </button>
-            <button className="composer-btn composer-btn-extra" title="PDF" type="button" onClick={() => openPicker('.pdf,application/pdf')}>
-              <FileText size={34} strokeWidth={1.7} aria-hidden="true" />
-              <span>PDF</span>
             </button>
           </div>
           <div className="composer-submit-wrap">
