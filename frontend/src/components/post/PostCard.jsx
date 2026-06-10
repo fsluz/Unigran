@@ -9,6 +9,8 @@ import { apiFetch, authHeaders } from '../../utils/api';
 import ImageLightbox from '../media/ImageLightbox';
 import { hasPermission } from '../../modules/shared/permissions';
 import { CommentRow } from './PostCommentThread';
+import PortfolioShowcase from './PortfolioShowcase';
+import { buildPortfolioView } from '../../utils/portfolioSections';
 
 function formatContent(text) {
   return text.split(/(\s+)/).map((word, i) =>
@@ -465,8 +467,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
   const isOwner   = user?.id === author?.id || user?.username === author?.username;
   const canDelete = Boolean(onDelete) && (isOwner || hasPermission(user, 'posts:moderate'));
   const embeds = getEmbeds(post.content || '');
-  const portfolio = getPortfolioPost(post);
-  const portfolioLink = portfolio?.externalLink ? portfolioLinkMeta(portfolio.externalLink, portfolio.externalKind) : null;
+  const portfolio = buildPortfolioView(post);
   const bodyText = portfolio ? '' : stripEmbedLinks(post.content || '');
 
   const toggleLike = () => {
@@ -650,55 +651,7 @@ export default function PostCard({ post, onDelete, onEdit, onOpenDetail, onOpenP
         </div>
       ) : (
         <>
-          {portfolio && (
-            <div className="portfolio-post-card">
-              <div className="portfolio-post-preview">
-                {portfolio.mediaUrl && portfolio.mediaType !== 'video' ? (
-                  <img src={portfolio.mediaUrl} alt="" className="portfolio-preview-image" />
-                ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
-                  <AutoPauseVideo src={portfolio.mediaUrl} className="portfolio-preview-image" muted playsInline controls />
-                ) : portfolioLink ? (
-                  <PortfolioLinkPreview meta={portfolioLink} url={portfolio.externalLink} />
-                ) : (
-                  <>
-                    <div className="portfolio-window-dots"><span /><span /><span /></div>
-                    <div className="portfolio-preview-sidebar" />
-                    <div className="portfolio-preview-main">
-                      <i />
-                      <i />
-                      <div><b /><b /></div>
-                      <em />
-                      <em />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="portfolio-post-body">
-                <div className="portfolio-post-label">Portfolio</div>
-                <h3>{portfolio.title}</h3>
-                {portfolio.summary && <PortfolioDescription text={portfolio.summary} />}
-                {portfolio.tags.length > 0 && (
-                  <div className="portfolio-post-tags">
-                    {portfolio.tags.map(tag => <span key={tag}>{tag}</span>)}
-                  </div>
-                )}
-                {portfolio.externalLink && (
-                  <a className={`portfolio-post-link is-${portfolioLink?.tone || 'generic'}`} href={portfolio.externalLink} target="_blank" rel="noreferrer">
-                    <span>
-                      <b>{portfolioLink?.title || 'Link do projeto'}</b>
-                      <small>{portfolioLink?.subtitle || portfolio.externalLink.replace(/^https?:\/\//, '')}</small>
-                    </span>
-                    <em>{portfolioLink?.label || 'Abrir'}</em>
-                  </a>
-                )}
-                {portfolio.caseLink && (
-                  <a className="portfolio-case-link" href={portfolio.caseLink}>
-                    Ver projeto completo
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
+          {portfolio && <PortfolioShowcase portfolio={portfolio} />}
           {bodyText && (
             <button type="button" className="post-body post-body-open" onClick={openPostDetails}>
               {formatContent(bodyText)}

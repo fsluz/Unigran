@@ -5,13 +5,42 @@ import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, toggleMessageReaction, updateConversation, updateMessage } from '../services/conversations';
 import { uploadAudio, uploadMedia } from '../services/posts';
 import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
-import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, isEncryptedText, publishOwnPublicKey } from '../services/e2ee';
+import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, isEncryptedText, listPendingDeviceTrust, confirmDeviceTrust, migrateLegacyE2EE, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
 import '../styles/mobile-chat.css';
 
 const QUICK_REACTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}'];
+
+function messageQuality(msg = {}) {
+  if (msg.locked) return 0;
+  if (isEncryptedText(msg.content)) return 1;
+  if ((msg.content || '').trim() || msg.media?.url) return 2;
+  return 1;
+}
+
+async function hydrateStoredMessage(conversationId, stored, username) {
+  const decrypted = await decryptMessage(conversationId, stored, username);
+  if (decrypted.locked) {
+    throw new Error('Mensagem salva, mas nao foi possivel abrir. Atualize suas chaves E2EE.');
+  }
+  return decrypted;
+}
+
+function mergeMessageEntries(current = [], loaded = []) {
+  const map = new Map();
+  for (const msg of loaded) map.set(msg.id, msg);
+  for (const msg of current) {
+    const existing = map.get(msg.id);
+    if (!existing) {
+      map.set(msg.id, msg);
+      continue;
+    }
+    map.set(msg.id, messageQuality(msg) >= messageQuality(existing) ? msg : existing);
+  }
+  return [...map.values()].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
+}
 const MESSAGE_REACTIONS = [
   ...QUICK_REACTIONS, '\u{1F60D}', '\u{1F525}', '\u{1F389}', '\u{1F622}', '\u{1F62E}', '\u{1F621}',
   '\u{1F64F}', '\u{1F4AF}', '\u{1F680}', '\u{1F440}', '\u{1F914}', '\u{1F60E}', '\u{1F973}',
@@ -24,7 +53,7 @@ export default function MessagesPage() {
   const [conversations, setConversations] = useState([]);
   const [active, setActive] = useState(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState({});
   const [text, setText] = useState('');
   const [targetUsername, setTargetUsername] = useState('');
   const [groupUsers, setGroupUsers] = useState('');
@@ -51,6 +80,7 @@ export default function MessagesPage() {
   const [groupMembers, setGroupMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [e2eeStatus, setE2eeStatus] = useState({ ready: false, missing: [], checked: false });
+  const [pendingTrust, setPendingTrust] = useState([]);
   const [file, setFile] = useState(null);
   const [sendingMedia, setSendingMedia] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -266,7 +296,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!token) return;
+    migrateLegacyE2EE(token).catch(() => null);
     publishOwnPublicKey(token).catch(() => showToast('E2EE sem chave publica salva', '!'));
+    setPendingTrust(listPendingDeviceTrust());
   }, [token, showToast, user?.username]);
 
   useEffect(() => {
@@ -307,21 +339,18 @@ export default function MessagesPage() {
       .then(loaded => {
         const markerId = firstUnreadId(loaded);
         setUnreadMarkerByConv(prev => ({ ...prev, [active.id]: markerId }));
-        setMessages(prev => {
-          const byId = new Map([...(prev[active.id] || []), ...loaded].map(msg => [msg.id, msg]));
-          const merged = [...byId.values()].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
-          return { ...prev, [active.id]: merged };
-        });
+        setMessages(prev => ({
+          ...prev,
+          [active.id]: mergeMessageEntries(prev[active.id] || [], loaded),
+        }));
         setConversations(prev => prev.map(conv => conv.id === active.id ? { ...conv, receivedUnreadCount: 0 } : conv));
         return markConversationRead({ token, conversationId: active.id }).catch(() => null);
       })
       .catch(err => showToast(err.message || 'Erro ao carregar mensagens', ''));
-  }, [active?.id, token, showToast]);
+  }, [active?.id, token, showToast, user?.username]);
 
   useEffect(() => {
     if (!active?.id) return;
-    const sameIds = (a = [], b = []) =>
-      a.length === b.length && a.every((item, index) => item.id === b[index]?.id);
 
     const interval = setInterval(() => {
       fetchMessages({ token, conversationId: active.id })
@@ -329,9 +358,8 @@ export default function MessagesPage() {
         .then(loaded => {
           setMessages(prev => {
             const current = prev[active.id] || [];
-            if (sameIds(current, loaded)) return prev;
-            const byId = new Map([...current, ...loaded].map(msg => [msg.id, msg]));
-            const merged = [...byId.values()].sort((a, b) => new Date(a.time || 0) - new Date(b.time || 0));
+            const merged = mergeMessageEntries(current, loaded);
+            if (merged.length === current.length && merged.every((item, index) => item === current[index])) return prev;
             return { ...prev, [active.id]: merged };
           });
           markConversationRead({ token, conversationId: active.id }).catch(() => null);
@@ -340,7 +368,7 @@ export default function MessagesPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [active?.id, token]);
+  }, [active?.id, token, user?.username]);
 
   useEffect(() => {
     if (!token || !active?.id) return undefined;
@@ -763,11 +791,12 @@ export default function MessagesPage() {
         token,
         conversationId: active.id,
         usernames: participantUsernames(),
+        meUsername: user?.username,
         content: editText.trim(),
         media: editingMessage.media || null,
       });
       const savedEncrypted = await updateMessage({ token, conversationId: active.id, messageId: editingMessage.id, content: encryptedContent });
-      const saved = { ...savedEncrypted, content: editText.trim(), media: editingMessage.media || null, encrypted: true };
+      const saved = await hydrateStoredMessage(active.id, savedEncrypted, user?.username);
       setMessages(prev => ({
         ...prev,
         [active.id]: (prev[active.id] || []).map(msg => msg.id === editingMessage.id ? { ...msg, ...saved, edited: true } : msg),
@@ -833,6 +862,7 @@ export default function MessagesPage() {
         token,
         conversationId: active.id,
         usernames: participantUsernames(),
+        meUsername: user?.username,
         content,
         media: encryptedMedia,
       });
@@ -846,12 +876,7 @@ export default function MessagesPage() {
         mediaUrl: '',
         mediaType: '',
       });
-      const created = {
-        ...createdEncrypted,
-        content,
-        media: encryptedMedia,
-        encrypted: true,
-      };
+      const created = await hydrateStoredMessage(active.id, createdEncrypted, user?.username);
       setMessages(prev => ({
         ...prev,
         [active.id]: [...(prev[active.id] || []), created],
@@ -859,6 +884,7 @@ export default function MessagesPage() {
       bumpConversation(active.id, created);
       getConversationChannel(token, active.id).publish('message_sent', { message: createdEncrypted }).catch(() => null);
     } catch (err) {
+      if (err.code === 'E2EE_KEY_CHANGED') setPendingTrust(listPendingDeviceTrust());
       setText(content);
       setFile(chosenFile);
       showToast(err.message || 'Erro ao enviar mensagem', '');
@@ -949,6 +975,7 @@ export default function MessagesPage() {
             token,
             conversationId: active.id,
             usernames: participantUsernames(),
+            meUsername: user?.username,
             content: '',
             media: encryptedMedia,
           });
@@ -962,7 +989,7 @@ export default function MessagesPage() {
             mediaUrl: '',
             mediaType: '',
           });
-          const created = { ...createdEncrypted, content: '', media: encryptedMedia, encrypted: true };
+          const created = await hydrateStoredMessage(active.id, createdEncrypted, user?.username);
           setMessages(prev => ({ ...prev, [active.id]: [...(prev[active.id] || []), created] }));
           bumpConversation(active.id, created);
           getConversationChannel(token, active.id).publish('message_sent', { message: createdEncrypted }).catch(() => null);
@@ -1419,6 +1446,38 @@ export default function MessagesPage() {
                 </div>
               </div>
             </div>
+
+            {pendingTrust.length > 0 && (
+              <div className="e2ee-trust-banner">
+                <strong>Verificacao de dispositivo E2EE</strong>
+                <p>A chave de seguranca de um contato mudou. Confirme antes de continuar.</p>
+                {pendingTrust.map(item => (
+                  <div key={`${item.username}:${item.deviceId}`} className="e2ee-trust-row">
+                    <span>@{item.username} · {item.deviceName || item.deviceId}</span>
+                    <div className="e2ee-trust-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          confirmDeviceTrust(item.username, item.deviceId, item.actual);
+                          setPendingTrust(listPendingDeviceTrust());
+                          showToast('Dispositivo confirmado', 'OK');
+                        }}
+                      >
+                        Confirmar
+                      </button>
+                      <button type="button" className="ghost" onClick={() => setPendingTrust(listPendingDeviceTrust())}>Depois</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!e2eeStatus.ready && e2eeStatus.checked && e2eeStatus.missing?.length > 0 && (
+              <div className="e2ee-trust-banner is-warn">
+                <strong>E2EE incompleto</strong>
+                <p>Sem chave para: {e2eeStatus.missing.join(', ')}. Peça para abrirem a conversa no aparelho deles.</p>
+              </div>
+            )}
 
             <div className="chat-messages">
               {activeMessages.map((msg, index) => {

@@ -1693,7 +1693,7 @@ function DayDetailModal({ token, dayData, onClose, levelFilter }) {
 // Cache de módulo — sobrevive à navegação entre páginas
 let _overviewCache = null;
 
-export default function AdminDashboardPage() {
+export default function AdminDashboardPage({ onBack }) {
   const { token } = useAuth();
   const [data, setData]                   = useState(_overviewCache);
   const [loading, setLoading]             = useState(!_overviewCache);
@@ -1754,15 +1754,22 @@ export default function AdminDashboardPage() {
           categoryBreakdown = [], levelBreakdown = [], topActions = [], errorRate = [] } = data || {};
 
   return (
-    <div className="dash-page">
-      <div className="dash-header">
-        <div>
-          <h1 className="dash-title">Gestao do Sistema</h1>
-          <p className="dash-subtitle">
-            Visao geral dos ultimos 30 dias
-            {lastUpdate && ` · Atualizado as ${lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
-          </p>
+    <div className="dash-page admin-shell-page">
+      {onBack && (
+        <div className="admin-back-bar">
+          <button type="button" onClick={onBack}>← Voltar ao Admin</button>
         </div>
+      )}
+      <header className="admin-shell-hero">
+        <small>Gestao do sistema</small>
+        <h1>Painel de Gestao</h1>
+        <p>
+          Visao geral dos ultimos 30 dias
+          {lastUpdate && ` · Atualizado as ${lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+        </p>
+      </header>
+      <div className="dash-header" style={{ marginTop: -4 }}>
+        <div />
         <button onClick={load} className="dash-btn-refresh" disabled={loading}>
           Atualizar
         </button>

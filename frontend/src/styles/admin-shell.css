@@ -1,0 +1,163 @@
+/* Admin shell — padrao visual Unigram (Dashboard + Audit Logs) */
+.admin-shell-page {
+  padding: 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-shell-hero {
+  padding: 22px 24px;
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #6a00f4, #3366ff 58%, #00a8ff);
+  box-shadow: 0 18px 45px rgba(54, 102, 255, 0.24);
+}
+
+.admin-shell-hero small {
+  display: block;
+  opacity: 0.86;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-shell-hero h1 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 900;
+}
+
+.admin-shell-hero p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-shell-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.admin-shell-filters select,
+.admin-shell-filters input {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input-bg, var(--card));
+  color: var(--text);
+  font-size: 13px;
+  min-width: 160px;
+}
+
+.admin-shell-btn-primary {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #6a00f4, #3366ff 58%, #00a8ff);
+}
+
+.admin-shell-btn-ghost {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.admin-shell-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 320px);
+  min-height: 300px;
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.admin-shell-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-shell-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--card) 96%, var(--page-bg));
+}
+
+.admin-shell-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-shell-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  color: var(--text);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.admin-shell-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.admin-shell-badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.admin-shell-badge.info { background: #e0f2fe; color: #0369a1; }
+.admin-shell-badge.warn { background: #fef9c3; color: #a16207; }
+.admin-shell-badge.alert { background: #fee2e2; color: #b91c1c; }
+
+.admin-shell-empty,
+.admin-shell-error {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--text-muted);
+}
+
+.admin-shell-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+[data-theme="dark"] .admin-shell-badge.info { background: rgba(56, 189, 248, .18); color: #7dd3fc; }
+[data-theme="dark"] .admin-shell-badge.warn { background: rgba(250, 204, 21, .16); color: #fde68a; }
+[data-theme="dark"] .admin-shell-badge.alert { background: rgba(248, 113, 113, .16); color: #fecaca; }
+
+@media (max-width: 760px) {
+  .admin-shell-page { padding: 14px; }
+  .admin-shell-filters { flex-direction: column; }
+  .admin-shell-filters select,
+  .admin-shell-filters input { width: 100%; min-width: 0; }
+}

@@ -3,9 +3,11 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Avatar, RoleBadge, Modal } from '../ui';
-import { createComment, fetchPostLikers, likePost, unlikePost, savePost, unsavePost, sharePost } from '../../services/posts';
+import { createComment, fetchComments, fetchPostLikers, likePost, unlikePost, savePost, unsavePost, sharePost } from '../../services/posts';
 import { relativeTime } from '../../utils/time';
 import { CommentRow } from './PostCommentThread';
+import PortfolioShowcase from './PortfolioShowcase';
+import { buildPortfolioView, cleanPortfolioSummary, extractPortfolioTags } from '../../utils/portfolioSections';
 import { useAchievements } from '../../contexts/AchievementsContext';
 import '../../styles/comments-modal.css';
 
@@ -275,9 +277,24 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
   const { showToast } = useToast();
   const { unlock } = useAchievements();
   const [comments, setComments] = useState(() => (post._comments || []).map(normalizeComment));
+  const [visibleComments, setVisibleComments] = useState(12);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsLoaded, setCommentsLoaded] = useState((post._comments || []).length > 0);
   const [newText, setNewText] = useState('');
   const [sort, setSort] = useState('recent');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!token || !post?.id || commentsLoaded) return;
+    setLoadingComments(true);
+    fetchComments({ token, postId: post.id })
+      .then((loaded) => {
+        setComments((loaded || []).map(normalizeComment));
+        setCommentsLoaded(true);
+      })
+      .catch(() => null)
+      .finally(() => setLoadingComments(false));
+  }, [token, post?.id, commentsLoaded]);
 
   // Ações do post
   const [liked, setLiked] = useState(post.liked || false);
@@ -292,7 +309,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     }
     : post.author;
   const embeds = useMemo(() => getEmbeds(post.content || ''), [post.content]);
-  const portfolio = useMemo(() => getPortfolioPost(post), [post]);
+  const portfolio = useMemo(() => buildPortfolioView(post), [post]);
   const bodyText = useMemo(() => stripEmbedLinks(post.content || ''), [post.content]);
 
   const sortedComments = useMemo(() => {
@@ -306,6 +323,9 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
     list.sort((a, b) => (sort === 'recent' ? toMs(b.time) - toMs(a.time) : toMs(a.time) - toMs(b.time)));
     return list;
   }, [comments, sort]);
+
+  const visibleList = useMemo(() => sortedComments.slice(0, visibleComments), [sortedComments, visibleComments]);
+  const hasMoreComments = sortedComments.length > visibleComments;
 
   const addComment = async () => {
     if (!newText.trim() || submitting) return;
@@ -383,36 +403,7 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
             </div>
           </header>
 
-          {portfolio && (
-            <div className="post-detail-portfolio">
-              <div className="post-detail-portfolio-preview">
-                {portfolio.mediaUrl && portfolio.mediaType !== 'video' ? (
-                  <img src={portfolio.mediaUrl} alt="" />
-                ) : portfolio.mediaUrl && portfolio.mediaType === 'video' ? (
-                  <video src={portfolio.mediaUrl} muted playsInline controls />
-                ) : (
-                  <div className="post-detail-portfolio-mock">
-                    <span /><span /><span />
-                    <i /><i /><i />
-                  </div>
-                )}
-              </div>
-              <div className="post-detail-portfolio-body">
-                <div className="post-detail-portfolio-kicker">Portfólio acadêmico</div>
-                <h3>{portfolio.title}</h3>
-                {portfolio.summary && <p>{portfolio.summary}</p>}
-                {portfolio.tags.length > 0 && (
-                  <div className="post-detail-portfolio-tags">
-                    {portfolio.tags.map(tag => <span key={tag}>{tag}</span>)}
-                  </div>
-                )}
-                <div className="post-detail-portfolio-actions">
-                  {portfolio.externalLink && <a href={portfolio.externalLink} target="_blank" rel="noreferrer">Abrir projeto</a>}
-                  {portfolio.caseLink && <a href={portfolio.caseLink}>Ver case</a>}
-                </div>
-              </div>
-            </div>
-          )}
+          {portfolio && <PortfolioShowcase portfolio={portfolio} />}
 
           {bodyText && !portfolio && <div className="post-detail-body">{formatContent(bodyText)}</div>}
 
@@ -499,19 +490,32 @@ export default function PostDetailModal({ post, onClose, onOpenProfile }) {
           </header>
 
           <div className="post-detail-comments-list">
-            {sortedComments.length === 0 ? (
+            {loadingComments && sortedComments.length === 0 ? (
+              <p className="post-detail-comments-empty">Carregando comentários...</p>
+            ) : sortedComments.length === 0 ? (
               <p className="post-detail-comments-empty">Nenhum comentário ainda. Seja o primeiro!</p>
             ) : (
-              sortedComments.map(c => (
-                <CommentRow
-                  key={c.id}
-                  comment={c}
-                  postId={post.id}
-                  postAuthorUsername={author?.username}
-                  onMutate={setComments}
-                  onOpenProfile={onOpenProfile}
-                />
-              ))
+              <>
+                {visibleList.map(c => (
+                  <CommentRow
+                    key={c.id}
+                    comment={c}
+                    postId={post.id}
+                    postAuthorUsername={author?.username}
+                    onMutate={setComments}
+                    onOpenProfile={onOpenProfile}
+                  />
+                ))}
+                {hasMoreComments && (
+                  <button
+                    type="button"
+                    className="post-detail-load-more-comments"
+                    onClick={() => setVisibleComments(count => count + 12)}
+                  >
+                    Carregar mais comentários ({sortedComments.length - visibleComments} restantes)
+                  </button>
+                )}
+              </>
             )}
           </div>
 

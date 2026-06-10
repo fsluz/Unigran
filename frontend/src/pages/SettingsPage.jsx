@@ -206,7 +206,7 @@ function PasswordAccordion({ onSuccess }) {
 }
 
 /*  Main  */
-export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSection = 'pessoal' }) {
+export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSection = 'pessoal', onBack, adminStandalone = false }) {
   const { user, token, updateUser } = useAuth();
   const { showToast }               = useToast();
 
@@ -291,7 +291,9 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   const canAssignRoles = hasPermission(user, 'permissions:manage') || hasPermission(user, 'roles:social_assign');
   const canAssignGlobalRoles = hasPermission(user, 'permissions:manage');
   const canSeeAdmin = canReadUsers || canModerateReports;
-  const groups = [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
+  const groups = adminStandalone && canSeeAdmin
+    ? [ADMIN_GROUP]
+    : [...BASE_GROUPS, ...(canSeeAdmin ? [ADMIN_GROUP] : [])];
 
   useEffect(() => {
     setSection(initialSection);
@@ -694,12 +696,17 @@ export default function SettingsPage({ onLogout, dark, onToggleTheme, initialSec
   return (
     <div className="page-scroll settings-page">
       <Topbar brandOnly />
+      {onBack && (
+        <div className="settings-back-bar">
+          <button type="button" className="settings-back-btn" onClick={onBack}>← Voltar</button>
+        </div>
+      )}
       <div className="settings-shell">
 
         {/* Left nav */}
         <nav className="settings-sidenav">
           <div style={{ padding: '16px 16px 8px', fontFamily: 'var(--font-head)', fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            Configurações
+            {adminStandalone ? 'Admin da Rede' : 'Configurações'}
           </div>
           {groups.map(g => (
             <div key={g.title} className="settings-nav-group" style={{ marginBottom: 8 }}>

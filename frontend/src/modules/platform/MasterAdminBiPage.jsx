@@ -744,7 +744,7 @@ const PANEL_META = {
   ml:         { title: 'Carreira / ML',  sub: 'Saúde do serviço Python, readiness e candidaturas.'   },
 };
 
-export default function MasterAdminBiPage() {
+export default function MasterAdminBiPage({ onBack }) {
   const { token } = useAuth();
   const [panel,  setPanel]  = useState('overview');
   const [period, setPeriod] = useState('30');
@@ -772,6 +772,11 @@ export default function MasterAdminBiPage() {
 
   return (
     <div className="page-scroll" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {onBack && (
+        <div className="admin-back-bar" style={{ padding: '12px 20px 0' }}>
+          <button type="button" onClick={onBack}>← Voltar ao Admin</button>
+        </div>
+      )}
       <Topbar title="Master BI" />
 
       <div className="mbi-shell">

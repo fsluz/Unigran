@@ -34,7 +34,7 @@ function ZuniIcon({ name, size = 20 }) {
 }
 
 export default function ZuniPage({ onOpenProfile }) {
-  const ZUNI_PAGE_SIZE = 12;
+  const ZUNI_PAGE_SIZE = 5;
   const { token, user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [liked, setLiked] = useState({});
@@ -87,7 +87,7 @@ export default function ZuniPage({ onOpenProfile }) {
   useEffect(() => {
     const index = posts.findIndex(post => post.id === activePostId);
     if (index < 0) return;
-    if (hasMore && !loading && posts.length - index <= 4) {
+    if (hasMore && !loading && posts.length - index <= 2) {
       loadPage(page + 1, true);
     }
   }, [activePostId, hasMore, loading, page, posts]);

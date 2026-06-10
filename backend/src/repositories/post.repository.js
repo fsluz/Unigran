@@ -18,6 +18,16 @@ function setCached(key, value) {
   cache.set(key, { at: Date.now(), value });
 }
 
+function detectZuniPost(postText = '', videoUrl = null, imageUrl = null) {
+  if (!videoUrl || imageUrl) return false;
+  const text = String(postText || '');
+  if (/#zuni/i.test(text)) return true;
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  if (/#portfolio|#portfolioacademico/i.test(text)) return false;
+  return trimmed.length <= 120;
+}
+
 function postIdFilter(postIds = []) {
   const ids = [...new Set((postIds || []).filter(Boolean))].slice(0, 250);
   if (!ids.length) return '';
@@ -281,15 +291,18 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
   const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
   const safeOffset = Math.max(0, Number(offset) || 0);
   const dbLimitByFeed = {
-    zuni: 800,
+    zuni: 2400,
     explore: 600,
     trending: 500,
     following: 500,
   };
   const dbLimit = Math.min(
-    Math.max(dbLimitByFeed[feed] || 300, safeLimit * 8, safeOffset + safeLimit * 8),
-    feed === 'zuni' ? 1200 : 800,
+    Math.max(dbLimitByFeed[feed] || 300, safeLimit * 12, safeOffset + safeLimit * 12),
+    feed === 'zuni' ? 4000 : 800,
   );
+  const zuniVideoMatch = feed === 'zuni'
+    ? '$post has post-video $post_video;'
+    : 'try { $post has post-video $post_video; };';
   const followingMatch = feed === 'following' && viewerUsername
     ? `
       $viewer isa person, has username "${typeqlLiteral(viewerUsername)}";
@@ -315,7 +328,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       try { $user has page-visibility $user_visibility; };
       try { $post has post-text $post_text; };
       try { $post has post-image $post_image; };
-      try { $post has post-video $post_video; };
+      ${zuniVideoMatch}
     sort $post_ts desc;
     limit ${dbLimit};
     fetch {
@@ -354,11 +367,11 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
     const postText = entry?.post_text || attrs['post-text'] || '';
     const imageUrl = entry?.post_image || attrs['post-image'] || null;
     const videoUrl = entry?.post_video || attrs['post-video'] || null;
-    const isZuni = String(postText).toLowerCase().includes('#zuni');
+    const isZuni = detectZuniPost(postText, videoUrl, imageUrl);
     if (feed === 'zuni') return isZuni;
     if (isZuni) return false;
     if (feed === 'following') {
-      return followingSet.has(authorUsername);
+      return authorUsername === viewerUsername || followingSet.has(authorUsername);
     }
     if (feed === 'trending') return true;
     if (feed === 'explore') {
@@ -737,7 +750,7 @@ export async function listUserPosts({ username, viewerUsername, limit = 50 }) {
       _comments: comments,
     };
   })
-    .filter(post => !String(post.content || '').toLowerCase().includes('#zuni'))
+    .filter(post => !detectZuniPost(post.content, post.media?.resource_type === 'video' ? post.media?.url : null, post.media?.resource_type === 'image' ? post.media?.url : null))
     .sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')))
     .slice(0, limit);
 }

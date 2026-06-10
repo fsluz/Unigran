@@ -5,6 +5,8 @@ const DEVICE_ID_KEY = 'unigran_device_id';
 const DEVICE_IDENTITY_PREFIX = 'unigran_e2ee_device_identity_v1_';
 const CONV_PREFIX = 'unigran_e2ee_conv_';
 const TRUST_PREFIX = 'unigran_e2ee_trust_v1_';
+const PENDING_TRUST_PREFIX = 'unigran_e2ee_pending_v1_';
+const MIGRATION_FLAG = 'unigran_e2ee_migrated_v2';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -45,12 +47,46 @@ async function normalizeDevice(username, device) {
   };
 }
 
+function pendingTrustKey(username, deviceId) {
+  return `${PENDING_TRUST_PREFIX}${String(username || '').toLowerCase()}:${deviceId || 'legacy'}`;
+}
+
+export function listPendingDeviceTrust() {
+  const items = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(PENDING_TRUST_PREFIX)) continue;
+    try {
+      items.push(JSON.parse(localStorage.getItem(key)));
+    } catch {
+      /* ignore */
+    }
+  }
+  return items;
+}
+
+export function confirmDeviceTrust(username, deviceId, fingerprint) {
+  localStorage.setItem(trustStorageKey(username, deviceId), fingerprint);
+  localStorage.removeItem(pendingTrustKey(username, deviceId));
+}
+
+export function rejectDeviceTrust(username, deviceId) {
+  localStorage.removeItem(pendingTrustKey(username, deviceId));
+}
+
 async function verifyAndTrustDevices(username, devices) {
   const normalized = await Promise.all((devices || []).map(device => normalizeDevice(username, device)));
   normalized.forEach(device => {
     const key = trustStorageKey(username, device.id);
     const trusted = localStorage.getItem(key);
     if (trusted && trusted !== device.fingerprint) {
+      localStorage.setItem(pendingTrustKey(username, device.id), JSON.stringify({
+        username,
+        deviceId: device.id,
+        deviceName: device.name || device.id,
+        expected: trusted,
+        actual: device.fingerprint,
+      }));
       const error = new Error(`Chave E2EE mudou para ${username}. Confirme o aparelho antes de enviar.`);
       error.code = 'E2EE_KEY_CHANGED';
       error.username = username;
@@ -153,7 +189,10 @@ export async function publishOwnPublicKey(token) {
       publicKey: JSON.stringify(device.identity.publicKey),
     }),
   }).catch(() => null);
-  if (deviceResponse?.ok || deviceResponse?.status === 403) return;
+  if (deviceResponse?.ok || deviceResponse?.status === 403) {
+    localStorage.setItem(MIGRATION_FLAG, '1');
+    return;
+  }
 
   // Legacy fallback keeps old deployments usable until the device schema is installed.
   const identity = await ensureLegacyIdentity();
@@ -162,6 +201,15 @@ export async function publishOwnPublicKey(token) {
     headers: authHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify({ publicKey: JSON.stringify(identity.publicKey) }),
   }).catch(() => null);
+  localStorage.setItem(MIGRATION_FLAG, '1');
+}
+
+export async function migrateLegacyE2EE(token) {
+  if (localStorage.getItem(MIGRATION_FLAG) === '1') return { migrated: true, skipped: true };
+  await publishOwnPublicKey(token);
+  const { deviceId, identity } = await ensureDeviceIdentity();
+  localStorage.setItem(trustStorageKey('self', deviceId), await fingerprintPublicKey(identity.publicKey));
+  return { migrated: true, deviceId };
 }
 
 export async function fetchPublicKeys(token, usernames) {
@@ -220,9 +268,24 @@ async function fetchRecipientDevices(token, usernames) {
   return devices;
 }
 
-export async function encryptMessage({ token, conversationId, usernames, content, media }) {
+export async function encryptMessage({ token, conversationId, usernames, content, media, meUsername }) {
   const uniqueUsers = [...new Set(usernames.filter(Boolean))];
   const devices = await fetchRecipientDevices(token, uniqueUsers);
+
+  // Garante que o remetente sempre recebe a chave no proprio aparelho para reler do banco.
+  if (meUsername && uniqueUsers.includes(meUsername)) {
+    const { deviceId, identity } = await ensureDeviceIdentity();
+    const localDevice = {
+      id: deviceId,
+      publicKey: JSON.stringify(identity.publicKey),
+      fingerprint: await fingerprintPublicKey(identity.publicKey),
+    };
+    const mine = devices[meUsername] || [];
+    if (!mine.some(device => device.id === deviceId)) {
+      devices[meUsername] = [...mine, localDevice];
+    }
+  }
+
   const missing = uniqueUsers.filter(username => !(devices[username] || []).length);
   if (missing.length) {
     const error = new Error(`E2EE sem chave para: ${missing.join(', ')}`);
@@ -246,11 +309,12 @@ export async function encryptMessage({ token, conversationId, usernames, content
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plain = JSON.stringify({ content, media: media || null });
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, encoder.encode(plain));
+  const msgId = crypto.randomUUID();
   return JSON.stringify({
     e2ee: 2,
     alg: 'AES-GCM-256/RSA-OAEP-device',
     strict: true,
-    msgId: crypto.randomUUID(),
+    msgId,
     sentAt: new Date().toISOString(),
     iv: bytesToBase64(iv),
     ciphertext: bytesToBase64(ciphertext),
@@ -280,11 +344,46 @@ export async function decryptMessagePayload(conversationId, encryptedText, usern
     }
   } else {
     const { deviceId, identity } = await ensureDeviceIdentity();
-    const wrapped = payload.keys?.[username]?.[deviceId] || payload.keys?.[username]?.legacy;
-    if (!wrapped) throw new Error('Chave desta mensagem ausente');
-    const privateKey = await importPrivateKey(identity.privateKey);
-    const rawAes = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, base64ToBytes(wrapped));
-    aesKey = await crypto.subtle.importKey('raw', rawAes, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+    const legacyIdentity = await ensureLegacyIdentity();
+    const userKeys = payload.keys?.[username];
+    let wrapped = typeof userKeys === 'string'
+      ? userKeys
+      : (userKeys?.[deviceId] || userKeys?.legacy);
+
+    const tryDecrypt = async (privateKeyJwk, wrappedKey) => {
+      const privateKey = await importPrivateKey(privateKeyJwk);
+      const rawAes = await crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, base64ToBytes(wrappedKey));
+      return crypto.subtle.importKey('raw', rawAes, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+    };
+
+    if (wrapped) {
+      try {
+        aesKey = await tryDecrypt(identity.privateKey, wrapped);
+      } catch {
+        if (legacyIdentity.privateKey) {
+          aesKey = await tryDecrypt(legacyIdentity.privateKey, wrapped);
+        }
+      }
+    }
+
+    if (!aesKey && userKeys && typeof userKeys === 'object') {
+      for (const candidate of Object.values(userKeys)) {
+        if (typeof candidate !== 'string') continue;
+        try {
+          aesKey = await tryDecrypt(identity.privateKey, candidate);
+          break;
+        } catch {
+          try {
+            aesKey = await tryDecrypt(legacyIdentity.privateKey, candidate);
+            break;
+          } catch {
+            /* try next */
+          }
+        }
+      }
+    }
+
+    if (!aesKey) throw new Error('Chave desta mensagem ausente');
   }
 
   const plainBytes = await crypto.subtle.decrypt(

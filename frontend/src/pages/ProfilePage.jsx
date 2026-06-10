@@ -267,99 +267,99 @@ export default function ProfilePage({ onNavigate, profileKey }) {
   const virtualResume = portfolioResume?.virtualResume;
 
   return (
-    <div className="page-scroll">
-      <Topbar />
-      {/* Banner */}
-      <div style={{ background: 'var(--card)', borderBottom: '1px solid var(--border)' }}>
-        <div className="profile-banner profile-banner-bleed" style={coverPreview ? { backgroundImage: `url(${coverPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
-          <label className="profile-banner-btn">
-            Editar Capa
+    <div className="page-scroll profile-page-modern">
+      <Topbar title="Meu perfil" />
+      <div className="profile-hero-shell">
+        <div
+          className="profile-cover-modern"
+          style={coverPreview ? { backgroundImage: `url(${coverPreview})` } : undefined}
+        >
+          <div className="profile-cover-overlay" />
+          <label className="profile-cover-edit">
+            Editar capa
             <input type="file" accept="image/*,.gif" style={{ display: 'none' }} onChange={changeCoverNow} />
           </label>
         </div>
 
-        <div className="profile-info-wrap">
-          <div className="profile-top-row">
-            <div className="profile-avatar-pull">
-              <div onClick={() => profilePreview && setLightbox(profilePreview)} className="profile-big-avatar" style={profilePreview ? { backgroundImage: `url(${profilePreview})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent', cursor: 'zoom-in' } : {}}>
-                {user.avatar}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, paddingTop: 12 }}>
-              <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
-                Editar Perfil
-              </Button>
-              {normalizeRole(user.role) !== 'user' && <span className="tag">{normalizeRole(user.role)}</span>}
-            </div>
-          </div>
-
-          <div className="profile-name">{user.displayName}</div>
-          <div className="profile-inst">{user.institution}</div>
-          <div className="profile-bio">{user.bio}</div>
-
-          <div className="profile-stats">
-            <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.posts || posts.length}</div>
-              <div className="profile-stat-label">Publicações</div>
-            </div>
-            <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.followers || 0}</div>
-              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('followers')}>Seguidores</div>
-            </div>
-            <div className="profile-stat">
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{stats.following || 0}</div>
-              <div className="profile-stat-label" style={{ cursor: 'pointer' }} onClick={() => openPeople('following')}>Seguindo</div>
-            </div>
-            <div className="profile-stat" onClick={() => setTab('Portfólio')}>
-              <div className="profile-stat-num" style={{ color:'var(--accent)' }}>{portfolioItems.length}</div>
-              <div className="profile-stat-label">Portfolio</div>
+        <div className="profile-hero-body">
+          <div className="profile-hero-top">
+            <button
+              type="button"
+              className="profile-avatar-modern"
+              onClick={() => profilePreview && setLightbox(profilePreview)}
+              style={profilePreview ? { backgroundImage: `url(${profilePreview})` } : undefined}
+            >
+              {!profilePreview && (user.avatar || user.displayName?.slice(0, 2))}
+            </button>
+            <div className="profile-hero-actions">
+              <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>Editar perfil</Button>
+              <Button variant="primary" size="sm" onClick={() => onNavigate?.('settings')}>Configuracoes</Button>
+              {normalizeRole(user.role) !== 'user' && <span className="profile-role-chip">{normalizeRole(user.role)}</span>}
             </div>
           </div>
 
-          <div className="profile-achievements">
-            <span className="profile-achievements-label">Conquistas:</span>
+          <div className="profile-identity-block">
+            <h1>{user.displayName}</h1>
+            <p className="profile-handle">@{user.username}</p>
+            {user.institution && <p className="profile-institution">{user.institution}</p>}
+            {user.bio && <p className="profile-bio-modern">{user.bio}</p>}
+          </div>
+
+          <div className="profile-stats-modern">
+            <div className="profile-stat-card">
+              <strong>{stats.posts || posts.length}</strong>
+              <span>Publicacoes</span>
+            </div>
+            <button type="button" className="profile-stat-card" onClick={() => openPeople('followers')}>
+              <strong>{stats.followers || 0}</strong>
+              <span>Seguidores</span>
+            </button>
+            <button type="button" className="profile-stat-card" onClick={() => openPeople('following')}>
+              <strong>{stats.following || 0}</strong>
+              <span>Seguindo</span>
+            </button>
+            <button type="button" className="profile-stat-card" onClick={() => setTab('Portfólio')}>
+              <strong>{portfolioItems.length}</strong>
+              <span>Portfolio</span>
+            </button>
+          </div>
+
+          <div className="profile-achievements-modern">
             {achievements.map((a, i) => (
-              <div key={a.title} className={`achievement-circle ${a.done ? 'done' : ''}`} title={`${a.title} - ${a.text}`}>{i + 1}</div>
+              <div key={a.title} className={`profile-achievement-pill ${a.done ? 'done' : ''}`} title={`${a.title} - ${a.text}`}>
+                <span>{i + 1}</span>
+                <small>{a.title}</small>
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="profile-tab-bar">
+        <div className="profile-tabs-modern">
           {TABS.map(t => (
-            <button key={t} className={`profile-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-              {t}
-            </button>
+            <button key={t} type="button" className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>
           ))}
         </div>
       </div>
 
-      {/* Tab content */}
-      <div className="profile-tab-content">
+      <div className="profile-tab-content profile-tab-content-modern">
         {tab === 'Publicações' && (
-          <div style={{ maxWidth: 640, margin: '0 auto' }}>
-            {/* Post filters */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div className="profile-feed-shell">
+            <div className="profile-filter-pills">
               {POST_FILTERS.map(f => (
                 <button
                   key={f.id}
+                  type="button"
+                  className={postFilter === f.id ? 'active' : ''}
                   onClick={() => setPostFilter(f.id)}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, border: `1px solid ${postFilter === f.id ? 'var(--accent)' : 'var(--border)'}`,
-                    background: postFilter === f.id ? 'var(--accent-light)' : 'transparent',
-                    color: postFilter === f.id ? 'var(--accent)' : 'var(--text-muted)',
-                    fontWeight: postFilter === f.id ? 700 : 400, fontSize: 13, cursor: 'pointer', transition: 'all .15s',
-                  }}
                 >{f.label}</button>
               ))}
             </div>
 
             {sortedPosts.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                Nenhuma publicacao ainda.
-              </div>
+              <div className="profile-empty-state">Nenhuma publicacao ainda.</div>
             ) : (
               sortedPosts.map(post => (
-                <div key={post.id} style={{ marginBottom: 10 }}>
+                <div key={post.id} className="profile-post-wrap">
                   <PostCard
                     post={post}
                     onDelete={deletePost}

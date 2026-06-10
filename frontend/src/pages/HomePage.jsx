@@ -15,7 +15,7 @@ import { useAchievements } from '../contexts/AchievementsContext';
 import { EmptyState } from '../components/ui';
 
 
-export default function HomePage({ onOpenProfile, onNavigateToCommunity, initialPostId, onConsumePostId }) {
+export default function HomePage({ onOpenProfile, onNavigateToCommunity, onNavigate, initialPostId, onConsumePostId }) {
   const { token } = useAuth();
   const { showToast } = useToast();
   const { unlock } = useAchievements();
@@ -23,7 +23,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
   const [openPost, setOpenPost] = useState(null);
   const [suggestedPeople, setSuggestedPeople] = useState([]);
   const [suggestedCommunities, setSuggestedCommunities] = useState([]);
-  const [feed, setFeed] = useState('following');
+  const [feed, setFeed] = useState('for-you');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -94,6 +94,15 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
       setLoadingPosts(false);
     }
   };
+
+  useEffect(() => {
+    const onTrend = (event) => {
+      const tag = String(event.detail || '').trim();
+      if (tag) openTrend(tag);
+    };
+    window.addEventListener('unigran:open-trend', onTrend);
+    return () => window.removeEventListener('unigran:open-trend', onTrend);
+  }, [token]);
 
   const handleNewPost = async (payload) => {
     const created = await createPost({ token, ...payload });
@@ -257,7 +266,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
 
         <aside className="right-panel home-right-panel">
           <div className="panel-card home-side-card home-trends-card">
-            <div className="home-side-heading"><span>Tendências</span><button type="button">Ver todas ›</button></div>
+            <div className="home-side-heading"><span>Tendências</span><button type="button" onClick={() => onNavigate?.('trends')}>Ver todas ›</button></div>
             {trending.length ? trending.map((item, i) => (
               <div key={item.tag} className="home-trend-row">
                 <span>{i + 1}</span>
@@ -271,7 +280,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
           </div>
 
           <div className="panel-card home-side-card">
-            <div className="home-side-heading"><span>Sugestões para você</span><button type="button">Ver mais ›</button></div>
+            <div className="home-side-heading"><span>Sugestões para você</span><button type="button" onClick={() => onNavigate?.('communities')}>Ver mais ›</button></div>
             {suggestedCommunities.length ? suggestedCommunities.map(com => (
               <div key={com.id || com.name} className="home-community-row">
                 <div className="home-community-mark" style={{ color: com.color || undefined }}>{com.icon || (com.name || '?').slice(0, 2).toUpperCase()}</div>
@@ -285,7 +294,7 @@ export default function HomePage({ onOpenProfile, onNavigateToCommunity, initial
           </div>
 
           <div className="panel-card home-side-card home-people-card">
-            <div className="home-side-heading"><span>Pessoas sugeridas</span><button type="button">Ver mais ›</button></div>
+            <div className="home-side-heading"><span>Pessoas sugeridas</span><button type="button" onClick={() => onNavigate?.('trends', { tab: 'people' })}>Ver mais ›</button></div>
             {suggestedPeople.length ? suggestedPeople.map((person, i, arr) => (
               <div key={person.username || person.name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
                 <button onClick={() => person.username && onOpenProfile?.(person.username)} style={{ border: 0, background: 'transparent', padding: 0 }}>

@@ -9,7 +9,7 @@ export default function AdminHubPage({ onNavigate }) {
   const { token, user } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const items = [
-    { id: 'settingsAdmin', title: 'Cadastros e Moderacao', text: 'Crie logins, ajuste cargos, bans e denuncias.', icon: Users, permission: 'users:platform_manage' },
+    { id: 'socialAdmin', title: 'Cadastros e Moderacao', text: 'Crie logins, ajuste cargos, bans e denuncias.', icon: Users, permission: 'users:platform_manage' },
     { id: 'masterBi', title: 'Master BI', text: 'Indicadores e visao geral.', icon: BarChart3, permission: 'system:manage' },
     { id: 'auditLogs', title: 'Logs de Auditoria', text: 'Acoes e acessos registrados.', icon: FileClock, permission: 'audit:read' },
     { id: 'adminDashboard', title: 'Painel de Gestao', text: 'Usuarios, cargos e bloqueios.', icon: ShieldCheck, permission: 'system:manage' },

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch } from '../utils/api';
-import { publishOwnPublicKey } from '../services/e2ee';
+import { migrateLegacyE2EE, publishOwnPublicKey } from '../services/e2ee';
 
 const AuthContext = createContext(null);
 
@@ -60,6 +60,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!token || !user?.username) return;
+    migrateLegacyE2EE(token).catch(() => null);
     publishOwnPublicKey(token).catch(() => null);
   }, [token, user?.username]);
 

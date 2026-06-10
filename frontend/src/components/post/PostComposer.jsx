@@ -314,7 +314,7 @@ export default function PostComposer({ onSubmit, placeholder = 'No que você est
               />
               <button type="button" className="composer-add-tag" onClick={() => addPortfolioTag(portfolioTagInput)}>+ Adicionar</button>
             </div>
-            <span className="composer-portfolio-help">A vitrine mostra apenas fatos que você documentar e arquivos/links anexados. Use Problema: e Resultado: quando forem reais. Formatos: PDF, DOCX (até 1MB).</span>
+            <span className="composer-portfolio-help">Use linhas como Perfil:, Problema:, Solucao:, Resultado: e Complexidade: para a vitrine estruturada no feed. Formatos: PDF, DOCX (até 1MB).</span>
           </div>
         )}
         <input

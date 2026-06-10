@@ -21,6 +21,7 @@ import AuditLogsPage      from './pages/AuditLogsPage';
 import PublicProfilePage  from './pages/PublicProfilePage';
 import ExplorePage        from './pages/ExplorePage';
 import ZuniPage           from './pages/ZuniPage';
+import TrendsPage         from './pages/TrendsPage';
 import FloatingAssistants from './components/assistants/FloatingAssistants';
 import NotificationsPanel from './components/layout/NotificationsPanel';
 import CookieConsentBanner from './components/layout/CookieConsentBanner';
@@ -129,6 +130,7 @@ function AppShell() {
   const [profileUsername, setProfileUsername] = useState(null);
   const [openCommunityId, setOpenCommunityId] = useState(null);
   const [initialPostId, setInitialPostId] = useState(null);
+  const [trendsTab, setTrendsTab] = useState('hashtags');
   const [authView, setAuthView] = useState('login');
   const [enteringPortal, setEnteringPortal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
@@ -153,6 +155,7 @@ function AppShell() {
 
       const navigate = (id, detail = null) => {
         if (id === 'profile') setProfileKey(k => k + 1);
+        if (id === 'trends' && detail?.tab) setTrendsTab(detail.tab);
         if (id === 'communities' && detail?.communityId) setOpenCommunityId(detail.communityId);
         if (id === 'campus' && hasPermission(user, 'platform:read')) {
           if (sessionStorage.getItem('unigran:portal-entry-seen') === '1') {
@@ -216,7 +219,8 @@ function AppShell() {
   const needsUniversityForPortal = isPortalRoute && !isAdminGlobal && uniInitialized && !hasUniversity;
 
   const pages = {
-    home:          <HomePage onOpenProfile={openProfile} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
+    home:          <HomePage onOpenProfile={openProfile} onNavigate={(id, detail) => navigate(id, detail)} onNavigateToCommunity={(id) => { setOpenCommunityId(id); setPage('communities'); }} initialPostId={initialPostId} onConsumePostId={() => setInitialPostId(null)} />,
+    trends:        <TrendsPage onOpenProfile={openProfile} onNavigate={navigate} initialTab={trendsTab} />,
     publicProfile: <PublicProfilePage username={profileUsername} onBack={() => setPage('home')} onOpenProfile={openProfile} />,
     friends:       <FriendsPage onNavigate={setPage} />,
     favorites:     <FavoritesPage onOpenProfile={openProfile} />,
@@ -233,10 +237,11 @@ function AppShell() {
           ? <NoUniversityGate username={user.username} />
           : <CampusPage onBackToPortal={() => setPage('campus')} />)
       : <HomePage onOpenProfile={openProfile} />,
-    admin:         (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <AdminHubPage onNavigate={setPage} /> : <HomePage onOpenProfile={openProfile} />,
-    adminDashboard: hasPermission(user, 'system:manage') ? <AdminDashboardPage /> : <HomePage onOpenProfile={openProfile} />,
-    auditLogs:     hasPermission(user, 'audit:read') ? <AuditLogsPage /> : <HomePage onOpenProfile={openProfile} />,
-    masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage /> : <HomePage onOpenProfile={openProfile} />,
+    admin:         (hasPermission(user, 'system:manage') || hasPermission(user, 'audit:read') || hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <AdminHubPage onNavigate={navigate} /> : <HomePage onOpenProfile={openProfile} />,
+    adminDashboard: hasPermission(user, 'system:manage') ? <AdminDashboardPage onBack={() => setPage('admin')} /> : <HomePage onOpenProfile={openProfile} />,
+    auditLogs:     hasPermission(user, 'audit:read') ? <AuditLogsPage onBack={() => setPage('admin')} /> : <HomePage onOpenProfile={openProfile} />,
+    masterBi:      hasPermission(user, 'system:manage') ? <MasterAdminBiPage onBack={() => setPage('admin')} /> : <HomePage onOpenProfile={openProfile} />,
+    socialAdmin:   (hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <SettingsPage key="social-admin" initialSection="admin" adminStandalone onBack={() => setPage('admin')} onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} /> : <HomePage onOpenProfile={openProfile} />,
     settingsAdmin: (hasPermission(user, 'users:platform_manage') || hasPermission(user, 'reports:read')) ? <SettingsPage key="settings-admin" initialSection="admin" onLogout={handleLogout} dark={dark} onToggleTheme={() => setDark(d => !d)} /> : <HomePage onOpenProfile={openProfile} />,
     meuCaminho:    <MeuCaminhoPage />,
     messages:      <MessagesPage />,
