@@ -4641,3 +4641,57 @@
     padding-left: 14px !important;
   }
 }
+
+/* Messages spacing fix: remove empty gutter between list and chat */
+.messages-page .messages-shell {
+  grid-template-columns: clamp(280px, 18vw, 320px) minmax(0, 1fr) !important;
+  column-gap: 0 !important;
+}
+
+.messages-page .conv-list {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.messages-page .chat-area {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.messages-page .messages-quick-actions {
+  grid-template-columns: minmax(0, 1fr) minmax(92px, 112px) !important;
+}
+
+.messages-page .messages-new-btn,
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  min-width: 0 !important;
+}
+
+.messages-page .messages-new-btn {
+  padding-inline: 10px !important;
+}
+
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  padding-inline: 9px !important;
+}
+
+.messages-page .chat-messages {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+}
+
+.messages-page .msg-block {
+  flex: 0 0 auto !important;
+  width: 100% !important;
+}
+
+@media (max-width: 1100px) {
+  .messages-page .messages-shell {
+    grid-template-columns: clamp(260px, 30vw, 310px) minmax(0, 1fr) !important;
+  }
+}
