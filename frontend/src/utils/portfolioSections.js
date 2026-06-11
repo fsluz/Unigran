@@ -1,13 +1,21 @@
 const SECTION_DEFS = [
-  { key: 'perfil', label: 'Perfil', re: /^perfil\s*:/i },
-  { key: 'problema', label: 'Problema', re: /^problema\s*:/i },
-  { key: 'solucao', label: 'Solucao', re: /^solu[cç][aã]o\s*:/i },
-  { key: 'resultado', label: 'Resultado', re: /^resultado\s*:/i },
-  { key: 'complexidade', label: 'Complexidade', re: /^complexidade\s*:/i },
+  { key: 'perfil', label: 'Perfil', re: /^(?:#{1,6}\s*)?perfil\b\s*:?\s*/i },
+  { key: 'problema', label: 'Problema', re: /^(?:#{1,6}\s*)?problema\b\s*:?\s*/i },
+  { key: 'solucao', label: 'Solucao', re: /^(?:#{1,6}\s*)?solu[cç][aã]o\b\s*:?\s*/i },
+  { key: 'resultado', label: 'Resultado', re: /^(?:#{1,6}\s*)?resultado\b\s*:?\s*/i },
+  { key: 'complexidade', label: 'Complexidade', re: /^(?:#{1,6}\s*)?complexidade\b\s*:?\s*/i },
 ];
 
+export function normalizePortfolioText(text = '') {
+  return String(text || '')
+    .replace(/\s+(#{1,6}\s*(?:Perfil|Problema|Solu[cç][aã]o|Resultado|Complexidade)\b\s*:?\s*)/gi, '\n$1')
+    .replace(/\s+(?=(?:Perfil|Problema|Solu[cç][aã]o|Resultado|Complexidade)\b\s*:)/gi, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function parsePortfolioSections(text = '') {
-  const lines = String(text || '').split(/\r?\n/);
+  const lines = normalizePortfolioText(text).split(/\r?\n/);
   const sections = [];
   let current = null;
 
@@ -20,7 +28,7 @@ export function parsePortfolioSections(text = '') {
       current = {
         key: def.key,
         label: def.label,
-        text: line.replace(/^[^:]+:\s*/i, '').trim(),
+        text: line.replace(def.re, '').trim(),
       };
       continue;
     }
@@ -31,13 +39,14 @@ export function parsePortfolioSections(text = '') {
 }
 
 export function cleanPortfolioSummary(text = '', link = '') {
-  return String(text || '')
+  return normalizePortfolioText(text)
     .replace(/^Novo (?:projeto|trabalho|case)(?: academico)?(?: publicado)?(?: no portfolio academico)?:[^\n]*\n*/i, '')
     .replace(link, '')
     .replace(/\/portfolio\/[^\s]+/gi, '')
     .replace(/#PortfolioAcademico/gi, '')
     .replace(/^Tecnologias:\s*.+$/gim, '')
     .replace(/(?:\s*#[\p{L}\p{N}_-]+)+\s*$/u, '')
+    .replace(/^\s*#{1,6}\s*/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
@@ -55,16 +64,17 @@ export function buildPortfolioView(post) {
   if (post?.portfolioItem) {
     const item = post.portfolioItem;
     const raw = `${item.summary || ''}\n${post.content || ''}`;
+    const summary = cleanPortfolioSummary(item.summary || post.content || '', item.shareUrl || '');
     return {
       title: item.title || 'Projeto de portfolio',
-      summary: cleanPortfolioSummary(item.summary || post.content || '', item.shareUrl || ''),
+      summary,
       externalLink: item.externalUrl || '',
       externalKind: item.externalKind || '',
       caseLink: item.shareUrl || '',
       mediaUrl: item.mediaUrl || post.media?.url || '',
       mediaType: item.mediaType || post.media?.resource_type || '',
       tags: extractPortfolioTags(raw),
-      sections: parsePortfolioSections(item.summary || post.content || ''),
+      sections: parsePortfolioSections(summary),
       profileArea: item.projectType || item.technologies || '',
     };
   }

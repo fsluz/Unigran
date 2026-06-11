@@ -153,7 +153,10 @@ export function CommentRow({
   ];
 
   return (
-    <article className={`post-detail-comment-card depth-${visualDepth} ${depth > 0 ? 'is-nested' : ''}`}>
+    <article
+      className={`post-detail-comment-card depth-${visualDepth} ${depth > 0 ? 'is-nested' : ''} ${depth >= 2 ? 'is-deep' : ''}`}
+      data-depth={depth}
+    >
       <button
         type="button"
         className="comment-author-avatar-btn"
@@ -225,19 +228,20 @@ export function CommentRow({
           </div>
         )}
 
-        {(comment.replies || []).map(reply => (
-          <CommentRow
-            key={reply.id}
-            comment={reply}
-            postId={postId}
-            postAuthorUsername={postAuthorUsername}
-            depth={depth + 1}
-            onReply={onReply}
-            onMutate={onMutate}
-            onOpenProfile={onOpenProfile}
-          />
-        ))}
       </div>
+
+      {(comment.replies || []).map(reply => (
+        <CommentRow
+          key={reply.id}
+          comment={reply}
+          postId={postId}
+          postAuthorUsername={postAuthorUsername}
+          depth={depth + 1}
+          onReply={onReply}
+          onMutate={onMutate}
+          onOpenProfile={onOpenProfile}
+        />
+      ))}
     </article>
   );
 }
