@@ -4695,3 +4695,93 @@
     grid-template-columns: clamp(260px, 30vw, 310px) minmax(0, 1fr) !important;
   }
 }
+
+/* Messages sidebar header: keep actions readable */
+.messages-page .messages-quick-actions {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+}
+
+.messages-page .messages-new-btn,
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 8px 10px !important;
+  overflow: hidden !important;
+}
+
+.messages-page .messages-new-btn {
+  font-size: 12px !important;
+  gap: 6px !important;
+}
+
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  align-items: center !important;
+  justify-content: start !important;
+}
+
+.messages-page .messages-outline-btn span,
+.messages-page .messages-new-group span,
+.messages-page .messages-outline-btn strong,
+.messages-page .messages-new-group strong,
+.messages-page .messages-outline-btn small,
+.messages-page .messages-new-group small,
+.messages-page .messages-outline-btn p,
+.messages-page .messages-new-group p {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Post comments: dedicated scroll area */
+.post-detail-right {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.post-detail-comments-list {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable both-edges !important;
+  padding-right: 14px !important;
+}
+
+.post-detail-comments-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.post-detail-comments-list::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, .24);
+  border-radius: 999px;
+}
+
+.post-detail-comments-list::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(2, 6, 23, .24);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7c3aed, #0ea5e9);
+}
+
+[data-theme="light"] .post-detail-comments-list::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, .7);
+}
+
+[data-theme="light"] .post-detail-comments-list::-webkit-scrollbar-thumb {
+  border-color: rgba(226, 232, 240, .7);
+}
+
+@media (max-width: 900px) {
+  .post-detail-comments-list {
+    max-height: 46dvh !important;
+  }
+}
