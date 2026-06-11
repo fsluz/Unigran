@@ -3840,3 +3840,333 @@
     padding: 12px !important;
   }
 }
+
+/* Tighten messages + portfolio composer after visual QA */
+.messages-page .messages-shell {
+  width: min(1180px, calc(100vw - 24px)) !important;
+  height: calc(100dvh - 78px) !important;
+  min-height: 680px !important;
+  grid-template-columns: 340px minmax(0, 1fr) !important;
+  gap: 0 !important;
+  border: 1px solid rgba(74, 144, 226, .26) !important;
+  border-radius: 28px !important;
+  background:
+    linear-gradient(145deg, rgba(9, 16, 33, .98), rgba(6, 11, 25, .97)),
+    var(--surface-primary) !important;
+  box-shadow: 0 22px 72px rgba(0, 0, 0, .22) !important;
+  overflow: hidden !important;
+}
+
+.messages-page .conv-list,
+.messages-page .chat-area {
+  height: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.messages-page .conv-list {
+  border-right: 1px solid rgba(74, 144, 226, .22) !important;
+}
+
+.messages-page .conv-list-head {
+  padding: 20px 18px 16px !important;
+  background: linear-gradient(180deg, rgba(18, 29, 58, .72), rgba(8, 14, 30, .2)) !important;
+}
+
+.messages-page .messages-title-row {
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.messages-page .messages-title-row h3 {
+  font-size: 18px !important;
+}
+
+.messages-page .messages-quick-actions {
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin-top: 16px !important;
+}
+
+.messages-page .messages-new-btn,
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  width: 100% !important;
+  justify-content: center !important;
+  min-height: 46px !important;
+  border-radius: 15px !important;
+  white-space: nowrap !important;
+}
+
+.messages-page .messages-outline-btn,
+.messages-page .messages-new-group {
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  text-align: left !important;
+}
+
+.messages-page .messages-user-search {
+  margin-top: 16px !important;
+  height: 44px !important;
+}
+
+.messages-page .messages-filter-tabs {
+  margin-top: 12px !important;
+}
+
+.messages-page .conv-scroll {
+  padding: 12px !important;
+}
+
+.messages-page .conv-item {
+  min-height: 68px !important;
+  padding: 13px 12px !important;
+  margin-bottom: 9px !important;
+  border-radius: 18px !important;
+}
+
+.messages-page .conv-item:hover {
+  transform: none !important;
+}
+
+.messages-page .conv-info {
+  min-width: 0 !important;
+}
+
+.messages-page .conv-name {
+  font-size: 13px !important;
+}
+
+.messages-page .conv-preview {
+  margin-top: 3px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.messages-page .chat-head {
+  min-height: 70px !important;
+  padding: 12px 16px !important;
+  background: linear-gradient(180deg, rgba(11, 18, 38, .92), rgba(8, 13, 28, .72)) !important;
+}
+
+.messages-page .chat-head-name {
+  font-size: 17px !important;
+}
+
+.messages-page .chat-messages {
+  padding: 18px 20px !important;
+  gap: 8px !important;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, .34), rgba(2, 6, 23, .18)),
+    rgba(2, 6, 23, .18) !important;
+  background-size: auto !important;
+}
+
+.messages-page .msg-row {
+  margin: 4px 0 !important;
+}
+
+.messages-page .msg-stack {
+  max-width: min(520px, 72%) !important;
+}
+
+.messages-page .msg-bubble {
+  width: fit-content !important;
+  min-width: 54px !important;
+  max-width: 100% !important;
+  padding: 10px 13px !important;
+  border-radius: 16px 16px 16px 6px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .14) !important;
+  font-size: 13px !important;
+}
+
+.messages-page .msg-bubble.me {
+  margin-left: auto !important;
+  border-radius: 16px 16px 6px 16px !important;
+}
+
+.messages-page .msg-meta-line {
+  margin-top: 3px !important;
+  padding-inline: 4px !important;
+}
+
+.messages-page .chat-input-bar {
+  margin: 0 14px 14px !important;
+  padding: 10px !important;
+  border: 1px solid rgba(56, 189, 248, .25) !important;
+  border-radius: 20px !important;
+  background: rgba(3, 10, 24, .76) !important;
+}
+
+.messages-page .chat-input {
+  min-height: 42px !important;
+  border-radius: 15px !important;
+  background: rgba(2, 6, 23, .38) !important;
+}
+
+.messages-page .chat-send-btn {
+  width: 42px !important;
+  min-width: 42px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  border-radius: 15px !important;
+}
+
+.home-page .post-composer.is-portfolio {
+  max-width: 780px !important;
+  padding: 18px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-row {
+  grid-template-columns: 52px minmax(0, 1fr) !important;
+  gap: 14px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-editor {
+  min-height: 142px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-textarea {
+  min-height: 134px !important;
+  padding: 18px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-footer {
+  margin-top: 16px !important;
+  padding-top: 16px !important;
+  gap: 14px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-type-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-type-pill {
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 14px !important;
+  font-size: 12px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-type-pill svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-panel {
+  padding: 12px !important;
+  border-radius: 18px !important;
+  background: rgba(2, 8, 23, .34) !important;
+  box-shadow: none !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(150px, .8fr) !important;
+  gap: 10px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-title {
+  margin-bottom: 10px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-field,
+.home-page .post-composer.is-portfolio .composer-repo-select {
+  min-height: auto !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: rgba(8, 15, 31, .72) !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-field input,
+.home-page .post-composer.is-portfolio .composer-repo-select select {
+  height: 40px !important;
+  border-radius: 12px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-tech-title {
+  margin: 10px 0 6px !important;
+  font-size: 11px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-techs {
+  min-height: 46px !important;
+  padding: 8px !important;
+  border-radius: 14px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-portfolio-help {
+  margin-top: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-publish-row {
+  grid-template-columns: 70px minmax(0, 1fr) 128px !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-attachment-actions {
+  height: 54px !important;
+  min-height: 54px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  padding: 5px !important;
+}
+
+.home-page .post-composer.is-portfolio .composer-submit-wrap {
+  height: 54px !important;
+}
+
+[data-theme="light"] .messages-page .messages-shell {
+  border-color: rgba(37, 99, 235, .16) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(246, 249, 255, .96)),
+    #fff !important;
+}
+
+[data-theme="light"] .messages-page .conv-list {
+  border-right-color: rgba(37, 99, 235, .12) !important;
+}
+
+[data-theme="light"] .messages-page .chat-head,
+[data-theme="light"] .messages-page .conv-list-head {
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(246,249,255,.72)) !important;
+}
+
+[data-theme="light"] .messages-page .chat-messages {
+  background: rgba(246, 249, 255, .76) !important;
+}
+
+[data-theme="light"] .messages-page .chat-input-bar {
+  background: rgba(255, 255, 255, .9) !important;
+}
+
+[data-theme="light"] .home-page .post-composer.is-portfolio .composer-portfolio-panel,
+[data-theme="light"] .home-page .post-composer.is-portfolio .composer-portfolio-field,
+[data-theme="light"] .home-page .post-composer.is-portfolio .composer-repo-select {
+  background: rgba(255, 255, 255, .64) !important;
+}
+
+@media (max-width: 980px) {
+  .messages-page .messages-shell {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-page .post-composer.is-portfolio .composer-portfolio-grid,
+  .home-page .post-composer.is-portfolio .composer-publish-row,
+  .home-page .post-composer.is-portfolio .composer-row {
+    grid-template-columns: 1fr !important;
+  }
+}
