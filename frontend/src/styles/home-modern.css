@@ -3307,3 +3307,536 @@
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
+
+/* Final polish: Messages + Settings */
+.messages-page,
+.settings-page {
+  color: var(--text-primary);
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, .07), transparent 260px),
+    linear-gradient(135deg, rgba(124, 58, 237, .08), transparent 42%),
+    var(--bg-primary);
+}
+
+.messages-page .messages-shell {
+  width: min(1420px, calc(100vw - 28px)) !important;
+  height: calc(100dvh - 92px) !important;
+  min-height: 680px !important;
+  margin: 14px auto 24px !important;
+  display: grid !important;
+  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr) !important;
+  gap: 16px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.messages-page .conv-list,
+.messages-page .chat-area,
+.settings-page .settings-shell,
+.settings-page .settings-sidenav,
+.settings-page .settings-section,
+.settings-page .settings-panel-card {
+  border: 1px solid rgba(124, 157, 255, .2) !important;
+  background:
+    linear-gradient(145deg, rgba(12, 20, 40, .92), rgba(8, 14, 29, .88)),
+    var(--surface-primary) !important;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, .24) !important;
+  backdrop-filter: blur(18px);
+}
+
+.messages-page .conv-list,
+.messages-page .chat-area {
+  height: 100% !important;
+  overflow: hidden !important;
+  border-radius: 28px !important;
+}
+
+.messages-page .conv-list {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.messages-page .conv-list-head,
+.messages-page .chat-head {
+  border-bottom: 1px solid rgba(124, 157, 255, .16) !important;
+  background: rgba(8, 14, 30, .72) !important;
+}
+
+.messages-page .conv-list-head {
+  padding: 22px !important;
+}
+
+.messages-page .messages-title-row h3,
+.messages-page .chat-head-name {
+  font-size: 20px !important;
+  letter-spacing: 0 !important;
+}
+
+.messages-page .messages-title-badge,
+.messages-page .sidebar-wide-badge,
+.messages-page .unread-badge {
+  background: linear-gradient(135deg, #7c3aed, #0ea5e9) !important;
+  color: white !important;
+  box-shadow: 0 10px 28px rgba(99, 102, 241, .35) !important;
+}
+
+.messages-page .messages-quick-actions {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 10px !important;
+  margin-top: 18px !important;
+}
+
+.messages-page .messages-new-btn,
+.messages-page .chat-send-btn {
+  min-height: 44px !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  color: white !important;
+  background: linear-gradient(135deg, #7c3aed, #2563eb 58%, #0ea5e9) !important;
+  box-shadow: 0 16px 34px rgba(37, 99, 235, .28) !important;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease !important;
+}
+
+.messages-page .messages-new-btn:hover,
+.messages-page .chat-send-btn:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.06) !important;
+  box-shadow: 0 18px 42px rgba(37, 99, 235, .36) !important;
+}
+
+.messages-page .messages-outline-btn,
+.messages-page .chat-head-icon,
+.messages-page .chat-back-btn,
+.messages-page .chat-input-icon,
+.messages-page .msg-more-btn,
+.messages-page .msg-react-btn {
+  border: 1px solid rgba(148, 163, 184, .18) !important;
+  background: rgba(15, 23, 42, .62) !important;
+  color: var(--text-secondary) !important;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease !important;
+}
+
+.messages-page .messages-outline-btn:hover,
+.messages-page .chat-head-icon:hover,
+.messages-page .chat-back-btn:hover,
+.messages-page .chat-input-icon:hover,
+.messages-page .msg-more-btn:hover,
+.messages-page .msg-react-btn:hover {
+  transform: translateY(-1px) !important;
+  border-color: rgba(96, 165, 250, .42) !important;
+  background: rgba(30, 41, 59, .78) !important;
+  color: var(--text-primary) !important;
+}
+
+.messages-page .messages-user-search {
+  margin-top: 14px !important;
+  border: 1px solid rgba(148, 163, 184, .18) !important;
+  border-radius: 18px !important;
+  background: rgba(2, 6, 23, .45) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+}
+
+.messages-page .messages-search-input,
+.messages-page .chat-input {
+  color: var(--text-primary) !important;
+}
+
+.messages-page .messages-filter-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin: 14px 0 0 !important;
+  border: 1px solid rgba(148, 163, 184, .14) !important;
+  border-radius: 16px !important;
+  background: rgba(2, 6, 23, .38) !important;
+}
+
+.messages-page .messages-filter-tabs button {
+  min-height: 36px !important;
+  border-radius: 12px !important;
+}
+
+.messages-page .messages-filter-tabs button.active {
+  color: white !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, .95), rgba(14, 165, 233, .8)) !important;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, .22) !important;
+}
+
+.messages-page .conv-scroll,
+.messages-page .chat-messages {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 165, 250, .45) transparent;
+}
+
+.messages-page .conv-scroll {
+  padding: 12px !important;
+}
+
+.messages-page .conv-item {
+  margin: 0 0 10px !important;
+  padding: 14px !important;
+  border: 1px solid rgba(148, 163, 184, .12) !important;
+  border-radius: 20px !important;
+  background: rgba(15, 23, 42, .38) !important;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease !important;
+}
+
+.messages-page .conv-item:hover {
+  transform: translateX(2px) !important;
+  border-color: rgba(96, 165, 250, .34) !important;
+  background: rgba(30, 41, 59, .54) !important;
+}
+
+.messages-page .conv-item.active {
+  border-color: rgba(124, 58, 237, .55) !important;
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, .2), rgba(14, 165, 233, .11)),
+    rgba(15, 23, 42, .62) !important;
+  box-shadow: inset 3px 0 0 #8b5cf6, 0 14px 38px rgba(2, 6, 23, .18) !important;
+}
+
+.messages-page .conv-name {
+  font-weight: 750 !important;
+}
+
+.messages-page .conv-preview,
+.messages-page .chat-head-sub,
+.messages-page .msg-time,
+.messages-page .msg-edited {
+  color: var(--text-tertiary) !important;
+}
+
+.messages-page .chat-area {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+}
+
+.messages-page .chat-head {
+  min-height: 78px !important;
+  padding: 16px 20px !important;
+}
+
+.messages-page .chat-messages {
+  padding: 24px !important;
+  background:
+    linear-gradient(rgba(148, 163, 184, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, .035) 1px, transparent 1px),
+    rgba(2, 6, 23, .22) !important;
+  background-size: 42px 42px !important;
+}
+
+.messages-page .msg-row {
+  gap: 10px !important;
+  margin: 10px 0 !important;
+}
+
+.messages-page .msg-stack {
+  max-width: min(68ch, 74%) !important;
+}
+
+.messages-page .msg-bubble {
+  padding: 12px 14px !important;
+  border: 1px solid rgba(148, 163, 184, .14) !important;
+  border-radius: 18px 18px 18px 8px !important;
+  color: var(--text-primary) !important;
+  background: rgba(15, 23, 42, .82) !important;
+  box-shadow: 0 10px 28px rgba(2, 6, 23, .2) !important;
+  line-height: 1.48 !important;
+}
+
+.messages-page .msg-bubble.me {
+  border-color: rgba(59, 130, 246, .38) !important;
+  border-radius: 18px 18px 8px 18px !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, .92), rgba(37, 99, 235, .9)) !important;
+  color: white !important;
+}
+
+.messages-page .msg-reactions {
+  margin-top: 7px !important;
+}
+
+.messages-page .msg-reactions span,
+.messages-page .msg-reaction-pill {
+  border: 1px solid rgba(148, 163, 184, .18) !important;
+  background: rgba(15, 23, 42, .72) !important;
+  border-radius: 999px !important;
+}
+
+.messages-page .unread-divider {
+  margin: 20px 0 !important;
+  color: #93c5fd !important;
+}
+
+.messages-page .typing-dot {
+  background: #60a5fa !important;
+  box-shadow: 0 0 14px rgba(96, 165, 250, .55) !important;
+}
+
+.messages-page .chat-input-bar {
+  gap: 10px !important;
+  padding: 16px 18px !important;
+  border-top: 1px solid rgba(124, 157, 255, .16) !important;
+  background: rgba(8, 14, 30, .78) !important;
+}
+
+.messages-page .chat-input {
+  min-height: 48px !important;
+  border: 1px solid rgba(148, 163, 184, .18) !important;
+  border-radius: 18px !important;
+  background: rgba(2, 6, 23, .48) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+}
+
+.messages-page .chat-about-modal,
+.messages-page .chat-menu,
+.messages-page .msg-menu,
+.messages-page .msg-reaction-picker,
+.settings-page .settings-card,
+.settings-page .settings-security-tip {
+  border: 1px solid rgba(124, 157, 255, .22) !important;
+  border-radius: 24px !important;
+  background: rgba(12, 20, 40, .96) !important;
+  box-shadow: 0 24px 70px rgba(2, 6, 23, .42) !important;
+  backdrop-filter: blur(18px);
+}
+
+.settings-page .settings-shell {
+  width: min(1280px, calc(100vw - 32px)) !important;
+  min-height: calc(100dvh - 104px) !important;
+  margin: 16px auto 32px !important;
+  display: grid !important;
+  grid-template-columns: 292px minmax(0, 1fr) !important;
+  gap: 16px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border-radius: 30px !important;
+  background:
+    linear-gradient(145deg, rgba(13, 22, 44, .82), rgba(7, 12, 26, .9)),
+    var(--surface-primary) !important;
+}
+
+.settings-page .settings-sidenav {
+  position: sticky !important;
+  top: 14px !important;
+  align-self: start !important;
+  max-height: calc(100dvh - 120px) !important;
+  overflow: auto !important;
+  border-radius: 28px !important;
+  padding: 18px !important;
+}
+
+.settings-page .settings-content {
+  min-width: 0 !important;
+  min-height: calc(100dvh - 128px) !important;
+  padding: 22px 24px 30px !important;
+  overflow: visible !important;
+}
+
+.settings-page .settings-nav-group-title {
+  margin: 16px 10px 8px !important;
+  color: #93c5fd !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+.settings-page .settings-nav-item {
+  min-height: 46px !important;
+  margin: 4px 0 !important;
+  padding: 0 13px !important;
+  border: 1px solid transparent !important;
+  border-radius: 16px !important;
+  color: var(--text-secondary) !important;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease !important;
+}
+
+.settings-page .settings-nav-item:hover {
+  transform: translateX(2px) !important;
+  border-color: rgba(96, 165, 250, .26) !important;
+  background: rgba(30, 41, 59, .52) !important;
+  color: var(--text-primary) !important;
+}
+
+.settings-page .settings-nav-item.active {
+  color: white !important;
+  border-color: rgba(124, 58, 237, .46) !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, .86), rgba(37, 99, 235, .62)) !important;
+  box-shadow: 0 14px 34px rgba(59, 130, 246, .22) !important;
+}
+
+.settings-page .settings-section,
+.settings-page .settings-panel-card {
+  border-radius: 26px !important;
+  padding: 22px !important;
+  margin-bottom: 16px !important;
+}
+
+.settings-page .settings-section-title {
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+}
+
+.settings-page .settings-section-desc,
+.settings-page .settings-row-sub {
+  color: var(--text-tertiary) !important;
+}
+
+.settings-page .settings-row {
+  min-height: 68px !important;
+  padding: 14px 0 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, .12) !important;
+}
+
+.settings-page .settings-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.settings-page .settings-row-title {
+  font-weight: 750 !important;
+}
+
+.settings-page .settings-page input,
+.settings-page .settings-page textarea,
+.settings-page .form-input,
+.settings-page input,
+.settings-page textarea,
+.settings-page select {
+  border-color: rgba(148, 163, 184, .18) !important;
+  border-radius: 16px !important;
+  background: rgba(2, 6, 23, .46) !important;
+  color: var(--text-primary) !important;
+}
+
+.settings-page .settings-danger-zone {
+  border: 1px solid rgba(248, 113, 113, .24) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(135deg, rgba(127, 29, 29, .18), rgba(15, 23, 42, .68)) !important;
+}
+
+.settings-page .settings-security-tip {
+  background: linear-gradient(135deg, rgba(14, 165, 233, .12), rgba(124, 58, 237, .1)) !important;
+}
+
+[data-theme="light"] .messages-page,
+[data-theme="light"] .settings-page {
+  background:
+    linear-gradient(180deg, rgba(37, 99, 235, .08), transparent 300px),
+    linear-gradient(135deg, rgba(124, 58, 237, .07), transparent 44%),
+    #f6f8fc !important;
+}
+
+[data-theme="light"] .messages-page .conv-list,
+[data-theme="light"] .messages-page .chat-area,
+[data-theme="light"] .settings-page .settings-shell,
+[data-theme="light"] .settings-page .settings-sidenav,
+[data-theme="light"] .settings-page .settings-section,
+[data-theme="light"] .settings-page .settings-panel-card {
+  border-color: rgba(37, 99, 235, .14) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(244, 248, 255, .88)),
+    #fff !important;
+  box-shadow: 0 22px 58px rgba(15, 23, 42, .08) !important;
+}
+
+[data-theme="light"] .messages-page .conv-list-head,
+[data-theme="light"] .messages-page .chat-head,
+[data-theme="light"] .messages-page .chat-input-bar {
+  background: rgba(255, 255, 255, .78) !important;
+  border-color: rgba(37, 99, 235, .12) !important;
+}
+
+[data-theme="light"] .messages-page .messages-outline-btn,
+[data-theme="light"] .messages-page .chat-head-icon,
+[data-theme="light"] .messages-page .chat-back-btn,
+[data-theme="light"] .messages-page .chat-input-icon,
+[data-theme="light"] .messages-page .msg-more-btn,
+[data-theme="light"] .messages-page .msg-react-btn,
+[data-theme="light"] .messages-page .conv-item,
+[data-theme="light"] .messages-page .msg-bubble,
+[data-theme="light"] .messages-page .chat-input,
+[data-theme="light"] .messages-page .messages-user-search,
+[data-theme="light"] .messages-page .messages-filter-tabs,
+[data-theme="light"] .settings-page input,
+[data-theme="light"] .settings-page textarea,
+[data-theme="light"] .settings-page select {
+  border-color: rgba(37, 99, 235, .12) !important;
+  background: rgba(255, 255, 255, .74) !important;
+}
+
+[data-theme="light"] .messages-page .chat-messages {
+  background:
+    linear-gradient(rgba(37, 99, 235, .045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, .045) 1px, transparent 1px),
+    rgba(244, 248, 255, .72) !important;
+}
+
+[data-theme="light"] .messages-page .msg-bubble.me {
+  color: white !important;
+  background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+}
+
+[data-theme="light"] .messages-page .chat-about-modal,
+[data-theme="light"] .messages-page .chat-menu,
+[data-theme="light"] .messages-page .msg-menu,
+[data-theme="light"] .messages-page .msg-reaction-picker,
+[data-theme="light"] .settings-page .settings-card,
+[data-theme="light"] .settings-page .settings-security-tip {
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, .12) !important;
+}
+
+@media (max-width: 980px) {
+  .messages-page .messages-shell {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: calc(100dvh - 92px) !important;
+  }
+
+  .messages-page .chat-area {
+    min-height: 650px !important;
+  }
+
+  .settings-page .settings-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .settings-page .settings-sidenav {
+    position: relative !important;
+    top: auto !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .messages-page .messages-shell,
+  .settings-page .settings-shell {
+    width: calc(100vw - 16px) !important;
+    margin-top: 8px !important;
+  }
+
+  .messages-page .conv-list,
+  .messages-page .chat-area,
+  .settings-page .settings-shell,
+  .settings-page .settings-sidenav,
+  .settings-page .settings-section,
+  .settings-page .settings-panel-card {
+    border-radius: 22px !important;
+  }
+
+  .messages-page .msg-stack {
+    max-width: 86% !important;
+  }
+
+  .messages-page .chat-messages {
+    padding: 16px !important;
+  }
+
+  .settings-page .settings-content {
+    padding: 12px !important;
+  }
+}
