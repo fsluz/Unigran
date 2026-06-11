@@ -224,4 +224,36 @@ export async function uploadAudioBuffer(file, folder = 'unigran/messages') {
   };
 }
 
+export async function uploadEncryptedBuffer(file, folder = 'unigran/messages') {
+  if (!file?.buffer) throw new Error('Arquivo criptografado invalido para upload');
+  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary nao configurado. Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET.');
+  }
+
+  const result = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: safeFolder(folder),
+        resource_type: 'raw',
+        use_filename: false,
+        unique_filename: true,
+        overwrite: false,
+        type: 'upload',
+      },
+      (err, uploadResult) => {
+        if (err) return reject(err);
+        resolve(uploadResult);
+      },
+    );
+    stream.end(file.buffer);
+  });
+
+  return {
+    url: result.secure_url,
+    public_id: result.public_id,
+    resource_type: result.resource_type,
+    bytes: Number(result.bytes || file.size || 0),
+  };
+}
+
 

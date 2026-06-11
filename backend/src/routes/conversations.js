@@ -80,6 +80,16 @@ function looksEncrypted(raw = '') {
   }
 }
 
+function plaintextMessagesAllowed() {
+  return String(process.env.ALLOW_PLAINTEXT_MESSAGES || '').toLowerCase() === 'true';
+}
+
+function requireEncryptedMessage(raw = '') {
+  if (looksEncrypted(raw)) return null;
+  if (plaintextMessagesAllowed()) return null;
+  return 'Mensagens precisam ser criptografadas ponta a ponta.';
+}
+
 function mediaPreview(media) {
   if (!media) return '';
   if (media.type === 'image') return 'Foto';
@@ -422,6 +432,8 @@ router.post('/:id/messages', auth, async (req, res) => {
   const cleanContent = String(content || '').trim();
   const media = mediaUrl ? { url: String(mediaUrl), type: String(mediaType || 'file') } : null;
   if (!cleanContent && !media) return res.status(400).json({ error: 'Conteudo ou midia obrigatorio' });
+  const encryptionError = requireEncryptedMessage(cleanContent);
+  if (encryptionError) return res.status(400).json({ error: encryptionError });
   const mid = uuid();
   const now = typeqlDatetime();
   const author = {
@@ -666,6 +678,8 @@ router.patch('/:convId/messages/:msgId', auth, async (req, res) => {
   try {
     const content = String(req.body?.content || '').trim();
     if (!content) return res.status(400).json({ error: 'Mensagem vazia' });
+    const encryptionError = requireEncryptedMessage(content);
+    if (encryptionError) return res.status(400).json({ error: encryptionError });
     const rows = await readQuery(`
       match
         $user isa person, has username "${typeqlLiteral(req.user.username)}";

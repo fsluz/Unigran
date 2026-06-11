@@ -197,6 +197,17 @@ export async function uploadAudio({ token, file }) {
   return parseResponse(res, 'Erro ao enviar audio');
 }
 
+export async function uploadEncryptedMessageFile({ token, file }) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await apiFetch('/uploads/encrypted', {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: fd,
+  });
+  return parseResponse(res, 'Erro ao enviar arquivo criptografado');
+}
+
 export async function likePost({ token, postId }) {
   const res = await apiFetch(`/posts/${postId}/like`, { method: 'POST', headers: authHeaders(token) });
   return parseResponse(res, 'Erro ao curtir');

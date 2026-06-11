@@ -3,15 +3,48 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Avatar } from '../components/ui';
 import { addGroupParticipants, deleteConversation, deleteMessage, fetchConversationDetails, fetchConversationTyping, fetchConversations, fetchMessages, markConversationRead, removeGroupParticipant, sendMessage, setConversationTyping, startDirectConversation, startGroupConversation, toggleMessageReaction, updateConversation, updateMessage } from '../services/conversations';
-import { uploadAudio, uploadMedia } from '../services/posts';
+import { uploadEncryptedMessageFile, uploadMedia } from '../services/posts';
 import { closeRealtime, getCallChannel, getConversationChannel, getPresenceChannel, getUserCallChannel, relayCallSignal } from '../services/realtime';
-import { decryptMessage, decryptMessages, encryptMessage, getE2EEStatus, isEncryptedText, listPendingDeviceTrust, confirmDeviceTrust, migrateLegacyE2EE, publishOwnPublicKey } from '../services/e2ee';
+import { decryptFileAttachment, decryptMessage, decryptMessages, encryptFileAttachment, encryptMessage, getE2EEStatus, isEncryptedText, listPendingDeviceTrust, confirmDeviceTrust, migrateLegacyE2EE, publishOwnPublicKey } from '../services/e2ee';
 import { apiFetch, authHeaders } from '../utils/api';
 import { relativeTime } from '../utils/time';
 import callRingtone from '../assets/call-ringtone.mp3';
 import '../styles/mobile-chat.css';
 
 const QUICK_REACTIONS = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F44F}', '\u{1F602}'];
+const MAX_E2EE_ATTACHMENT_BYTES = 24 * 1024 * 1024;
+
+function PrivateMessageMedia({ media }) {
+  const [url, setUrl] = useState(media?.encrypted ? '' : (media?.url || ''));
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    let objectUrl = '';
+    setError('');
+    setUrl(media?.encrypted ? '' : (media?.url || ''));
+    if (!media?.encrypted) return undefined;
+    decryptFileAttachment(media)
+      .then(nextUrl => {
+        objectUrl = nextUrl;
+        if (alive) setUrl(nextUrl);
+        else URL.revokeObjectURL(nextUrl);
+      })
+      .catch(() => alive && setError('Anexo privado indisponivel'));
+    return () => {
+      alive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [media]);
+
+  if (!media?.url) return null;
+  if (error) return <span className="msg-private-file is-error">{error}</span>;
+  if (!url) return <span className="msg-private-file">Decifrando anexo...</span>;
+  if (media.type === 'video') return <video className="msg-media" src={url} controls preload="metadata" />;
+  if (media.type === 'audio') return <audio className="msg-audio" src={url} controls />;
+  if (media.type === 'image') return <img className="msg-media" src={url} alt="mensagem privada" />;
+  return <a className="msg-private-file" href={url} download={media.name || 'arquivo'}>Baixar anexo privado</a>;
+}
 
 function messageQuality(msg = {}) {
   if (msg.locked) return 0;
@@ -843,21 +876,19 @@ export default function MessagesPage() {
     setFile(null);
     setSendingMedia(Boolean(chosenFile));
     try {
-      let media = null;
+      let encryptedMedia = null;
       if (chosenFile) {
-        if (chosenFile.size > 25 * 1024 * 1024) throw new Error('Arquivo muito grande');
-        media = chosenFile.type?.startsWith('audio/')
-          ? await uploadAudio({ token, file: chosenFile })
-          : await uploadMedia({ token, file: chosenFile });
+        if (chosenFile.size > MAX_E2EE_ATTACHMENT_BYTES) throw new Error('Arquivo muito grande');
+        const encryptedAttachment = await encryptFileAttachment(chosenFile);
+        const uploaded = await uploadEncryptedMessageFile({ token, file: encryptedAttachment.encryptedFile });
+        encryptedMedia = {
+          ...encryptedAttachment.meta,
+          url: uploaded.url,
+          publicId: uploaded.public_id || '',
+          storage: uploaded.resource_type || 'raw',
+          encryptedBytes: uploaded.bytes || encryptedAttachment.encryptedFile.size || 0,
+        };
       }
-      const encryptedMedia = media ? {
-        url: media.url,
-        type: chosenFile?.type?.startsWith('audio/') ? 'audio' : (media.resource_type || ''),
-        format: media.format || '',
-        publicId: media.public_id || '',
-        duration: media.duration || 0,
-        bytes: media.bytes || chosenFile?.size || 0,
-      } : null;
       const encryptedContent = await encryptMessage({
         token,
         conversationId: active.id,
@@ -900,7 +931,7 @@ export default function MessagesPage() {
     const pasted = item.getAsFile();
     if (!pasted) return;
     event.preventDefault();
-    if (pasted.size > 25 * 1024 * 1024) {
+    if (pasted.size > MAX_E2EE_ATTACHMENT_BYTES) {
       showToast('Arquivo muito grande', '!');
       return;
     }
@@ -920,11 +951,7 @@ export default function MessagesPage() {
   };
 
   const renderMedia = (media) => {
-    if (!media?.url) return null;
-    if (media.type === 'video') return <video className="msg-media" src={media.url} controls preload="metadata" />;
-    if (media.type === 'audio') return <audio className="msg-audio" src={media.url} controls />;
-    if (media.type === 'image') return <img className="msg-media" src={media.url} alt="mensagem" />;
-    return <a href={media.url} target="_blank" rel="noreferrer">Abrir arquivo</a>;
+    return <PrivateMessageMedia media={media} />;
   };
 
   const conversationTitle = (conv) => conv?.type === 'group'
@@ -962,14 +989,14 @@ export default function MessagesPage() {
         if (!blob.size) return;
         setSendingMedia(true);
         try {
-          const media = await uploadAudio({ token, file: audioFile });
+          const encryptedAttachment = await encryptFileAttachment(audioFile);
+          const uploaded = await uploadEncryptedMessageFile({ token, file: encryptedAttachment.encryptedFile });
           const encryptedMedia = {
-            url: media?.url || '',
-            type: 'audio',
-            format: media?.format || 'mp3',
-            publicId: media?.public_id || '',
-            duration: media?.duration || 0,
-            bytes: media?.bytes || audioFile.size || 0,
+            ...encryptedAttachment.meta,
+            url: uploaded.url,
+            publicId: uploaded.public_id || '',
+            storage: uploaded.resource_type || 'raw',
+            encryptedBytes: uploaded.bytes || encryptedAttachment.encryptedFile.size || 0,
           };
           const encryptedContent = await encryptMessage({
             token,
@@ -1572,7 +1599,7 @@ export default function MessagesPage() {
                 style={{ display: 'none' }}
                 onChange={e => {
                   const chosen = e.target.files?.[0] || null;
-                  if (chosen && chosen.size > 25 * 1024 * 1024) {
+                  if (chosen && chosen.size > MAX_E2EE_ATTACHMENT_BYTES) {
                     showToast('Arquivo muito grande', '!');
                     e.target.value = '';
                     return;

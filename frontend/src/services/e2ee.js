@@ -178,6 +178,52 @@ async function cacheConversationKey(conversationId, key) {
   localStorage.setItem(`${CONV_PREFIX}${conversationId}`, JSON.stringify(await crypto.subtle.exportKey('jwk', key)));
 }
 
+export async function encryptFileAttachment(file) {
+  if (!file) return null;
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  const rawKey = await crypto.subtle.exportKey('raw', key);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = await file.arrayBuffer();
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+  const encryptedFile = new File(
+    [new Blob([ciphertext], { type: 'application/octet-stream' })],
+    `${crypto.randomUUID()}.unigran-e2ee`,
+    { type: 'application/octet-stream' },
+  );
+
+  return {
+    encryptedFile,
+    meta: {
+      encrypted: true,
+      e2ee: 'file-v1',
+      alg: 'AES-GCM-256',
+      key: bytesToBase64(rawKey),
+      iv: bytesToBase64(iv),
+      name: file.name || 'arquivo',
+      mimeType: file.type || 'application/octet-stream',
+      type: file.type?.startsWith('image/')
+        ? 'image'
+        : file.type?.startsWith('video/')
+          ? 'video'
+          : file.type?.startsWith('audio/')
+            ? 'audio'
+            : 'file',
+      bytes: file.size || 0,
+    },
+  };
+}
+
+export async function decryptFileAttachment(media) {
+  if (!media?.encrypted || !media?.url || !media?.key || !media?.iv) return media?.url || '';
+  const res = await fetch(media.url, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Falha ao baixar anexo privado');
+  const ciphertext = await res.arrayBuffer();
+  const key = await crypto.subtle.importKey('raw', base64ToBytes(media.key), { name: 'AES-GCM' }, false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(media.iv) }, key, ciphertext);
+  const blob = new Blob([plain], { type: media.mimeType || 'application/octet-stream' });
+  return URL.createObjectURL(blob);
+}
+
 export async function publishOwnPublicKey(token) {
   const device = await ensureDeviceIdentity();
   const deviceResponse = await apiFetch('/crypto/devices/current', {

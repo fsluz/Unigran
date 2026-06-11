@@ -5464,3 +5464,34 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+.messages-page .msg-private-file {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin-top: 8px !important;
+  padding: 9px 12px !important;
+  border: 1px solid rgba(96, 165, 250, .24) !important;
+  border-radius: 14px !important;
+  color: #c7d2fe !important;
+  background: rgba(2, 8, 23, .42) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+}
+
+.messages-page .msg-private-file::before {
+  content: '' !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #8b5cf6, #38bdf8) !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, .45) !important;
+}
+
+.messages-page .msg-private-file.is-error {
+  color: #fecaca !important;
+  border-color: rgba(248, 113, 113, .3) !important;
+}

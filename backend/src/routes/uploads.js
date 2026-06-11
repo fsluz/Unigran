@@ -1,7 +1,7 @@
 ﻿import { Router } from 'express';
 import multer from 'multer';
 import { auth } from '../middleware/auth.js';
-import { createCloudinaryUploadSignature, uploadAudioBuffer, uploadMediaBuffer } from '../services/cloudinary.service.js';
+import { createCloudinaryUploadSignature, uploadAudioBuffer, uploadEncryptedBuffer, uploadMediaBuffer } from '../services/cloudinary.service.js';
 import { uploadDocumentBuffer } from '../services/document.service.js';
 import { parseResumeFile } from '../services/resume.service.js';
 import { getPortfolioMlAnalysis, savePortfolioResume } from '../modules/academic/typedbPortfolioStore.js';
@@ -56,6 +56,23 @@ router.post('/audio', auth, upload.single('file'), async (req, res) => {
       return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
     }
     res.status(500).json({ error: err.message || 'Falha ao enviar audio' });
+  }
+});
+
+router.post('/encrypted', auth, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Arquivo criptografado obrigatorio' });
+    const media = await uploadEncryptedBuffer(req.file, 'unigran/messages');
+    res.status(201).json(media);
+  } catch (err) {
+    console.error('[upload encrypted]', err);
+    if (err?.statusCode && Number.isInteger(err.statusCode)) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    if (String(err?.message || '').toLowerCase().includes('unauthorized')) {
+      return res.status(401).json({ error: 'Cloudinary rejeitou credenciais (401). Verifique CLOUDINARY_API_KEY/API_SECRET.' });
+    }
+    res.status(500).json({ error: err.message || 'Falha ao enviar arquivo criptografado' });
   }
 });
 
