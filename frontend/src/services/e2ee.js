@@ -9,6 +9,7 @@ const PENDING_TRUST_PREFIX = 'unigran_e2ee_pending_v1_';
 const MIGRATION_FLAG = 'unigran_e2ee_migrated_v2';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+let publishKeyPromise = null;
 
 function bytesToBase64(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)));
@@ -225,6 +226,14 @@ export async function decryptFileAttachment(media) {
 }
 
 export async function publishOwnPublicKey(token) {
+  if (publishKeyPromise) return publishKeyPromise;
+  publishKeyPromise = publishOwnPublicKeyOnce(token).finally(() => {
+    publishKeyPromise = null;
+  });
+  return publishKeyPromise;
+}
+
+async function publishOwnPublicKeyOnce(token) {
   const device = await ensureDeviceIdentity();
   const deviceResponse = await apiFetch('/crypto/devices/current', {
     method: 'PUT',

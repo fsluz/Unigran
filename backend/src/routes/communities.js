@@ -11,6 +11,18 @@ function rankAllowsModeration(rank, user) {
   return rank === 'admin' || rank === 'moderator' || hasPermission(user, 'posts:moderate');
 }
 
+function membershipIsActive(member = {}) {
+  const status = member.status || 'approved';
+  return status !== 'pending' && status !== 'banned';
+}
+
+function publicRank(member = {}) {
+  if (!member?.username && !member?.rank && !member?.status) return '';
+  const status = member.status || 'approved';
+  if (status === 'pending' || status === 'banned') return status;
+  return member.rank || 'member';
+}
+
 async function getCommunityRank({ communityId, username }) {
   const rows = await readQuery(`
     match
@@ -18,9 +30,11 @@ async function getCommunityRank({ communityId, username }) {
       $g isa group, has group-id "${typeqlLiteral(communityId)}";
       $m isa group-membership, links (member: $u, group: $g);
       try { $m has rank $rank; };
-    fetch { "rank": $rank };
+      try { $m has membership-status $status; };
+    fetch { "rank": $rank, "status": $status };
   `);
-  return rows[0]?.rank || '';
+  if (!rows.length || !membershipIsActive(rows[0])) return '';
+  return rows[0]?.rank || 'member';
 }
 
 /* GET /api/communities */
@@ -47,10 +61,12 @@ router.get('/', auth, async (req, res) => {
         $membership isa group-membership, links (group: $g, member: $member);
         $member has username $member_username;
         try { $membership has rank $rank; };
+        try { $membership has membership-status $status; };
       fetch {
         "id": $gid,
         "username": $member_username,
-        "rank": $rank
+        "rank": $rank,
+        "status": $status
       };
     `);
     const membersByGroup = new Map();
@@ -65,10 +81,10 @@ router.get('/', auth, async (req, res) => {
       description: r.description || '',
       type: r.type,
       picture: r.picture || null,
-      members: (membersByGroup.get(r.id) || []).filter(m => !['pending', 'banned'].includes(m.rank || '')).length,
-      joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && !['pending', 'banned'].includes(m.rank || '')),
-      requested: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && m.rank === 'pending'),
-      role: (membersByGroup.get(r.id) || []).find(m => m.username === req.user.username)?.rank || '',
+      members: (membersByGroup.get(r.id) || []).filter(membershipIsActive).length,
+      joined: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && membershipIsActive(m)),
+      requested: (membersByGroup.get(r.id) || []).some(m => m.username === req.user.username && m.status === 'pending'),
+      role: publicRank((membersByGroup.get(r.id) || []).find(m => m.username === req.user.username) || {}),
     }))});
   } catch (err) { console.error('[communities GET]', err); res.status(500).json({ error: 'Erro ao listar' }); }
 });
@@ -90,9 +106,10 @@ router.get('/:id', auth, async (req, res) => {
     `);
     if (!rows.length) return res.status(404).json({ error: 'Comunidade nao encontrada' });
     const members = await communityMembers(req.params.id);
-    const role = members.find(m => m.username === req.user.username)?.rank || '';
-    const activeMembers = members.filter(m => !['pending', 'banned'].includes(m.rank));
-    res.json({ community: { ...rows[0], members: activeMembers.length, joined: Boolean(role && !['pending', 'banned'].includes(role)), requested: role === 'pending', role } });
+    const mine = members.find(m => m.username === req.user.username) || {};
+    const role = publicRank(mine);
+    const activeMembers = members.filter(membershipIsActive);
+    res.json({ community: { ...rows[0], members: activeMembers.length, joined: Boolean(mine.username && membershipIsActive(mine)), requested: mine.status === 'pending', role } });
   } catch (err) {
     console.error('[community GET]', err);
     res.status(500).json({ error: 'Erro ao carregar comunidade' });
@@ -107,11 +124,13 @@ async function communityMembers(id) {
       $member isa person, has username $username, has name $name;
       try { $member has profile-picture $picture; };
       try { $membership has rank $rank; };
+      try { $membership has membership-status $status; };
     fetch {
       "username": $username,
       "name": $name,
       "picture": $picture,
-      "rank": $rank
+      "rank": $rank,
+      "status": $status
     };
   `);
   return rows.map(row => ({
@@ -119,6 +138,7 @@ async function communityMembers(id) {
     displayName: row.name || row.username,
     profilePicture: row.picture || null,
     rank: row.rank || 'member',
+    status: row.status || 'approved',
   }));
 }
 
@@ -179,7 +199,7 @@ router.post('/:id/join', auth, async (req, res) => {
       fetch { "visibility": $visibility };
     `);
     const visibility = groupRows[0]?.visibility || 'public';
-    const rank = visibility === 'private' ? 'pending' : 'member';
+    const status = visibility === 'private' ? 'pending' : 'approved';
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
@@ -187,10 +207,11 @@ router.post('/:id/join', auth, async (req, res) => {
         not { $old isa group-membership, links (member: $u, group: $g); };
       insert
         $m isa group-membership, links (member: $u, group: $g),
-          has rank "${rank}",
+          has rank "member",
+          has membership-status "${status}",
           has start-timestamp ${now};
     `);
-    res.json({ joined: rank === 'member', requested: rank === 'pending', rank });
+    res.json({ joined: status === 'approved', requested: status === 'pending', rank: status === 'pending' ? 'pending' : 'member' });
   } catch (err) { console.error('[join]', err); res.status(500).json({ error: 'Erro ao entrar' }); }
 });
 
@@ -277,13 +298,16 @@ router.put('/:id/members/:uid', auth, async (req, res) => {
     if (!rankAllowsModeration(myRank, req.user)) {
       return res.status(403).json({ error: 'Sem permissao' });
     }
+    const activeRank = ['admin', 'moderator', 'member'].includes(rank) ? rank : 'member';
+    const status = rank === 'pending' || rank === 'banned' ? rank : 'approved';
     await writeQuery(`
       match
         $member isa person, has username "${typeqlLiteral(req.params.uid)}";
         $g isa group, has group-id "${typeqlLiteral(req.params.id)}";
         $m isa group-membership, links (member: $member, group: $g);
       update
-        $m has rank "${rank}";
+        $m has rank "${activeRank}";
+        $m has membership-status "${status}";
     `);
     res.json({ updated: true, rank });
   } catch (err) {

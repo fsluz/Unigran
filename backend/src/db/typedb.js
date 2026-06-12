@@ -44,11 +44,40 @@ export async function readQuery(query) {
   return res.ok?.answers ?? [];
 }
 
+function isRetryableTypedbError(err) {
+  const message = String(err?.message || err || '').toLowerCase();
+  return [
+    'isolation conflict',
+    'snapshot commit failed',
+    'snapshot error',
+    'storage commit error',
+    'transaction commit failed',
+    'commit failed',
+    'uses a lock held by a concurrent commit',
+  ].some(fragment => message.includes(fragment));
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function writeQuery(query) {
   const driver = getDriver();
-  const res = await driver.oneShotQuery(query, true, DB, 'write');
-  if (res.err) throw new Error(res.err.message ?? JSON.stringify(res.err));
-  return res.ok?.answers ?? [];
+  const maxAttempts = Math.max(1, parseInt(process.env.TYPEDB_WRITE_RETRIES || '4', 10));
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const res = await driver.oneShotQuery(query, true, DB, 'write');
+    if (!res.err) return res.ok?.answers ?? [];
+
+    lastError = new Error(res.err.message ?? JSON.stringify(res.err));
+    if (!isRetryableTypedbError(lastError) || attempt === maxAttempts - 1) break;
+
+    const backoff = Math.min(1500, (100 * (2 ** attempt)) + Math.floor(Math.random() * 75));
+    await wait(backoff);
+  }
+
+  throw lastError;
 }
 
 export async function schemaQuery(query) {

@@ -1,0 +1,11 @@
+## Migration 010 - Status de entrada em comunidades
+##
+## Mantem `rank` apenas para papeis ativos permitidos pelo schema
+## (member/moderator/admin/owner) e move estados operacionais
+## como pending/banned para um atributo separado.
+
+define
+
+  attribute membership-status, value string @regex("^(approved|pending|banned)$");
+
+  group-membership owns membership-status @card(0..1);

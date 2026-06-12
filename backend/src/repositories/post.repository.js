@@ -541,11 +541,17 @@ export async function listTrends(viewerUsername = '') {
       if (isRecent) recentCounts.set(word, (recentCounts.get(word) || 0) + 1);
     }
   }
-  return [...recentCounts.entries()]
+  const sourceCounts = recentCounts.size ? recentCounts : allCounts;
+  return [...sourceCounts.entries()]
     .filter(([, count]) => count >= 1)
     .sort((a, b) => (b[1] + (likedKeywords.has(b[0]) ? 10 : 0)) - (a[1] + (likedKeywords.has(a[0]) ? 10 : 0)))
     .slice(0, 10)
-    .map(([tag, count]) => ({ tag, count: allCounts.get(tag) || count, lastHour: count, recommended: likedKeywords.has(tag) }));
+    .map(([tag, count]) => ({
+      tag,
+      count: allCounts.get(tag) || count,
+      lastHour: recentCounts.get(tag) || 0,
+      recommended: likedKeywords.has(tag),
+    }));
 }
 
 export async function listKeywordPosts({ viewerUsername, keyword, limit = 50 }) {
