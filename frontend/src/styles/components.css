@@ -9152,6 +9152,48 @@ img, video { max-width: 100%; }
   transform: scale(1.06);
   filter: saturate(1.08);
 }
+.explore-text-preview {
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  color: #e5edff;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(139, 92, 246, .28), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(10, 31, 54, .96));
+}
+.explore-text-preview span {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, .12);
+  border: 1px solid rgba(56, 189, 248, .2);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.explore-text-preview strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: clamp(16px, 1.5vw, 22px);
+  line-height: 1.1;
+}
+.explore-text-preview p {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(226, 232, 240, .72);
+  font-size: 13px;
+  line-height: 1.35;
+}
 
 @media (max-width: 760px) {
   .zuni-shell { background: #000; }

@@ -6,9 +6,32 @@ import { hasPermission, requirePermission } from '../modules/auth/rbac.js';
 import { listCommunityPosts } from '../repositories/post.repository.js';
 
 const router = Router();
+let membershipStatusSupport = null;
 
 function rankAllowsModeration(rank, user) {
   return rank === 'admin' || rank === 'moderator' || hasPermission(user, 'posts:moderate');
+}
+
+function isMissingMembershipStatus(err) {
+  return String(err?.message || '').includes("Type label 'membership-status' not found");
+}
+
+async function supportsMembershipStatus() {
+  if (membershipStatusSupport !== null) return membershipStatusSupport;
+  try {
+    await readQuery(`
+      match
+        $membership isa group-membership;
+        try { $membership has membership-status $status; };
+      limit 1;
+      fetch { "status": $status };
+    `);
+    membershipStatusSupport = true;
+  } catch (err) {
+    if (!isMissingMembershipStatus(err)) throw err;
+    membershipStatusSupport = false;
+  }
+  return membershipStatusSupport;
 }
 
 function membershipIsActive(member = {}) {
@@ -24,14 +47,15 @@ function publicRank(member = {}) {
 }
 
 async function getCommunityRank({ communityId, username }) {
+  const useStatus = await supportsMembershipStatus();
   const rows = await readQuery(`
     match
       $u isa person, has username "${typeqlLiteral(username)}";
       $g isa group, has group-id "${typeqlLiteral(communityId)}";
       $m isa group-membership, links (member: $u, group: $g);
       try { $m has rank $rank; };
-      try { $m has membership-status $status; };
-    fetch { "rank": $rank, "status": $status };
+      ${useStatus ? 'try { $m has membership-status $status; };' : ''}
+    fetch { "rank": $rank${useStatus ? ', "status": $status' : ''} };
   `);
   if (!rows.length || !membershipIsActive(rows[0])) return '';
   return rows[0]?.rank || 'member';
@@ -40,6 +64,7 @@ async function getCommunityRank({ communityId, username }) {
 /* GET /api/communities */
 router.get('/', auth, async (req, res) => {
   try {
+    const useStatus = await supportsMembershipStatus();
     // FIXED: removed nested `fetch` subquery; TypeDB 3.x rejected the inline members list.
     const rows = await readQuery(`
       match
@@ -61,12 +86,11 @@ router.get('/', auth, async (req, res) => {
         $membership isa group-membership, links (group: $g, member: $member);
         $member has username $member_username;
         try { $membership has rank $rank; };
-        try { $membership has membership-status $status; };
+        ${useStatus ? 'try { $membership has membership-status $status; };' : ''}
       fetch {
         "id": $gid,
         "username": $member_username,
-        "rank": $rank,
-        "status": $status
+        "rank": $rank${useStatus ? ', "status": $status' : ''}
       };
     `);
     const membersByGroup = new Map();
@@ -117,6 +141,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 async function communityMembers(id) {
+  const useStatus = await supportsMembershipStatus();
   const rows = await readQuery(`
     match
       $g isa group, has group-id "${typeqlLiteral(id)}";
@@ -124,13 +149,12 @@ async function communityMembers(id) {
       $member isa person, has username $username, has name $name;
       try { $member has profile-picture $picture; };
       try { $membership has rank $rank; };
-      try { $membership has membership-status $status; };
+      ${useStatus ? 'try { $membership has membership-status $status; };' : ''}
     fetch {
       "username": $username,
       "name": $name,
       "picture": $picture,
-      "rank": $rank,
-      "status": $status
+      "rank": $rank${useStatus ? ', "status": $status' : ''}
     };
   `);
   return rows.map(row => ({
@@ -193,13 +217,14 @@ router.post('/', auth, async (req, res) => {
 router.post('/:id/join', auth, async (req, res) => {
   const now = typeqlDatetime();
   try {
+    const useStatus = await supportsMembershipStatus();
     const groupRows = await readQuery(`
       match
         $g isa group, has group-id "${typeqlLiteral(req.params.id)}", has page-visibility $visibility;
       fetch { "visibility": $visibility };
     `);
     const visibility = groupRows[0]?.visibility || 'public';
-    const status = visibility === 'private' ? 'pending' : 'approved';
+    const status = useStatus && visibility === 'private' ? 'pending' : 'approved';
     await writeQuery(`
       match
         $u isa person, has username "${typeqlLiteral(req.user.username)}";
@@ -208,7 +233,7 @@ router.post('/:id/join', auth, async (req, res) => {
       insert
         $m isa group-membership, links (member: $u, group: $g),
           has rank "member",
-          has membership-status "${status}",
+          ${useStatus ? `has membership-status "${status}",` : ''}
           has start-timestamp ${now};
     `);
     res.json({ joined: status === 'approved', requested: status === 'pending', rank: status === 'pending' ? 'pending' : 'member' });
@@ -298,6 +323,10 @@ router.put('/:id/members/:uid', auth, async (req, res) => {
     if (!rankAllowsModeration(myRank, req.user)) {
       return res.status(403).json({ error: 'Sem permissao' });
     }
+    const useStatus = await supportsMembershipStatus();
+    if (!useStatus && ['pending', 'banned'].includes(rank)) {
+      return res.status(409).json({ error: 'Atualize o schema TypeDB para usar status pendente ou banido.' });
+    }
     const activeRank = ['admin', 'moderator', 'member'].includes(rank) ? rank : 'member';
     const status = rank === 'pending' || rank === 'banned' ? rank : 'approved';
     await writeQuery(`
@@ -307,7 +336,7 @@ router.put('/:id/members/:uid', auth, async (req, res) => {
         $m isa group-membership, links (member: $member, group: $g);
       update
         $m has rank "${activeRank}";
-        $m has membership-status "${status}";
+        ${useStatus ? `$m has membership-status "${status}";` : ''}
     `);
     res.json({ updated: true, rank });
   } catch (err) {

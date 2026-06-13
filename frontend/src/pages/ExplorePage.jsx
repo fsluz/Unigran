@@ -27,19 +27,10 @@ export default function ExplorePage({ onOpenProfile }) {
     else setLoading(true);
 
     try {
-      let currentPage = nextPage;
-      let lastBatch = [];
-      const mediaPosts = [];
-      for (let rounds = 0; rounds < 4 && mediaPosts.length < EXPLORE_BATCH_SIZE; rounds += 1) {
-        lastBatch = await fetchPosts(token, { page: currentPage, limit, feed: 'explore' });
-        mediaPosts.push(...(lastBatch || []).filter(post => post.media?.url));
-        currentPage += 1;
-        if (!lastBatch?.length || lastBatch.length < limit) break;
-      }
-
-      setPosts(prev => append ? mergePosts(prev, mediaPosts.slice(0, EXPLORE_BATCH_SIZE)) : mediaPosts.slice(0, EXPLORE_BATCH_SIZE));
-      setPage(currentPage - 1);
-      setHasMore(Boolean(lastBatch?.length >= limit));
+      const nextPosts = await fetchPosts(token, { page: nextPage, limit, feed: 'explore' });
+      setPosts(prev => append ? mergePosts(prev, nextPosts) : nextPosts);
+      setPage(nextPage);
+      setHasMore(Boolean(nextPosts?.length >= limit));
     } catch {
       if (!append) setPosts([]);
       setHasMore(false);
@@ -68,7 +59,7 @@ export default function ExplorePage({ onOpenProfile }) {
     <div className="page-scroll">
       <Topbar title="Explorar" />
       <div className="explore-page">
-        <p className="explore-intro">Posts e vídeos recomendados para você, em lotes de 20 mídias.</p>
+        <p className="explore-intro">Posts recomendados para voce, exceto Zuni, carregados em lotes de 20.</p>
         {loading && <UnigranLoader title="Explorando a rede" subtitle="Selecionando mídias recentes da comunidade." />}
         {!loading && posts.length === 0 && (
           <div className="explore-empty">Nada para explorar ainda. Siga mais pessoas ou volte depois.</div>
@@ -85,8 +76,14 @@ export default function ExplorePage({ onOpenProfile }) {
             >
               {post.media?.resource_type === 'video' ? (
                 <video src={post.media.url} muted playsInline preload="metadata" />
-              ) : (
+              ) : post.media?.url ? (
                 <img src={post.media.url} alt="" loading="lazy" />
+              ) : (
+                <div className="explore-text-preview">
+                  <span>{post.portfolio ? 'Portfolio' : 'Post'}</span>
+                  <strong>{post.portfolio?.title || post.content?.slice(0, 72) || 'Publicacao'}</strong>
+                  <p>{post.portfolio?.summary || post.content || 'Sem texto.'}</p>
+                </div>
               )}
               <div className="explore-tile-meta">
                 <span>{post.author?.displayName}</span>

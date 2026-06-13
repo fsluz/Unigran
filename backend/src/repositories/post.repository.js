@@ -405,10 +405,7 @@ export async function listFeed({ viewerUsername, limit, offset, feed = '' }) {
       return authorUsername === viewerUsername || followingSet.has(authorUsername);
     }
     if (feed === 'trending') return true;
-    if (feed === 'explore') {
-      const hasMedia = Boolean(imageUrl || videoUrl);
-      return hasMedia && authorUsername !== viewerUsername;
-    }
+    if (feed === 'explore') return true;
     return authorUsername === viewerUsername || followingSet.has(authorUsername);
   }).map((entry) => {
     const attrs = entry?.post_all_attributes || {};
